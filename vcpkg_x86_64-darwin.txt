@@ -1,6 +1,6 @@
-freetype
-opusfile
-opus
-libogg
-sdl2
-sdl2-image[libjpeg-turbo]
+freetype:x64-osx
+opusfile:x64-osx
+opus:x64-osx
+libogg:x64-osx
+sdl2:x64-osx
+sdl2-image[libjpeg-turbo]:x64-osx
