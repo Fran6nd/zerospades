@@ -74,13 +74,19 @@ jobs:
       - name: Build dependencies
         run: vcpkg/vcpkg install @vcpkg_x86_64-darwin.txt
 
+      - name: Configure CMake
+        run: |
+          cmake -G "Unix Makefiles" \
+            -B ${{ runner.workspace }}/openspades.mk \
+            -S ${{ github.workspace }} \
+            -D CMAKE_BUILD_TYPE=Release \
+            -D CMAKE_TOOLCHAIN_FILE=${{ github.workspace }}/vcpkg/scripts/buildsystems/vcpkg.cmake \
+            -D VCPKG_TARGET_TRIPLET=x64-osx \
+            -D CMAKE_OSX_ARCHITECTURES=x86_64 \
+            -D CMAKE_CXX_STANDARD=17
+
       - name: Build application
-        uses: ashutoshvarma/action-cmake-build@master
-        with:
-          build-dir: ${{ runner.workspace }}/openspades.mk
-          build-type: Release
-          configure-options: -G "Unix Makefiles" -D CMAKE_BUILD_TYPE=Release -D CMAKE_TOOLCHAIN_FILE=${{ github.workspace }}/vcpkg/scripts/buildsystems/vcpkg.cmake -D VCPKG_TARGET_TRIPLET=x64-osx -D CMAKE_OSX_ARCHITECTURES=x86_64 -D CMAKE_CXX_STANDARD=17
-          parallel: 8
+        run: cmake --build ${{ runner.workspace }}/openspades.mk --config Release --parallel 8
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v5
