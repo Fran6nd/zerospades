@@ -324,7 +324,6 @@ if(APPLE)
 		list(APPEND BUNDLE_RESOURCES ${CMAKE_CURRENT_BINARY_DIR}/libysrspades.dylib)
 
 		# Download `libysrspades.dylib` automatically
-		add_dependencies(OpenSpades OpenSpades_YSRSpades_Prebuilt)
 		add_custom_target(OpenSpades_YSRSpades_Prebuilt ALL COMMENT "Downloading libysrspades.dylib"
 			DEPENDS ${PROJECT_BINARY_DIR}/libysrspades.dylib)
 		add_custom_command(
@@ -333,6 +332,12 @@ if(APPLE)
 			COMMAND
 				wget -c
 				https://openspadesmedia.yvt.jp/development-packages/YSRSpades/libysrspades.dylib
+			COMMAND
+				# Strip i386 architecture (32-bit is no longer supported on macOS)
+				lipo libysrspades.dylib -remove i386 -output libysrspades.dylib || true
+			COMMAND
+				# Fix install path to use @rpath instead of absolute path
+				install_name_tool -id "@rpath/libysrspades.dylib" libysrspades.dylib
 			)
 	endif (OPENSPADES_YSR)
 
