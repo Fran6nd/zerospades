@@ -44,32 +44,29 @@ namespace spades {
 		SPLog("%s (%d, %d) : %s : %s\n", msg->section, msg->row, msg->col, type, msg->message);
 	}
 
-	class ScriptBuilder : public CScriptBuilder {
-	public:
-		ScriptBuilder() {}
+	// Callback function for handling script includes
+	static int IncludeCallback(const char* include, const char* from, CScriptBuilder* builder, void* userParam) {
+		SPADES_MARK_FUNCTION();
 
-	protected:
-		int LoadScriptSection(const char* filename) override {
-			if (filename[0] != '/') {
-				SPLog("Invalid script path detected: not starting with '/'");
-				return -1;
-			}
-
-			// path validation should be done by filesystem...
-			std::string data;
-			try {
-				std::string fn = "Scripts";
-				fn += filename;
-				data = FileManager::ReadAllBytes(fn.c_str());
-			} catch (const std::exception& ex) {
-				SPLog("Failed to include '%s':%s", filename, ex.what());
-				return -1;
-			}
-
-			SPLog("Loading script '%s'", filename);
-			return ProcessScriptSection(data.c_str(), (unsigned int)(data.length()), filename, 0);
+		if (include[0] != '/') {
+			SPLog("Invalid script path detected: not starting with '/'");
+			return -1;
 		}
-	};
+
+		// path validation should be done by filesystem...
+		std::string data;
+		try {
+			std::string fn = "Scripts";
+			fn += include;
+			data = FileManager::ReadAllBytes(fn.c_str());
+		} catch (const std::exception& ex) {
+			SPLog("Failed to include '%s':%s", include, ex.what());
+			return -1;
+		}
+
+		SPLog("Loading script '%s'", include);
+		return builder->AddSectionFromMemory(include, data.c_str(), (unsigned int)(data.length()), 0);
+	}
 
 	ScriptManager::ScriptManager() {
 		SPADES_MARK_FUNCTION();
@@ -99,17 +96,21 @@ namespace spades {
 			ScriptObjectRegistrar::RegisterAll(this, ScriptObjectRegistrar::PhaseGlobalFunction);
 			ScriptObjectRegistrar::RegisterAll(this, ScriptObjectRegistrar::PhaseObjectMember);
 
-			SPLog("Loading scripts");
-			engine->SetDefaultNamespace("");
-			ScriptBuilder builder;
-			if (builder.StartNewModule(engine, "Client") < 0)
-				SPRaise("Failed to create script module.");
-			builder.DefineWord("CLIENT");
-			if (builder.AddSectionFromFile("/Main.as") < 0)
-				SPRaise("Failed to load '/Main.as'.");
-			SPLog("Building");
-			if (builder.BuildModule() < 0)
-				SPRaise("Failed to build at least one of the scripts.");
+		SPLog("Loading scripts");
+		engine->SetDefaultNamespace("");
+		CScriptBuilder builder;
+		builder.SetIncludeCallback(IncludeCallback, NULL);
+		if (builder.StartNewModule(engine, "Client") < 0)
+			SPRaise("Failed to create script module.");
+		builder.DefineWord("CLIENT");
+
+		std::string mainScript = FileManager::ReadAllBytes("Scripts/Main.as");
+		if (builder.AddSectionFromMemory("/Main.as", mainScript.c_str(), (unsigned int)(mainScript.length()), 0) < 0)
+			SPRaise("Failed to load '/Main.as'.");
+
+		SPLog("Building");
+		if (builder.BuildModule() < 0)
+			SPRaise("Failed to build at least one of the scripts.");
 		} catch (...) {
 			engine->Release();
 			throw;
