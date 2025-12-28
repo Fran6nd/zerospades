@@ -18,18 +18,11 @@ jobs:
         with:
           submodules: true
 
-      - name: Cache vcpkg and dependencies
-        uses: actions/cache@v4
-        with:
-          path: |
-            vcpkg/installed
-            vcpkg/buildtrees
-          key: windows-x86-${{ hashFiles('vcpkg_x86-windows.txt', '.gitmodules') }}
-          restore-keys: |
-            windows-x86-
+      - name: Clone vcpkg
+        run: git clone https://github.com/microsoft/vcpkg.git vcpkg
 
       - name: Bootstrap vcpkg
-        run: vcpkg\bootstrap-vcpkg.bat -disableMetrics
+        run: .\vcpkg\bootstrap-vcpkg.bat -disableMetrics
 
       - name: Build dependencies
         run: vcpkg\vcpkg install @vcpkg_x86-windows.txt
@@ -67,18 +60,11 @@ jobs:
         with:
           submodules: true
 
-      - name: Cache vcpkg and dependencies
-        uses: actions/cache@v4
-        with:
-          path: |
-            vcpkg/installed
-            vcpkg/buildtrees
-          key: windows-x64-${{ hashFiles('vcpkg_x86-windows.txt', '.gitmodules') }}
-          restore-keys: |
-            windows-x64-
+      - name: Clone vcpkg
+        run: git clone https://github.com/microsoft/vcpkg.git vcpkg
 
       - name: Bootstrap vcpkg
-        run: vcpkg\bootstrap-vcpkg.bat -disableMetrics
+        run: .\vcpkg\bootstrap-vcpkg.bat -disableMetrics
 
       - name: Build dependencies
         run: |
@@ -118,18 +104,11 @@ jobs:
         with:
           submodules: true
 
-      - name: Cache vcpkg and dependencies
-        uses: actions/cache@v4
-        with:
-          path: |
-            vcpkg/installed
-            vcpkg/buildtrees
-          key: macos-intel-${{ hashFiles('vcpkg_x86_64-darwin.txt', '.gitmodules') }}
-          restore-keys: |
-            macos-intel-
+      - name: Clone vcpkg
+        run: git clone https://github.com/microsoft/vcpkg.git vcpkg
 
       - name: Bootstrap vcpkg
-        run: vcpkg/bootstrap-vcpkg.sh -disableMetrics
+        run: ./vcpkg/bootstrap-vcpkg.sh -disableMetrics
 
       - name: Build dependencies
         run: |
@@ -166,18 +145,11 @@ jobs:
         with:
           submodules: true
 
-      - name: Cache vcpkg and dependencies
-        uses: actions/cache@v4
-        with:
-          path: |
-            vcpkg/installed
-            vcpkg/buildtrees
-          key: macos-arm-${{ hashFiles('vcpkg_x86_64-darwin.txt', '.gitmodules') }}
-          restore-keys: |
-            macos-arm-
+      - name: Clone vcpkg
+        run: git clone https://github.com/microsoft/vcpkg.git vcpkg
 
       - name: Bootstrap vcpkg
-        run: vcpkg/bootstrap-vcpkg.sh -disableMetrics
+        run: ./vcpkg/bootstrap-vcpkg.sh -disableMetrics
 
       - name: Build dependencies
         run: |

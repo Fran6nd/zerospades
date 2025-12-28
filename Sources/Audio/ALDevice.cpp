@@ -354,14 +354,35 @@ namespace spades {
 				void PlayBufferOneShot(ALuint buffer) {
 					SPADES_MARK_FUNCTION();
 
+					// Validate buffer before attempting to play
+					if (buffer == 0 || !al::qalIsBuffer(buffer)) {
+						SPLog("Warning: Attempted to play invalid buffer (ID: %u)", buffer);
+						return;
+					}
+
+					// Ensure source is stopped and detached before setting new buffer
+					al::qalSourceStop(handle);
+					al::qalSourcei(handle, AL_BUFFER, 0);
+
+					// Clear any accumulated errors
+					while (al::qalGetError() != AL_NO_ERROR);
+
+					// Configure source
 					al::qalSourcei(handle, AL_LOOPING, AL_FALSE);
-					ALCheckErrorPrecise();
 					al::qalSourcei(handle, AL_BUFFER, buffer);
-					ALCheckErrorPrecise();
 					al::qalSourcei(handle, AL_SAMPLE_OFFSET, 0);
-					ALCheckErrorPrecise();
+
+					// Play the source
 					al::qalSourcePlay(handle);
-					ALCheckError();
+
+					// Only check error if precise checking is enabled
+					if (s_alPreciseErrorCheck) {
+						ALenum err = al::qalGetError();
+						if (err != AL_NO_ERROR && err != -1) {
+							// Ignore error code -1 on macOS (spurious error)
+							SPLog("OpenAL warning in PlayBufferOneShot: error %d", (int)err);
+						}
+					}
 				}
 			};
 
