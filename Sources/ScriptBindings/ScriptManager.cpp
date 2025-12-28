@@ -44,28 +44,63 @@ namespace spades {
 		SPLog("%s (%d, %d) : %s : %s\n", msg->section, msg->row, msg->col, type, msg->message);
 	}
 
+	// Helper function to normalize paths (resolve .. and .)
+	static std::string NormalizePath(const std::string& path) {
+		std::vector<std::string> parts;
+		std::stringstream ss(path);
+		std::string part;
+
+		while (std::getline(ss, part, '/')) {
+			if (part == ".." && !parts.empty()) {
+				parts.pop_back();
+			} else if (!part.empty() && part != ".") {
+				parts.push_back(part);
+			}
+		}
+
+		std::string result = "/";
+		for (size_t i = 0; i < parts.size(); i++) {
+			if (i > 0) result += "/";
+			result += parts[i];
+		}
+		return result;
+	}
+
 	// Callback function for handling script includes
 	static int IncludeCallback(const char* include, const char* from, CScriptBuilder* builder, void* userParam) {
 		SPADES_MARK_FUNCTION();
 
-		if (include[0] != '/') {
-			SPLog("Invalid script path detected: not starting with '/'");
-			return -1;
+		std::string includePath = include;
+
+		// Handle relative paths - resolve relative to the current file's directory
+		if (includePath[0] != '/') {
+			std::string fromPath = from;
+			size_t lastSlash = fromPath.find_last_of('/');
+			if (lastSlash != std::string::npos) {
+				// Get the directory of the 'from' file and append the include path
+				includePath = fromPath.substr(0, lastSlash + 1) + includePath;
+			} else {
+				// No directory in 'from', treat as root-relative
+				includePath = "/" + includePath;
+			}
 		}
+
+		// Normalize the path (resolve .. and .)
+		includePath = NormalizePath(includePath);
 
 		// path validation should be done by filesystem...
 		std::string data;
 		try {
 			std::string fn = "Scripts";
-			fn += include;
+			fn += includePath;
 			data = FileManager::ReadAllBytes(fn.c_str());
 		} catch (const std::exception& ex) {
-			SPLog("Failed to include '%s':%s", include, ex.what());
+			SPLog("Failed to include '%s':%s", includePath.c_str(), ex.what());
 			return -1;
 		}
 
-		SPLog("Loading script '%s'", include);
-		return builder->AddSectionFromMemory(include, data.c_str(), (unsigned int)(data.length()), 0);
+		SPLog("Loading script '%s'", includePath.c_str());
+		return builder->AddSectionFromMemory(includePath.c_str(), data.c_str(), (unsigned int)(data.length()), 0);
 	}
 
 	ScriptManager::ScriptManager() {
