@@ -128,6 +128,9 @@ jobs:
             -D CMAKE_CXX_STANDARD=17
           parallel: 8
 
+      - name: Sign application bundle
+        run: codesign --force --deep --sign - ${{ runner.workspace }}/openspades.mk/bin/OpenSpades.app
+
       - name: Upload artifacts
         uses: actions/upload-artifact@v5
         with:
@@ -168,6 +171,9 @@ jobs:
             -D CMAKE_OSX_ARCHITECTURES=arm64
             -D CMAKE_CXX_STANDARD=17
           parallel: 8
+
+      - name: Sign application bundle
+        run: codesign --force --deep --sign - ${{ runner.workspace }}/openspades.mk/bin/OpenSpades.app
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v5

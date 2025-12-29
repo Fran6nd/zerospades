@@ -360,29 +360,16 @@ namespace spades {
 						return;
 					}
 
-					// Ensure source is stopped and detached before setting new buffer
-					al::qalSourceStop(handle);
-					al::qalSourcei(handle, AL_BUFFER, 0);
-
-					// Clear any accumulated errors
-					while (al::qalGetError() != AL_NO_ERROR);
-
-					// Configure source
-					al::qalSourcei(handle, AL_LOOPING, AL_FALSE);
+					// AllocChunk() now always calls Terminate() before returning a source,
+					// so the buffer should already be detached. Configure and play the source.
 					al::qalSourcei(handle, AL_BUFFER, buffer);
+					ALCheckError();
+					al::qalSourcei(handle, AL_LOOPING, AL_FALSE);
+					ALCheckErrorPrecise();
 					al::qalSourcei(handle, AL_SAMPLE_OFFSET, 0);
-
-					// Play the source
+					ALCheckErrorPrecise();
 					al::qalSourcePlay(handle);
-
-					// Only check error if precise checking is enabled
-					if (s_alPreciseErrorCheck) {
-						ALenum err = al::qalGetError();
-						if (err != AL_NO_ERROR && err != -1) {
-							// Ignore error code -1 on macOS (spurious error)
-							SPLog("OpenAL warning in PlayBufferOneShot: error %d", (int)err);
-						}
-					}
+					ALCheckError();
 				}
 			};
 
@@ -573,6 +560,8 @@ namespace spades {
 					ALSrc* src = srcs[(i + start) % srcs.size()];
 					if (src->IsPlaying())
 						continue;
+					// Always terminate before reusing to ensure buffer is detached
+					src->Terminate();
 					return src;
 				}
 

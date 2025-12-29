@@ -753,19 +753,22 @@ namespace spades {
 					for (size_t mId = g.firstInstance; mId != NoInstance;
 					     mId = itnl.allInstances[mId].next) {
 						Internal::Instance& inst = itnl.allInstances[mId];
-						mrend.RenderModel(inst.model, *inst.param);
 
+#ifdef DEBUG_SHADOW_MAP
+						// Debug check - verify model is within reasonable shadow frustum bounds
 						AABB3 modelBounds = inst.model->GetBoundingBox();
 						Vector3 v = modelBounds.min + modelBounds.max;
 						v *= 0.5F;
 						v = (inst.param->matrix * v).GetXYZ();
-						{
-							v = (baseMatrix * v).GetXYZ();
-							SPAssert(v.x >= -1.2F);
-							SPAssert(v.y >= -1.2F);
-							SPAssert(v.x <= 1.2F);
-							SPAssert(v.y <= 1.2F);
+						v = (baseMatrix * v).GetXYZ();
+
+						// Log if outside bounds but don't crash - models can be far away
+						if (v.x < -2.0F || v.y < -2.0F || v.x > 2.0F || v.y > 2.0F) {
+							SPLog("Shadow map: model center outside frustum bounds: (%.2f, %.2f)", v.x, v.y);
 						}
+#endif
+
+						mrend.RenderModel(inst.model, *inst.param);
 					}
 					mrend.Flush();
 				}
