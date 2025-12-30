@@ -354,9 +354,17 @@ namespace spades {
 				void PlayBufferOneShot(ALuint buffer) {
 					SPADES_MARK_FUNCTION();
 
-					al::qalSourcei(handle, AL_LOOPING, AL_FALSE);
-					ALCheckErrorPrecise();
+					// Validate buffer before attempting to play
+					if (buffer == 0 || !al::qalIsBuffer(buffer)) {
+						SPLog("Warning: Attempted to play invalid buffer (ID: %u)", buffer);
+						return;
+					}
+
+					// AllocChunk() now always calls Terminate() before returning a source,
+					// so the buffer should already be detached. Configure and play the source.
 					al::qalSourcei(handle, AL_BUFFER, buffer);
+					ALCheckError();
+					al::qalSourcei(handle, AL_LOOPING, AL_FALSE);
 					ALCheckErrorPrecise();
 					al::qalSourcei(handle, AL_SAMPLE_OFFSET, 0);
 					ALCheckErrorPrecise();
@@ -552,6 +560,8 @@ namespace spades {
 					ALSrc* src = srcs[(i + start) % srcs.size()];
 					if (src->IsPlaying())
 						continue;
+					// Always terminate before reusing to ensure buffer is detached
+					src->Terminate();
 					return src;
 				}
 
