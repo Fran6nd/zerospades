@@ -252,19 +252,32 @@ namespace spades {
 			} else {
 				SDL_GL_MakeCurrent(window, context);
 
-				shaderHighCapable = true;
-				postFilterHighCapable = true;
-				particleHighCapable = true;
+#if !defined(__APPLE__) || defined(USE_MESA)
+				// Initialize GLEW for Mesa and non-Apple platforms
+				GLenum glewErr = glewInit();
+				if (glewErr != GLEW_OK) {
+					SPLog("GLEW initialization failed: %s", glewGetErrorString(glewErr));
+					AddReport("GLEW initialization failed.", red);
+					capable = false;
+					shaderHighCapable = false;
+					postFilterHighCapable = false;
+					particleHighCapable = false;
+				} else {
+					SPLog("GLEW initialized successfully");
+#endif
+					shaderHighCapable = true;
+					postFilterHighCapable = true;
+					particleHighCapable = true;
 
-				const char* str;
-				GLint maxTextureSize;
-				GLint max3DTextureSize;
-				GLint maxCombinedTextureUnits;
-				GLint maxVertexTextureUnits;
-				GLint maxVaryingComponents;
-				SPLog("--- OpenGL Renderer Info ---");
+					const char* str;
+					GLint maxTextureSize;
+					GLint max3DTextureSize;
+					GLint maxCombinedTextureUnits;
+					GLint maxVertexTextureUnits;
+					GLint maxVaryingComponents;
+					SPLog("--- OpenGL Renderer Info ---");
 
-				AddReport("OpenGL-capable graphics accelerator is available.");
+					AddReport("OpenGL-capable graphics accelerator is available.");
 
 				if ((str = (const char*)glGetString(GL_VENDOR)) != NULL) {
 					SPLog("Vendor: %s", str);
@@ -616,6 +629,9 @@ namespace spades {
 					          "at least one of required OpenGL extensions/features."
 					          " Falling back to the software renderer.", red);
 				}
+#if !defined(__APPLE__) || defined(USE_MESA)
+				} // Close GLEW init success block
+#endif
 
 				SDL_GL_DeleteContext(context);
 				SDL_DestroyWindow(window);
