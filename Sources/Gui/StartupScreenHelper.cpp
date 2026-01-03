@@ -205,6 +205,19 @@ namespace spades {
 			}
 
 			bool capable = true;
+
+#if defined(USE_MESA)
+			// For Mesa, request minimal OpenGL version
+			// Mesa/Zink will provide the best available version
+			SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
+			SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 1);
+#else
+			// Request OpenGL 2.1 compatibility for other platforms
+			SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
+			SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 1);
+			SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_COMPATIBILITY);
+#endif
+
 			SDL_Window* window = SDL_CreateWindow("OpenSpades: Please wait...", 1, 1, 1, 1,
 			                                      SDL_WINDOW_OPENGL | SDL_WINDOW_BORDERLESS);
 			if (window == nullptr)
@@ -254,7 +267,10 @@ namespace spades {
 
 #if !defined(__APPLE__) || defined(USE_MESA)
 				// Initialize GLEW for Mesa and non-Apple platforms
+				glewExperimental = GL_TRUE; // Enable experimental features for Mesa
 				GLenum glewErr = glewInit();
+				// Clear any errors from glewInit (it may generate GL_INVALID_ENUM on some drivers)
+				glGetError();
 				if (glewErr != GLEW_OK) {
 					SPLog("GLEW initialization failed: %s", glewGetErrorString(glewErr));
 					AddReport("GLEW initialization failed.", red);
