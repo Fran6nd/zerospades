@@ -214,6 +214,10 @@ namespace spades {
 				                 IGLDevice::ClampToEdge);
 				dev.TexParamater(IGLDevice::Texture2D, IGLDevice::TextureWrapT,
 				                 IGLDevice::ClampToEdge);
+				dev.TexParamater(IGLDevice::Texture2D, IGLDevice::TextureBaseLevel,
+				                 IGLDevice::Zero);
+				dev.TexParamater(IGLDevice::Texture2D, IGLDevice::TextureMaxLevel,
+				                 IGLDevice::Zero);
 
 				dev.FramebufferTexture2D(IGLDevice::Framebuffer, IGLDevice::ColorAttachment0,
 				                         IGLDevice::Texture2D, renderColorTexture, 0);
@@ -241,6 +245,10 @@ namespace spades {
 					                 IGLDevice::ClampToEdge);
 					dev.TexParamater(IGLDevice::Texture2D, IGLDevice::TextureWrapT,
 					                 IGLDevice::ClampToEdge);
+					dev.TexParamater(IGLDevice::Texture2D, IGLDevice::TextureBaseLevel,
+					                 IGLDevice::Zero);
+					dev.TexParamater(IGLDevice::Texture2D, IGLDevice::TextureMaxLevel,
+					                 IGLDevice::Zero);
 
 					dev.FramebufferTexture2D(IGLDevice::Framebuffer, IGLDevice::ColorAttachment0,
 					                         IGLDevice::Texture2D, renderColorTexture, 0);
@@ -266,6 +274,10 @@ namespace spades {
 					                 IGLDevice::ClampToEdge);
 					dev.TexParamater(IGLDevice::Texture2D, IGLDevice::TextureWrapT,
 					                 IGLDevice::ClampToEdge);
+					dev.TexParamater(IGLDevice::Texture2D, IGLDevice::TextureBaseLevel,
+					                 IGLDevice::Zero);
+					dev.TexParamater(IGLDevice::Texture2D, IGLDevice::TextureMaxLevel,
+					                 IGLDevice::Zero);
 
 					dev.FramebufferTexture2D(IGLDevice::Framebuffer, IGLDevice::ColorAttachment0,
 					                         IGLDevice::Texture2D, renderColorTexture, 0);
@@ -298,6 +310,10 @@ namespace spades {
 				                 IGLDevice::ClampToEdge);
 				dev.TexParamater(IGLDevice::Texture2D, IGLDevice::TextureWrapT,
 				                 IGLDevice::ClampToEdge);
+				dev.TexParamater(IGLDevice::Texture2D, IGLDevice::TextureBaseLevel,
+				                 IGLDevice::Zero);
+				dev.TexParamater(IGLDevice::Texture2D, IGLDevice::TextureMaxLevel,
+				                 IGLDevice::Zero);
 
 				dev.FramebufferTexture2D(IGLDevice::Framebuffer, IGLDevice::ColorAttachment0,
 				                         IGLDevice::Texture2D, mirrorColorTexture, 0);
