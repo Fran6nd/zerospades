@@ -19,6 +19,9 @@ if(POLICY CMP0072)
 	cmake_policy(SET CMP0072 NEW)
 endif()
 
+# Option to use Mesa instead of system OpenGL
+option(USE_MESA "Use Mesa3D libraries instead of system OpenGL" OFF)
+
 if(USE_VCPKG)
     find_package(Ogg CONFIG REQUIRED)
     find_package(Opus CONFIG REQUIRED)
@@ -26,10 +29,12 @@ if(USE_VCPKG)
     find_package(SDL2 CONFIG REQUIRED)
     find_package(freetype CONFIG REQUIRED)
 
- 	if(NOT APPLE)
+ 	if(NOT APPLE OR USE_MESA)
  		find_package(GLEW REQUIRED)
  		set(GLEW_LIBRARY GLEW::GLEW)
+ 	endif()
 
+ 	if(NOT APPLE)
  		find_package(CURL REQUIRED)
  		set(CURL_LIBRARY CURL::libcurl)
  	endif()
@@ -40,7 +45,23 @@ if(USE_VCPKG)
 
     if(APPLE)
     	# Use system libraries
-		include(FindOpenGL)
+		if(USE_MESA)
+			# Use Mesa instead of system OpenGL
+			find_library(OPENGL_gl_LIBRARY
+				NAMES GL libGL.dylib
+				PATHS /opt/local/lib
+				NO_DEFAULT_PATH
+				NO_CMAKE_FIND_ROOT_PATH
+			)
+			if(NOT OPENGL_gl_LIBRARY)
+				message(FATAL_ERROR "Mesa GL library not found. Install via: sudo port install mesa")
+			endif()
+			set(OPENGL_LIBRARIES ${OPENGL_gl_LIBRARY})
+			set(OPENGL_INCLUDE_DIR /opt/local/include)
+			message(STATUS "Using Mesa OpenGL from: ${OPENGL_gl_LIBRARY}")
+		else()
+			include(FindOpenGL)
+		endif()
 		include(FindCURL)
     endif()
 
@@ -60,11 +81,27 @@ else()
 		message(FATAL_ERROR "SDL_image 2.0 not found, set ENV{SDL2DIR} to point to SDL 2.0, and optionally set the cmake var SDL2_LIBRARY_TEMP to the lib dir")
 	endif()
 
-	include(FindOpenGL)
-	if(NOT OPENGL_FOUND AND NOT OPENGL_XMESA_FOUND AND NOT OPENGL_GLU_FOUND)
-		message(FATAL_ERROR "OpenGL not found, please install it")
+	if(USE_MESA AND APPLE)
+		# Use Mesa instead of system OpenGL on macOS
+		find_library(OPENGL_gl_LIBRARY
+			NAMES GL libGL.dylib
+			PATHS /opt/local/lib
+			NO_DEFAULT_PATH
+			NO_CMAKE_FIND_ROOT_PATH
+		)
+		if(NOT OPENGL_gl_LIBRARY)
+			message(FATAL_ERROR "Mesa GL library not found. Install via: sudo port install mesa")
+		endif()
+		set(OPENGL_LIBRARIES ${OPENGL_gl_LIBRARY})
+		set(OPENGL_INCLUDE_DIR /opt/local/include)
+		message(STATUS "Using Mesa OpenGL from: ${OPENGL_gl_LIBRARY}")
+	else()
+		include(FindOpenGL)
+		if(NOT OPENGL_FOUND AND NOT OPENGL_XMESA_FOUND AND NOT OPENGL_GLU_FOUND)
+			message(FATAL_ERROR "OpenGL not found, please install it")
+		endif()
 	endif()
-	if(NOT APPLE)
+	if(NOT APPLE OR USE_MESA)
 		include(cmake/FindGLEW2.cmake)
 		if(NOT GLEW_FOUND)
 			message(FATAL_ERROR "GLEW not found, please install it and make sure CMake can find it (add it to the PATH)")

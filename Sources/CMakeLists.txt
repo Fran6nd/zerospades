@@ -59,6 +59,10 @@ execute_process(
 
 target_compile_definitions(OpenSpades PRIVATE GIT_COMMIT_HASH="${GIT_COMMIT_HASH}")
 
+if(USE_MESA)
+	target_compile_definitions(OpenSpades PRIVATE USE_MESA)
+endif()
+
 if(APPLE OR WIN32)
 	# This value is reflected to the macOS application bundle's name, so use
 	# the correct capitalization.
@@ -107,9 +111,11 @@ if(WIN32)
 		endif()
 	endforeach()
 	add_definitions(-DCURL_STATICLIB)
-	get_filename_component(GLEWLIBFILE ${GLEW_LIBRARY} NAME_WE)
-	if("glew32s" STREQUAL ${GLEWLIBFILE})
-		add_definitions(-DGLEW_STATIC)	#static linked
+	if(GLEW_LIBRARY)
+		get_filename_component(GLEWLIBFILE ${GLEW_LIBRARY} NAME_WE)
+		if("glew32s" STREQUAL ${GLEWLIBFILE})
+			add_definitions(-DGLEW_STATIC)	#static linked
+		endif()
 	endif()
 	if(MSVC)
 		#lm: this sucks, msvc fucks up some linking (conflicts)
@@ -135,7 +141,7 @@ source_group("ScriptBindings" FILES ${SCRIPTBINDING_FILES})
 source_group("libs\\unzip" FILES ${UNZIP_FILES})
 
 target_link_libraries(OpenSpades ${SDL2_LIBRARY} ${SDL2_IMAGE_LIBRARY} ${OPENGL_LIBRARIES} ${ZLIB_LIBRARIES} ${CURL_LIBRARY} ${FREETYPE_LIBRARIES} ${CMAKE_DL_LIBS} ${ANGELSCRIPT_LIBS} ${Ogg_LIBRARY} ${OpusFile_LIBRARY})
-if(NOT APPLE)
+if(NOT APPLE OR USE_MESA)
 	target_link_libraries(OpenSpades ${GLEW_LIBRARY})
 endif()
 if(USE_VCPKG)

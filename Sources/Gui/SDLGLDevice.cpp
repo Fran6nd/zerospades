@@ -28,7 +28,7 @@
 
 using namespace spades::draw;
 
-#ifndef __APPLE__
+#if !defined(__APPLE__) || defined(USE_MESA)
 #define GLEW 1
 #endif
 
@@ -131,13 +131,15 @@ namespace spades {
 
 			SDL_GL_MakeCurrent(window, context);
 
-#ifndef __APPLE__
+#if !defined(__APPLE__) || defined(USE_MESA)
 			GLenum err = glewInit();
 			if (GLEW_OK != err) {
 				SPRaise("GLEW error: %s", glewGetErrorString(err));
 			}
-#endif
 			SPLog("GLEW initialized");
+#else
+			SPLog("GLEW not needed (using native OpenGL)");
+#endif
 
 			SPLog("--- OpenGL Renderer Info ---");
 			const char* ret;

@@ -27,6 +27,11 @@
 #include <sys/types.h>
 #endif
 
+#ifdef __APPLE__
+#include <sys/stat.h>
+#include <unistd.h>
+#endif
+
 #include <Imports/SDL.h>
 #include <zlib.h>
 
@@ -66,6 +71,7 @@ FILE __iob_func[3] = {*stdin, *stdout, *stderr};
 #endif
 
 DEFINE_SPADES_SETTING(cl_showStartupWindow, "1");
+SPADES_SETTING(r_renderer);
 
 #ifdef WIN32
 // windows.h must be included before DbgHelp.h and shlobj.h.
@@ -457,6 +463,59 @@ int main(int argc, char** argv) {
 		// load preferences.
 		spades::Settings::GetInstance()->Load();
 		pumpEvents();
+
+#ifdef __APPLE__
+		// Auto-configure Mesa/Zink on macOS if selected
+		{
+			const char* dyldPath = getenv("DYLD_LIBRARY_PATH");
+			const char* mesaLibPath = "/opt/local/lib";
+
+			// Check if Mesa/Zink is selected but Mesa libraries aren't in DYLD_LIBRARY_PATH
+			if (strcmp(r_renderer.CString(), "zink") == 0) {
+				bool needsRelaunch = false;
+
+				if (!dyldPath) {
+					needsRelaunch = true;
+				} else {
+					// Check if Mesa path is in DYLD_LIBRARY_PATH
+					std::string dyldStr(dyldPath);
+					if (dyldStr.find(mesaLibPath) == std::string::npos) {
+						needsRelaunch = true;
+					}
+				}
+
+				if (needsRelaunch) {
+					// Check if Mesa is actually installed
+					struct stat mesaCheck;
+					if (stat("/opt/local/lib/libGL.dylib", &mesaCheck) == 0) {
+						SPLog("Mesa/Zink selected - relaunching with Mesa OpenGL libraries");
+
+						// Build new DYLD_LIBRARY_PATH
+						std::string newDyldPath = mesaLibPath;
+						if (dyldPath && strlen(dyldPath) > 0) {
+							newDyldPath += ":";
+							newDyldPath += dyldPath;
+						}
+
+						// Set environment and exec
+						setenv("DYLD_LIBRARY_PATH", newDyldPath.c_str(), 1);
+						setenv("MESA_LOADER_DRIVER_OVERRIDE", "zink", 1);
+
+						// Re-exec ourselves
+						execv(argv[0], argv);
+
+						// If exec fails, continue normally
+						SPLog("Warning: Failed to relaunch with Mesa libraries, continuing with system OpenGL");
+					} else {
+						SPLog("Warning: Mesa/Zink selected but Mesa not found at %s", mesaLibPath);
+						SPLog("Install Mesa via: sudo port install mesa");
+					}
+				} else {
+					SPLog("Mesa/Zink mode: Using Mesa OpenGL libraries from %s", mesaLibPath);
+				}
+			}
+		}
+#endif
 
 		// dump CPU info (for debugging?)
 		{
