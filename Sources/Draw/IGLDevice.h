@@ -177,6 +177,7 @@ namespace spades {
 				BGRA,
 				DepthComponent,
 				DepthComponent24,
+				DepthComponent32,
 				StencilIndex,
 				RGB10A2,
 				RGB16F,

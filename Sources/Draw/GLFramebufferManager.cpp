@@ -177,7 +177,7 @@ namespace spades {
 
 			renderDepthTexture = dev.GenTexture();
 			dev.BindTexture(IGLDevice::Texture2D, renderDepthTexture);
-			dev.TexImage2D(IGLDevice::Texture2D, 0, IGLDevice::DepthComponent24, renderWidth,
+			dev.TexImage2D(IGLDevice::Texture2D, 0, IGLDevice::DepthComponent32, renderWidth,
 			               renderHeight, 0, IGLDevice::DepthComponent, IGLDevice::UnsignedInt,
 			               NULL);
 			SPLog("Depth Buffer Allocated");
@@ -297,7 +297,7 @@ namespace spades {
 				SPLog("Creating Mirror depth texture");
 				mirrorDepthTexture = dev.GenTexture();
 				dev.BindTexture(IGLDevice::Texture2D, mirrorDepthTexture);
-				dev.TexImage2D(IGLDevice::Texture2D, 0, IGLDevice::DepthComponent24, renderWidth,
+				dev.TexImage2D(IGLDevice::Texture2D, 0, IGLDevice::DepthComponent32, renderWidth,
 				               renderHeight, 0, IGLDevice::DepthComponent, IGLDevice::UnsignedInt,
 				               NULL);
 

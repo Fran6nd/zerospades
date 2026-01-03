@@ -851,6 +851,7 @@ namespace spades {
 				case RGBA: return GL_RGBA;
 				case DepthComponent: return GL_DEPTH_COMPONENT;
 				case DepthComponent24: return GL_DEPTH_COMPONENT24;
+				case DepthComponent32: return GL_DEPTH_COMPONENT32;
 				case StencilIndex: return GL_STENCIL_INDEX;
 				case RGB10A2: return GL_RGB10_A2;
 				case RGB16F: return GL_RGB16F;
