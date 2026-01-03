@@ -32,6 +32,7 @@ namespace spades {
 
 		spades::ui::CheckBox@ fullscreenCheck;
 		spades::ui::RadioButton@ driverOpenGL;
+		spades::ui::RadioButton@ driverZink;
 		spades::ui::RadioButton@ driverSoftware;
 
 		spades::ui::TextViewer@ helpView;
@@ -84,7 +85,7 @@ namespace spades {
 			{
 				spades::ui::RadioButton e(Manager);
 				e.Caption = _Tr("StartupScreen", "OpenGL");
-				e.Bounds = AABB2(110.0F, 30.0F, 140.0F, 24.0F);
+				e.Bounds = AABB2(110.0F, 30.0F, 105.0F, 24.0F);
 				e.GroupName = "driver";
 				HelpHandler(
 					helpView,
@@ -98,8 +99,23 @@ namespace spades {
 			}
 			{
 				spades::ui::RadioButton e(Manager);
+				e.Caption = _Tr("StartupScreen", "Mesa/Zink");
+				e.Bounds = AABB2(225.0F, 30.0F, 115.0F, 24.0F);
+				e.GroupName = "driver";
+				HelpHandler(
+					helpView,
+					_Tr("StartupScreen",
+						"Mesa/Zink translates OpenGL to Vulkan for improved "
+						"performance and compatibility on modern systems."))
+					.Watch(e);
+				@e.Activated = spades::ui::EventHandler(this.OnDriverZink);
+				AddChild(e);
+				@driverZink = e;
+			}
+			{
+				spades::ui::RadioButton e(Manager);
 				e.Caption = _Tr("StartupScreen", "Software");
-				e.Bounds = AABB2(260.0F, 30.0F, 140.0F, 24.0F);
+				e.Bounds = AABB2(350.0F, 30.0F, 105.0F, 24.0F);
 				e.GroupName = "driver";
 				HelpHandler(
 					helpView,
@@ -275,6 +291,10 @@ namespace spades {
 			r_renderer.StringValue = "gl";
 			LoadConfig();
 		}
+		private void OnDriverZink(spades::ui::UIElement@) {
+			r_renderer.StringValue = "zink";
+			LoadConfig();
+		}
 		private void OnDriverSoftware(spades::ui::UIElement@) {
 			r_renderer.StringValue = "sw";
 			LoadConfig();
@@ -290,6 +310,10 @@ namespace spades {
 				driverSoftware.Check();
 				configViewGL.Visible = false;
 				configViewSoftware.Visible = true;
+			} else if (r_renderer.StringValue == "zink") {
+				driverZink.Check();
+				configViewGL.Visible = true;
+				configViewSoftware.Visible = false;
 			} else {
 				driverOpenGL.Check();
 				configViewGL.Visible = true;
@@ -297,6 +321,7 @@ namespace spades {
 			}
 			fullscreenCheck.Toggled = r_fullscreen.IntValue != 0;
 			driverOpenGL.Enable = ui.helper.CheckConfigCapability("r_renderer", "gl").length == 0;
+			driverZink.Enable = ui.helper.CheckConfigCapability("r_renderer", "zink").length == 0;
 			driverSoftware.Enable = ui.helper.CheckConfigCapability("r_renderer", "sw").length == 0;
 			configViewGL.LoadConfig();
 			configViewSoftware.LoadConfig();

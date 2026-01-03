@@ -338,6 +338,8 @@ namespace spades {
 		auto SDLRunner::GetRendererType() -> RendererType {
 			if (EqualsIgnoringCase(r_renderer, "gl"))
 				return RendererType::GL;
+			else if (EqualsIgnoringCase(r_renderer, "zink"))
+				return RendererType::GL;  // Mesa/Zink uses OpenGL backend
 			else if (EqualsIgnoringCase(r_renderer, "sw"))
 				return RendererType::SW;
 			else
