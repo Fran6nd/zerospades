@@ -1071,6 +1071,12 @@ namespace spades {
 						default: SPInvalidEnum("val", val);
 					}
 					break;
+				case TextureBaseLevel:
+					glTexParameteri(targ, GL_TEXTURE_BASE_LEVEL, static_cast<GLint>(val));
+					break;
+				case TextureMaxLevel:
+					glTexParameteri(targ, GL_TEXTURE_MAX_LEVEL, static_cast<GLint>(val));
+					break;
 				default: SPInvalidEnum("param", param);
 			}
 

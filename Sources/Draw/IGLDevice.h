@@ -156,6 +156,8 @@ namespace spades {
 				TextureCompareMode,
 				TextureCompareFunc,
 				TextureMaxAnisotropy,
+				TextureBaseLevel,
+				TextureMaxLevel,
 
 				// texture compare mode
 				CompareRefToTexture,
