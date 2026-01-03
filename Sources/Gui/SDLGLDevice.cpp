@@ -199,6 +199,11 @@ namespace spades {
 			CheckExistence(glFrontFace);
 			glFrontFace(GL_CW);
 
+			// Ensure vertex attribute 0 is always enabled for spec compliance
+			// Some implementations require at least one attribute array enabled
+			CheckExistence(glEnableVertexAttribArray);
+			glEnableVertexAttribArray(0);
+
 			if (r_ignoreGLErrors) {
 				SPLog("NOTICE: r_ignoreGLErrors is enabled. "
 				      "OpenGL error detection might not work correctly.");
