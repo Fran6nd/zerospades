@@ -144,6 +144,9 @@ namespace spades {
 
 			std::string finalSource;
 
+			// Specify GLSL version for strict spec compliance across all drivers
+			finalSource += "#version 120\n";
+
 			if (settings.r_hdr) {
 				finalSource += "#define USE_HDR 1\n";
 				finalSource += "#define LINEAR_FRAMEBUFFER 1\n";
