@@ -124,6 +124,11 @@ namespace spades {
 			                  IGLDevice::One);
 			device->Enable(IGLDevice::Blend, true);
 
+			// Enable sRGB framebuffer conversion if using sRGB textures
+			if (settings.r_srgb) {
+				device->Enable(IGLDevice::FramebufferSRGB, true);
+			}
+
 			SPLog("GLRenderer started");
 		}
 
