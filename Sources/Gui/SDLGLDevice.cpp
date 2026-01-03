@@ -164,20 +164,34 @@ namespace spades {
 			{
 				GLint cnt = 0;
 				glGetIntegerv(GL_NUM_EXTENSIONS, &cnt);
-				if (cnt <= 0)
-					goto retrvFail;
-				for (GLint i = 0; i < cnt; i++) {
-					ret = (const char*)glGetStringi(GL_EXTENSIONS, i);
-					SPLog("%s", ret);
+
+				if (cnt > 0) {
+					// Modern indexed extension query (OpenGL 3.0+)
+					for (GLint i = 0; i < cnt; i++) {
+						ret = (const char*)glGetStringi(GL_EXTENSIONS, i);
+						if (ret) SPLog("%s", ret);
+					}
+				} else {
+					// Extension enumeration unavailable or returned zero
+					SPLog("GL_NUM_EXTENSIONS = 0, trying legacy query");
+
+					// Fallback to legacy space-separated string
+					if ((ret = (const char*)glGetString(GL_EXTENSIONS)) != NULL) {
+						std::vector<std::string> strs = Split(ret, " ");
+						for (size_t i = 0; i < strs.size(); i++)
+							SPLog("%s", strs[i].c_str());
+					} else {
+						SPLog("No extension information available");
+					}
 				}
 			} else {
-			retrvFail:
+				// GLEW doesn't have glGetStringi, use legacy method
 				if ((ret = (const char*)glGetString(GL_EXTENSIONS)) != NULL) {
 					std::vector<std::string> strs = Split(ret, " ");
 					for (size_t i = 0; i < strs.size(); i++)
 						SPLog("%s", strs[i].c_str());
 				} else {
-					SPLog("no information");
+					SPLog("No extension information available");
 				}
 			}
 			SPLog("------------------");
