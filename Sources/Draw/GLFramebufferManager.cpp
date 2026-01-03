@@ -192,6 +192,12 @@ namespace spades {
 			dev.FramebufferTexture2D(IGLDevice::Framebuffer, IGLDevice::DepthAttachment,
 			                         IGLDevice::Texture2D, renderDepthTexture, 0);
 
+			// Verify framebuffer status after depth attachment
+			IGLDevice::Enum depthStatus = dev.CheckFramebufferStatus(IGLDevice::Framebuffer);
+			if (depthStatus != IGLDevice::FramebufferComplete) {
+				SPLog("Warning: Framebuffer incomplete after depth attachment");
+			}
+
 			renderColorTexture = dev.GenTexture();
 			dev.BindTexture(IGLDevice::Texture2D, renderColorTexture);
 			if (settings.r_srgb) {
