@@ -431,10 +431,26 @@ namespace spades {
 					device.BindFramebuffer(IGLDevice::ReadFramebuffer, renderFramebuffer);
 				}
 				device.BindFramebuffer(IGLDevice::DrawFramebuffer, tempFb);
-				device.BlitFramebuffer(0, 0, w, h, 0, 0, w, h, IGLDevice::ColorBufferBit,
-				                       IGLDevice::Nearest);
-				device.BlitFramebuffer(0, 0, w, h, 0, 0, w, h, IGLDevice::DepthBufferBit,
-				                       IGLDevice::Nearest);
+
+				// Validate both framebuffers before blitting
+				IGLDevice::Enum readStatus = device.CheckFramebufferStatus(IGLDevice::ReadFramebuffer);
+				IGLDevice::Enum drawStatus = device.CheckFramebufferStatus(IGLDevice::DrawFramebuffer);
+
+				if (readStatus == IGLDevice::FramebufferComplete &&
+				    drawStatus == IGLDevice::FramebufferComplete) {
+					device.BlitFramebuffer(0, 0, w, h, 0, 0, w, h, IGLDevice::ColorBufferBit,
+					                       IGLDevice::Nearest);
+					device.BlitFramebuffer(0, 0, w, h, 0, 0, w, h, IGLDevice::DepthBufferBit,
+					                       IGLDevice::Nearest);
+				} else {
+					if (readStatus != IGLDevice::FramebufferComplete) {
+						SPLog("Warning: Read framebuffer incomplete, skipping blit");
+					}
+					if (drawStatus != IGLDevice::FramebufferComplete) {
+						SPLog("Warning: Draw framebuffer incomplete, skipping blit");
+					}
+				}
+
 				device.BindFramebuffer(IGLDevice::ReadFramebuffer, 0);
 				device.BindFramebuffer(IGLDevice::DrawFramebuffer, 0);
 			} else {
