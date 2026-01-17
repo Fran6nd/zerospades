@@ -32,19 +32,31 @@ This document tracks missing features, incomplete implementations, and complianc
 
 ---
 
-### 3. Shader System Completion
+### 3. Shader System (FUNCTIONAL)
 **Files:** `VulkanMapRenderer.cpp`, `VulkanOptimizedVoxelModel.cpp`, `VulkanWaterRenderer.cpp`
-- [ ] Complete shader preloading system ([VulkanMapRenderer.cpp:121](Sources/Draw/VulkanMapRenderer.cpp#L121))
-- [ ] Implement shader preloading for voxel models ([VulkanOptimizedVoxelModel.cpp:44](Sources/Draw/VulkanOptimizedVoxelModel.cpp#L44))
-- [ ] Verify all shader programs are properly converted from OpenGL
+- [x] Verify all core shader programs are properly converted from OpenGL
+- [x] All required SPIR-V shaders compiled and available (16 shaders)
+- [ ] PreloadShaders() implementations (currently empty placeholders - shaders load on-demand)
 - [ ] Test shader hot-reloading functionality
 - [ ] Document shader conversion requirements
+- [ ] Add dynamic light rendering shaders (feature missing)
 
-**Impact:** Multiple components waiting for shader system completion. May cause crashes or missing geometry.
+**Status:** Core shader system is functional. Shaders load on-demand when pipelines are created. PreloadShaders is optional optimization.
 
 ---
 
-### 4. Error Handling Audit
+### 4. Dynamic Light Rendering (MISSING)
+**Files:** `VulkanMapRenderer.cpp`, `VulkanModelRenderer.cpp`
+- [ ] Implement RenderDynamicLightPass() in VulkanRenderer
+- [ ] Create dynamic light shaders (for muzzle flashes, explosions, etc.)
+- [ ] Integrate dynamic light rendering into render loop
+- [ ] Test with grenades, gunfire, and other light sources
+
+**Impact:** Dynamic lights (explosions, muzzle flashes) don't illuminate the scene. Visual feature, not critical.
+
+---
+
+### 5. Error Handling Audit
 **Files:** All `Vulkan*.cpp` files
 - [ ] Audit all Vulkan API calls for VkResult checking
 - [ ] Ensure all vkCreate* calls check for VK_SUCCESS
@@ -60,7 +72,7 @@ This document tracks missing features, incomplete implementations, and complianc
 
 All post-processing filters have placeholder implementations that don't actually work.
 
-### 5. Color Correction Filter
+### 6. Color Correction Filter
 **File:** `VulkanColorCorrectionFilter.cpp`
 - [ ] Create descriptor set layout for input texture and uniforms ([VulkanColorCorrectionFilter.cpp:72](Sources/Draw/VulkanColorCorrectionFilter.cpp#L72))
 - [ ] Create pipeline layout ([VulkanColorCorrectionFilter.cpp:74](Sources/Draw/VulkanColorCorrectionFilter.cpp#L74))
@@ -76,7 +88,7 @@ All post-processing filters have placeholder implementations that don't actually
 
 ---
 
-### 6. FXAA Anti-Aliasing Filter
+### 7. FXAA Anti-Aliasing Filter
 **File:** `VulkanFXAAFilter.cpp`
 - [ ] Create descriptor set layout ([VulkanFXAAFilter.cpp:72](Sources/Draw/VulkanFXAAFilter.cpp#L72))
 - [ ] Create pipeline layout ([VulkanFXAAFilter.cpp:74](Sources/Draw/VulkanFXAAFilter.cpp#L74))
@@ -91,7 +103,7 @@ All post-processing filters have placeholder implementations that don't actually
 
 ---
 
-### 7. Temporal Anti-Aliasing Filter
+### 8. Temporal Anti-Aliasing Filter
 **File:** `VulkanTemporalAAFilter.cpp`
 - [ ] Create descriptor set layout for textures and motion vectors ([VulkanTemporalAAFilter.cpp:75-78](Sources/Draw/VulkanTemporalAAFilter.cpp#L75-L78))
 - [ ] Create pipeline layout ([VulkanTemporalAAFilter.cpp:80](Sources/Draw/VulkanTemporalAAFilter.cpp#L80))
@@ -107,7 +119,7 @@ All post-processing filters have placeholder implementations that don't actually
 
 ---
 
-### 8. Bloom Filter
+### 9. Bloom Filter
 **File:** `VulkanBloomFilter.cpp`
 - [ ] Create shader modules and pipelines ([VulkanBloomFilter.cpp:112](Sources/Draw/VulkanBloomFilter.cpp#L112))
   - [ ] Downsample pipeline
@@ -120,7 +132,7 @@ All post-processing filters have placeholder implementations that don't actually
 
 ---
 
-### 9. SSAO (Screen-Space Ambient Occlusion) Filter
+### 10. SSAO (Screen-Space Ambient Occlusion) Filter
 **File:** `VulkanSSAOFilter.cpp`
 - [ ] Create SSAO pipeline ([VulkanSSAOFilter.cpp:102](Sources/Draw/VulkanSSAOFilter.cpp#L102))
 - [ ] Create bilateral filter pipeline ([VulkanSSAOFilter.cpp:102](Sources/Draw/VulkanSSAOFilter.cpp#L102))
@@ -131,7 +143,7 @@ All post-processing filters have placeholder implementations that don't actually
 
 ---
 
-### 10. Depth of Field Filter
+### 11. Depth of Field Filter
 **File:** `VulkanDepthOfFieldFilter.cpp`
 - [ ] Create multi-stage DoF pipelines ([VulkanDepthOfFieldFilter.cpp:135](Sources/Draw/VulkanDepthOfFieldFilter.cpp#L135)):
   - [ ] CoC (Circle of Confusion) computation pipeline
@@ -141,7 +153,7 @@ All post-processing filters have placeholder implementations that don't actually
 
 ---
 
-### 11. Auto Exposure Filter
+### 12. Auto Exposure Filter
 **File:** `VulkanAutoExposureFilter.cpp`
 - [ ] Create preprocess pipeline ([VulkanAutoExposureFilter.cpp:103-105](Sources/Draw/VulkanAutoExposureFilter.cpp#L103-L105))
 - [ ] Create compute gain pipeline ([VulkanAutoExposureFilter.cpp:103-105](Sources/Draw/VulkanAutoExposureFilter.cpp#L103-L105))
@@ -152,7 +164,7 @@ All post-processing filters have placeholder implementations that don't actually
 
 ---
 
-### 12. Lens Flare Filter
+### 13. Lens Flare Filter
 **File:** `VulkanLensFlareFilter.cpp`
 - [ ] Create lens flare pipelines ([VulkanLensFlareFilter.cpp:110](Sources/Draw/VulkanLensFlareFilter.cpp#L110))
 - [ ] Load flare texture images ([VulkanLensFlareFilter.cpp:119](Sources/Draw/VulkanLensFlareFilter.cpp#L119))
@@ -162,7 +174,7 @@ All post-processing filters have placeholder implementations that don't actually
 
 ## 🟡 MEDIUM PRIORITY - Optimization & Best Practices
 
-### 13. GPU Device Selection
+### 14. GPU Device Selection
 **File:** `SDLVulkanDevice.cpp`
 - [ ] Implement GPU scoring system ([SDLVulkanDevice.cpp:295](Sources/Gui/SDLVulkanDevice.cpp#L295))
   - [ ] Score by device type (discrete > integrated > virtual > CPU)
@@ -176,7 +188,7 @@ All post-processing filters have placeholder implementations that don't actually
 
 ---
 
-### 14. Pipeline Cache Implementation
+### 15. Pipeline Cache Implementation
 **Files:** New files needed
 - [ ] Create VulkanPipelineCache class
 - [ ] Save pipeline cache to disk on shutdown
@@ -188,7 +200,7 @@ All post-processing filters have placeholder implementations that don't actually
 
 ---
 
-### 15. Code Refactoring - Reduce Redundancy
+### 16. Code Refactoring - Reduce Redundancy
 
 #### Render Pass Creation
 **Files:** Multiple `Vulkan*Filter.cpp` files
@@ -205,7 +217,7 @@ All post-processing filters have placeholder implementations that don't actually
 
 ---
 
-### 16. Synchronization Audit
+### 17. Synchronization Audit
 **Files:** All `Vulkan*.cpp` files
 - [ ] Audit all image layout transitions
 - [ ] Ensure proper pipeline barriers between passes
@@ -218,7 +230,7 @@ All post-processing filters have placeholder implementations that don't actually
 
 ---
 
-### 17. Memory Management Audit
+### 18. Memory Management Audit
 **Files:** All `Vulkan*.cpp` files
 - [ ] Verify all vkDestroy* calls match vkCreate* calls
 - [ ] Check for memory leaks with validation layers
@@ -228,7 +240,7 @@ All post-processing filters have placeholder implementations that don't actually
 
 ---
 
-### 18. Descriptor Set Pool Optimization
+### 19. Descriptor Set Pool Optimization
 **File:** `VulkanDescriptorPool.cpp`
 - [ ] Review descriptor set allocation patterns
 - [ ] Ensure sets are reused, not recreated each frame
@@ -239,7 +251,7 @@ All post-processing filters have placeholder implementations that don't actually
 
 ## 🟢 LOW PRIORITY - Performance Optimizations
 
-### 19. Push Constants
+### 20. Push Constants
 **Files:** Various
 - [ ] Identify small uniform updates suitable for push constants
 - [ ] Replace uniform buffer updates with push constants where appropriate
@@ -249,7 +261,7 @@ All post-processing filters have placeholder implementations that don't actually
 
 ---
 
-### 20. Memory Aliasing
+### 21. Memory Aliasing
 **Files:** Resource management classes
 - [ ] Identify temporary resources (intermediate render targets)
 - [ ] Implement memory aliasing for temporary resources
@@ -259,7 +271,7 @@ All post-processing filters have placeholder implementations that don't actually
 
 ---
 
-### 21. Validation in Release Builds
+### 22. Validation in Release Builds
 **File:** `SDLVulkanDevice.cpp`
 - [ ] Consider keeping basic validation in release builds
 - [ ] Add setting to enable/disable validation
