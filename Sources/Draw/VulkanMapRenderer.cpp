@@ -339,6 +339,20 @@ namespace spades {
 			}
 		}
 
+		void VulkanMapRenderer::RenderShadowMapPass(VkCommandBuffer commandBuffer) {
+			SPADES_MARK_FUNCTION();
+
+			// Render all visible chunks for shadow mapping
+			// This is called from within the shadow map render pass set up by VulkanShadowMapRenderer
+			// Simply render all realized chunks
+			for (int i = 0; i < numChunks; i++) {
+				VulkanMapChunk* chunk = chunks[i];
+				if (chunk && chunk->IsRealized()) {
+					chunk->RenderShadowMapPass(commandBuffer);
+				}
+			}
+		}
+
 		void VulkanMapRenderer::DrawColumnDepth(VkCommandBuffer commandBuffer, int cx, int cy, int cz,
 		                                        Vector3 eye) {
 			SPADES_MARK_FUNCTION();
