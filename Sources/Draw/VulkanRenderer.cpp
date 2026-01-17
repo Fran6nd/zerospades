@@ -1729,12 +1729,12 @@ namespace spades {
 				float fovY;
 			} pushConstants;
 
-			Vector3 fogCol = GetFogColorForSolidPass();
+			// Sky should always use the actual fog color, not the shadow-modified color
 			// Don't linearize - the SRGB framebuffer handles gamma correction automatically
 
-			pushConstants.fogColor[0] = fogCol.x;
-			pushConstants.fogColor[1] = fogCol.y;
-			pushConstants.fogColor[2] = fogCol.z;
+			pushConstants.fogColor[0] = fogColor.x;
+			pushConstants.fogColor[1] = fogColor.y;
+			pushConstants.fogColor[2] = fogColor.z;
 
 			pushConstants.viewAxisFront[0] = sceneDef.viewAxis[2].x;
 			pushConstants.viewAxisFront[1] = sceneDef.viewAxis[2].y;
