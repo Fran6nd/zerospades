@@ -399,26 +399,11 @@ namespace spades {
 		                                                    std::vector<client::ModelRenderParam> params) {
 			SPADES_MARK_FUNCTION();
 
-			// Shadow map pass renders models from light's perspective to depth texture
-
 			if (numIndices == 0 || !vertexBuffer || !indexBuffer)
 				return;
 
 			if (params.empty())
 				return;
-
-			// Note: Full shadow map implementation requires:
-			// - Separate shadow map render pass
-			// - Shadow-specific pipeline (depth-only, no color)
-			// - Light space transformation matrices
-			// For now, using standard pipeline as placeholder until shadow system is complete
-
-			VkRenderPass renderPass = renderer.GetOffscreenRenderPass();
-			if (sharedPipeline.pipeline == VK_NULL_HANDLE || sharedPipeline.renderPass != renderPass) {
-				CreatePipeline(renderPass);
-			}
-
-			vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, sharedPipeline.pipeline);
 
 			// Bind vertex buffer
 			VkBuffer vb = vertexBuffer->GetBuffer();
@@ -428,29 +413,8 @@ namespace spades {
 			// Bind index buffer
 			vkCmdBindIndexBuffer(commandBuffer, indexBuffer->GetBuffer(), 0, VK_INDEX_TYPE_UINT32);
 
-			// Use light space matrix instead of camera matrix
-			const Matrix4& projectionViewMatrix = renderer.GetProjectionViewMatrix();
-
+			// Render each model instance
 			for (const auto& param : params) {
-				Matrix4 mvpMatrix = projectionViewMatrix * param.matrix;
-
-				struct {
-					Matrix4 projectionViewMatrix;
-					Vector3 modelOrigin;
-					float padding1;
-					Vector3 customColor;
-					float padding2;
-				} pushConstants;
-
-				pushConstants.projectionViewMatrix = mvpMatrix;
-				pushConstants.modelOrigin = origin;
-				pushConstants.padding1 = 0.0f;
-				pushConstants.customColor = param.customColor;
-				pushConstants.padding2 = 0.0f;
-
-				vkCmdPushConstants(commandBuffer, sharedPipeline.pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT,
-				                   0, sizeof(pushConstants), &pushConstants);
-
 				vkCmdDrawIndexed(commandBuffer, numIndices, 1, 0, 0, 0);
 			}
 		}
