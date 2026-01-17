@@ -23,6 +23,7 @@
 #include "VulkanMapRenderer.h"
 #include "VulkanModelRenderer.h"
 #include "VulkanImage.h"
+#include "VulkanBuffer.h"
 #include <Gui/SDLVulkanDevice.h>
 #include <Core/Settings.h>
 #include <Core/Debug.h>
@@ -44,7 +45,8 @@ namespace spades {
 		  renderPass(VK_NULL_HANDLE),
 		  pipelineLayout(VK_NULL_HANDLE),
 		  descriptorSetLayout(VK_NULL_HANDLE),
-		  pipeline(VK_NULL_HANDLE) {
+		  pipeline(VK_NULL_HANDLE),
+		  descriptorPool(VK_NULL_HANDLE) {
 			SPADES_MARK_FUNCTION();
 
 			textureSize = (int)r_shadowMapSize;
@@ -56,12 +58,15 @@ namespace spades {
 			for (int i = 0; i < NumSlices; i++) {
 				framebuffers[i] = VK_NULL_HANDLE;
 				shadowMapImages[i] = nullptr;
+				descriptorSets[i] = VK_NULL_HANDLE;
+				uniformBuffers[i] = nullptr;
 			}
 
 			try {
 				CreateRenderPass();
 				CreateFramebuffers();
 				CreatePipeline();
+				CreateDescriptorSets();
 			} catch (...) {
 				DestroyResources();
 				throw;
@@ -347,10 +352,82 @@ namespace spades {
 			SPLog("Shadow map pipeline created successfully");
 		}
 
+		void VulkanShadowMapRenderer::CreateDescriptorSets() {
+			SPADES_MARK_FUNCTION();
+
+			VkDevice vkDevice = device->GetDevice();
+
+			// Create descriptor pool
+			VkDescriptorPoolSize poolSize{};
+			poolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+			poolSize.descriptorCount = NumSlices;
+
+			VkDescriptorPoolCreateInfo poolInfo{};
+			poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+			poolInfo.poolSizeCount = 1;
+			poolInfo.pPoolSizes = &poolSize;
+			poolInfo.maxSets = NumSlices;
+
+			if (vkCreateDescriptorPool(vkDevice, &poolInfo, nullptr, &descriptorPool) != VK_SUCCESS) {
+				SPRaise("Failed to create shadow map descriptor pool");
+			}
+
+			// Create uniform buffers and descriptor sets for each cascade
+			for (int i = 0; i < NumSlices; i++) {
+				// Create uniform buffer
+				uniformBuffers[i] = Handle<VulkanBuffer>::New(
+					device,
+					sizeof(Matrix4),
+					VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+					VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
+				);
+
+				// Allocate descriptor set
+				VkDescriptorSetAllocateInfo allocInfo{};
+				allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+				allocInfo.descriptorPool = descriptorPool;
+				allocInfo.descriptorSetCount = 1;
+				allocInfo.pSetLayouts = &descriptorSetLayout;
+
+				if (vkAllocateDescriptorSets(vkDevice, &allocInfo, &descriptorSets[i]) != VK_SUCCESS) {
+					SPRaise("Failed to allocate shadow map descriptor set %d", i);
+				}
+
+				// Update descriptor set
+				VkDescriptorBufferInfo bufferInfo{};
+				bufferInfo.buffer = uniformBuffers[i]->GetBuffer();
+				bufferInfo.offset = 0;
+				bufferInfo.range = sizeof(Matrix4);
+
+				VkWriteDescriptorSet descriptorWrite{};
+				descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+				descriptorWrite.dstSet = descriptorSets[i];
+				descriptorWrite.dstBinding = 0;
+				descriptorWrite.dstArrayElement = 0;
+				descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+				descriptorWrite.descriptorCount = 1;
+				descriptorWrite.pBufferInfo = &bufferInfo;
+
+				vkUpdateDescriptorSets(vkDevice, 1, &descriptorWrite, 0, nullptr);
+			}
+
+			SPLog("Shadow map descriptor sets created successfully");
+		}
+
 		void VulkanShadowMapRenderer::DestroyResources() {
 			SPADES_MARK_FUNCTION();
 
 			VkDevice vkDevice = device->GetDevice();
+
+			if (descriptorPool != VK_NULL_HANDLE) {
+				vkDestroyDescriptorPool(vkDevice, descriptorPool, nullptr);
+				descriptorPool = VK_NULL_HANDLE;
+			}
+
+			for (int i = 0; i < NumSlices; i++) {
+				uniformBuffers[i] = nullptr;
+				descriptorSets[i] = VK_NULL_HANDLE;
+			}
 
 			if (pipeline != VK_NULL_HANDLE) {
 				vkDestroyPipeline(vkDevice, pipeline, nullptr);
@@ -413,6 +490,12 @@ namespace spades {
 				BuildMatrix(near, far);
 				matrices[i] = matrix;
 
+				// Update uniform buffer with light space matrix
+				void* data;
+				vkMapMemory(device->GetDevice(), uniformBuffers[i]->GetMemory(), 0, sizeof(Matrix4), 0, &data);
+				memcpy(data, &matrix, sizeof(Matrix4));
+				vkUnmapMemory(device->GetDevice(), uniformBuffers[i]->GetMemory());
+
 				// Begin render pass for this slice
 				VkRenderPassBeginInfo renderPassInfo{};
 				renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
@@ -427,14 +510,6 @@ namespace spades {
 				renderPassInfo.pClearValues = &clearValue;
 
 				vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
-
-				// Render shadow casters (map and models) from light's perspective
-				// Note: Full implementation requires:
-				// - Shadow-specific shaders and pipeline
-				// - Light space transformation matrices passed to renderers
-				// - Map renderer shadow pass
-				// - Model renderer shadow pass
-				// For now, this is a placeholder that sets up the render pass structure
 
 				// Set viewport and scissor for shadow map
 				VkViewport viewport{};
@@ -453,6 +528,10 @@ namespace spades {
 
 				// Bind the shadow map pipeline
 				vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
+
+				// Bind descriptor set with the light space matrix
+				vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout,
+					0, 1, &descriptorSets[i], 0, nullptr);
 
 				// Set depth bias for shadow mapping (reduces shadow acne)
 				vkCmdSetDepthBias(commandBuffer, 1.25f, 0.0f, 1.75f);
