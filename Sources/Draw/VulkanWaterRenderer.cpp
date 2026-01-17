@@ -334,15 +334,9 @@ namespace spades {
 
 		void VulkanWaterRenderer::PreloadShaders(VulkanRenderer& r) {
 			SPADES_MARK_FUNCTION();
-		SPLog("Preloading Vulkan water shaders (temporarily disabled - needs shader system completion)");
-		// TODO: Complete shader conversion before enabling
-		// Register shader variants matching GL behavior
-		//if ((int)r_water >= 3)
-		//	r.RegisterProgram("Shaders/Water3.program");
-		//else if ((int)r_water >= 2)
-		//	r.RegisterProgram("Shaders/Water2.program");
-		//else
-		//	r.RegisterProgram("Shaders/Water.program");
+		SPLog("Preloading Vulkan water shaders");
+		// For now, only the basic Water shader is converted (Water2 and Water3 need conversion)
+		r.RegisterProgram("Shaders/Water.vk.program");
 		}
 
 		void VulkanWaterRenderer::GameMapChanged(int x, int y, int z, client::GameMap* map) {
@@ -359,13 +353,8 @@ namespace spades {
 		SPLog("VulkanWaterRenderer::Realize: creating pipeline");
 
 		// Select program variant based on settings
-		std::string name;
-		if ((int)r_water >= 3)
-			name = "Shaders/Water3.program";
-		else if ((int)r_water >= 2)
-			name = "Shaders/Water2.program";
-		else
-			name = "Shaders/Water.program";
+		// For now, use the basic Water shader (Water2 and Water3 need conversion)
+		std::string name = "Shaders/Water.vk.program";
 
 		waterProgram = renderer.RegisterProgram(name);
 		if (!waterProgram) {
