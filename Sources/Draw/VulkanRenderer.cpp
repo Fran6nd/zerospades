@@ -1192,6 +1192,11 @@ namespace spades {
 			);
 		}
 
+		// Render shadow maps BEFORE starting main render pass (shadow maps use their own render passes)
+		if (sceneUsedInThisFrame && shadowMapRenderer && r_fogShadow) {
+			shadowMapRenderer->Render(commandBuffer);
+		}
+
 		// If we're rendering a 3D scene, render it to the offscreen framebuffer first
 		if (sceneUsedInThisFrame && framebufferManager) {
 			// Use fog color for solid pass (which may be black if fog shadow is enabled)
@@ -1230,10 +1235,6 @@ namespace spades {
 			vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
 			// Render the 3D scene
-			// First render shadow maps if enabled
-			if (shadowMapRenderer && r_fogShadow) {
-				shadowMapRenderer->Render(commandBuffer);
-			}
 
 			// Render sky gradient
 			RenderSky(commandBuffer);
