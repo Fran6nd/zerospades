@@ -6,15 +6,16 @@ This document tracks missing features, incomplete implementations, and complianc
 
 ## 🔴 CRITICAL PRIORITY - Broken/Missing Core Features
 
-### 1. Shadow Map Rendering (BROKEN)
+### 1. Shadow Map Rendering (COMPLETE)
 **Files:** `VulkanShadowMapRenderer.cpp`, `VulkanRenderer.cpp`
-- [ ] Implement shadow map rendering pipeline ([VulkanShadowMapRenderer.cpp:146](Sources/Draw/VulkanShadowMapRenderer.cpp#L146))
-- [ ] Implement map renderer's shadow pass ([VulkanShadowMapRenderer.cpp:254](Sources/Draw/VulkanShadowMapRenderer.cpp#L254))
-- [ ] Implement model renderer's shadow pass ([VulkanShadowMapRenderer.cpp:255](Sources/Draw/VulkanShadowMapRenderer.cpp#L255))
-- [ ] Update `GetFogColorForSolidPass()` to use shadow maps ([VulkanRenderer.cpp:683](Sources/Draw/VulkanRenderer.cpp#L683))
-- [ ] Test shadow rendering with r_fogShadow setting
+- [x] Implement shadow map rendering pipeline ([VulkanShadowMapRenderer.cpp:480-553](Sources/Draw/VulkanShadowMapRenderer.cpp#L480-L553))
+- [x] Implement map renderer's shadow pass ([VulkanMapRenderer.cpp:342-354](Sources/Draw/VulkanMapRenderer.cpp#L342-L354))
+- [x] Implement model renderer's shadow pass ([VulkanModelRenderer.cpp:54-61](Sources/Draw/VulkanModelRenderer.cpp#L54-L61))
+- [x] Update `GetFogColorForSolidPass()` to use shadow maps ([VulkanRenderer.cpp:698-703](Sources/Draw/VulkanRenderer.cpp#L698-L703))
+- [x] Fix render pass ordering (shadow maps now render before main pass)
+- [ ] Test shadow rendering quality and performance with r_fogShadow setting
 
-**Impact:** Shadows are completely non-functional. This significantly affects visual quality and lighting.
+**Status:** Implementation complete. Shadow maps now render in separate render passes before main scene rendering. Needs visual testing.
 
 ---
 
