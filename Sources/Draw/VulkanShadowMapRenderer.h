@@ -55,11 +55,15 @@ namespace spades {
 			VkPipelineLayout pipelineLayout;
 			VkDescriptorSetLayout descriptorSetLayout;
 			VkPipeline pipeline;
+			VkDescriptorPool descriptorPool;
+			VkDescriptorSet descriptorSets[NumSlices];
+			Handle<VulkanBuffer> uniformBuffers[NumSlices];
 
 			void BuildMatrix(float near, float far);
 			void CreateRenderPass();
 			void CreateFramebuffers();
 			void CreatePipeline();
+			void CreateDescriptorSets();
 			void DestroyResources();
 
 		public:
