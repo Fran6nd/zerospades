@@ -377,12 +377,16 @@ namespace spades {
 				struct {
 					Matrix4 projectionViewMatrix;
 					Vector3 modelOrigin;
+					float padding1;
 					Vector3 customColor;
+					float padding2;
 				} pushConstants;
 
 				pushConstants.projectionViewMatrix = mvpMatrix;
 				pushConstants.modelOrigin = origin;
+				pushConstants.padding1 = 0.0f;
 				pushConstants.customColor = param.customColor;
+				pushConstants.padding2 = 0.0f;
 
 				vkCmdPushConstants(commandBuffer, sharedPipeline.pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT,
 				                   0, sizeof(pushConstants), &pushConstants);
@@ -433,12 +437,16 @@ namespace spades {
 				struct {
 					Matrix4 projectionViewMatrix;
 					Vector3 modelOrigin;
+					float padding1;
 					Vector3 customColor;
+					float padding2;
 				} pushConstants;
 
 				pushConstants.projectionViewMatrix = mvpMatrix;
 				pushConstants.modelOrigin = origin;
+				pushConstants.padding1 = 0.0f;
 				pushConstants.customColor = param.customColor;
+				pushConstants.padding2 = 0.0f;
 
 				vkCmdPushConstants(commandBuffer, sharedPipeline.pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT,
 				                   0, sizeof(pushConstants), &pushConstants);
@@ -481,15 +489,20 @@ namespace spades {
 				Matrix4 mvpMatrix = projectionViewMatrix * param.matrix;
 
 				// Set up push constants (MVP matrix + model origin)
+				// Note: Vulkan requires vec3 to be 16-byte aligned in push constants
 				struct {
 					Matrix4 projectionViewMatrix;
 					Vector3 modelOrigin;
+					float padding1;
 					Vector3 customColor;
+					float padding2;
 				} pushConstants;
 
 				pushConstants.projectionViewMatrix = mvpMatrix;
 				pushConstants.modelOrigin = origin;
+				pushConstants.padding1 = 0.0f;
 				pushConstants.customColor = param.customColor;
+				pushConstants.padding2 = 0.0f;
 
 				vkCmdPushConstants(commandBuffer, sharedPipeline.pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT,
 				                   0, sizeof(pushConstants), &pushConstants);
@@ -540,12 +553,16 @@ namespace spades {
 				struct {
 					Matrix4 projectionViewMatrix;
 					Vector3 modelOrigin;
+					float padding1;
 					Vector3 customColor;
+					float padding2;
 				} pushConstants;
 
 				pushConstants.projectionViewMatrix = mvpMatrix;
 				pushConstants.modelOrigin = origin;
+				pushConstants.padding1 = 0.0f;
 				pushConstants.customColor = param.customColor;
+				pushConstants.padding2 = 0.0f;
 
 				vkCmdPushConstants(commandBuffer, sharedPipeline.pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT,
 				                   0, sizeof(pushConstants), &pushConstants);
@@ -595,12 +612,16 @@ namespace spades {
 				struct {
 					Matrix4 projectionViewMatrix;
 					Vector3 modelOrigin;
+					float padding1;
 					Vector3 customColor;
+					float padding2;
 				} pushConstants;
 
 				pushConstants.projectionViewMatrix = mvpMatrix;
 				pushConstants.modelOrigin = origin;
+				pushConstants.padding1 = 0.0f;
 				pushConstants.customColor = param.customColor;
+				pushConstants.padding2 = 0.0f;
 
 				vkCmdPushConstants(commandBuffer, sharedPipeline.pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT,
 				                   0, sizeof(pushConstants), &pushConstants);
@@ -779,7 +800,7 @@ namespace spades {
 			VkPushConstantRange pushConstantRange{};
 			pushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
 			pushConstantRange.offset = 0;
-			pushConstantRange.size = sizeof(float) * 16 + sizeof(float) * 3 + sizeof(float) * 3; // mat4 + vec3 (origin) + vec3 (customColor)
+			pushConstantRange.size = sizeof(float) * 16 + sizeof(float) * 4 + sizeof(float) * 4; // mat4 + vec3 (origin) + padding + vec3 (customColor) + padding
 
 			VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
 			pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
