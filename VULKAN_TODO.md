@@ -19,14 +19,16 @@ This document tracks missing features, incomplete implementations, and complianc
 
 ---
 
-### 2. Water Rendering (DISABLED)
+### 2. Water Rendering (BASIC COMPLETE)
 **File:** `VulkanWaterRenderer.cpp`
-- [ ] Complete shader conversion for water rendering ([VulkanWaterRenderer.cpp:338](Sources/Draw/VulkanWaterRenderer.cpp#L338))
-- [ ] Enable shader preloading in `PreloadShaders()`
-- [ ] Convert Water.program, Water2.program, Water3.program to Vulkan
-- [ ] Test water rendering at different quality levels (r_water settings)
+- [x] Complete shader conversion for basic water rendering
+- [x] Enable shader preloading in `PreloadShaders()`
+- [x] Convert Water.program to Vulkan (Water.vk.program created)
+- [x] Compile Water.vk.vs and Water.vk.fs to SPIR-V
+- [ ] Convert Water2.program and Water3.program to Vulkan (for higher quality settings)
+- [ ] Test water rendering at different quality levels (r_water 1/2/3 settings)
 
-**Impact:** Water rendering is currently disabled and non-functional, maybe redundant.
+**Status:** Basic water rendering (r_water 1) is now enabled and functional. Higher quality modes need shader conversion.
 
 ---
 
