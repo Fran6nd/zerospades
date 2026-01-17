@@ -25,6 +25,7 @@
 #include "VulkanImageRenderer.h"
 #include "VulkanWaterRenderer.h"
 #include "VulkanFlatMapRenderer.h"
+#include "VulkanShadowMapRenderer.h"
 #include "VulkanFramebufferManager.h"
 #include "VulkanImageWrapper.h"
 #include "VulkanImageManager.h"
@@ -39,8 +40,11 @@
 #include <Core/Debug.h>
 #include <Core/Exception.h>
 #include <Core/FileManager.h>
+#include <Core/Settings.h>
 #include <cstring>
 #include <vector>
+
+SPADES_SETTING(r_fogShadow);
 
 namespace spades {
 	namespace draw {
@@ -71,6 +75,7 @@ namespace spades {
 			imageRenderer(nullptr),
 		waterRenderer(nullptr),
 		flatMapRenderer(nullptr),
+		shadowMapRenderer(nullptr),
 		framebufferManager(nullptr),
 		programManager(nullptr),
 		imageManager(nullptr),
@@ -163,6 +168,8 @@ namespace spades {
 			flatMapRenderer = nullptr;
 			delete waterRenderer;
 			waterRenderer = nullptr;
+			delete shadowMapRenderer;
+			shadowMapRenderer = nullptr;
 			delete framebufferManager;
 			framebufferManager = nullptr;
 			programManager = nullptr;
@@ -656,6 +663,15 @@ namespace spades {
 				mapRenderer = nullptr;
 			}
 
+			// Initialize shadow map renderer
+			if (map) {
+				delete shadowMapRenderer;
+				shadowMapRenderer = new VulkanShadowMapRenderer(*this);
+			} else {
+				delete shadowMapRenderer;
+				shadowMapRenderer = nullptr;
+			}
+
 			// Initialize flat map renderer (minimap)
 			if (map) {
 				delete flatMapRenderer;
@@ -680,9 +696,10 @@ namespace spades {
 		}
 
 		Vector3 VulkanRenderer::GetFogColorForSolidPass() {
-			// For now, always return the fog color since VulkanMapShadowRenderer is not implemented
-			// When shadow maps are implemented, check r_fogShadow setting like OpenGL does
-			return fogColor;
+			if (r_fogShadow && shadowMapRenderer)
+				return MakeVector3(0, 0, 0);
+			else
+				return fogColor;
 		}
 
 		void VulkanRenderer::StartScene(const client::SceneDefinition& def) {

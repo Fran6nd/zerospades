@@ -42,6 +42,7 @@ namespace spades {
 		class VulkanImageRenderer;
 		class VulkanWaterRenderer;
 		class VulkanFlatMapRenderer;
+		class VulkanShadowMapRenderer;
 		class VulkanFramebufferManager;
 		class VulkanProgramManager;
 		class VulkanModelManager;
@@ -116,6 +117,7 @@ namespace spades {
 			VulkanImageRenderer* imageRenderer;
 			VulkanWaterRenderer* waterRenderer;
 			VulkanFlatMapRenderer* flatMapRenderer;
+			VulkanShadowMapRenderer* shadowMapRenderer;
 			VulkanFramebufferManager* framebufferManager;
 			Handle<VulkanProgramManager> programManager;
 			Handle<VulkanModelManager> modelManager;
@@ -237,6 +239,7 @@ namespace spades {
 			VulkanModelRenderer* GetModelRenderer() { return modelRenderer; }
 			VulkanSpriteRenderer* GetSpriteRenderer() { return spriteRenderer; }
 			VulkanWaterRenderer* GetWaterRenderer() { return waterRenderer; }
+			VulkanShadowMapRenderer* GetShadowMapRenderer() { return shadowMapRenderer; }
 			VulkanFramebufferManager* GetFramebufferManager() { return framebufferManager; }
 
 		// Program registration API
