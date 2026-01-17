@@ -118,13 +118,13 @@ namespace spades {
 
 			// Determine shader type from extension
 			VulkanShader::Type type;
-			if (name.find(".vs") != std::string::npos) {
+			if (name.find(".vert.spv") != std::string::npos || name.find(".vs") != std::string::npos) {
 				type = VulkanShader::VertexShader;
-			} else if (name.find(".fs") != std::string::npos) {
+			} else if (name.find(".frag.spv") != std::string::npos || name.find(".fs") != std::string::npos) {
 				type = VulkanShader::FragmentShader;
-			} else if (name.find(".gs") != std::string::npos) {
+			} else if (name.find(".geom.spv") != std::string::npos || name.find(".gs") != std::string::npos) {
 				type = VulkanShader::GeometryShader;
-			} else if (name.find(".cs") != std::string::npos) {
+			} else if (name.find(".comp.spv") != std::string::npos || name.find(".cs") != std::string::npos) {
 				type = VulkanShader::ComputeShader;
 			} else {
 				SPRaise("Unknown shader type for '%s'", name.c_str());
@@ -134,10 +134,18 @@ namespace spades {
 
 			// Load shader source
 			std::string source = FileManager::ReadAllBytes(name.c_str());
-			shader->SetSource(source);
 
-			// Compile shader
-			shader->Compile();
+			// Check if this is a pre-compiled SPIR-V file
+			if (name.find(".spv") != std::string::npos) {
+				// Load as pre-compiled SPIR-V binary
+				std::vector<uint32_t> spirvCode(source.size() / sizeof(uint32_t));
+				memcpy(spirvCode.data(), source.data(), source.size());
+				shader->LoadSPIRV(spirvCode);
+			} else {
+				// Compile from GLSL source
+				shader->SetSource(source);
+				shader->Compile();
+			}
 
 			return shader;
 		}
