@@ -26,6 +26,8 @@
 
 namespace spades {
 	namespace draw {
+		class VulkanBuffer;
+
 		class VulkanTemporalAAFilter : public VulkanPostProcessFilter {
 		private:
 			struct HistoryBuffer {
@@ -39,8 +41,20 @@ namespace spades {
 			Vector3 prevViewOrigin;
 			std::size_t jitterTableIndex = 0;
 
+			Handle<VulkanBuffer> uniformBuffer;
+			Handle<VulkanBuffer> quadVertexBuffer;
+			Handle<VulkanBuffer> quadIndexBuffer;
+			VkDescriptorPool descriptorPool;
+			VkFramebuffer framebuffer;
+
+			// Copy pipeline for copying output to history buffer
+			VkRenderPass copyRenderPass;
+
 			void CreatePipeline() override;
 			void CreateRenderPass() override;
+			void CreateQuadBuffers();
+			void CreateDescriptorPool();
+			void CreateCopyRenderPass();
 			void DeleteHistoryBuffer();
 
 		public:
