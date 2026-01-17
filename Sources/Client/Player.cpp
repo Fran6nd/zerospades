@@ -227,8 +227,12 @@ namespace spades {
 				}
 			} else if (tool == ToolWeapon && isLocal) {
 				weapon->SetShooting(newInput.primary);
-			} else {
-				SPAssert(false);
+			} else if (tool == ToolWeapon && !isLocal) {
+				// Non-local weapon handling (no action needed for remote players)
+			} else if (tool == ToolSpade && !isLocal) {
+				// Non-local spade handling (no action needed for remote players)
+			} else if (tool == ToolGrenade && !isLocal) {
+				// Non-local grenade handling (no action needed for remote players)
 			}
 
 			weapInput = newInput;

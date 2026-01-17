@@ -19,6 +19,10 @@ if(POLICY CMP0072)
 	cmake_policy(SET CMP0072 NEW)
 endif()
 
+# Rendering backend options
+option(USE_OPENGL "Enable OpenGL renderer" ON)
+option(USE_VULKAN "Enable Vulkan renderer" ON)
+
 if(USE_VCPKG)
     find_package(Ogg CONFIG REQUIRED)
     find_package(Opus CONFIG REQUIRED)
@@ -27,8 +31,10 @@ if(USE_VCPKG)
     find_package(freetype CONFIG REQUIRED)
 
  	if(NOT APPLE)
- 		find_package(GLEW REQUIRED)
- 		set(GLEW_LIBRARY GLEW::GLEW)
+ 		if(USE_OPENGL)
+ 			find_package(GLEW REQUIRED)
+ 			set(GLEW_LIBRARY GLEW::GLEW)
+ 		endif()
 
  		find_package(CURL REQUIRED)
  		set(CURL_LIBRARY CURL::libcurl)
@@ -40,7 +46,9 @@ if(USE_VCPKG)
 
     if(APPLE)
     	# Use system libraries
-		include(FindOpenGL)
+    	if(USE_OPENGL)
+			include(FindOpenGL)
+		endif()
 		include(FindCURL)
     endif()
 
@@ -60,14 +68,16 @@ else()
 		message(FATAL_ERROR "SDL_image 2.0 not found, set ENV{SDL2DIR} to point to SDL 2.0, and optionally set the cmake var SDL2_LIBRARY_TEMP to the lib dir")
 	endif()
 
-	include(FindOpenGL)
-	if(NOT OPENGL_FOUND AND NOT OPENGL_XMESA_FOUND AND NOT OPENGL_GLU_FOUND)
-		message(FATAL_ERROR "OpenGL not found, please install it")
-	endif()
-	if(NOT APPLE)
-		include(cmake/FindGLEW2.cmake)
-		if(NOT GLEW_FOUND)
-			message(FATAL_ERROR "GLEW not found, please install it and make sure CMake can find it (add it to the PATH)")
+	if(USE_OPENGL)
+		include(FindOpenGL)
+		if(NOT OPENGL_FOUND AND NOT OPENGL_XMESA_FOUND AND NOT OPENGL_GLU_FOUND)
+			message(FATAL_ERROR "OpenGL not found, please install it")
+		endif()
+		if(NOT APPLE)
+			include(cmake/FindGLEW2.cmake)
+			if(NOT GLEW_FOUND)
+				message(FATAL_ERROR "GLEW not found, please install it and make sure CMake can find it (add it to the PATH)")
+			endif()
 		endif()
 	endif()
 
@@ -94,6 +104,79 @@ else()
 	include(cmake/FindOpus.cmake)
 	if(NOT OpusFile_FOUND)
 		message(FATAL_ERROR "libopus/libopusfile not found, please install it (and make sure it's in your path)")
+	endif()
+endif()
+
+# Vulkan configuration
+if(USE_VULKAN)
+	find_package(Vulkan REQUIRED)
+
+	if(Vulkan_FOUND)
+		message(STATUS "Vulkan SDK found: ${Vulkan_INCLUDE_DIRS}")
+		message(STATUS "Vulkan library: ${Vulkan_LIBRARIES}")
+
+		# On macOS, we use MoltenVK
+		if(APPLE)
+			message(STATUS "Using MoltenVK for Vulkan on macOS")
+		endif()
+
+		# Find glslang for GLSL to SPIR-V compilation
+		# glslang is typically included with the Vulkan SDK
+		if(Vulkan_GLSLANG_VALIDATOR_EXECUTABLE)
+			message(STATUS "glslangValidator found: ${Vulkan_GLSLANG_VALIDATOR_EXECUTABLE}")
+			set(GLSLANG_VALIDATOR ${Vulkan_GLSLANG_VALIDATOR_EXECUTABLE})
+		else()
+			# Try to find it manually
+			find_program(GLSLANG_VALIDATOR
+				NAMES glslangValidator
+				HINTS
+					${Vulkan_INCLUDE_DIRS}/../bin
+					${Vulkan_INCLUDE_DIRS}/../../bin
+					ENV VULKAN_SDK
+				PATH_SUFFIXES bin
+			)
+			if(GLSLANG_VALIDATOR)
+				message(STATUS "glslangValidator found: ${GLSLANG_VALIDATOR}")
+			else()
+				message(WARNING "glslangValidator not found - shaders will be compiled at runtime")
+			endif()
+		endif()
+
+		# Find glslang library for runtime GLSL to SPIR-V compilation
+		find_library(GLSLANG_LIBRARY NAMES glslang HINTS /opt/local/lib)
+		find_library(GLSLANG_SPIRV_LIBRARY NAMES SPIRV HINTS /opt/local/lib)
+		find_library(GLSLANG_RESOURCE_LIMITS_LIBRARY NAMES glslang-default-resource-limits HINTS /opt/local/lib)
+		find_path(GLSLANG_INCLUDE_DIR NAMES glslang/Public/ShaderLang.h HINTS /opt/local/include)
+
+		if(GLSLANG_LIBRARY AND GLSLANG_SPIRV_LIBRARY AND GLSLANG_INCLUDE_DIR)
+			message(STATUS "glslang library found: ${GLSLANG_LIBRARY}")
+			message(STATUS "glslang SPIRV library found: ${GLSLANG_SPIRV_LIBRARY}")
+			message(STATUS "glslang include dir: ${GLSLANG_INCLUDE_DIR}")
+			set(GLSLANG_LIBRARIES ${GLSLANG_LIBRARY} ${GLSLANG_SPIRV_LIBRARY} ${GLSLANG_RESOURCE_LIMITS_LIBRARY})
+			set(HAVE_GLSLANG TRUE)
+		else()
+			message(WARNING "glslang library not found - runtime shader compilation will be disabled")
+			set(HAVE_GLSLANG FALSE)
+		endif()
+
+		# Find spirv-cross for shader reflection
+		find_library(SPIRV_CROSS_LIBRARY NAMES spirv-cross-core HINTS /opt/local/lib)
+		find_path(SPIRV_CROSS_INCLUDE_DIR NAMES spirv_cross/spirv_cross.hpp HINTS /opt/local/include)
+
+		if(SPIRV_CROSS_LIBRARY AND SPIRV_CROSS_INCLUDE_DIR)
+			message(STATUS "spirv-cross library found: ${SPIRV_CROSS_LIBRARY}")
+			message(STATUS "spirv-cross include dir: ${SPIRV_CROSS_INCLUDE_DIR}")
+			set(HAVE_SPIRV_CROSS TRUE)
+		else()
+			message(WARNING "spirv-cross library not found - shader reflection will be disabled")
+			set(HAVE_SPIRV_CROSS FALSE)
+		endif()
+
+		# Option to compile shaders at build time
+		option(VULKAN_PRECOMPILE_SHADERS "Precompile Vulkan shaders to SPIR-V at build time" OFF)
+
+	else()
+		message(FATAL_ERROR "Vulkan SDK not found. Please install the Vulkan SDK.")
 	endif()
 endif()
 
@@ -176,6 +259,25 @@ endif()
 
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)	#msvc / xcode: group files in project
 
+# Add compile definitions for enabled renderers
+if(USE_OPENGL)
+	add_definitions(-DUSE_OPENGL=1)
+	message(STATUS "OpenGL renderer: ENABLED")
+else()
+	message(STATUS "OpenGL renderer: DISABLED")
+endif()
+
+if(USE_VULKAN)
+	add_definitions(-DUSE_VULKAN=1)
+	message(STATUS "Vulkan renderer: ENABLED")
+else()
+	message(STATUS "Vulkan renderer: DISABLED")
+endif()
+
+# Ensure at least one renderer is enabled
+if(NOT USE_OPENGL AND NOT USE_VULKAN)
+	message(FATAL_ERROR "At least one renderer must be enabled (USE_OPENGL or USE_VULKAN)")
+endif()
 
 #mainly for ENet...
 include(CheckFunctionExists)

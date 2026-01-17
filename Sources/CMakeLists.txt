@@ -134,10 +134,38 @@ source_group("libs\\json\\include" FILES ${JSON_INCLUDE})
 source_group("ScriptBindings" FILES ${SCRIPTBINDING_FILES})
 source_group("libs\\unzip" FILES ${UNZIP_FILES})
 
-target_link_libraries(OpenSpades ${SDL2_LIBRARY} ${SDL2_IMAGE_LIBRARY} ${OPENGL_LIBRARIES} ${ZLIB_LIBRARIES} ${CURL_LIBRARY} ${FREETYPE_LIBRARIES} ${CMAKE_DL_LIBS} ${ANGELSCRIPT_LIBS} ${Ogg_LIBRARY} ${OpusFile_LIBRARY})
-if(NOT APPLE)
-	target_link_libraries(OpenSpades ${GLEW_LIBRARY})
+target_link_libraries(OpenSpades ${SDL2_LIBRARY} ${SDL2_IMAGE_LIBRARY} ${ZLIB_LIBRARIES} ${CURL_LIBRARY} ${FREETYPE_LIBRARIES} ${CMAKE_DL_LIBS} ${ANGELSCRIPT_LIBS} ${Ogg_LIBRARY} ${OpusFile_LIBRARY})
+
+# Link OpenGL libraries if enabled
+if(USE_OPENGL)
+	target_link_libraries(OpenSpades ${OPENGL_LIBRARIES})
+	if(NOT APPLE)
+		target_link_libraries(OpenSpades ${GLEW_LIBRARY})
+	endif()
 endif()
+
+# Link Vulkan libraries if enabled
+if(USE_VULKAN)
+	target_link_libraries(OpenSpades Vulkan::Vulkan)
+	if(Vulkan_INCLUDE_DIRS)
+		target_include_directories(OpenSpades PRIVATE ${Vulkan_INCLUDE_DIRS})
+	endif()
+
+	# Link glslang libraries if available
+	if(HAVE_GLSLANG)
+		target_link_libraries(OpenSpades ${GLSLANG_LIBRARIES})
+		target_include_directories(OpenSpades PRIVATE ${GLSLANG_INCLUDE_DIR})
+		target_compile_definitions(OpenSpades PRIVATE HAVE_GLSLANG=1)
+	endif()
+
+	# Link spirv-cross if available
+	if(HAVE_SPIRV_CROSS)
+		target_link_libraries(OpenSpades ${SPIRV_CROSS_LIBRARY})
+		target_include_directories(OpenSpades PRIVATE ${SPIRV_CROSS_INCLUDE_DIR})
+		target_compile_definitions(OpenSpades PRIVATE HAVE_SPIRV_CROSS=1)
+	endif()
+endif()
+
 if(USE_VCPKG)
 	target_link_libraries(OpenSpades Ogg::ogg Opus::opus)
 endif()

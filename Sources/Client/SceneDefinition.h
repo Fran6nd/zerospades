@@ -59,6 +59,7 @@ namespace spades {
 			}
 
 			Matrix4 ToOpenGLProjectionMatrix() const;
+			Matrix4 ToVulkanProjectionMatrix() const;
 			Matrix4 ToViewMatrix() const;
 		};
 	} // namespace client

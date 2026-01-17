@@ -36,7 +36,7 @@
 
             buildInputs = with pkgs;
               ([
-                freetype SDL2 SDL2_image libGL zlib curl glew opusfile libogg openal
+                freetype SDL2 SDL2_image libGL zlib curl glew opusfile libogg openal vulkan-loader vulkan-headers
               ] ++ lib.optionals stdenv.hostPlatform.isDarwin [
                 darwin.apple_sdk.frameworks.Cocoa
               ]);
