@@ -32,6 +32,7 @@ namespace spades {
 	namespace draw {
 		class VulkanRenderer;
 		class VulkanImage;
+		class VulkanBuffer;
 
 		class VulkanShadowMapRenderer {
 		public:
