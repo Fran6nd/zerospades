@@ -845,18 +845,13 @@ namespace spades {
 			SPADES_MARK_FUNCTION();
 			EnsureSceneNotStarted();
 
-			if (imageRenderer && whiteImage) {
-				// Note: We don't flush here - pending 2D content will be rendered normally
-				// This just adds a fullscreen quad to the batch for screen color multiplication
+			// TODO: Implement proper multiplicative blending (ZERO, SRC_COLOR) for screen color multiplication
+			// The current image renderer uses alpha blending (ONE, ONE_MINUS_SRC_ALPHA) which causes
+			// a bright flash instead of the intended color tint when getting hit.
+			// For now, we skip this effect to avoid the flashbang issue.
 
-				// Draw a fullscreen quad with the white image and color multiplication
-				imageRenderer->SetImage(whiteImage.GetPointerOrNull());
-				float w = ScreenWidth();
-				float h = ScreenHeight();
-				imageRenderer->Add(0, 0, w, 0, w, h, 0, h,
-				                   0, 0, 1, 0, 1, 1, 0, 1,
-				                   color.x, color.y, color.z, 1.0f);
-			}
+			// Disabled until proper multiplicative blending is implemented
+			(void)color; // Suppress unused parameter warning
 		}
 
 		void VulkanRenderer::SetColor(Vector4 color) {

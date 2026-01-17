@@ -56,15 +56,15 @@ This document tracks missing features, incomplete implementations, and complianc
 
 ---
 
-### 5. Error Handling Audit
+### 5. Error Handling Audit (PARTIAL)
 **Files:** All `Vulkan*.cpp` files
-- [ ] Audit all Vulkan API calls for VkResult checking
-- [ ] Ensure all vkCreate* calls check for VK_SUCCESS
-- [ ] Ensure all vkAllocate* calls check for VK_SUCCESS
-- [ ] Add error messages for all failure paths
+- [x] Audit critical Vulkan API calls for VkResult checking
+- [x] Added error checking to 6 previously unchecked calls
+- [x] Added error messages for command buffer allocation failures
+- [ ] Complete audit of all remaining Vulkan API calls
 - [ ] Consider using a VK_CHECK() macro for consistency
 
-**Impact:** Silent failures may cause crashes, corruption, or undefined behavior.
+**Status:** Improved error handling in critical paths. All command buffer allocations and key framebuffer creations now check for errors.
 
 ---
 
