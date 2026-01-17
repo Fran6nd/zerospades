@@ -27,18 +27,42 @@ namespace spades {
 	namespace draw {
 		class VulkanFramebufferManager;
 		class VulkanImage;
+		class VulkanBuffer;
+		class VulkanProgram;
 
 		class VulkanBloomFilter : public VulkanPostProcessFilter {
 		private:
+			// Downsample pipeline (with color/alpha for blending during composite)
+			Handle<VulkanProgram> downsampleProgram;
 			VkPipeline downsamplePipeline;
-			VkPipeline compositePipeline;
-			VkPipeline finalCompositePipeline;
 			VkPipelineLayout downsampleLayout;
+
+			// Composite pipeline (blends levels together)
+			VkPipeline compositePipeline;
 			VkPipelineLayout compositeLayout;
+
+			// Final composite pipeline (gamma-correct mix of original + bloom)
+			Handle<VulkanProgram> compositeProgram;
+			VkPipeline finalCompositePipeline;
 			VkPipelineLayout finalCompositeLayout;
+
+			// Descriptor set layouts
 			VkDescriptorSetLayout downsampleDescLayout;
 			VkDescriptorSetLayout compositeDescLayout;
 			VkDescriptorSetLayout finalCompositeDescLayout;
+
+			// Descriptor pool
+			VkDescriptorPool descriptorPool;
+
+			// Buffers
+			Handle<VulkanBuffer> quadVertexBuffer;
+			Handle<VulkanBuffer> quadIndexBuffer;
+			Handle<VulkanBuffer> downsampleUniformBuffer;
+			Handle<VulkanBuffer> compositeUniformBuffer;
+
+			// Render passes
+			VkRenderPass downsampleRenderPass;
+			VkRenderPass compositeRenderPass;
 
 			struct BloomLevel {
 				int width, height;
@@ -49,6 +73,10 @@ namespace spades {
 
 			void CreatePipeline() override;
 			void CreateRenderPass() override;
+			void CreateQuadBuffers();
+			void CreateDescriptorPool();
+			void CreateDownsampleRenderPass();
+			void CreateCompositeRenderPass();
 			void CreateLevels(int width, int height);
 			void DestroyLevels();
 
