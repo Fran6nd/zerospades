@@ -68,6 +68,19 @@ This document tracks missing features, incomplete implementations, and complianc
 
 ---
 
+### 6. MultiplyScreenColor / Hit Flash Effect (DISABLED - NEEDS FIX)
+**File:** `VulkanRenderer.cpp`, `VulkanImageRenderer.cpp`
+- [x] Identified issue: wrong blend mode causes flashbang instead of red tint
+- [x] Temporarily disabled to fix unplayable flashbang effect
+- [ ] Create separate pipeline with multiplicative blending (ZERO, SRC_COLOR)
+- [ ] Implement proper screen color multiplication for hit feedback
+- [ ] Add pipeline switching in imageRenderer for different blend modes
+- [ ] Re-enable hit flash effect with correct implementation
+
+**Impact:** Players don't see red tint when taking damage. Better than flashbang but not ideal.
+
+---
+
 ## 🟠 HIGH PRIORITY - Post-Processing Effects (Placeholder Implementations)
 
 All post-processing filters have placeholder implementations that don't actually work.
