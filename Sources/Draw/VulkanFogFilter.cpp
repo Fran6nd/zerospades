@@ -364,7 +364,9 @@ namespace spades {
 			if (framebuffer != VK_NULL_HANDLE) {
 				vkDestroyFramebuffer(device->GetDevice(), framebuffer, nullptr);
 			}
-			vkCreateFramebuffer(device->GetDevice(), &framebufferInfo, nullptr, &framebuffer);
+			if (vkCreateFramebuffer(device->GetDevice(), &framebufferInfo, nullptr, &framebuffer) != VK_SUCCESS) {
+				SPRaise("Failed to create fog filter framebuffer");
+			}
 
 			VkRenderPassBeginInfo renderPassInfo{};
 			renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;

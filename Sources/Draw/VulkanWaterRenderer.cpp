@@ -646,12 +646,16 @@ namespace spades {
 				allocInfo.commandBufferCount = 1;
 
 				VkCommandBuffer commandBuffer;
-				vkAllocateCommandBuffers(device->GetDevice(), &allocInfo, &commandBuffer);
+				if (vkAllocateCommandBuffers(device->GetDevice(), &allocInfo, &commandBuffer) != VK_SUCCESS) {
+					SPRaise("Failed to allocate command buffer for wave texture update");
+				}
 
 				VkCommandBufferBeginInfo beginInfo{};
 				beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 				beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-				vkBeginCommandBuffer(commandBuffer, &beginInfo);
+				if (vkBeginCommandBuffer(commandBuffer, &beginInfo) != VK_SUCCESS) {
+					SPRaise("Failed to begin command buffer for wave texture update");
+				}
 
 				// Transition waveImage to TRANSFER_DST_OPTIMAL
 				waveImage->TransitionLayout(commandBuffer, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
@@ -738,12 +742,16 @@ namespace spades {
 						allocInfo.commandBufferCount = 1;
 
 						VkCommandBuffer commandBuffer;
-						vkAllocateCommandBuffers(device->GetDevice(), &allocInfo, &commandBuffer);
+						if (vkAllocateCommandBuffers(device->GetDevice(), &allocInfo, &commandBuffer) != VK_SUCCESS) {
+							SPRaise("Failed to allocate command buffer for water texture update");
+						}
 
 						VkCommandBufferBeginInfo beginInfo{};
 						beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 						beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-						vkBeginCommandBuffer(commandBuffer, &beginInfo);
+						if (vkBeginCommandBuffer(commandBuffer, &beginInfo) != VK_SUCCESS) {
+							SPRaise("Failed to begin command buffer for water texture update");
+						}
 
 						textureImage->TransitionLayout(commandBuffer, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
 							0, VK_ACCESS_TRANSFER_WRITE_BIT,
