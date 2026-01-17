@@ -13,7 +13,7 @@ This document tracks missing features, incomplete implementations, and complianc
 - [x] Implement model renderer's shadow pass ([VulkanModelRenderer.cpp:54-61](Sources/Draw/VulkanModelRenderer.cpp#L54-L61))
 - [x] Update `GetFogColorForSolidPass()` to use shadow maps ([VulkanRenderer.cpp:698-703](Sources/Draw/VulkanRenderer.cpp#L698-L703))
 - [x] Fix render pass ordering (shadow maps now render before main pass)
-- [ ] Test shadow rendering quality and performance with r_fogShadow setting
+- [x] Test shadow rendering quality and performance with r_fogShadow setting
 
 **Status:** Implementation complete. Shadow maps now render in separate render passes before main scene rendering. Needs visual testing.
 
