@@ -25,10 +25,30 @@
 
 namespace spades {
 	namespace draw {
+		class VulkanBuffer;
+		class VulkanProgram;
+
 		class VulkanColorCorrectionFilter : public VulkanPostProcessFilter {
 		private:
+			Handle<VulkanBuffer> uniformBuffer;
+			Handle<VulkanBuffer> gaussUniformBuffer;
+			Handle<VulkanBuffer> quadVertexBuffer;
+			Handle<VulkanBuffer> quadIndexBuffer;
+			VkDescriptorPool descriptorPool;
+			VkFramebuffer framebuffer;
+
+			// Gaussian blur pipeline for sharpening
+			VkPipeline gaussPipeline;
+			VkPipelineLayout gaussPipelineLayout;
+			VkDescriptorSetLayout gaussDescriptorSetLayout;
+			VkRenderPass gaussRenderPass;
+
 			void CreatePipeline() override;
 			void CreateRenderPass() override;
+			void CreateQuadBuffers();
+			void CreateDescriptorPool();
+			void CreateGaussPipeline();
+			void CreateGaussRenderPass();
 
 		public:
 			VulkanColorCorrectionFilter(VulkanRenderer&);
