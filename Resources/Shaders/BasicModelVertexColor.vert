@@ -23,7 +23,9 @@
 layout(push_constant) uniform PushConstants {
 	mat4 projectionViewMatrix;
 	vec3 modelOrigin;
+	float padding1;
 	vec3 customColor;
+	float padding2;
 } pushConstants;
 
 layout(location = 0) in uvec3 positionAttribute;
@@ -33,6 +35,7 @@ layout(location = 2) in ivec3 normalAttribute;
 layout(location = 0) out vec4 color;
 layout(location = 1) out vec3 normal;
 layout(location = 2) out vec3 customColorOut;
+layout(location = 3) out float lighting;
 
 void main() {
 	// Convert uint8 position to float
@@ -45,12 +48,13 @@ void main() {
 
 	// Simple lighting from above
 	vec3 sunDir = normalize(vec3(-1.0, -1.0, -1.0));
-	float lighting = max(dot(normalFloat, sunDir), 0.2);
+	lighting = max(dot(normalFloat, sunDir), 0.2);
 
 	// Convert color from uint8 [0,255] to float [0,1]
+	// Pass the unlit color to fragment shader so it can detect black voxels
 	vec3 vertexColor = vec3(colorAttribute) / 255.0;
 
-	color = vec4(vertexColor * lighting, 1.0);
+	color = vec4(vertexColor, 1.0);
 	normal = normalFloat;
 	customColorOut = pushConstants.customColor;
 }

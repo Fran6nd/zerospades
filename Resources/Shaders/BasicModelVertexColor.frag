@@ -23,6 +23,7 @@
 layout(location = 0) in vec4 color;
 layout(location = 1) in vec3 normal;
 layout(location = 2) in vec3 customColor;
+layout(location = 3) in float lighting;
 
 layout(location = 0) out vec4 fragColor;
 
@@ -34,4 +35,7 @@ void main() {
 	if (dot(fragColor.xyz, vec3(1.0)) < 0.0001) {
 		fragColor.xyz = customColor;
 	}
+
+	// Apply lighting after team color substitution
+	fragColor.xyz *= lighting;
 }
