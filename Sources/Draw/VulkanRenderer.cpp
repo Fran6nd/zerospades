@@ -1230,10 +1230,10 @@ namespace spades {
 			vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
 			// Render the 3D scene
-			// Depth prepass and shadow maps will be added when:
-			// - VulkanShadowMapRenderer is implemented
-			// - Additional render passes are configured
-			// - Depth-only pipeline is created
+			// First render shadow maps if enabled
+			if (shadowMapRenderer && r_fogShadow) {
+				shadowMapRenderer->Render(commandBuffer);
+			}
 
 			// Render sky gradient
 			RenderSky(commandBuffer);

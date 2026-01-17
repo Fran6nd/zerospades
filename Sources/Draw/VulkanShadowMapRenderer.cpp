@@ -449,8 +449,23 @@ namespace spades {
 				scissor.extent = {(uint32_t)textureSize, (uint32_t)textureSize};
 				vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
-				// TODO: Call map renderer's shadow pass
-				// TODO: Call model renderer's shadow pass with shadow caster models
+				// Bind the shadow map pipeline
+				vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
+
+				// Set depth bias for shadow mapping (reduces shadow acne)
+				vkCmdSetDepthBias(commandBuffer, 1.25f, 0.0f, 1.75f);
+
+				// Render map shadow pass
+				VulkanMapRenderer* mapRenderer = renderer.GetMapRenderer();
+				if (mapRenderer) {
+					mapRenderer->RenderShadowMapPass(commandBuffer);
+				}
+
+				// Render model shadow pass
+				VulkanModelRenderer* modelRenderer = renderer.GetModelRenderer();
+				if (modelRenderer) {
+					modelRenderer->RenderShadowMapPass(commandBuffer);
+				}
 
 				vkCmdEndRenderPass(commandBuffer);
 			}
