@@ -581,12 +581,16 @@ namespace spades {
 				allocInfo.commandBufferCount = 1;
 
 				VkCommandBuffer commandBuffer;
-				vkAllocateCommandBuffers(device->GetDevice(), &allocInfo, &commandBuffer);
+				if (vkAllocateCommandBuffers(device->GetDevice(), &allocInfo, &commandBuffer) != VK_SUCCESS) {
+					SPRaise("Failed to allocate command buffer for screenshot");
+				}
 
 				VkCommandBufferBeginInfo beginInfo{};
 				beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 				beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-				vkBeginCommandBuffer(commandBuffer, &beginInfo);
+				if (vkBeginCommandBuffer(commandBuffer, &beginInfo) != VK_SUCCESS) {
+					SPRaise("Failed to begin command buffer for screenshot");
+				}
 
 				// Transition image to transfer dst
 				vkImage->TransitionLayout(commandBuffer, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
