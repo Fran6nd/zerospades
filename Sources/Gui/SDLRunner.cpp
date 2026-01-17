@@ -25,7 +25,14 @@
 #include "SDLRunner.h"
 
 #include "Icon.h"
+#ifdef USE_OPENGL
 #include "SDLGLDevice.h"
+#include <Draw/GLRenderer.h>
+#endif
+#ifdef USE_VULKAN
+#include "SDLVulkanDevice.h"
+#include <Draw/VulkanRenderer.h>
+#endif
 #include <Audio/ALDevice.h>
 #include <Audio/NullDevice.h>
 #include <Audio/YsrDevice.h>
@@ -37,7 +44,6 @@
 #include <Core/IStream.h>
 #include <Core/Math.h>
 #include <Core/Settings.h>
-#include <Draw/GLRenderer.h>
 #include <Draw/SWPort.h>
 #include <Draw/SWRenderer.h>
 #include <OpenSpades.h>
@@ -338,6 +344,8 @@ namespace spades {
 		auto SDLRunner::GetRendererType() -> RendererType {
 			if (EqualsIgnoringCase(r_renderer, "gl"))
 				return RendererType::GL;
+			else if (EqualsIgnoringCase(r_renderer, "vulkan"))
+				return RendererType::Vulkan;
 			else if (EqualsIgnoringCase(r_renderer, "sw"))
 				return RendererType::SW;
 			else
@@ -432,6 +440,7 @@ namespace spades {
 		std::tuple<Handle<client::IRenderer>, Handle<Disposable>>
 		SDLRunner::CreateRenderer(SDL_Window* wnd, RendererType type) {
 			switch (type) {
+#ifdef USE_OPENGL
 				case RendererType::GL: {
 					auto glDevice = Handle<SDLGLDevice>::New(wnd).Cast<draw::IGLDevice>();
 					auto dummy = Handle<Disposable>::New(); // FIXME
@@ -439,6 +448,16 @@ namespace spades {
 					  Handle<draw::GLRenderer>::New(std::move(glDevice)).Cast<client::IRenderer>(),
 					  std::move(dummy));
 				}
+#endif
+#ifdef USE_VULKAN
+				case RendererType::Vulkan: {
+					auto vulkanDevice = Handle<SDLVulkanDevice>::New(wnd);
+					auto dummy = Handle<Disposable>::New(); // FIXME
+					return std::make_tuple(
+					  Handle<draw::VulkanRenderer>::New(std::move(vulkanDevice)).Cast<client::IRenderer>(),
+					  std::move(dummy));
+				}
+#endif
 				case RendererType::SW: {
 					auto port = Handle<SDLSWPort>::New(wnd).Cast<draw::SWPort>();
 					return std::make_tuple(
@@ -488,6 +507,9 @@ namespace spades {
 						SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 0);
 						if (!r_allowSoftwareRendering)
 							SDL_GL_SetAttribute(SDL_GL_ACCELERATED_VISUAL, 1);
+						break;
+					case RendererType::Vulkan:
+						sdlFlags = SDL_WINDOW_VULKAN;
 						break;
 					case RendererType::SW: sdlFlags = 0; break;
 				}

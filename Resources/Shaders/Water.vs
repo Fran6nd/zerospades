@@ -1,3 +1,5 @@
+#version 450
+
 /*
  Copyright (c) 2013 yvt
 
@@ -18,37 +20,39 @@
 
  */
 
-uniform mat4 projectionViewModelMatrix;
-uniform mat4 modelMatrix;
-uniform mat4 viewModelMatrix;
-uniform vec3 viewOriginVector;
+layout(std140, binding = 5) uniform WaterMatricesUBO {
+	mat4 projectionViewModelMatrix;
+	mat4 modelMatrix;
+	mat4 viewModelMatrix;
+	vec4 viewOriginVector; // use .xyz
+	float fogDistance;
+	vec3 _pad0;
+} waterMat;
 
 // [x, y]
-attribute vec2 positionAttribute;
+layout(location = 0) in vec2 positionAttribute;
 
-varying vec3 fogDensity;
-varying vec3 screenPosition;
-varying vec3 viewPosition;
-varying vec3 worldPosition;
+layout(location = 0) out vec3 v_fogDensity;
+layout(location = 1) out vec3 v_screenPosition;
+layout(location = 2) out vec3 v_viewPosition;
+layout(location = 3) out vec3 v_worldPosition;
 
-uniform sampler2D waveTexture;
-
-void PrepareShadow(vec3 worldOrigin, vec3 normal);
-vec4 ComputeFogDensity(float poweredLength);
+// Fog computation from OpenGL Fog.vs
+vec4 ComputeFogDensity(float poweredLength) {
+	return vec4(min(poweredLength / (waterMat.fogDistance * waterMat.fogDistance), 1.0));
+}
 
 void main() {
 	vec4 vertexPos = vec4(positionAttribute.xy, 0.0, 1.0);
 
-	worldPosition = (modelMatrix * vertexPos).xyz;
-	viewPosition = (viewModelMatrix * vertexPos).xyz;
-	
-	gl_Position = projectionViewModelMatrix * vertexPos;
-	screenPosition = gl_Position.xyw;
-	screenPosition.xy = (screenPosition.xy + screenPosition.z) * 0.5;
+	v_worldPosition = (waterMat.modelMatrix * vertexPos).xyz;
+	v_viewPosition = (waterMat.viewModelMatrix * vertexPos).xyz;
 
-	vec2 horzRelativePos = worldPosition.xy - viewOriginVector.xy;
+	gl_Position = waterMat.projectionViewModelMatrix * vertexPos;
+	v_screenPosition = gl_Position.xyw;
+	v_screenPosition.xy = (v_screenPosition.xy + v_screenPosition.z) * 0.5;
+
+	vec2 horzRelativePos = v_worldPosition.xy - waterMat.viewOriginVector.xy;
 	float horzDistance = dot(horzRelativePos, horzRelativePos);
-	fogDensity = ComputeFogDensity(horzDistance).xyz;
-
-	PrepareShadow(worldPosition, vec3(0.0, 0.0, -1.0));
+	v_fogDensity = ComputeFogDensity(horzDistance).xyz;
 }
