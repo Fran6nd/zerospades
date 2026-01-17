@@ -20,6 +20,8 @@
 
 #include "VulkanShadowMapRenderer.h"
 #include "VulkanRenderer.h"
+#include "VulkanMapRenderer.h"
+#include "VulkanModelRenderer.h"
 #include "VulkanImage.h"
 #include <Gui/SDLVulkanDevice.h>
 #include <Core/Settings.h>
