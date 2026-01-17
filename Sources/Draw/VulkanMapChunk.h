@@ -94,6 +94,7 @@ namespace spades {
 
 			void RenderSunlightPass(VkCommandBuffer commandBuffer);
 			void RenderDepthPass(VkCommandBuffer commandBuffer);
+			void RenderShadowMapPass(VkCommandBuffer commandBuffer);
 			void RenderDynamicLightPass(VkCommandBuffer commandBuffer, std::vector<void*> lights);
 			void RenderOutlinePass(VkCommandBuffer commandBuffer);
 
