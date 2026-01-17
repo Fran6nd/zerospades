@@ -25,7 +25,11 @@
 #include <Core/Settings.h>
 #include <Core/Debug.h>
 #include <Core/Exception.h>
+#include <Core/FileManager.h>
+#include <Core/IStream.h>
 #include <Client/SceneDefinition.h>
+#include <cstring>
+#include <vector>
 
 SPADES_SETTING(r_shadowMapSize);
 
@@ -143,8 +147,202 @@ namespace spades {
 
 		void VulkanShadowMapRenderer::CreatePipeline() {
 			SPADES_MARK_FUNCTION();
-			// TODO: Create shadow map rendering pipeline
-			SPLog("Shadow map pipeline creation deferred - needs shader support");
+
+			VkDevice vkDevice = device->GetDevice();
+
+			// Load SPIR-V shaders
+			auto LoadSPIRVFile = [](const char* filename) -> std::vector<uint32_t> {
+				std::unique_ptr<IStream> stream = FileManager::OpenForReading(filename);
+				if (!stream) {
+					SPRaise("Failed to open shader file: %s", filename);
+				}
+
+				std::vector<uint8_t> buffer(stream->GetLength());
+				stream->Read(buffer.data(), buffer.size());
+
+				std::vector<uint32_t> code(buffer.size() / 4);
+				std::memcpy(code.data(), buffer.data(), buffer.size());
+				return code;
+			};
+
+			std::vector<uint32_t> vertCode = LoadSPIRVFile("Shaders/ShadowMap.vert.spv");
+			std::vector<uint32_t> fragCode = LoadSPIRVFile("Shaders/ShadowMap.frag.spv");
+
+			// Create shader modules
+			VkShaderModuleCreateInfo vertShaderModuleInfo{};
+			vertShaderModuleInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+			vertShaderModuleInfo.codeSize = vertCode.size() * sizeof(uint32_t);
+			vertShaderModuleInfo.pCode = vertCode.data();
+
+			VkShaderModule vertShaderModule;
+			if (vkCreateShaderModule(vkDevice, &vertShaderModuleInfo, nullptr, &vertShaderModule) != VK_SUCCESS) {
+				SPRaise("Failed to create vertex shader module for shadow map");
+			}
+
+			VkShaderModuleCreateInfo fragShaderModuleInfo{};
+			fragShaderModuleInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+			fragShaderModuleInfo.codeSize = fragCode.size() * sizeof(uint32_t);
+			fragShaderModuleInfo.pCode = fragCode.data();
+
+			VkShaderModule fragShaderModule;
+			if (vkCreateShaderModule(vkDevice, &fragShaderModuleInfo, nullptr, &fragShaderModule) != VK_SUCCESS) {
+				vkDestroyShaderModule(vkDevice, vertShaderModule, nullptr);
+				SPRaise("Failed to create fragment shader module for shadow map");
+			}
+
+			// Shader stages
+			VkPipelineShaderStageCreateInfo vertShaderStageInfo{};
+			vertShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+			vertShaderStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
+			vertShaderStageInfo.module = vertShaderModule;
+			vertShaderStageInfo.pName = "main";
+
+			VkPipelineShaderStageCreateInfo fragShaderStageInfo{};
+			fragShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+			fragShaderStageInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+			fragShaderStageInfo.module = fragShaderModule;
+			fragShaderStageInfo.pName = "main";
+
+			VkPipelineShaderStageCreateInfo shaderStages[] = {vertShaderStageInfo, fragShaderStageInfo};
+
+			// Create descriptor set layout
+			VkDescriptorSetLayoutBinding uboLayoutBinding{};
+			uboLayoutBinding.binding = 0;
+			uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+			uboLayoutBinding.descriptorCount = 1;
+			uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+			uboLayoutBinding.pImmutableSamplers = nullptr;
+
+			VkDescriptorSetLayoutCreateInfo layoutInfo{};
+			layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+			layoutInfo.bindingCount = 1;
+			layoutInfo.pBindings = &uboLayoutBinding;
+
+			if (vkCreateDescriptorSetLayout(vkDevice, &layoutInfo, nullptr, &descriptorSetLayout) != VK_SUCCESS) {
+				vkDestroyShaderModule(vkDevice, vertShaderModule, nullptr);
+				vkDestroyShaderModule(vkDevice, fragShaderModule, nullptr);
+				SPRaise("Failed to create descriptor set layout for shadow map");
+			}
+
+			// Create pipeline layout
+			VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
+			pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+			pipelineLayoutInfo.setLayoutCount = 1;
+			pipelineLayoutInfo.pSetLayouts = &descriptorSetLayout;
+
+			if (vkCreatePipelineLayout(vkDevice, &pipelineLayoutInfo, nullptr, &pipelineLayout) != VK_SUCCESS) {
+				vkDestroyShaderModule(vkDevice, vertShaderModule, nullptr);
+				vkDestroyShaderModule(vkDevice, fragShaderModule, nullptr);
+				SPRaise("Failed to create pipeline layout for shadow map");
+			}
+
+			// Vertex input (position only for shadow mapping)
+			VkVertexInputBindingDescription bindingDescription{};
+			bindingDescription.binding = 0;
+			bindingDescription.stride = 12; // 3 floats (x, y, z)
+			bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+
+			VkVertexInputAttributeDescription attributeDescription{};
+			attributeDescription.binding = 0;
+			attributeDescription.location = 0;
+			attributeDescription.format = VK_FORMAT_R32G32B32_SFLOAT;
+			attributeDescription.offset = 0;
+
+			VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
+			vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+			vertexInputInfo.vertexBindingDescriptionCount = 1;
+			vertexInputInfo.pVertexBindingDescriptions = &bindingDescription;
+			vertexInputInfo.vertexAttributeDescriptionCount = 1;
+			vertexInputInfo.pVertexAttributeDescriptions = &attributeDescription;
+
+			// Input assembly
+			VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
+			inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+			inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+			inputAssembly.primitiveRestartEnable = VK_FALSE;
+
+			// Viewport state (dynamic)
+			VkPipelineViewportStateCreateInfo viewportState{};
+			viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+			viewportState.viewportCount = 1;
+			viewportState.pViewports = nullptr;
+			viewportState.scissorCount = 1;
+			viewportState.pScissors = nullptr;
+
+			// Rasterization
+			VkPipelineRasterizationStateCreateInfo rasterizer{};
+			rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+			rasterizer.depthClampEnable = VK_FALSE;
+			rasterizer.rasterizerDiscardEnable = VK_FALSE;
+			rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
+			rasterizer.lineWidth = 1.0f;
+			rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
+			rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+			rasterizer.depthBiasEnable = VK_TRUE;
+
+			// Multisampling
+			VkPipelineMultisampleStateCreateInfo multisampling{};
+			multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+			multisampling.sampleShadingEnable = VK_FALSE;
+			multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+
+			// Depth stencil
+			VkPipelineDepthStencilStateCreateInfo depthStencil{};
+			depthStencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+			depthStencil.depthTestEnable = VK_TRUE;
+			depthStencil.depthWriteEnable = VK_TRUE;
+			depthStencil.depthCompareOp = VK_COMPARE_OP_LESS;
+			depthStencil.depthBoundsTestEnable = VK_FALSE;
+			depthStencil.stencilTestEnable = VK_FALSE;
+
+			// Color blend (no color attachments for depth-only pass)
+			VkPipelineColorBlendStateCreateInfo colorBlending{};
+			colorBlending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+			colorBlending.logicOpEnable = VK_FALSE;
+			colorBlending.attachmentCount = 0;
+			colorBlending.pAttachments = nullptr;
+
+			// Dynamic state
+			VkDynamicState dynamicStates[] = {
+				VK_DYNAMIC_STATE_VIEWPORT,
+				VK_DYNAMIC_STATE_SCISSOR,
+				VK_DYNAMIC_STATE_DEPTH_BIAS
+			};
+
+			VkPipelineDynamicStateCreateInfo dynamicState{};
+			dynamicState.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+			dynamicState.dynamicStateCount = 3;
+			dynamicState.pDynamicStates = dynamicStates;
+
+			// Create graphics pipeline
+			VkGraphicsPipelineCreateInfo pipelineInfo{};
+			pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+			pipelineInfo.stageCount = 2;
+			pipelineInfo.pStages = shaderStages;
+			pipelineInfo.pVertexInputState = &vertexInputInfo;
+			pipelineInfo.pInputAssemblyState = &inputAssembly;
+			pipelineInfo.pViewportState = &viewportState;
+			pipelineInfo.pRasterizationState = &rasterizer;
+			pipelineInfo.pMultisampleState = &multisampling;
+			pipelineInfo.pDepthStencilState = &depthStencil;
+			pipelineInfo.pColorBlendState = &colorBlending;
+			pipelineInfo.pDynamicState = &dynamicState;
+			pipelineInfo.layout = pipelineLayout;
+			pipelineInfo.renderPass = renderPass;
+			pipelineInfo.subpass = 0;
+			pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
+
+			VkResult result = vkCreateGraphicsPipelines(vkDevice, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &pipeline);
+
+			// Clean up shader modules
+			vkDestroyShaderModule(vkDevice, vertShaderModule, nullptr);
+			vkDestroyShaderModule(vkDevice, fragShaderModule, nullptr);
+
+			if (result != VK_SUCCESS) {
+				SPRaise("Failed to create shadow map graphics pipeline");
+			}
+
+			SPLog("Shadow map pipeline created successfully");
 		}
 
 		void VulkanShadowMapRenderer::DestroyResources() {
