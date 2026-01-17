@@ -18,32 +18,21 @@
 
  */
 
-#pragma once
+#version 450
 
-#include "VulkanPostProcessFilter.h"
+layout(location = 0) in vec2 positionAttribute;
 
-namespace spades {
-	namespace draw {
-		class VulkanBuffer;
+layout(location = 0) out vec2 texCoord;
 
-		class VulkanFXAAFilter : public VulkanPostProcessFilter {
-		private:
-			Handle<VulkanBuffer> uniformBuffer;
-			Handle<VulkanBuffer> quadVertexBuffer;
-			Handle<VulkanBuffer> quadIndexBuffer;
-			VkDescriptorPool descriptorPool;
-			VkFramebuffer framebuffer;
+layout(binding = 1) uniform FXAAUniforms {
+	vec2 inverseVP;
+};
 
-			void CreatePipeline() override;
-			void CreateRenderPass() override;
-			void CreateQuadBuffers();
-			void CreateDescriptorPool();
+void main() {
+	vec2 pos = positionAttribute;
+	vec2 scrPos = pos * 2.0 - 1.0;
 
-		public:
-			VulkanFXAAFilter(VulkanRenderer&);
-			~VulkanFXAAFilter();
+	gl_Position = vec4(scrPos, 0.5, 1.0);
 
-			void Filter(VkCommandBuffer commandBuffer, VulkanImage* input, VulkanImage* output) override;
-		};
-	}
+	texCoord = pos / inverseVP;
 }
