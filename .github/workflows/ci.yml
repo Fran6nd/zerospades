@@ -25,40 +25,106 @@ jobs:
         if: steps.vulkan-cache.outputs.cache-hit != 'true'
         run: |
           $ProgressPreference = 'SilentlyContinue'
+          
+          Write-Host "Attempting to download Vulkan SDK from LunarG..."
+          
+          # Try to download from LunarG SDK with extended timeout
           $MaxRetries = 3
           $RetryCount = 0
           $Downloaded = $false
           
           while ($RetryCount -lt $MaxRetries -and -not $Downloaded) {
             try {
-              Write-Host "Downloading Vulkan SDK (Attempt $($RetryCount + 1)/$MaxRetries)..."
-              Invoke-WebRequest -Uri "https://sdk.lunarg.com/sdk/download/1.3.296.0/windows/VulkanSDK-1.3.296.0-Installer.exe" `
-                -OutFile VulkanSDK.exe -TimeoutSec 300
+              $RetryCount++
+              Write-Host "Download attempt $RetryCount of $MaxRetries..."
+              Write-Host "Downloading from: https://sdk.lunarg.com/sdk/download/1.3.296.0/windows/VulkanSDK-1.3.296.0-Installer.exe"
+              
+              # Use TLS 1.2 explicitly to avoid any protocol issues
+              [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+              
+              Invoke-WebRequest `
+                -Uri "https://sdk.lunarg.com/sdk/download/1.3.296.0/windows/VulkanSDK-1.3.296.0-Installer.exe" `
+                -OutFile VulkanSDK.exe `
+                -TimeoutSec 600 `
+                -ErrorAction Stop
+              
               $Downloaded = $true
               Write-Host "Download completed successfully"
+              $fileSize = (Get-Item VulkanSDK.exe).Length / 1MB
+              Write-Host "Downloaded file size: $fileSize MB"
             } catch {
-              $RetryCount++
+              Write-Host "Download attempt $RetryCount failed: $($_.Exception.Message)"
               if ($RetryCount -lt $MaxRetries) {
-                Write-Host "Download failed, retrying in 10 seconds..."
-                Start-Sleep -Seconds 10
-              } else {
-                throw "Failed to download Vulkan SDK after $MaxRetries attempts"
+                Write-Host "Waiting 15 seconds before retry..."
+                Start-Sleep -Seconds 15
               }
             }
           }
           
+          if (-not $Downloaded) {
+            Write-Host "Failed to download from LunarG after $MaxRetries attempts."
+            Write-Host "Attempting fallback: Installing from GitHub releases..."
+            
+            try {
+              # Fallback to GitHub mirror or pre-built binaries
+              Invoke-WebRequest `
+                -Uri "https://github.com/KhronosGroup/Vulkan-SDK/releases/download/v1.3.296/VulkanSDK-1.3.296.0-Installer.exe" `
+                -OutFile VulkanSDK.exe `
+                -TimeoutSec 600 `
+                -ErrorAction Stop
+              Write-Host "Fallback download succeeded"
+              $Downloaded = $true
+            } catch {
+              throw "Failed to download Vulkan SDK from both LunarG and GitHub. Error: $($_.Exception.Message)"
+            }
+          }
+          
+          if (-not (Test-Path VulkanSDK.exe)) {
+            throw "VulkanSDK.exe not found after download attempts"
+          }
+          
           Write-Host "Installing Vulkan SDK..."
-          Write-Host "Installation timestamp: $(Get-Date)"
-          Start-Process -FilePath .\VulkanSDK.exe -ArgumentList "/S /D=C:\VulkanSDK" -NoNewWindow -Wait
-          Write-Host "Installation completed at: $(Get-Date)"
+          Write-Host "Installation started at: $(Get-Date)"
+          
+          # Run installer with progress monitoring
+          $process = Start-Process -FilePath .\VulkanSDK.exe `
+            -ArgumentList "/S /D=C:\VulkanSDK" `
+            -NoNewWindow `
+            -PassThru
+          
+          # Wait with timeout of 30 minutes
+          $timeout = New-TimeSpan -Minutes 30
+          $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
+          
+          while (-not $process.HasExited -and $stopwatch.Elapsed -lt $timeout) {
+            Start-Sleep -Seconds 5
+            Write-Host "Still installing... Elapsed time: $([int]$stopwatch.Elapsed.TotalSeconds)s"
+          }
+          
+          if (-not $process.HasExited) {
+            Write-Host "Installation timeout! Terminating process..."
+            $process.Kill()
+            throw "Vulkan SDK installation timed out after 30 minutes"
+          }
+          
+          $exitCode = $process.ExitCode
+          Write-Host "Installation completed at: $(Get-Date) with exit code: $exitCode"
+          
+          if ($exitCode -ne 0) {
+            throw "Vulkan SDK installation failed with exit code: $exitCode"
+          }
+          
           Remove-Item .\VulkanSDK.exe -ErrorAction SilentlyContinue
           
           if (Test-Path "C:\VulkanSDK") {
-            Write-Host "Vulkan SDK directory contents:"
+            Write-Host "Vulkan SDK installed successfully"
+            Write-Host "Directory contents:"
             Get-ChildItem -Path "C:\VulkanSDK" | Select-Object Name
+          } else {
+            throw "Vulkan SDK installation directory not found at C:\VulkanSDK"
           }
         shell: pwsh
-        timeout-minutes: 45
+        timeout-minutes: 50
 
       - name: Setup Vulkan environment
         run: |
@@ -128,58 +194,106 @@ jobs:
         if: steps.vulkan-cache.outputs.cache-hit != 'true'
         run: |
           $ProgressPreference = 'SilentlyContinue'
+          
+          Write-Host "Attempting to download Vulkan SDK from LunarG..."
+          
+          # Try to download from LunarG SDK with extended timeout
           $MaxRetries = 3
           $RetryCount = 0
           $Downloaded = $false
           
           while ($RetryCount -lt $MaxRetries -and -not $Downloaded) {
             try {
-              Write-Host "Downloading Vulkan SDK (Attempt $($RetryCount + 1)/$MaxRetries)..."
-              # Use zip version for faster installation (avoids slow installer)
-              Invoke-WebRequest -Uri "https://sdk.lunarg.com/sdk/download/1.3.296.0/windows/VulkanSDK-1.3.296.0.zip" `
-                -OutFile VulkanSDK.zip -TimeoutSec 600
+              $RetryCount++
+              Write-Host "Download attempt $RetryCount of $MaxRetries..."
+              Write-Host "Downloading from: https://sdk.lunarg.com/sdk/download/1.3.296.0/windows/VulkanSDK-1.3.296.0-Installer.exe"
+              
+              # Use TLS 1.2 explicitly to avoid any protocol issues
+              [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+              
+              Invoke-WebRequest `
+                -Uri "https://sdk.lunarg.com/sdk/download/1.3.296.0/windows/VulkanSDK-1.3.296.0-Installer.exe" `
+                -OutFile VulkanSDK.exe `
+                -TimeoutSec 600 `
+                -ErrorAction Stop
+              
               $Downloaded = $true
               Write-Host "Download completed successfully"
+              $fileSize = (Get-Item VulkanSDK.exe).Length / 1MB
+              Write-Host "Downloaded file size: $fileSize MB"
             } catch {
-              $RetryCount++
+              Write-Host "Download attempt $RetryCount failed: $($_.Exception.Message)"
               if ($RetryCount -lt $MaxRetries) {
-                Write-Host "Download failed, retrying in 10 seconds..."
-                Start-Sleep -Seconds 10
-              } else {
-                throw "Failed to download Vulkan SDK after $MaxRetries attempts"
+                Write-Host "Waiting 15 seconds before retry..."
+                Start-Sleep -Seconds 15
               }
             }
           }
           
-          Write-Host "Extracting Vulkan SDK (this may take 5-10 minutes)..."
-          Write-Host "Extraction started at: $(Get-Date)"
-          
-          # Extract zip to temp location first
-          Expand-Archive -Path VulkanSDK.zip -DestinationPath C:\VulkanSDK-temp -Force
-          
-          # Find the version directory and move it
-          $versionDirs = Get-ChildItem -Path "C:\VulkanSDK-temp" -Directory | Where-Object { $_.Name -match "^\d+\.\d+\.\d+" }
-          if ($versionDirs) {
-            $versionDir = $versionDirs[0]
-            Write-Host "Found Vulkan SDK version: $($versionDir.Name)"
-            New-Item -ItemType Directory -Path "C:\VulkanSDK" -Force | Out-Null
-            Move-Item -Path $versionDir.FullName\* -Destination "C:\VulkanSDK\$($versionDir.Name)" -Force
-          } else {
-            # If no version subdirectory, move everything
-            New-Item -ItemType Directory -Path "C:\VulkanSDK" -Force | Out-Null
-            Move-Item -Path "C:\VulkanSDK-temp\*" -Destination "C:\VulkanSDK" -Force
+          if (-not $Downloaded) {
+            Write-Host "Failed to download from LunarG after $MaxRetries attempts."
+            Write-Host "Attempting fallback: Installing from GitHub releases..."
+            
+            try {
+              # Fallback to GitHub mirror or pre-built binaries
+              Invoke-WebRequest `
+                -Uri "https://github.com/KhronosGroup/Vulkan-SDK/releases/download/v1.3.296/VulkanSDK-1.3.296.0-Installer.exe" `
+                -OutFile VulkanSDK.exe `
+                -TimeoutSec 600 `
+                -ErrorAction Stop
+              Write-Host "Fallback download succeeded"
+              $Downloaded = $true
+            } catch {
+              throw "Failed to download Vulkan SDK from both LunarG and GitHub. Error: $($_.Exception.Message)"
+            }
           }
           
-          Write-Host "Extraction completed at: $(Get-Date)"
-          Remove-Item VulkanSDK.zip -ErrorAction SilentlyContinue
-          Remove-Item C:\VulkanSDK-temp -Recurse -ErrorAction SilentlyContinue
+          if (-not (Test-Path VulkanSDK.exe)) {
+            throw "VulkanSDK.exe not found after download attempts"
+          }
+          
+          Write-Host "Installing Vulkan SDK..."
+          Write-Host "Installation started at: $(Get-Date)"
+          
+          # Run installer with progress monitoring
+          $process = Start-Process -FilePath .\VulkanSDK.exe `
+            -ArgumentList "/S /D=C:\VulkanSDK" `
+            -NoNewWindow `
+            -PassThru
+          
+          # Wait with timeout of 30 minutes
+          $timeout = New-TimeSpan -Minutes 30
+          $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
+          
+          while (-not $process.HasExited -and $stopwatch.Elapsed -lt $timeout) {
+            Start-Sleep -Seconds 5
+            Write-Host "Still installing... Elapsed time: $([int]$stopwatch.Elapsed.TotalSeconds)s"
+          }
+          
+          if (-not $process.HasExited) {
+            Write-Host "Installation timeout! Terminating process..."
+            $process.Kill()
+            throw "Vulkan SDK installation timed out after 30 minutes"
+          }
+          
+          $exitCode = $process.ExitCode
+          Write-Host "Installation completed at: $(Get-Date) with exit code: $exitCode"
+          
+          if ($exitCode -ne 0) {
+            throw "Vulkan SDK installation failed with exit code: $exitCode"
+          }
+          
+          Remove-Item .\VulkanSDK.exe -ErrorAction SilentlyContinue
           
           if (Test-Path "C:\VulkanSDK") {
-            Write-Host "Vulkan SDK directory contents:"
+            Write-Host "Vulkan SDK installed successfully"
+            Write-Host "Directory contents:"
             Get-ChildItem -Path "C:\VulkanSDK" | Select-Object Name
+          } else {
+            throw "Vulkan SDK installation directory not found at C:\VulkanSDK"
           }
         shell: pwsh
-        timeout-minutes: 30
+        timeout-minutes: 50
 
       - name: Setup Vulkan environment
         run: |
