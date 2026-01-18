@@ -2,15 +2,6 @@
 
 All post-processing filters have placeholder implementations that don't actually work.
 
-### ~~12. Auto Exposure Filter~~ ✅
-**File:** `VulkanAutoExposureFilter.cpp`
-- [x] Create preprocess pipeline
-- [x] Create compute gain pipeline
-- [x] Implement auto exposure:
-  - [x] Downsample and compute average luminance
-  - [x] Calculate exposure adjustment
-  - [x] Apply exposure to output
-
 ---
 
 ### 13. Lens Flare Filter
