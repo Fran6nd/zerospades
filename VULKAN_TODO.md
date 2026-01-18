@@ -2,14 +2,14 @@
 
 All post-processing filters have placeholder implementations that don't actually work.
 
-### 12. Auto Exposure Filter
+### ~~12. Auto Exposure Filter~~ ✅
 **File:** `VulkanAutoExposureFilter.cpp`
-- [ ] Create preprocess pipeline ([VulkanAutoExposureFilter.cpp:103-105](Sources/Draw/VulkanAutoExposureFilter.cpp#L103-L105))
-- [ ] Create compute gain pipeline ([VulkanAutoExposureFilter.cpp:103-105](Sources/Draw/VulkanAutoExposureFilter.cpp#L103-L105))
-- [ ] Implement auto exposure ([VulkanAutoExposureFilter.cpp:139-142](Sources/Draw/VulkanAutoExposureFilter.cpp#L139-L142)):
-  - [ ] Downsample and compute average luminance
-  - [ ] Calculate exposure adjustment
-  - [ ] Apply exposure to output
+- [x] Create preprocess pipeline
+- [x] Create compute gain pipeline
+- [x] Implement auto exposure:
+  - [x] Downsample and compute average luminance
+  - [x] Calculate exposure adjustment
+  - [x] Apply exposure to output
 
 ---
 
