@@ -86,65 +86,97 @@ jobs:
           Write-Host "Installing Vulkan SDK..."
           Write-Host "Installation started at: $(Get-Date)"
           
-          # Create installation directory
+          # Clean up any previous attempts
+          Remove-Item -Path "C:\VulkanSDK" -Recurse -Force -ErrorAction SilentlyContinue
           New-Item -ItemType Directory -Path "C:\VulkanSDK" -Force | Out-Null
           
-          # Run installer with separate arguments (not combined in single string)
-          Write-Host "Attempting installation (this may take 20-40 minutes)..."
-          $process = Start-Process -FilePath .\VulkanSDK.exe `
-            -ArgumentList "/S", "/D=C:\VulkanSDK" `
-            -NoNewWindow `
-            -PassThru
+          # Try to use 7-Zip extraction first (more reliable than installer)
+          Write-Host "Checking for 7-Zip for direct extraction..."
+          $7zPath = "C:\Program Files\7-Zip\7z.exe"
+          $extractedSuccessfully = $false
           
-          # Monitor process with 60-minute timeout
-          $timeout = New-TimeSpan -Minutes 60
-          $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
-          
-          while (-not $process.HasExited -and $stopwatch.Elapsed -lt $timeout) {
-            Start-Sleep -Seconds 10
-            $elapsed = [int]$stopwatch.Elapsed.TotalSeconds
-            Write-Host "Still installing... Elapsed: ${elapsed}s"
-          }
-          
-          if (-not $process.HasExited) {
-            Write-Host "Installation appears stuck after 60 minutes. Terminating..."
-            $process.Kill()
-            Write-Host "Process terminated. Checking if files were extracted..."
-          } else {
-            $process.WaitForExit()
-          }
-          
-          $exitCode = $process.ExitCode
-          Write-Host "Installation completed at: $(Get-Date) with exit code: $exitCode"
-          
-          # Don't fail on non-zero exit code, try to continue if files exist
-          if ($exitCode -ne 0) {
-            Write-Host "WARNING: Installer exited with code $exitCode, but files may still be extracted"
-            Write-Host "Attempting fallback extraction with 7-Zip if available..."
-            
-            $7zPath = "C:\Program Files\7-Zip\7z.exe"
-            if (Test-Path $7zPath) {
-              & $7zPath x VulkanSDK.exe -o"C:\VulkanSDK-extracted" -y 2>&1 | Out-Null
-              if (Test-Path "C:\VulkanSDK-extracted") {
-                Get-ChildItem -Path "C:\VulkanSDK-extracted" -Recurse -Force | Move-Item -Destination "C:\VulkanSDK" -Force -ErrorAction SilentlyContinue
-                Remove-Item "C:\VulkanSDK-extracted" -Recurse -Force -ErrorAction SilentlyContinue
-                Write-Host "Extracted files with 7-Zip"
+          if (Test-Path $7zPath) {
+            Write-Host "7-Zip found, attempting direct extraction instead of installer..."
+            try {
+              Write-Host "Extracting to temporary directory..."
+              & $7zPath x VulkanSDK.exe -o"C:\VulkanSDK-temp" -y 2>&1 | Select-Object -First 10 | ForEach-Object { Write-Host "  $_" }
+              
+              if (Test-Path "C:\VulkanSDK-temp") {
+                Write-Host "Extraction completed, locating SDK files..."
+                # Find the actual SDK directory (should contain Include, Lib, Bin)
+                $sdkDirs = Get-ChildItem -Path "C:\VulkanSDK-temp" -Directory -Recurse -ErrorAction SilentlyContinue | Where-Object { 
+                  (Test-Path "$($_.FullName)\Include\vulkan" -ErrorAction SilentlyContinue) -or 
+                  (Test-Path "$($_.FullName)\Lib" -ErrorAction SilentlyContinue) -or
+                  (Test-Path "$($_.FullName)\Bin" -ErrorAction SilentlyContinue)
+                }
+                
+                if ($sdkDirs) {
+                  $sdkRoot = $sdkDirs[0].FullName
+                  Write-Host "Found SDK root at: $sdkRoot"
+                  $items = Get-ChildItem -Path $sdkRoot -ErrorAction SilentlyContinue
+                  Write-Host "Moving $($items.Count) items to C:\VulkanSDK..."
+                  Get-ChildItem -Path $sdkRoot | ForEach-Object { 
+                    Move-Item -Path $_.FullName -Destination "C:\VulkanSDK\" -Force -ErrorAction SilentlyContinue
+                  }
+                  $extractedSuccessfully = $true
+                  Write-Host "SDK files moved successfully"
+                } else {
+                  Write-Host "WARNING: Could not find SDK structure (Include/Lib/Bin) in extracted files"
+                  # Copy everything anyway as fallback
+                  Get-ChildItem -Path "C:\VulkanSDK-temp" -Recurse | Copy-Item -Destination "C:\VulkanSDK\" -Force -ErrorAction SilentlyContinue
+                }
               }
+              
+              Remove-Item "C:\VulkanSDK-temp" -Recurse -Force -ErrorAction SilentlyContinue
+            } catch {
+              Write-Host "7-Zip extraction failed: $($_.Exception.Message)"
             }
+          }
+          
+          # If 7-Zip didn't work, try installer
+          if (-not $extractedSuccessfully) {
+            Write-Host "Attempting installation with installer..."
+            $process = Start-Process -FilePath .\VulkanSDK.exe `
+              -ArgumentList "/S", "/D=C:\VulkanSDK" `
+              -NoNewWindow `
+              -PassThru
+            
+            # Monitor process with 60-minute timeout
+            $timeout = New-TimeSpan -Minutes 60
+            $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
+            
+            while (-not $process.HasExited -and $stopwatch.Elapsed -lt $timeout) {
+              Start-Sleep -Seconds 10
+              $elapsed = [int]$stopwatch.Elapsed.TotalSeconds
+              Write-Host "Still installing... Elapsed: ${elapsed}s"
+            }
+            
+            if (-not $process.HasExited) {
+              Write-Host "Installation appears stuck after 60 minutes. Terminating..."
+              $process.Kill()
+              Write-Host "Process terminated. Checking if files were extracted..."
+            } else {
+              $process.WaitForExit()
+            }
+            
+            $exitCode = $process.ExitCode
+            Write-Host "Installation completed with exit code: $exitCode"
           }
           
           Remove-Item .\VulkanSDK.exe -ErrorAction SilentlyContinue
           
-          if (Test-Path "C:\VulkanSDK") {
+          # Verify installation
+          Write-Host "Verifying Vulkan SDK installation..."
+          if (Test-Path "C:\VulkanSDK\Include\vulkan\vulkan.h") {
+            Write-Host "SUCCESS: vulkan.h found at C:\VulkanSDK\Include\vulkan\vulkan.h"
             $items = Get-ChildItem -Path "C:\VulkanSDK" -ErrorAction SilentlyContinue
-            if ($items.Count -gt 0) {
-              Write-Host "Vulkan SDK files found ($(($items | Measure-Object).Count) items)"
-              Get-ChildItem -Path "C:\VulkanSDK" | Select-Object -First 5 | ForEach-Object { Write-Host "  - $($_.Name)" }
-            } else {
-              Write-Host "WARNING: C:\VulkanSDK exists but is empty"
-            }
+            Write-Host "Vulkan SDK root contains: $(($items | Measure-Object).Count) items"
+            Get-ChildItem -Path "C:\VulkanSDK" | Select-Object -First 10 | ForEach-Object { Write-Host "  - $($_.Name)" }
           } else {
-            Write-Host "WARNING: C:\VulkanSDK directory not found after installation"
+            Write-Host "ERROR: vulkan.h not found at expected location!"
+            Write-Host "C:\VulkanSDK contents (first 30 items):"
+            Get-ChildItem -Path "C:\VulkanSDK" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 30 | ForEach-Object { Write-Host "  $_" }
+            exit 1
           }
         shell: pwsh
         timeout-minutes: 90
@@ -303,65 +335,97 @@ jobs:
           Write-Host "Installing Vulkan SDK..."
           Write-Host "Installation started at: $(Get-Date)"
           
-          # Create installation directory
+          # Clean up any previous attempts
+          Remove-Item -Path "C:\VulkanSDK" -Recurse -Force -ErrorAction SilentlyContinue
           New-Item -ItemType Directory -Path "C:\VulkanSDK" -Force | Out-Null
           
-          # Run installer with separate arguments (not combined in single string)
-          Write-Host "Attempting installation (this may take 20-40 minutes)..."
-          $process = Start-Process -FilePath .\VulkanSDK.exe `
-            -ArgumentList "/S", "/D=C:\VulkanSDK" `
-            -NoNewWindow `
-            -PassThru
+          # Try to use 7-Zip extraction first (more reliable than installer)
+          Write-Host "Checking for 7-Zip for direct extraction..."
+          $7zPath = "C:\Program Files\7-Zip\7z.exe"
+          $extractedSuccessfully = $false
           
-          # Monitor process with 60-minute timeout
-          $timeout = New-TimeSpan -Minutes 60
-          $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
-          
-          while (-not $process.HasExited -and $stopwatch.Elapsed -lt $timeout) {
-            Start-Sleep -Seconds 10
-            $elapsed = [int]$stopwatch.Elapsed.TotalSeconds
-            Write-Host "Still installing... Elapsed: ${elapsed}s"
-          }
-          
-          if (-not $process.HasExited) {
-            Write-Host "Installation appears stuck after 60 minutes. Terminating..."
-            $process.Kill()
-            Write-Host "Process terminated. Checking if files were extracted..."
-          } else {
-            $process.WaitForExit()
-          }
-          
-          $exitCode = $process.ExitCode
-          Write-Host "Installation completed at: $(Get-Date) with exit code: $exitCode"
-          
-          # Don't fail on non-zero exit code, try to continue if files exist
-          if ($exitCode -ne 0) {
-            Write-Host "WARNING: Installer exited with code $exitCode, but files may still be extracted"
-            Write-Host "Attempting fallback extraction with 7-Zip if available..."
-            
-            $7zPath = "C:\Program Files\7-Zip\7z.exe"
-            if (Test-Path $7zPath) {
-              & $7zPath x VulkanSDK.exe -o"C:\VulkanSDK-extracted" -y 2>&1 | Out-Null
-              if (Test-Path "C:\VulkanSDK-extracted") {
-                Get-ChildItem -Path "C:\VulkanSDK-extracted" -Recurse -Force | Move-Item -Destination "C:\VulkanSDK" -Force -ErrorAction SilentlyContinue
-                Remove-Item "C:\VulkanSDK-extracted" -Recurse -Force -ErrorAction SilentlyContinue
-                Write-Host "Extracted files with 7-Zip"
+          if (Test-Path $7zPath) {
+            Write-Host "7-Zip found, attempting direct extraction instead of installer..."
+            try {
+              Write-Host "Extracting to temporary directory..."
+              & $7zPath x VulkanSDK.exe -o"C:\VulkanSDK-temp" -y 2>&1 | Select-Object -First 10 | ForEach-Object { Write-Host "  $_" }
+              
+              if (Test-Path "C:\VulkanSDK-temp") {
+                Write-Host "Extraction completed, locating SDK files..."
+                # Find the actual SDK directory (should contain Include, Lib, Bin)
+                $sdkDirs = Get-ChildItem -Path "C:\VulkanSDK-temp" -Directory -Recurse -ErrorAction SilentlyContinue | Where-Object { 
+                  (Test-Path "$($_.FullName)\Include\vulkan" -ErrorAction SilentlyContinue) -or 
+                  (Test-Path "$($_.FullName)\Lib" -ErrorAction SilentlyContinue) -or
+                  (Test-Path "$($_.FullName)\Bin" -ErrorAction SilentlyContinue)
+                }
+                
+                if ($sdkDirs) {
+                  $sdkRoot = $sdkDirs[0].FullName
+                  Write-Host "Found SDK root at: $sdkRoot"
+                  $items = Get-ChildItem -Path $sdkRoot -ErrorAction SilentlyContinue
+                  Write-Host "Moving $($items.Count) items to C:\VulkanSDK..."
+                  Get-ChildItem -Path $sdkRoot | ForEach-Object { 
+                    Move-Item -Path $_.FullName -Destination "C:\VulkanSDK\" -Force -ErrorAction SilentlyContinue
+                  }
+                  $extractedSuccessfully = $true
+                  Write-Host "SDK files moved successfully"
+                } else {
+                  Write-Host "WARNING: Could not find SDK structure (Include/Lib/Bin) in extracted files"
+                  # Copy everything anyway as fallback
+                  Get-ChildItem -Path "C:\VulkanSDK-temp" -Recurse | Copy-Item -Destination "C:\VulkanSDK\" -Force -ErrorAction SilentlyContinue
+                }
               }
+              
+              Remove-Item "C:\VulkanSDK-temp" -Recurse -Force -ErrorAction SilentlyContinue
+            } catch {
+              Write-Host "7-Zip extraction failed: $($_.Exception.Message)"
             }
+          }
+          
+          # If 7-Zip didn't work, try installer
+          if (-not $extractedSuccessfully) {
+            Write-Host "Attempting installation with installer..."
+            $process = Start-Process -FilePath .\VulkanSDK.exe `
+              -ArgumentList "/S", "/D=C:\VulkanSDK" `
+              -NoNewWindow `
+              -PassThru
+            
+            # Monitor process with 60-minute timeout
+            $timeout = New-TimeSpan -Minutes 60
+            $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
+            
+            while (-not $process.HasExited -and $stopwatch.Elapsed -lt $timeout) {
+              Start-Sleep -Seconds 10
+              $elapsed = [int]$stopwatch.Elapsed.TotalSeconds
+              Write-Host "Still installing... Elapsed: ${elapsed}s"
+            }
+            
+            if (-not $process.HasExited) {
+              Write-Host "Installation appears stuck after 60 minutes. Terminating..."
+              $process.Kill()
+              Write-Host "Process terminated. Checking if files were extracted..."
+            } else {
+              $process.WaitForExit()
+            }
+            
+            $exitCode = $process.ExitCode
+            Write-Host "Installation completed with exit code: $exitCode"
           }
           
           Remove-Item .\VulkanSDK.exe -ErrorAction SilentlyContinue
           
-          if (Test-Path "C:\VulkanSDK") {
+          # Verify installation
+          Write-Host "Verifying Vulkan SDK installation..."
+          if (Test-Path "C:\VulkanSDK\Include\vulkan\vulkan.h") {
+            Write-Host "SUCCESS: vulkan.h found at C:\VulkanSDK\Include\vulkan\vulkan.h"
             $items = Get-ChildItem -Path "C:\VulkanSDK" -ErrorAction SilentlyContinue
-            if ($items.Count -gt 0) {
-              Write-Host "Vulkan SDK files found ($(($items | Measure-Object).Count) items)"
-              Get-ChildItem -Path "C:\VulkanSDK" | Select-Object -First 5 | ForEach-Object { Write-Host "  - $($_.Name)" }
-            } else {
-              Write-Host "WARNING: C:\VulkanSDK exists but is empty"
-            }
+            Write-Host "Vulkan SDK root contains: $(($items | Measure-Object).Count) items"
+            Get-ChildItem -Path "C:\VulkanSDK" | Select-Object -First 10 | ForEach-Object { Write-Host "  - $($_.Name)" }
           } else {
-            Write-Host "WARNING: C:\VulkanSDK directory not found after installation"
+            Write-Host "ERROR: vulkan.h not found at expected location!"
+            Write-Host "C:\VulkanSDK contents (first 30 items):"
+            Get-ChildItem -Path "C:\VulkanSDK" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 30 | ForEach-Object { Write-Host "  $_" }
+            exit 1
           }
         shell: pwsh
         timeout-minutes: 90
