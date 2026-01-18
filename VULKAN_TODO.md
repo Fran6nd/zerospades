@@ -62,14 +62,14 @@ All post-processing filters have placeholder implementations that don't actually
 
 ---
 
-### 10. SSAO (Screen-Space Ambient Occlusion) Filter
+### 10. SSAO (Screen-Space Ambient Occlusion) Filter ✅
 **File:** `VulkanSSAOFilter.cpp`
-- [ ] Create SSAO pipeline ([VulkanSSAOFilter.cpp:102](Sources/Draw/VulkanSSAOFilter.cpp#L102))
-- [ ] Create bilateral filter pipeline ([VulkanSSAOFilter.cpp:102](Sources/Draw/VulkanSSAOFilter.cpp#L102))
-- [ ] Implement SSAO filtering ([VulkanSSAOFilter.cpp:152](Sources/Draw/VulkanSSAOFilter.cpp#L152)):
-  - [ ] Generate SSAO from depth buffer and normals
-  - [ ] Apply bilateral blur
-  - [ ] Composite with scene
+- [x] Create SSAO pipeline
+- [x] Create bilateral filter pipeline
+- [x] Implement SSAO filtering:
+  - [x] Generate SSAO from depth buffer and normals
+  - [x] Apply bilateral blur
+  - [x] Composite with scene
 
 ---
 
