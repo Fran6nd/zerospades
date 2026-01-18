@@ -25,6 +25,9 @@
 
 namespace spades {
 	namespace draw {
+		class VulkanBuffer;
+		class VulkanProgram;
+
 		class VulkanLensFlareFilter : public VulkanPostProcessFilter {
 		private:
 			VkPipeline blurPipeline;
@@ -37,12 +40,35 @@ namespace spades {
 			VkDescriptorSetLayout scannerDescLayout;
 			VkDescriptorSetLayout drawDescLayout;
 
+			VkRenderPass scannerRenderPass;
+			VkRenderPass drawRenderPass;
+
+			VkDescriptorPool descriptorPool;
+
+			Handle<VulkanBuffer> quadVertexBuffer;
+			Handle<VulkanBuffer> quadIndexBuffer;
+			Handle<VulkanBuffer> scannerUniformBuffer;
+			Handle<VulkanBuffer> drawUniformBuffer;
+
+			Handle<VulkanProgram> blurProgram;
+			Handle<VulkanProgram> scannerProgram;
+			Handle<VulkanProgram> drawProgram;
+
 			Handle<VulkanImage> flare1, flare2, flare3, flare4, white;
 			Handle<VulkanImage> mask1, mask2, mask3;
 
+			Handle<VulkanImage> visibilityBuffer;
+			VkFramebuffer visibilityFramebuffer;
+
 			void CreatePipeline() override;
 			void CreateRenderPass() override;
+			void CreateQuadBuffers();
+			void CreateDescriptorPool();
+			void CreateVisibilityBuffer();
 			void LoadFlareTextures();
+			void DestroyVisibilityBuffer();
+
+			Handle<VulkanImage> Blur(VkCommandBuffer commandBuffer, VulkanImage* buffer, float spread);
 
 		public:
 			VulkanLensFlareFilter(VulkanRenderer&);
