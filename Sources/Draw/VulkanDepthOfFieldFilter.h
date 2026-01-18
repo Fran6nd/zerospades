@@ -24,28 +24,62 @@
 
 namespace spades {
 	namespace draw {
+		class VulkanBuffer;
+		class VulkanProgram;
+
 		class VulkanDepthOfFieldFilter : public VulkanPostProcessFilter {
 		private:
+			// CoC generation pipeline
+			Handle<VulkanProgram> cocGenProgram;
 			VkPipeline cocGenPipeline;
-			VkPipeline cocMixPipeline;
-			VkPipeline gaussPipeline;
-			VkPipeline blurPipeline;
-			VkPipeline finalMixPipeline;
-
 			VkPipelineLayout cocGenLayout;
-			VkPipelineLayout cocMixLayout;
-			VkPipelineLayout gaussLayout;
-			VkPipelineLayout blurLayout;
-			VkPipelineLayout finalMixLayout;
-
 			VkDescriptorSetLayout cocGenDescLayout;
-			VkDescriptorSetLayout cocMixDescLayout;
-			VkDescriptorSetLayout gaussDescLayout;
+
+			// Blur pipeline
+			Handle<VulkanProgram> blurProgram;
+			VkPipeline blurPipeline;
+			VkPipelineLayout blurLayout;
 			VkDescriptorSetLayout blurDescLayout;
+
+			// Gauss blur pipeline (reuse from ColorCorrection)
+			Handle<VulkanProgram> gaussProgram;
+			VkPipeline gaussPipeline;
+			VkPipelineLayout gaussLayout;
+			VkDescriptorSetLayout gaussDescLayout;
+
+			// Final mix pipeline
+			Handle<VulkanProgram> finalMixProgram;
+			VkPipeline finalMixPipeline;
+			VkPipelineLayout finalMixLayout;
 			VkDescriptorSetLayout finalMixDescLayout;
+
+			// Render passes
+			VkRenderPass cocRenderPass;
+			VkRenderPass blurRenderPass;
+
+			// Descriptor pool
+			VkDescriptorPool descriptorPool;
+
+			// Buffers
+			Handle<VulkanBuffer> quadVertexBuffer;
+			Handle<VulkanBuffer> quadIndexBuffer;
+			Handle<VulkanBuffer> cocGenUniformBuffer;
+			Handle<VulkanBuffer> blurUniformBuffer;
+			Handle<VulkanBuffer> gaussUniformBuffer;
+			Handle<VulkanBuffer> finalMixUniformBuffer;
 
 			void CreatePipeline() override;
 			void CreateRenderPass() override;
+			void CreateQuadBuffers();
+			void CreateDescriptorPool();
+			void CreateCoCRenderPass();
+			void CreateBlurRenderPass();
+
+			Handle<VulkanImage> GenerateCoC(VkCommandBuffer commandBuffer, int width, int height,
+				float blurDepthRange, float vignetteBlur, float globalBlur, float nearBlur, float farBlur);
+			Handle<VulkanImage> BlurWithCoC(VkCommandBuffer commandBuffer, VulkanImage* input, VulkanImage* coc,
+				float offsetX, float offsetY, int width, int height);
+			Handle<VulkanImage> GaussBlur(VkCommandBuffer commandBuffer, VulkanImage* input, bool horizontal, float spread);
 
 		public:
 			VulkanDepthOfFieldFilter(VulkanRenderer&);
