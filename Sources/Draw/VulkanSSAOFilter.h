@@ -31,25 +31,56 @@ namespace spades {
 	namespace draw {
 		class VulkanRenderer;
 		class VulkanImage;
+		class VulkanBuffer;
+		class VulkanProgram;
 		class VulkanFramebufferManager;
 
 		class VulkanSSAOFilter {
 			VulkanRenderer& renderer;
 			Handle<gui::SDLVulkanDevice> device;
 
+			// SSAO generation pipeline
+			Handle<VulkanProgram> ssaoProgram;
 			VkPipeline ssaoPipeline;
-			VkPipeline bilateralPipeline;
-			VkPipelineLayout pipelineLayout;
-			VkDescriptorSetLayout descriptorSetLayout;
-			VkRenderPass renderPass;
+			VkPipelineLayout ssaoPipelineLayout;
+			VkDescriptorSetLayout ssaoDescLayout;
 
+			// Bilateral filter pipeline
+			Handle<VulkanProgram> bilateralProgram;
+			VkPipeline bilateralPipeline;
+			VkPipelineLayout bilateralPipelineLayout;
+			VkDescriptorSetLayout bilateralDescLayout;
+
+			// Render passes
+			VkRenderPass ssaoRenderPass;
+			VkRenderPass bilateralRenderPass;
+
+			// Descriptor pool
+			VkDescriptorPool descriptorPool;
+
+			// Buffers
+			Handle<VulkanBuffer> quadVertexBuffer;
+			Handle<VulkanBuffer> quadIndexBuffer;
+			Handle<VulkanBuffer> ssaoUniformBuffer;
+			Handle<VulkanBuffer> bilateralUniformBuffer;
+
+			// Dither pattern texture
 			Handle<VulkanImage> ditherPattern;
+
+			// SSAO output image
 			Handle<VulkanImage> ssaoImage;
 			VkFramebuffer ssaoFramebuffer;
+			int ssaoWidth, ssaoHeight;
 
-			void CreatePipelines();
+			void CreateQuadBuffers();
+			void CreateDescriptorPool();
 			void CreateRenderPass();
+			void CreatePipelines();
+			void CreateDitherPattern();
 			void DestroyResources();
+
+			Handle<VulkanImage> GenerateRawSSAOImage(VkCommandBuffer commandBuffer, int width, int height);
+			Handle<VulkanImage> ApplyBilateralFilter(VkCommandBuffer commandBuffer, VulkanImage* input, bool direction, int width, int height);
 
 		public:
 			VulkanSSAOFilter(VulkanRenderer&);
