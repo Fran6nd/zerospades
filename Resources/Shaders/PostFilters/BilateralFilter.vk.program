@@ -1,0 +1,2 @@
+Shaders/PostFilters/BilateralFilter.vk.vs
+Shaders/PostFilters/BilateralFilter.vk.fs

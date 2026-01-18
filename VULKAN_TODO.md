@@ -49,16 +49,16 @@ All post-processing filters have placeholder implementations that don't actually
 
 ---
 
-### 9. Bloom Filter
+### 9. Bloom Filter ✅
 **File:** `VulkanBloomFilter.cpp`
-- [ ] Create shader modules and pipelines ([VulkanBloomFilter.cpp:112](Sources/Draw/VulkanBloomFilter.cpp#L112))
-  - [ ] Downsample pipeline
-  - [ ] Composite pipeline
-  - [ ] Final composite pipeline
-- [ ] Implement bloom filtering ([VulkanBloomFilter.cpp:173](Sources/Draw/VulkanBloomFilter.cpp#L173)):
-  - [ ] Downsample bright areas
-  - [ ] Blur downsampled image
-  - [ ] Composite with original image
+- [x] Create shader modules and pipelines
+  - [x] Downsample pipeline
+  - [x] Composite pipeline
+  - [x] Final composite pipeline
+- [x] Implement bloom filtering:
+  - [x] Downsample bright areas
+  - [x] Blur downsampled image
+  - [x] Composite with original image
 
 ---
 
