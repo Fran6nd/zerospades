@@ -28,7 +28,8 @@ namespace spades {
 	namespace draw {
 
 		VulkanPipeline::VulkanPipeline(Handle<gui::SDLVulkanDevice> dev, VulkanProgram* program,
-		                               const VulkanPipelineConfig& config, VkRenderPass rp)
+		                               const VulkanPipelineConfig& config, VkRenderPass rp,
+		                               VkPipelineCache cache)
 		: device(std::move(dev)),
 		  pipeline(VK_NULL_HANDLE),
 		  pipelineLayout(VK_NULL_HANDLE),
@@ -149,7 +150,7 @@ namespace spades {
 			pipelineInfo.subpass = 0;
 			pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
 
-			VkResult result = vkCreateGraphicsPipelines(device->GetDevice(), VK_NULL_HANDLE, 1,
+			VkResult result = vkCreateGraphicsPipelines(device->GetDevice(), cache, 1,
 			                                            &pipelineInfo, nullptr, &pipeline);
 			if (result != VK_SUCCESS) {
 				SPRaise("Failed to create graphics pipeline (error code: %d)", result);

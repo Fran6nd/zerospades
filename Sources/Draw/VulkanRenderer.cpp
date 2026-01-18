@@ -34,6 +34,7 @@
 #include "VulkanOptimizedVoxelModel.h"
 #include "VulkanModelManager.h"
 #include "VulkanProgramManager.h"
+#include "VulkanPipelineCache.h"
 #include <Gui/SDLVulkanDevice.h>
 #include <Client/GameMap.h>
 #include <Core/Bitmap.h>
@@ -85,9 +86,10 @@ namespace spades {
 		renderHeight = device->ScreenHeight();
 
 
-		// Initialize program manager and model manager
+		// Initialize program manager, pipeline cache and model manager
 		try {
 			programManager = Handle<VulkanProgramManager>::New(device);
+			pipelineCache = Handle<VulkanPipelineCache>::New(device);
 			modelManager = Handle<VulkanModelManager>::New(*this);
 			InitializeVulkanResources();  // Create semaphores for synchronization
 
@@ -1121,6 +1123,10 @@ namespace spades {
 		return framebufferManager ? framebufferManager->GetRenderPass() : renderPass;
 	}
 
+	VkPipelineCache VulkanRenderer::GetPipelineCache() const {
+		return pipelineCache ? pipelineCache->GetCache() : VK_NULL_HANDLE;
+	}
+
 	void VulkanRenderer::QueueBufferForDeletion(Handle<VulkanBuffer> buffer) {
 			if (buffer) {
 				DeferredDeletion deletion;
@@ -1631,7 +1637,7 @@ namespace spades {
 			pipelineInfo.renderPass = framebufferManager->GetRenderPass(); // Use offscreen render pass for 3D rendering
 			pipelineInfo.subpass = 0;
 
-			result = vkCreateGraphicsPipelines(vkDevice, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &skyPipeline);
+			result = vkCreateGraphicsPipelines(vkDevice, GetPipelineCache(), 1, &pipelineInfo, nullptr, &skyPipeline);
 
 			vkDestroyShaderModule(vkDevice, vertShaderModule, nullptr);
 			vkDestroyShaderModule(vkDevice, fragShaderModule, nullptr);
