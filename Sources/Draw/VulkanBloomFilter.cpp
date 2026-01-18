@@ -47,10 +47,10 @@ namespace spades {
 		VulkanBloomFilter::VulkanBloomFilter(VulkanRenderer& r)
 			: VulkanPostProcessFilter(r),
 			  downsamplePipeline(VK_NULL_HANDLE),
-			  compositePipeline(VK_NULL_HANDLE),
-			  finalCompositePipeline(VK_NULL_HANDLE),
 			  downsampleLayout(VK_NULL_HANDLE),
+			  compositePipeline(VK_NULL_HANDLE),
 			  compositeLayout(VK_NULL_HANDLE),
+			  finalCompositePipeline(VK_NULL_HANDLE),
 			  finalCompositeLayout(VK_NULL_HANDLE),
 			  downsampleDescLayout(VK_NULL_HANDLE),
 			  compositeDescLayout(VK_NULL_HANDLE),
@@ -526,7 +526,7 @@ namespace spades {
 					prevW = inputWidth;
 					prevH = inputHeight;
 				} else {
-					prevLevel = levels[i - 1].image;
+					prevLevel = levels[i - 1].image.GetPointerOrNull();
 					prevW = levels[i - 1].width;
 					prevH = levels[i - 1].height;
 				}
