@@ -191,20 +191,10 @@ namespace spades {
 
 			VkDevice vkDevice = device->GetDevice();
 
-			// Create semaphores for frame synchronization
-			VkSemaphoreCreateInfo semaphoreInfo{};
-			semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-
-			VkResult result = vkCreateSemaphore(vkDevice, &semaphoreInfo, nullptr, &imageAvailableSemaphore);
-			if (result != VK_SUCCESS) {
-				SPRaise("Failed to create image available semaphore (error code: %d)", result);
-			}
-
-			result = vkCreateSemaphore(vkDevice, &semaphoreInfo, nullptr, &renderFinishedSemaphore);
-			if (result != VK_SUCCESS) {
-				vkDestroySemaphore(vkDevice, imageAvailableSemaphore, nullptr);
-				SPRaise("Failed to create render finished semaphore (error code: %d)", result);
-			}
+			// Semaphores are obtained from SDLVulkanDevice per-frame via AcquireNextImage
+			// Initialize to null - they will be set when acquiring swapchain images
+			imageAvailableSemaphore = VK_NULL_HANDLE;
+			renderFinishedSemaphore = VK_NULL_HANDLE;
 
 			// Create fences for frame synchronization (one per swapchain image)
 			uint32_t imageCount = static_cast<uint32_t>(device->GetSwapchainImageViews().size());
@@ -215,14 +205,12 @@ namespace spades {
 			fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT; // Start signaled so first frame doesn't wait
 
 			for (size_t i = 0; i < imageCount; i++) {
-				result = vkCreateFence(vkDevice, &fenceInfo, nullptr, &inFlightFences[i]);
+				VkResult result = vkCreateFence(vkDevice, &fenceInfo, nullptr, &inFlightFences[i]);
 				if (result != VK_SUCCESS) {
 					// Clean up previously created fences
 					for (size_t j = 0; j < i; j++) {
 						vkDestroyFence(vkDevice, inFlightFences[j], nullptr);
 					}
-					vkDestroySemaphore(vkDevice, renderFinishedSemaphore, nullptr);
-					vkDestroySemaphore(vkDevice, imageAvailableSemaphore, nullptr);
 					SPRaise("Failed to create fence %zu (error code: %d)", i, result);
 				}
 			}
@@ -458,15 +446,9 @@ namespace spades {
 				renderPass = VK_NULL_HANDLE;
 			}
 
-			if (imageAvailableSemaphore != VK_NULL_HANDLE && vkDevice != VK_NULL_HANDLE) {
-				vkDestroySemaphore(vkDevice, imageAvailableSemaphore, nullptr);
-				imageAvailableSemaphore = VK_NULL_HANDLE;
-			}
-
-			if (renderFinishedSemaphore != VK_NULL_HANDLE && vkDevice != VK_NULL_HANDLE) {
-				vkDestroySemaphore(vkDevice, renderFinishedSemaphore, nullptr);
-				renderFinishedSemaphore = VK_NULL_HANDLE;
-			}
+			// Semaphores are owned by SDLVulkanDevice, not destroyed here
+			imageAvailableSemaphore = VK_NULL_HANDLE;
+			renderFinishedSemaphore = VK_NULL_HANDLE;
 
 			// Destroy fences
 			for (VkFence fence : inFlightFences) {
@@ -719,10 +701,10 @@ namespace spades {
 			BuildView();
 
 			// Acquire next swapchain image
-			currentImageIndex = device->AcquireNextImage(&imageAvailableSemaphore);
+			currentImageIndex = device->AcquireNextImage(&imageAvailableSemaphore, &renderFinishedSemaphore);
 			if (currentImageIndex == UINT32_MAX) {
 				// Swapchain was recreated, try again
-				currentImageIndex = device->AcquireNextImage(&imageAvailableSemaphore);
+				currentImageIndex = device->AcquireNextImage(&imageAvailableSemaphore, &renderFinishedSemaphore);
 			}
 
 			// Wait for the previous frame to finish (if any)
@@ -1019,8 +1001,9 @@ namespace spades {
 				// Before initialization, just present black frames
 				SPLog("[VulkanRenderer::Flip] Not initialized, presenting black frame");
 				try {
-					VkSemaphore dummySemaphore = VK_NULL_HANDLE;
-					uint32_t imageIndex = device->AcquireNextImage(&dummySemaphore);
+					VkSemaphore dummySemaphore1 = VK_NULL_HANDLE;
+					VkSemaphore dummySemaphore2 = VK_NULL_HANDLE;
+					uint32_t imageIndex = device->AcquireNextImage(&dummySemaphore1, &dummySemaphore2);
 					if (imageIndex != UINT32_MAX) {
 						device->PresentImage(imageIndex, nullptr, 0);
 					}
@@ -1041,7 +1024,7 @@ namespace spades {
 				// 2D-only rendering (like loading screen) - need to record and submit command buffer
 
 				// Acquire next swapchain image
-				currentImageIndex = device->AcquireNextImage(&imageAvailableSemaphore);
+				currentImageIndex = device->AcquireNextImage(&imageAvailableSemaphore, &renderFinishedSemaphore);
 				if (currentImageIndex == UINT32_MAX) {
 					SPLog("[VulkanRenderer::Flip] Failed to acquire swapchain image");
 					return;

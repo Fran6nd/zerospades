@@ -101,7 +101,7 @@ namespace spades {
 			uint32_t GetGraphicsQueueFamily() const { return graphicsQueueFamily; }
 
 			// Frame management
-			uint32_t AcquireNextImage(VkSemaphore* outImageAvailableSemaphore);
+			uint32_t AcquireNextImage(VkSemaphore* outImageAvailableSemaphore, VkSemaphore* outRenderFinishedSemaphore);
 			void PresentImage(uint32_t imageIndex, VkSemaphore* waitSemaphores, uint32_t waitSemaphoreCount);
 			void WaitForFences();
 

@@ -584,7 +584,7 @@ namespace spades {
 			}
 		}
 
-		uint32_t SDLVulkanDevice::AcquireNextImage(VkSemaphore* outImageAvailableSemaphore) {
+		uint32_t SDLVulkanDevice::AcquireNextImage(VkSemaphore* outImageAvailableSemaphore, VkSemaphore* outRenderFinishedSemaphore) {
 			vkWaitForFences(device, 1, &inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
 
 			uint32_t imageIndex;
@@ -605,6 +605,7 @@ namespace spades {
 			imagesInFlight[imageIndex] = inFlightFences[currentFrame];
 
 			*outImageAvailableSemaphore = imageAvailableSemaphores[currentFrame];
+			*outRenderFinishedSemaphore = renderFinishedSemaphores[currentFrame];
 			return imageIndex;
 		}
 
