@@ -243,16 +243,17 @@ namespace spades {
 				SPRaise("Failed to create pipeline layout for shadow map");
 			}
 
-			// Vertex input (position only for shadow mapping)
+			// Vertex input - must match VulkanMapChunk::Vertex format
+			// The map chunk vertex buffer has stride 20 bytes, with uint8 x,y,z at offset 0
 			VkVertexInputBindingDescription bindingDescription{};
 			bindingDescription.binding = 0;
-			bindingDescription.stride = 12; // 3 floats (x, y, z)
+			bindingDescription.stride = 20; // Same as VulkanMapChunk::Vertex
 			bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 
 			VkVertexInputAttributeDescription attributeDescription{};
 			attributeDescription.binding = 0;
 			attributeDescription.location = 0;
-			attributeDescription.format = VK_FORMAT_R32G32B32_SFLOAT;
+			attributeDescription.format = VK_FORMAT_R8G8B8_UINT; // uint8 x, y, z
 			attributeDescription.offset = 0;
 
 			VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
