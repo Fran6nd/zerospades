@@ -153,16 +153,35 @@ jobs:
         run: |
           $vulkanPath = Get-ChildItem -Path "C:\VulkanSDK" -Directory -ErrorAction SilentlyContinue | Sort-Object Name -Descending | Select-Object -First 1
           if ($vulkanPath) {
-            echo "VULKAN_SDK=$($vulkanPath.FullName)" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-            Write-Host "VULKAN_SDK set to $($vulkanPath.FullName)"
+            $vulkanRoot = $vulkanPath.FullName
+            Write-Host "Found Vulkan version directory: $vulkanRoot"
           } else {
             # Fallback: if no version subdirectory found, use C:\VulkanSDK directly
             if (Test-Path "C:\VulkanSDK") {
-              echo "VULKAN_SDK=C:\VulkanSDK" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-              Write-Host "VULKAN_SDK set to C:\VulkanSDK (no version subdirectory)"
+              $vulkanRoot = "C:\VulkanSDK"
+              Write-Host "Using C:\VulkanSDK directly (no version subdirectory)"
             } else {
-              Write-Host "WARNING: Vulkan SDK installation directory not found"
+              Write-Host "ERROR: Vulkan SDK installation directory not found"
+              exit 1
             }
+          }
+          
+          # Verify Vulkan files exist
+          if (-not (Test-Path "$vulkanRoot\Include\vulkan\vulkan.h")) {
+            Write-Host "ERROR: vulkan.h not found at $vulkanRoot\Include\vulkan\vulkan.h"
+            Get-ChildItem -Path "$vulkanRoot" -Recurse -Depth 3 | ForEach-Object { Write-Host "  $_" }
+            exit 1
+          }
+          
+          # Set environment variables for CMake
+          echo "VULKAN_SDK=$vulkanRoot" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          Write-Host "VULKAN_SDK=$vulkanRoot"
+          
+          # Also set PATH so CMake can find Vulkan libraries
+          $vulkanBin = "$vulkanRoot\Bin"
+          if (Test-Path $vulkanBin) {
+            echo "PATH=$vulkanBin;$env:PATH" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+            Write-Host "Added $vulkanBin to PATH"
           }
         shell: pwsh
 
@@ -186,7 +205,7 @@ jobs:
         run: |
           mkdir ${{ runner.workspace }}\openspades.mk
           cd ${{ runner.workspace }}\openspades.mk
-          cmake ${{ github.workspace }} -A Win32 -D CMAKE_BUILD_TYPE=Release -D CMAKE_TOOLCHAIN_FILE=${{ github.workspace }}\vcpkg\scripts\buildsystems\vcpkg.cmake -D VCPKG_TARGET_TRIPLET=x86-windows-static -D CMAKE_CXX_STANDARD=17
+          cmake ${{ github.workspace }} -A Win32 -D CMAKE_BUILD_TYPE=Release -D CMAKE_TOOLCHAIN_FILE=${{ github.workspace }}\vcpkg\scripts\buildsystems\vcpkg.cmake -D VCPKG_TARGET_TRIPLET=x86-windows-static -D CMAKE_CXX_STANDARD=17 -D Vulkan_LIBRARY_DIRS="%VULKAN_SDK%\Lib" -D Vulkan_INCLUDE_DIRS="%VULKAN_SDK%\Include"
         shell: cmd
 
       - name: Build Project
@@ -351,16 +370,35 @@ jobs:
         run: |
           $vulkanPath = Get-ChildItem -Path "C:\VulkanSDK" -Directory -ErrorAction SilentlyContinue | Sort-Object Name -Descending | Select-Object -First 1
           if ($vulkanPath) {
-            echo "VULKAN_SDK=$($vulkanPath.FullName)" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-            Write-Host "VULKAN_SDK set to $($vulkanPath.FullName)"
+            $vulkanRoot = $vulkanPath.FullName
+            Write-Host "Found Vulkan version directory: $vulkanRoot"
           } else {
             # Fallback: if no version subdirectory found, use C:\VulkanSDK directly
             if (Test-Path "C:\VulkanSDK") {
-              echo "VULKAN_SDK=C:\VulkanSDK" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-              Write-Host "VULKAN_SDK set to C:\VulkanSDK (no version subdirectory)"
+              $vulkanRoot = "C:\VulkanSDK"
+              Write-Host "Using C:\VulkanSDK directly (no version subdirectory)"
             } else {
-              Write-Host "WARNING: Vulkan SDK installation directory not found"
+              Write-Host "ERROR: Vulkan SDK installation directory not found"
+              exit 1
             }
+          }
+          
+          # Verify Vulkan files exist
+          if (-not (Test-Path "$vulkanRoot\Include\vulkan\vulkan.h")) {
+            Write-Host "ERROR: vulkan.h not found at $vulkanRoot\Include\vulkan\vulkan.h"
+            Get-ChildItem -Path "$vulkanRoot" -Recurse -Depth 3 | ForEach-Object { Write-Host "  $_" }
+            exit 1
+          }
+          
+          # Set environment variables for CMake
+          echo "VULKAN_SDK=$vulkanRoot" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          Write-Host "VULKAN_SDK=$vulkanRoot"
+          
+          # Also set PATH so CMake can find Vulkan libraries
+          $vulkanBin = "$vulkanRoot\Bin"
+          if (Test-Path $vulkanBin) {
+            echo "PATH=$vulkanBin;$env:PATH" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+            Write-Host "Added $vulkanBin to PATH"
           }
         shell: pwsh
 
@@ -386,7 +424,7 @@ jobs:
         run: |
           mkdir ${{ runner.workspace }}\openspades.mk
           cd ${{ runner.workspace }}\openspades.mk
-          cmake ${{ github.workspace }} -A x64 -D CMAKE_BUILD_TYPE=Release -D CMAKE_TOOLCHAIN_FILE=${{ github.workspace }}\vcpkg\scripts\buildsystems\vcpkg.cmake -D VCPKG_TARGET_TRIPLET=x64-windows-static -D CMAKE_CXX_STANDARD=17
+          cmake ${{ github.workspace }} -A x64 -D CMAKE_BUILD_TYPE=Release -D CMAKE_TOOLCHAIN_FILE=${{ github.workspace }}\vcpkg\scripts\buildsystems\vcpkg.cmake -D VCPKG_TARGET_TRIPLET=x64-windows-static -D CMAKE_CXX_STANDARD=17 -D Vulkan_LIBRARY_DIRS="%VULKAN_SDK%\Lib" -D Vulkan_INCLUDE_DIRS="%VULKAN_SDK%\Include"
         shell: cmd
 
       - name: Build Project
