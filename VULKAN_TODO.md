@@ -16,13 +16,13 @@ All post-processing filters have placeholder implementations that don't actually
 
 ---
 
-### 15. Pipeline Cache Implementation
-**Files:** New files needed
-- [ ] Create VulkanPipelineCache class
-- [ ] Save pipeline cache to disk on shutdown
-- [ ] Load pipeline cache on startup
-- [ ] Integrate with all pipeline creation calls
-- [ ] Add cache versioning for validation
+### 15. ~~Pipeline Cache Implementation~~ ✅
+**Files:** VulkanPipelineCache.cpp, VulkanPipelineCache.h
+- [x] Create VulkanPipelineCache class
+- [x] Save pipeline cache to disk on shutdown
+- [x] Load pipeline cache on startup
+- [x] Integrate with all pipeline creation calls
+- [x] Add cache versioning for validation
 
 **Impact:** Faster startup times and reduced shader compilation hitches.
 
