@@ -24,21 +24,59 @@
 
 namespace spades {
 	namespace draw {
+		class VulkanBuffer;
+		class VulkanProgram;
+
 		class VulkanAutoExposureFilter : public VulkanPostProcessFilter {
 		private:
+			// Preprocess pipeline (convert to brightness)
+			Handle<VulkanProgram> preprocessProgram;
 			VkPipeline preprocessPipeline;
-			VkPipeline computeGainPipeline;
 			VkPipelineLayout preprocessLayout;
-			VkPipelineLayout computeGainLayout;
 			VkDescriptorSetLayout preprocessDescLayout;
+
+			// Downsample pipeline
+			Handle<VulkanProgram> downsampleProgram;
+			VkPipeline downsamplePipeline;
+			VkPipelineLayout downsampleLayout;
+			VkDescriptorSetLayout downsampleDescLayout;
+
+			// Compute gain pipeline
+			Handle<VulkanProgram> computeGainProgram;
+			VkPipeline computeGainPipeline;
+			VkPipelineLayout computeGainLayout;
 			VkDescriptorSetLayout computeGainDescLayout;
 
+			// Apply exposure pipeline
+			Handle<VulkanProgram> applyProgram;
+			VkPipeline applyPipeline;
+			VkPipelineLayout applyLayout;
+			VkDescriptorSetLayout applyDescLayout;
+
+			// Render passes
+			VkRenderPass downsampleRenderPass;
+			VkRenderPass exposureRenderPass;
+
+			// Exposure storage (1x1 texture)
 			Handle<VulkanImage> exposureImage;
 			VkFramebuffer exposureFramebuffer;
 
+			// Descriptor pool
+			VkDescriptorPool descriptorPool;
+
+			// Buffers
+			Handle<VulkanBuffer> quadVertexBuffer;
+			Handle<VulkanBuffer> quadIndexBuffer;
+			Handle<VulkanBuffer> computeGainUniformBuffer;
+
 			void CreatePipeline() override;
 			void CreateRenderPass() override;
+			void CreateQuadBuffers();
+			void CreateDescriptorPool();
 			void CreateExposureResources();
+
+			Handle<VulkanImage> DownsampleToLuminance(VkCommandBuffer commandBuffer, VulkanImage* input, int width, int height);
+			void ComputeGain(VkCommandBuffer commandBuffer, VulkanImage* luminanceImage, float dt);
 
 		public:
 			VulkanAutoExposureFilter(VulkanRenderer&);
