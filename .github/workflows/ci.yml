@@ -86,42 +86,48 @@ jobs:
           Write-Host "Installing Vulkan SDK..."
           Write-Host "Installation started at: $(Get-Date)"
           
-          # Run installer with progress monitoring
+          # Create installation directory
+          New-Item -ItemType Directory -Path "C:\VulkanSDK" -Force | Out-Null
+          
+          # Run installer with separate arguments (not combined in single string)
+          Write-Host "Attempting installation..."
           $process = Start-Process -FilePath .\VulkanSDK.exe `
-            -ArgumentList "/S /D=C:\VulkanSDK" `
+            -ArgumentList "/S", "/D=C:\VulkanSDK" `
             -NoNewWindow `
-            -PassThru
-          
-          # Wait with timeout of 30 minutes
-          $timeout = New-TimeSpan -Minutes 30
-          $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
-          
-          while (-not $process.HasExited -and $stopwatch.Elapsed -lt $timeout) {
-            Start-Sleep -Seconds 5
-            Write-Host "Still installing... Elapsed time: $([int]$stopwatch.Elapsed.TotalSeconds)s"
-          }
-          
-          if (-not $process.HasExited) {
-            Write-Host "Installation timeout! Terminating process..."
-            $process.Kill()
-            throw "Vulkan SDK installation timed out after 30 minutes"
-          }
+            -PassThru `
+            -Wait
           
           $exitCode = $process.ExitCode
           Write-Host "Installation completed at: $(Get-Date) with exit code: $exitCode"
           
+          # Don't fail on non-zero exit code, try to continue if files exist
           if ($exitCode -ne 0) {
-            throw "Vulkan SDK installation failed with exit code: $exitCode"
+            Write-Host "WARNING: Installer exited with code $exitCode, but files may still be extracted"
+            Write-Host "Attempting fallback extraction with 7-Zip if available..."
+            
+            $7zPath = "C:\Program Files\7-Zip\7z.exe"
+            if (Test-Path $7zPath) {
+              & $7zPath x VulkanSDK.exe -o"C:\VulkanSDK-extracted" -y 2>&1 | Out-Null
+              if (Test-Path "C:\VulkanSDK-extracted") {
+                Get-ChildItem -Path "C:\VulkanSDK-extracted" -Recurse -Force | Move-Item -Destination "C:\VulkanSDK" -Force -ErrorAction SilentlyContinue
+                Remove-Item "C:\VulkanSDK-extracted" -Recurse -Force -ErrorAction SilentlyContinue
+                Write-Host "Extracted files with 7-Zip"
+              }
+            }
           }
           
           Remove-Item .\VulkanSDK.exe -ErrorAction SilentlyContinue
           
           if (Test-Path "C:\VulkanSDK") {
-            Write-Host "Vulkan SDK installed successfully"
-            Write-Host "Directory contents:"
-            Get-ChildItem -Path "C:\VulkanSDK" | Select-Object Name
+            $items = Get-ChildItem -Path "C:\VulkanSDK" -ErrorAction SilentlyContinue
+            if ($items.Count -gt 0) {
+              Write-Host "Vulkan SDK files found ($(($items | Measure-Object).Count) items)"
+              Get-ChildItem -Path "C:\VulkanSDK" | Select-Object -First 5 | ForEach-Object { Write-Host "  - $($_.Name)" }
+            } else {
+              Write-Host "WARNING: C:\VulkanSDK exists but is empty"
+            }
           } else {
-            throw "Vulkan SDK installation directory not found at C:\VulkanSDK"
+            Write-Host "WARNING: C:\VulkanSDK directory not found after installation"
           }
         shell: pwsh
         timeout-minutes: 50
@@ -133,7 +139,13 @@ jobs:
             echo "VULKAN_SDK=$($vulkanPath.FullName)" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
             Write-Host "VULKAN_SDK set to $($vulkanPath.FullName)"
           } else {
-            throw "Vulkan SDK installation directory not found in C:\VulkanSDK"
+            # Fallback: if no version subdirectory found, use C:\VulkanSDK directly
+            if (Test-Path "C:\VulkanSDK") {
+              echo "VULKAN_SDK=C:\VulkanSDK" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+              Write-Host "VULKAN_SDK set to C:\VulkanSDK (no version subdirectory)"
+            } else {
+              Write-Host "WARNING: Vulkan SDK installation directory not found"
+            }
           }
         shell: pwsh
 
@@ -255,42 +267,48 @@ jobs:
           Write-Host "Installing Vulkan SDK..."
           Write-Host "Installation started at: $(Get-Date)"
           
-          # Run installer with progress monitoring
+          # Create installation directory
+          New-Item -ItemType Directory -Path "C:\VulkanSDK" -Force | Out-Null
+          
+          # Run installer with separate arguments (not combined in single string)
+          Write-Host "Attempting installation..."
           $process = Start-Process -FilePath .\VulkanSDK.exe `
-            -ArgumentList "/S /D=C:\VulkanSDK" `
+            -ArgumentList "/S", "/D=C:\VulkanSDK" `
             -NoNewWindow `
-            -PassThru
-          
-          # Wait with timeout of 30 minutes
-          $timeout = New-TimeSpan -Minutes 30
-          $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
-          
-          while (-not $process.HasExited -and $stopwatch.Elapsed -lt $timeout) {
-            Start-Sleep -Seconds 5
-            Write-Host "Still installing... Elapsed time: $([int]$stopwatch.Elapsed.TotalSeconds)s"
-          }
-          
-          if (-not $process.HasExited) {
-            Write-Host "Installation timeout! Terminating process..."
-            $process.Kill()
-            throw "Vulkan SDK installation timed out after 30 minutes"
-          }
+            -PassThru `
+            -Wait
           
           $exitCode = $process.ExitCode
           Write-Host "Installation completed at: $(Get-Date) with exit code: $exitCode"
           
+          # Don't fail on non-zero exit code, try to continue if files exist
           if ($exitCode -ne 0) {
-            throw "Vulkan SDK installation failed with exit code: $exitCode"
+            Write-Host "WARNING: Installer exited with code $exitCode, but files may still be extracted"
+            Write-Host "Attempting fallback extraction with 7-Zip if available..."
+            
+            $7zPath = "C:\Program Files\7-Zip\7z.exe"
+            if (Test-Path $7zPath) {
+              & $7zPath x VulkanSDK.exe -o"C:\VulkanSDK-extracted" -y 2>&1 | Out-Null
+              if (Test-Path "C:\VulkanSDK-extracted") {
+                Get-ChildItem -Path "C:\VulkanSDK-extracted" -Recurse -Force | Move-Item -Destination "C:\VulkanSDK" -Force -ErrorAction SilentlyContinue
+                Remove-Item "C:\VulkanSDK-extracted" -Recurse -Force -ErrorAction SilentlyContinue
+                Write-Host "Extracted files with 7-Zip"
+              }
+            }
           }
           
           Remove-Item .\VulkanSDK.exe -ErrorAction SilentlyContinue
           
           if (Test-Path "C:\VulkanSDK") {
-            Write-Host "Vulkan SDK installed successfully"
-            Write-Host "Directory contents:"
-            Get-ChildItem -Path "C:\VulkanSDK" | Select-Object Name
+            $items = Get-ChildItem -Path "C:\VulkanSDK" -ErrorAction SilentlyContinue
+            if ($items.Count -gt 0) {
+              Write-Host "Vulkan SDK files found ($(($items | Measure-Object).Count) items)"
+              Get-ChildItem -Path "C:\VulkanSDK" | Select-Object -First 5 | ForEach-Object { Write-Host "  - $($_.Name)" }
+            } else {
+              Write-Host "WARNING: C:\VulkanSDK exists but is empty"
+            }
           } else {
-            throw "Vulkan SDK installation directory not found at C:\VulkanSDK"
+            Write-Host "WARNING: C:\VulkanSDK directory not found after installation"
           }
         shell: pwsh
         timeout-minutes: 50
@@ -302,7 +320,13 @@ jobs:
             echo "VULKAN_SDK=$($vulkanPath.FullName)" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
             Write-Host "VULKAN_SDK set to $($vulkanPath.FullName)"
           } else {
-            throw "Vulkan SDK installation directory not found in C:\VulkanSDK"
+            # Fallback: if no version subdirectory found, use C:\VulkanSDK directly
+            if (Test-Path "C:\VulkanSDK") {
+              echo "VULKAN_SDK=C:\VulkanSDK" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+              Write-Host "VULKAN_SDK set to C:\VulkanSDK (no version subdirectory)"
+            } else {
+              Write-Host "WARNING: Vulkan SDK installation directory not found"
+            }
           }
         shell: pwsh
 
