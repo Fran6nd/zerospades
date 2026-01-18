@@ -231,11 +231,18 @@ namespace spades {
 				SPRaise("Failed to create descriptor set layout for shadow map");
 			}
 
-			// Create pipeline layout
+			// Create pipeline layout with push constants for model origin
+			VkPushConstantRange pushConstantRange{};
+			pushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+			pushConstantRange.offset = 0;
+			pushConstantRange.size = sizeof(Vector3); // modelOrigin (12 bytes)
+
 			VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
 			pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
 			pipelineLayoutInfo.setLayoutCount = 1;
 			pipelineLayoutInfo.pSetLayouts = &descriptorSetLayout;
+			pipelineLayoutInfo.pushConstantRangeCount = 1;
+			pipelineLayoutInfo.pPushConstantRanges = &pushConstantRange;
 
 			if (vkCreatePipelineLayout(vkDevice, &pipelineLayoutInfo, nullptr, &pipelineLayout) != VK_SUCCESS) {
 				vkDestroyShaderModule(vkDevice, vertShaderModule, nullptr);
@@ -540,7 +547,7 @@ namespace spades {
 				// Render map shadow pass
 				VulkanMapRenderer* mapRenderer = renderer.GetMapRenderer();
 				if (mapRenderer) {
-					mapRenderer->RenderShadowMapPass(commandBuffer);
+					mapRenderer->RenderShadowMapPass(commandBuffer, pipelineLayout);
 				}
 
 				// Render model shadow pass

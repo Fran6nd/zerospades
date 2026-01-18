@@ -339,7 +339,7 @@ namespace spades {
 			}
 		}
 
-		void VulkanMapRenderer::RenderShadowMapPass(VkCommandBuffer commandBuffer) {
+		void VulkanMapRenderer::RenderShadowMapPass(VkCommandBuffer commandBuffer, VkPipelineLayout shadowPipelineLayout) {
 			SPADES_MARK_FUNCTION();
 
 			// Render all visible chunks for shadow mapping
@@ -348,7 +348,7 @@ namespace spades {
 			for (int i = 0; i < numChunks; i++) {
 				VulkanMapChunk* chunk = chunks[i];
 				if (chunk && chunk->IsRealized()) {
-					chunk->RenderShadowMapPass(commandBuffer);
+					chunk->RenderShadowMapPass(commandBuffer, shadowPipelineLayout);
 				}
 			}
 		}

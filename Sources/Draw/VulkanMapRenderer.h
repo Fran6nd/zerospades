@@ -110,7 +110,7 @@ namespace spades {
 			void RenderDynamicLightPass(VkCommandBuffer commandBuffer, std::vector<void*> lights);
 			void RenderOutlinePass(VkCommandBuffer commandBuffer);
 			void RenderDepthPass(VkCommandBuffer commandBuffer);
-			void RenderShadowMapPass(VkCommandBuffer commandBuffer);
+			void RenderShadowMapPass(VkCommandBuffer commandBuffer, VkPipelineLayout shadowPipelineLayout);
 
 			void CreatePipelines(VkRenderPass renderPass);
 			void DestroyPipelines();

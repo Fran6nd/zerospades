@@ -24,11 +24,16 @@ layout(set = 0, binding = 0) uniform UniformBufferObject {
     mat4 projectionViewMatrix;
 } ubo;
 
+layout(push_constant) uniform PushConstants {
+    vec3 modelOrigin;
+} pushConstants;
+
 // Map chunk vertex format: uint8 x,y,z at location 0
 layout(location = 0) in uvec3 inPosition;
 
 void main() {
-    // Convert uint8 position to world space (direct mapping)
-    vec3 worldPos = vec3(inPosition);
+    // Convert uint8 position to world space
+    vec3 localPos = vec3(inPosition);
+    vec3 worldPos = localPos + pushConstants.modelOrigin;
     gl_Position = ubo.projectionViewMatrix * vec4(worldPos, 1.0);
 }
