@@ -461,7 +461,7 @@ namespace spades {
 				pipelineInfo.renderPass = downsampleRenderPass;
 				pipelineInfo.subpass = 0;
 
-				if (vkCreateGraphicsPipelines(device->GetDevice(), VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &preprocessPipeline) != VK_SUCCESS) {
+				if (vkCreateGraphicsPipelines(device->GetDevice(), renderer.GetPipelineCache(), 1, &pipelineInfo, nullptr, &preprocessPipeline) != VK_SUCCESS) {
 					SPRaise("Failed to create preprocess pipeline");
 				}
 			}
@@ -508,7 +508,7 @@ namespace spades {
 				pipelineInfo.renderPass = downsampleRenderPass;
 				pipelineInfo.subpass = 0;
 
-				if (vkCreateGraphicsPipelines(device->GetDevice(), VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &downsamplePipeline) != VK_SUCCESS) {
+				if (vkCreateGraphicsPipelines(device->GetDevice(), renderer.GetPipelineCache(), 1, &pipelineInfo, nullptr, &downsamplePipeline) != VK_SUCCESS) {
 					SPRaise("Failed to create downsample pipeline");
 				}
 			}
@@ -561,7 +561,7 @@ namespace spades {
 				pipelineInfo.renderPass = exposureRenderPass;
 				pipelineInfo.subpass = 0;
 
-				if (vkCreateGraphicsPipelines(device->GetDevice(), VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &computeGainPipeline) != VK_SUCCESS) {
+				if (vkCreateGraphicsPipelines(device->GetDevice(), renderer.GetPipelineCache(), 1, &pipelineInfo, nullptr, &computeGainPipeline) != VK_SUCCESS) {
 					SPRaise("Failed to create compute gain pipeline");
 				}
 			}
@@ -608,7 +608,7 @@ namespace spades {
 				pipelineInfo.renderPass = renderPass;
 				pipelineInfo.subpass = 0;
 
-				if (vkCreateGraphicsPipelines(device->GetDevice(), VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &applyPipeline) != VK_SUCCESS) {
+				if (vkCreateGraphicsPipelines(device->GetDevice(), renderer.GetPipelineCache(), 1, &pipelineInfo, nullptr, &applyPipeline) != VK_SUCCESS) {
 					SPRaise("Failed to create apply pipeline");
 				}
 			}

@@ -264,7 +264,7 @@ namespace spades {
 			pipelineInfo.renderPass = renderer.GetOffscreenRenderPass(); // Use offscreen render pass for 3D rendering
 			pipelineInfo.subpass = 0;
 
-			result = vkCreateGraphicsPipelines(vkDevice, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &pipeline);
+			result = vkCreateGraphicsPipelines(vkDevice, renderer.GetPipelineCache(), 1, &pipelineInfo, nullptr, &pipeline);
 			if (result != VK_SUCCESS) {
 				SPRaise("Failed to create graphics pipeline (error code: %d)", result);
 			}

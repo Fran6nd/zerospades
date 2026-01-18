@@ -47,6 +47,7 @@ namespace spades {
 		class VulkanProgramManager;
 		class VulkanModelManager;
 		class VulkanImageManager;
+		class VulkanPipelineCache;
 		class VulkanProgram;
 		class VulkanShader;
 		class VulkanImage;
@@ -122,6 +123,7 @@ namespace spades {
 			Handle<VulkanProgramManager> programManager;
 			Handle<VulkanModelManager> modelManager;
 			VulkanImageManager* imageManager;
+			Handle<VulkanPipelineCache> pipelineCache;
 
 			Handle<VulkanImage> whiteImage; // 1x1 white image for solid color rendering
 
@@ -241,6 +243,7 @@ namespace spades {
 			VulkanWaterRenderer* GetWaterRenderer() { return waterRenderer; }
 			VulkanShadowMapRenderer* GetShadowMapRenderer() { return shadowMapRenderer; }
 			VulkanFramebufferManager* GetFramebufferManager() { return framebufferManager; }
+			VkPipelineCache GetPipelineCache() const;
 
 		// Program registration API
 		VulkanProgram* RegisterProgram(const std::string& name);

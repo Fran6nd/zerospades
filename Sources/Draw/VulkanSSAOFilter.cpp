@@ -410,7 +410,7 @@ namespace spades {
 			pipelineInfo.renderPass = ssaoRenderPass;
 			pipelineInfo.subpass = 0;
 
-			if (vkCreateGraphicsPipelines(device->GetDevice(), VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &ssaoPipeline) != VK_SUCCESS) {
+			if (vkCreateGraphicsPipelines(device->GetDevice(), renderer.GetPipelineCache(), 1, &pipelineInfo, nullptr, &ssaoPipeline) != VK_SUCCESS) {
 				SPRaise("Failed to create SSAO pipeline");
 			}
 
@@ -433,7 +433,7 @@ namespace spades {
 			pipelineInfo.layout = bilateralPipelineLayout;
 			pipelineInfo.renderPass = bilateralRenderPass;
 
-			if (vkCreateGraphicsPipelines(device->GetDevice(), VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &bilateralPipeline) != VK_SUCCESS) {
+			if (vkCreateGraphicsPipelines(device->GetDevice(), renderer.GetPipelineCache(), 1, &pipelineInfo, nullptr, &bilateralPipeline) != VK_SUCCESS) {
 				SPRaise("Failed to create bilateral pipeline");
 			}
 		}

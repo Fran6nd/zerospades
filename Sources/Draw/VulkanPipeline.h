@@ -83,7 +83,8 @@ namespace spades {
 
 		public:
 			VulkanPipeline(Handle<gui::SDLVulkanDevice> device, VulkanProgram* program,
-			               const VulkanPipelineConfig& config, VkRenderPass renderPass);
+			               const VulkanPipelineConfig& config, VkRenderPass renderPass,
+			               VkPipelineCache pipelineCache = VK_NULL_HANDLE);
 
 			VkPipeline GetPipeline() const { return pipeline; }
 			VkPipelineLayout GetPipelineLayout() const { return pipelineLayout; }

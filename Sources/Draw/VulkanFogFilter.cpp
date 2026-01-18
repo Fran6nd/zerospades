@@ -218,7 +218,7 @@ namespace spades {
 			pipelineInfo.renderPass = renderPass;
 			pipelineInfo.subpass = 0;
 
-			if (vkCreateGraphicsPipelines(device->GetDevice(), VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &pipeline) != VK_SUCCESS) {
+			if (vkCreateGraphicsPipelines(device->GetDevice(), renderer.GetPipelineCache(), 1, &pipelineInfo, nullptr, &pipeline) != VK_SUCCESS) {
 				SPRaise("Failed to create fog filter pipeline");
 			}
 

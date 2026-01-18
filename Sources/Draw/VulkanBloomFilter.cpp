@@ -390,7 +390,7 @@ namespace spades {
 			pipelineInfo.renderPass = downsampleRenderPass;
 			pipelineInfo.subpass = 0;
 
-			if (vkCreateGraphicsPipelines(device->GetDevice(), VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &downsamplePipeline) != VK_SUCCESS) {
+			if (vkCreateGraphicsPipelines(device->GetDevice(), renderer.GetPipelineCache(), 1, &pipelineInfo, nullptr, &downsamplePipeline) != VK_SUCCESS) {
 				SPRaise("Failed to create downsample pipeline");
 			}
 
@@ -420,7 +420,7 @@ namespace spades {
 			pipelineInfo.renderPass = compositeRenderPass;
 			pipelineInfo.layout = compositeLayout;
 
-			if (vkCreateGraphicsPipelines(device->GetDevice(), VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &compositePipeline) != VK_SUCCESS) {
+			if (vkCreateGraphicsPipelines(device->GetDevice(), renderer.GetPipelineCache(), 1, &pipelineInfo, nullptr, &compositePipeline) != VK_SUCCESS) {
 				SPRaise("Failed to create composite pipeline");
 			}
 
@@ -444,7 +444,7 @@ namespace spades {
 			pipelineInfo.renderPass = renderPass;
 			pipelineInfo.layout = finalCompositeLayout;
 
-			if (vkCreateGraphicsPipelines(device->GetDevice(), VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &finalCompositePipeline) != VK_SUCCESS) {
+			if (vkCreateGraphicsPipelines(device->GetDevice(), renderer.GetPipelineCache(), 1, &pipelineInfo, nullptr, &finalCompositePipeline) != VK_SUCCESS) {
 				SPRaise("Failed to create final composite pipeline");
 			}
 

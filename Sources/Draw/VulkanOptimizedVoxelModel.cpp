@@ -797,7 +797,7 @@ namespace spades {
 			pipelineInfo.renderPass = renderPass;
 			pipelineInfo.subpass = 0;
 
-			result = vkCreateGraphicsPipelines(vkDevice, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &sharedPipeline.pipeline);
+			result = vkCreateGraphicsPipelines(vkDevice, renderer.GetPipelineCache(), 1, &pipelineInfo, nullptr, &sharedPipeline.pipeline);
 
 			// Cleanup shader modules
 			vkDestroyShaderModule(vkDevice, vertShaderModule, nullptr);

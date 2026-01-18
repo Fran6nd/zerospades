@@ -395,7 +395,7 @@ namespace spades {
 			pipelineInfo.renderPass = cocRenderPass;
 			pipelineInfo.subpass = 0;
 
-			if (vkCreateGraphicsPipelines(device->GetDevice(), VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &cocGenPipeline) != VK_SUCCESS) {
+			if (vkCreateGraphicsPipelines(device->GetDevice(), renderer.GetPipelineCache(), 1, &pipelineInfo, nullptr, &cocGenPipeline) != VK_SUCCESS) {
 				SPRaise("Failed to create CoC gen pipeline");
 			}
 
@@ -417,7 +417,7 @@ namespace spades {
 			pipelineInfo.layout = blurLayout;
 			pipelineInfo.renderPass = blurRenderPass;
 
-			if (vkCreateGraphicsPipelines(device->GetDevice(), VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &blurPipeline) != VK_SUCCESS) {
+			if (vkCreateGraphicsPipelines(device->GetDevice(), renderer.GetPipelineCache(), 1, &pipelineInfo, nullptr, &blurPipeline) != VK_SUCCESS) {
 				SPRaise("Failed to create blur pipeline");
 			}
 
@@ -439,7 +439,7 @@ namespace spades {
 			pipelineInfo.layout = gaussLayout;
 			pipelineInfo.renderPass = cocRenderPass; // R8 output for CoC blur
 
-			if (vkCreateGraphicsPipelines(device->GetDevice(), VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &gaussPipeline) != VK_SUCCESS) {
+			if (vkCreateGraphicsPipelines(device->GetDevice(), renderer.GetPipelineCache(), 1, &pipelineInfo, nullptr, &gaussPipeline) != VK_SUCCESS) {
 				SPRaise("Failed to create gauss pipeline");
 			}
 
@@ -461,7 +461,7 @@ namespace spades {
 			pipelineInfo.layout = finalMixLayout;
 			pipelineInfo.renderPass = blurRenderPass;
 
-			if (vkCreateGraphicsPipelines(device->GetDevice(), VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &finalMixPipeline) != VK_SUCCESS) {
+			if (vkCreateGraphicsPipelines(device->GetDevice(), renderer.GetPipelineCache(), 1, &pipelineInfo, nullptr, &finalMixPipeline) != VK_SUCCESS) {
 				SPRaise("Failed to create final mix pipeline");
 			}
 		}

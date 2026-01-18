@@ -397,7 +397,7 @@ namespace spades {
 			pipelineInfo.renderPass = scannerRenderPass;
 			pipelineInfo.subpass = 0;
 
-			if (vkCreateGraphicsPipelines(device->GetDevice(), VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &scannerPipeline) != VK_SUCCESS) {
+			if (vkCreateGraphicsPipelines(device->GetDevice(), renderer.GetPipelineCache(), 1, &pipelineInfo, nullptr, &scannerPipeline) != VK_SUCCESS) {
 				SPRaise("Failed to create scanner pipeline");
 			}
 
@@ -438,7 +438,7 @@ namespace spades {
 			pipelineInfo.layout = drawLayout;
 			pipelineInfo.renderPass = drawRenderPass;
 
-			if (vkCreateGraphicsPipelines(device->GetDevice(), VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &drawPipeline) != VK_SUCCESS) {
+			if (vkCreateGraphicsPipelines(device->GetDevice(), renderer.GetPipelineCache(), 1, &pipelineInfo, nullptr, &drawPipeline) != VK_SUCCESS) {
 				SPRaise("Failed to create draw pipeline");
 			}
 
@@ -462,7 +462,7 @@ namespace spades {
 			pipelineInfo.layout = blurLayout;
 			pipelineInfo.renderPass = renderPass;
 
-			if (vkCreateGraphicsPipelines(device->GetDevice(), VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &blurPipeline) != VK_SUCCESS) {
+			if (vkCreateGraphicsPipelines(device->GetDevice(), renderer.GetPipelineCache(), 1, &pipelineInfo, nullptr, &blurPipeline) != VK_SUCCESS) {
 				SPRaise("Failed to create blur pipeline");
 			}
 
