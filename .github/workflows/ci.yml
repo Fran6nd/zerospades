@@ -165,15 +165,32 @@ jobs:
           
           Remove-Item .\VulkanSDK.exe -ErrorAction SilentlyContinue
           
-          # Verify installation
+          # Verify installation - check multiple possible locations
           Write-Host "Verifying Vulkan SDK installation..."
-          if (Test-Path "C:\VulkanSDK\Include\vulkan\vulkan.h") {
-            Write-Host "SUCCESS: vulkan.h found at C:\VulkanSDK\Include\vulkan\vulkan.h"
+          $vulkanHeaderPath = $null
+          
+          # Check multiple possible locations for vulkan.h
+          $possiblePaths = @(
+            "C:\VulkanSDK\Include\vulkan\vulkan.h",
+            "C:\VulkanSDK\Include\vulkan.h",
+            "C:\VulkanSDK\vulkan\vulkan.h"
+          )
+          
+          foreach ($path in $possiblePaths) {
+            if (Test-Path $path) {
+              $vulkanHeaderPath = $path
+              Write-Host "Found vulkan.h at: $path"
+              break
+            }
+          }
+          
+          if ($vulkanHeaderPath) {
+            Write-Host "SUCCESS: Vulkan SDK extracted successfully"
             $items = Get-ChildItem -Path "C:\VulkanSDK" -ErrorAction SilentlyContinue
             Write-Host "Vulkan SDK root contains: $(($items | Measure-Object).Count) items"
-            Get-ChildItem -Path "C:\VulkanSDK" | Select-Object -First 10 | ForEach-Object { Write-Host "  - $($_.Name)" }
+            Get-ChildItem -Path "C:\VulkanSDK" | Select-Object -First 15 | ForEach-Object { Write-Host "  - $($_.Name)" }
           } else {
-            Write-Host "ERROR: vulkan.h not found at expected location!"
+            Write-Host "ERROR: vulkan.h not found at any expected location!"
             Write-Host "C:\VulkanSDK contents (first 30 items):"
             Get-ChildItem -Path "C:\VulkanSDK" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 30 | ForEach-Object { Write-Host "  $_" }
             exit 1
@@ -198,10 +215,21 @@ jobs:
             }
           }
           
-          # Verify Vulkan files exist
-          if (-not (Test-Path "$vulkanRoot\Include\vulkan\vulkan.h")) {
-            Write-Host "ERROR: vulkan.h not found at $vulkanRoot\Include\vulkan\vulkan.h"
-            Get-ChildItem -Path "$vulkanRoot" -Recurse -Depth 3 | ForEach-Object { Write-Host "  $_" }
+          # Verify Vulkan files exist - check multiple locations
+          $vulkanIncludePath = $null
+          if (Test-Path "$vulkanRoot\Include\vulkan\vulkan.h") {
+            $vulkanIncludePath = "$vulkanRoot\Include"
+            Write-Host "Found Include at: $vulkanIncludePath"
+          } elseif (Test-Path "$vulkanRoot\Include\vulkan.h") {
+            $vulkanIncludePath = "$vulkanRoot\Include"
+            Write-Host "Found Include (vulkan.h directly) at: $vulkanIncludePath"
+          } elseif (Test-Path "$vulkanRoot\vulkan\vulkan.h") {
+            $vulkanIncludePath = "$vulkanRoot"
+            Write-Host "Found Include (vulkan dir at root) at: $vulkanIncludePath"
+          } else {
+            Write-Host "ERROR: vulkan.h not found in standard locations"
+            Write-Host "Searching recursively for vulkan.h..."
+            Get-ChildItem -Path "$vulkanRoot" -Recurse -Filter "vulkan.h" -ErrorAction SilentlyContinue | Select-Object -First 5 | ForEach-Object { Write-Host "  Found: $_" }
             exit 1
           }
           
@@ -414,15 +442,32 @@ jobs:
           
           Remove-Item .\VulkanSDK.exe -ErrorAction SilentlyContinue
           
-          # Verify installation
+          # Verify installation - check multiple possible locations
           Write-Host "Verifying Vulkan SDK installation..."
-          if (Test-Path "C:\VulkanSDK\Include\vulkan\vulkan.h") {
-            Write-Host "SUCCESS: vulkan.h found at C:\VulkanSDK\Include\vulkan\vulkan.h"
+          $vulkanHeaderPath = $null
+          
+          # Check multiple possible locations for vulkan.h
+          $possiblePaths = @(
+            "C:\VulkanSDK\Include\vulkan\vulkan.h",
+            "C:\VulkanSDK\Include\vulkan.h",
+            "C:\VulkanSDK\vulkan\vulkan.h"
+          )
+          
+          foreach ($path in $possiblePaths) {
+            if (Test-Path $path) {
+              $vulkanHeaderPath = $path
+              Write-Host "Found vulkan.h at: $path"
+              break
+            }
+          }
+          
+          if ($vulkanHeaderPath) {
+            Write-Host "SUCCESS: Vulkan SDK extracted successfully"
             $items = Get-ChildItem -Path "C:\VulkanSDK" -ErrorAction SilentlyContinue
             Write-Host "Vulkan SDK root contains: $(($items | Measure-Object).Count) items"
-            Get-ChildItem -Path "C:\VulkanSDK" | Select-Object -First 10 | ForEach-Object { Write-Host "  - $($_.Name)" }
+            Get-ChildItem -Path "C:\VulkanSDK" | Select-Object -First 15 | ForEach-Object { Write-Host "  - $($_.Name)" }
           } else {
-            Write-Host "ERROR: vulkan.h not found at expected location!"
+            Write-Host "ERROR: vulkan.h not found at any expected location!"
             Write-Host "C:\VulkanSDK contents (first 30 items):"
             Get-ChildItem -Path "C:\VulkanSDK" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 30 | ForEach-Object { Write-Host "  $_" }
             exit 1
@@ -447,10 +492,21 @@ jobs:
             }
           }
           
-          # Verify Vulkan files exist
-          if (-not (Test-Path "$vulkanRoot\Include\vulkan\vulkan.h")) {
-            Write-Host "ERROR: vulkan.h not found at $vulkanRoot\Include\vulkan\vulkan.h"
-            Get-ChildItem -Path "$vulkanRoot" -Recurse -Depth 3 | ForEach-Object { Write-Host "  $_" }
+          # Verify Vulkan files exist - check multiple locations
+          $vulkanIncludePath = $null
+          if (Test-Path "$vulkanRoot\Include\vulkan\vulkan.h") {
+            $vulkanIncludePath = "$vulkanRoot\Include"
+            Write-Host "Found Include at: $vulkanIncludePath"
+          } elseif (Test-Path "$vulkanRoot\Include\vulkan.h") {
+            $vulkanIncludePath = "$vulkanRoot\Include"
+            Write-Host "Found Include (vulkan.h directly) at: $vulkanIncludePath"
+          } elseif (Test-Path "$vulkanRoot\vulkan\vulkan.h") {
+            $vulkanIncludePath = "$vulkanRoot"
+            Write-Host "Found Include (vulkan dir at root) at: $vulkanIncludePath"
+          } else {
+            Write-Host "ERROR: vulkan.h not found in standard locations"
+            Write-Host "Searching recursively for vulkan.h..."
+            Get-ChildItem -Path "$vulkanRoot" -Recurse -Filter "vulkan.h" -ErrorAction SilentlyContinue | Select-Object -First 5 | ForEach-Object { Write-Host "  Found: $_" }
             exit 1
           }
           
