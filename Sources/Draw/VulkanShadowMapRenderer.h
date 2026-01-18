@@ -79,6 +79,7 @@ namespace spades {
 			const Matrix4& GetMatrix() const { return matrix; }
 			const Matrix4* GetMatrices() const { return matrices; }
 			VulkanImage* GetShadowMapImage(int slice) { return shadowMapImages[slice].GetPointerOrNull(); }
+			VkPipelineLayout GetPipelineLayout() const { return pipelineLayout; }
 		};
 	}
 }

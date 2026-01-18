@@ -378,11 +378,20 @@ namespace spades {
 			vkCmdDrawIndexed(commandBuffer, (uint32_t)indices.size(), 1, 0, 0, 0);
 		}
 
-		void VulkanMapChunk::RenderShadowMapPass(VkCommandBuffer commandBuffer) {
+		void VulkanMapChunk::RenderShadowMapPass(VkCommandBuffer commandBuffer, VkPipelineLayout pipelineLayout) {
 			SPADES_MARK_FUNCTION_DEBUG();
 
 			if (indices.empty() || !vertexBuffer || !indexBuffer)
 				return;
+
+			// Push model origin for this chunk
+			Vector3 modelOrigin = MakeVector3(
+				(float)(chunkX << SizeBits),
+				(float)(chunkY << SizeBits),
+				(float)(chunkZ << SizeBits)
+			);
+			vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT,
+			                   0, sizeof(Vector3), &modelOrigin);
 
 			// Bind vertex buffer
 			VkBuffer vb = vertexBuffer->GetBuffer();
