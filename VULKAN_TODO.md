@@ -4,27 +4,15 @@ All post-processing filters have placeholder implementations that don't actually
 
 ---
 
-### 13. Lens Flare Filter
+### 13. ~~Lens Flare Filter~~ ✅
 **File:** `VulkanLensFlareFilter.cpp`
-- [ ] Create lens flare pipelines ([VulkanLensFlareFilter.cpp:110](Sources/Draw/VulkanLensFlareFilter.cpp#L110))
-- [ ] Load flare texture images ([VulkanLensFlareFilter.cpp:119](Sources/Draw/VulkanLensFlareFilter.cpp#L119))
-- [ ] Implement lens flare drawing ([VulkanLensFlareFilter.cpp:138](Sources/Draw/VulkanLensFlareFilter.cpp#L138))
+- [x] Create lens flare pipelines
+- [x] Load flare texture images
+- [x] Implement lens flare drawing
 
 ---
 
 ## 🟡 MEDIUM PRIORITY - Optimization & Best Practices
-
-### 14. GPU Device Selection
-**File:** `SDLVulkanDevice.cpp`
-- [ ] Implement GPU scoring system ([SDLVulkanDevice.cpp:295](Sources/Gui/SDLVulkanDevice.cpp#L295))
-  - [ ] Score by device type (discrete > integrated > virtual > CPU)
-  - [ ] Score by memory capacity
-  - [ ] Score by feature support
-  - [ ] Score by queue family capabilities
-- [ ] Allow user override via settings
-- [ ] Log selected GPU and reason
-
-**Impact:** May not use discrete GPU on systems with multiple GPUs, resulting in poor performance.
 
 ---
 
