@@ -11,11 +11,11 @@ All post-processing filters have placeholder implementations that don't actually
 - [x] Update all filters to use common function
 - [x] Reduce code duplication across 8+ files
 
-#### Pipeline Creation Boilerplate
+#### Pipeline Creation Boilerplate ✅
 **Files:** Multiple `Vulkan*Filter.cpp` files
-- [ ] Create pipeline builder helper class
-- [ ] Simplify pipeline creation with fluent API
-- [ ] Reduce boilerplate in each filter
+- [x] Create pipeline builder helper class
+- [x] Simplify pipeline creation with fluent API
+- [x] Reduce boilerplate in each filter
 
 ---
 
