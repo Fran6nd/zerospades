@@ -2,40 +2,14 @@
 
 All post-processing filters have placeholder implementations that don't actually work.
 
----
-
-### 13. ~~Lens Flare Filter~~ ✅
-**File:** `VulkanLensFlareFilter.cpp`
-- [x] Create lens flare pipelines
-- [x] Load flare texture images
-- [x] Implement lens flare drawing
-
----
-
-## 🟡 MEDIUM PRIORITY - Optimization & Best Practices
-
----
-
-### 15. ~~Pipeline Cache Implementation~~ ✅
-**Files:** VulkanPipelineCache.cpp, VulkanPipelineCache.h
-- [x] Create VulkanPipelineCache class
-- [x] Save pipeline cache to disk on shutdown
-- [x] Load pipeline cache on startup
-- [x] Integrate with all pipeline creation calls
-- [x] Add cache versioning for validation
-
-**Impact:** Faster startup times and reduced shader compilation hitches.
-
----
-
 ### 16. Code Refactoring - Reduce Redundancy
 
-#### Render Pass Creation
+#### Render Pass Creation ✅
 **Files:** Multiple `Vulkan*Filter.cpp` files
-- [ ] Extract common render pass creation logic
-- [ ] Create utility function: `CreateSimpleColorRenderPass()`
-- [ ] Update all filters to use common function
-- [ ] Reduce code duplication across 8+ files
+- [x] Extract common render pass creation logic
+- [x] Create utility function: `CreateSimpleColorRenderPass()`
+- [x] Update all filters to use common function
+- [x] Reduce code duplication across 8+ files
 
 #### Pipeline Creation Boilerplate
 **Files:** Multiple `Vulkan*Filter.cpp` files
