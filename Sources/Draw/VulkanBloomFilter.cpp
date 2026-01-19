@@ -24,6 +24,7 @@
 #include "VulkanBuffer.h"
 #include "VulkanProgram.h"
 #include "VulkanFramebufferManager.h"
+#include "VulkanRenderPassUtils.h"
 #include <Gui/SDLVulkanDevice.h>
 #include <Core/Debug.h>
 #include <Core/Math.h>
@@ -163,25 +164,6 @@ namespace spades {
 		}
 
 		void VulkanBloomFilter::CreateDownsampleRenderPass() {
-			VkAttachmentDescription colorAttachment = {};
-			colorAttachment.format = VK_FORMAT_R8G8B8A8_UNORM;
-			colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
-			colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-			colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-			colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-			colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-			colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-			colorAttachment.finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-
-			VkAttachmentReference colorAttachmentRef = {};
-			colorAttachmentRef.attachment = 0;
-			colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-
-			VkSubpassDescription subpass = {};
-			subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-			subpass.colorAttachmentCount = 1;
-			subpass.pColorAttachments = &colorAttachmentRef;
-
 			VkSubpassDependency dependency = {};
 			dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
 			dependency.dstSubpass = 0;
@@ -190,40 +172,17 @@ namespace spades {
 			dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 			dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
 
-			VkRenderPassCreateInfo renderPassInfo = {};
-			renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-			renderPassInfo.attachmentCount = 1;
-			renderPassInfo.pAttachments = &colorAttachment;
-			renderPassInfo.subpassCount = 1;
-			renderPassInfo.pSubpasses = &subpass;
-			renderPassInfo.dependencyCount = 1;
-			renderPassInfo.pDependencies = &dependency;
-
-			if (vkCreateRenderPass(device->GetDevice(), &renderPassInfo, nullptr, &downsampleRenderPass) != VK_SUCCESS) {
-				SPRaise("Failed to create bloom downsample render pass");
-			}
+			downsampleRenderPass = CreateSimpleColorRenderPass(
+				device->GetDevice(),
+				VK_FORMAT_R8G8B8A8_UNORM,
+				VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+				VK_IMAGE_LAYOUT_UNDEFINED,
+				VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+				&dependency
+			);
 		}
 
 		void VulkanBloomFilter::CreateCompositeRenderPass() {
-			VkAttachmentDescription colorAttachment = {};
-			colorAttachment.format = VK_FORMAT_R8G8B8A8_UNORM;
-			colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
-			colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
-			colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-			colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-			colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-			colorAttachment.initialLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-			colorAttachment.finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-
-			VkAttachmentReference colorAttachmentRef = {};
-			colorAttachmentRef.attachment = 0;
-			colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-
-			VkSubpassDescription subpass = {};
-			subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-			subpass.colorAttachmentCount = 1;
-			subpass.pColorAttachments = &colorAttachmentRef;
-
 			VkSubpassDependency dependency = {};
 			dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
 			dependency.dstSubpass = 0;
@@ -232,40 +191,17 @@ namespace spades {
 			dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 			dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
 
-			VkRenderPassCreateInfo renderPassInfo = {};
-			renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-			renderPassInfo.attachmentCount = 1;
-			renderPassInfo.pAttachments = &colorAttachment;
-			renderPassInfo.subpassCount = 1;
-			renderPassInfo.pSubpasses = &subpass;
-			renderPassInfo.dependencyCount = 1;
-			renderPassInfo.pDependencies = &dependency;
-
-			if (vkCreateRenderPass(device->GetDevice(), &renderPassInfo, nullptr, &compositeRenderPass) != VK_SUCCESS) {
-				SPRaise("Failed to create bloom composite render pass");
-			}
+			compositeRenderPass = CreateSimpleColorRenderPass(
+				device->GetDevice(),
+				VK_FORMAT_R8G8B8A8_UNORM,
+				VK_ATTACHMENT_LOAD_OP_LOAD,
+				VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+				VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+				&dependency
+			);
 		}
 
 		void VulkanBloomFilter::CreateRenderPass() {
-			VkAttachmentDescription colorAttachment = {};
-			colorAttachment.format = VK_FORMAT_R8G8B8A8_UNORM;
-			colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
-			colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-			colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-			colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-			colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-			colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-			colorAttachment.finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-
-			VkAttachmentReference colorAttachmentRef = {};
-			colorAttachmentRef.attachment = 0;
-			colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-
-			VkSubpassDescription subpass = {};
-			subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-			subpass.colorAttachmentCount = 1;
-			subpass.pColorAttachments = &colorAttachmentRef;
-
 			VkSubpassDependency dependency = {};
 			dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
 			dependency.dstSubpass = 0;
@@ -274,18 +210,14 @@ namespace spades {
 			dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 			dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
 
-			VkRenderPassCreateInfo renderPassInfo = {};
-			renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-			renderPassInfo.attachmentCount = 1;
-			renderPassInfo.pAttachments = &colorAttachment;
-			renderPassInfo.subpassCount = 1;
-			renderPassInfo.pSubpasses = &subpass;
-			renderPassInfo.dependencyCount = 1;
-			renderPassInfo.pDependencies = &dependency;
-
-			if (vkCreateRenderPass(device->GetDevice(), &renderPassInfo, nullptr, &renderPass) != VK_SUCCESS) {
-				SPRaise("Failed to create bloom final render pass");
-			}
+			renderPass = CreateSimpleColorRenderPass(
+				device->GetDevice(),
+				VK_FORMAT_R8G8B8A8_UNORM,
+				VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+				VK_IMAGE_LAYOUT_UNDEFINED,
+				VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+				&dependency
+			);
 		}
 
 		void VulkanBloomFilter::CreatePipeline() {
