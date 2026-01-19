@@ -109,7 +109,6 @@ namespace spades {
 			std::unique_ptr<DemoNetClient> demoNet;
 			bool isDemoMode;
 			std::string demoFilePath;
-			int recordGameCount;
 			std::string playerName;
 			std::unique_ptr<IStream> logStream;
 
