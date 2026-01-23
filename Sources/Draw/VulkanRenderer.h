@@ -253,6 +253,7 @@ namespace spades {
 			Handle<gui::SDLVulkanDevice> GetDevice() { return device; }
 			VkRenderPass GetRenderPass() const { return renderPass; } // Swapchain render pass (for UI)
 			VkRenderPass GetOffscreenRenderPass() const; // Offscreen render pass (for 3D)
+			uint32_t GetCurrentFrameIndex() const { return currentImageIndex; }
 
 			// Queue a buffer for deferred deletion (will be deleted after GPU is done with it)
 			void QueueBufferForDeletion(Handle<VulkanBuffer> buffer);
