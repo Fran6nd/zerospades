@@ -436,8 +436,7 @@ namespace spades {
 			Vector2 fov = {tanf(def.fovX * 0.5f), tanf(def.fovY * 0.5f)};
 			Vector2 sunScreen;
 			sunScreen.x = sunView.x / (sunView.z * fov.x);
-			// Negate Y for Vulkan's Y-down NDC coordinate system
-			sunScreen.y = -sunView.y / (sunView.z * fov.y);
+			sunScreen.y = sunView.y / (sunView.z * fov.y);
 
 			const float sunRadiusTan = tanf(0.53f * 0.5f * static_cast<float>(M_PI) / 180.0f);
 			Vector2 sunSize = {sunRadiusTan / fov.x, sunRadiusTan / fov.y};
@@ -687,11 +686,12 @@ namespace spades {
 
 			vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, drawPipeline);
 
+			// Use flipped viewport to match main scene rendering (Y-up like OpenGL)
 			VkViewport viewport = {};
 			viewport.x = 0.0f;
-			viewport.y = 0.0f;
+			viewport.y = (float)renderHeight;
 			viewport.width = (float)renderWidth;
-			viewport.height = (float)renderHeight;
+			viewport.height = -(float)renderHeight;
 			viewport.minDepth = 0.0f;
 			viewport.maxDepth = 1.0f;
 			vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
