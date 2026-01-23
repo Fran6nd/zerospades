@@ -449,10 +449,12 @@ namespace spades {
 				ScannerUniforms uniforms;
 				Vector2 sunTexPos = sunScreen * 0.5f + 0.5f;
 				Vector2 sunTexSize = sunSize * 0.5f;
+				// Flip Y for depth texture which was rendered with flipped viewport
+				float flippedTexPosY = 1.0f - sunTexPos.y;
 				uniforms.scanRange[0] = sunTexPos.x - sunTexSize.x;
-				uniforms.scanRange[1] = sunTexPos.y - sunTexSize.y;
+				uniforms.scanRange[1] = flippedTexPosY - sunTexSize.y;
 				uniforms.scanRange[2] = sunTexPos.x + sunTexSize.x;
-				uniforms.scanRange[3] = sunTexPos.y + sunTexSize.y;
+				uniforms.scanRange[3] = flippedTexPosY + sunTexSize.y;
 				uniforms.drawRange[0] = -0.5f;
 				uniforms.drawRange[1] = -0.5f;
 				uniforms.drawRange[2] = 0.5f;
