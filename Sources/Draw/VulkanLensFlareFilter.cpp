@@ -47,6 +47,11 @@ namespace spades {
 			float _pad;
 		};
 
+		struct BlurUniforms {
+			float unitShift[2];
+			float _pad[2];
+		};
+
 		VulkanLensFlareFilter::VulkanLensFlareFilter(VulkanRenderer& r)
 			: VulkanPostProcessFilter(r),
 			  blurPipeline(VK_NULL_HANDLE),
@@ -144,6 +149,10 @@ namespace spades {
 				VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
 			drawUniformBuffer = new VulkanBuffer(device, sizeof(DrawUniforms),
+				VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+				VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+
+			blurUniformBuffer = new VulkanBuffer(device, sizeof(BlurUniforms),
 				VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
 				VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 		}
@@ -560,8 +569,10 @@ namespace spades {
 				vkFreeDescriptorSets(device->GetDevice(), descriptorPool, 1, &descriptorSet);
 			}
 
-			// Step 2: Blur visibility buffer (simplified - just use as-is for now)
-			// The GL version does 3 blur passes, but we'll skip this for initial implementation
+			// Step 2: Blur visibility buffer (3 passes like OpenGL)
+			Handle<VulkanImage> blurredVisibility = Blur(commandBuffer, visibilityBuffer.GetPointerOrNull(), 1.0f);
+			blurredVisibility = Blur(commandBuffer, blurredVisibility.GetPointerOrNull(), 2.0f);
+			blurredVisibility = Blur(commandBuffer, blurredVisibility.GetPointerOrNull(), 4.0f);
 
 			// Lens flare size doesn't follow sun size
 			sunSize = MakeVector2(0.01f, 0.01f);
@@ -571,7 +582,7 @@ namespace spades {
 			float aroundness2 = std::min(sunScreen.GetSquaredLength() * 3.2f, 1.0f);
 
 			// Step 3: Draw lens flares
-			auto drawFlare = [&](VulkanImage* flareTexture, VulkanImage* maskTexture,
+			auto drawFlare = [&](VulkanImage* visibilityImage, VulkanImage* flareTexture, VulkanImage* maskTexture,
 			                     Vector3 color, Vector4 range) {
 				DrawUniforms uniforms;
 				uniforms.drawRange[0] = range.x;
@@ -604,8 +615,8 @@ namespace spades {
 
 				VkDescriptorImageInfo visibilityInfo = {};
 				visibilityInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-				visibilityInfo.imageView = visibilityBuffer->GetImageView();
-				visibilityInfo.sampler = visibilityBuffer->GetSampler();
+				visibilityInfo.imageView = visibilityImage->GetImageView();
+				visibilityInfo.sampler = visibilityImage->GetSampler();
 
 				VkDescriptorImageInfo maskInfo = {};
 				maskInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
@@ -707,88 +718,88 @@ namespace spades {
 			vkCmdBindIndexBuffer(commandBuffer, quadIndexBuffer->GetBuffer(), 0, VK_INDEX_TYPE_UINT16);
 
 			// Draw main flare
-			drawFlare(flare4.GetPointerOrNull(), white.GetPointerOrNull(),
+			drawFlare(blurredVisibility.GetPointerOrNull(), flare4.GetPointerOrNull(), white.GetPointerOrNull(),
 				sunColor * 0.04f,
 				MakeVector4(sunScreen.x - sunSize.x * 256.0f, sunScreen.y - sunSize.y * 256.0f,
 				            sunScreen.x + sunSize.x * 256.0f, sunScreen.y + sunSize.y * 256.0f));
 
-			drawFlare(white.GetPointerOrNull(), white.GetPointerOrNull(),
+			drawFlare(blurredVisibility.GetPointerOrNull(), white.GetPointerOrNull(), white.GetPointerOrNull(),
 				sunColor * 0.3f,
 				MakeVector4(sunScreen.x - sunSize.x * 64.0f, sunScreen.y - sunSize.y * 64.0f,
 				            sunScreen.x + sunSize.x * 64.0f, sunScreen.y + sunSize.y * 64.0f));
 
-			drawFlare(white.GetPointerOrNull(), white.GetPointerOrNull(),
+			drawFlare(blurredVisibility.GetPointerOrNull(), white.GetPointerOrNull(), white.GetPointerOrNull(),
 				sunColor * 0.5f,
 				MakeVector4(sunScreen.x - sunSize.x * 32.0f, sunScreen.y - sunSize.y * 32.0f,
 				            sunScreen.x + sunSize.x * 32.0f, sunScreen.y + sunSize.y * 32.0f));
 
-			drawFlare(white.GetPointerOrNull(), white.GetPointerOrNull(),
+			drawFlare(blurredVisibility.GetPointerOrNull(), white.GetPointerOrNull(), white.GetPointerOrNull(),
 				sunColor * 0.8f,
 				MakeVector4(sunScreen.x - sunSize.x * 16.0f, sunScreen.y - sunSize.y * 16.0f,
 				            sunScreen.x + sunSize.x * 16.0f, sunScreen.y + sunSize.y * 16.0f));
 
-			drawFlare(white.GetPointerOrNull(), white.GetPointerOrNull(),
+			drawFlare(blurredVisibility.GetPointerOrNull(), white.GetPointerOrNull(), white.GetPointerOrNull(),
 				sunColor * 1.0f,
 				MakeVector4(sunScreen.x - sunSize.x * 4.0f, sunScreen.y - sunSize.y * 4.0f,
 				            sunScreen.x + sunSize.x * 4.0f, sunScreen.y + sunSize.y * 4.0f));
 
 			// Horizontal streak
-			drawFlare(white.GetPointerOrNull(), white.GetPointerOrNull(),
+			drawFlare(blurredVisibility.GetPointerOrNull(), white.GetPointerOrNull(), white.GetPointerOrNull(),
 				sunColor * MakeVector3(0.1f, 0.05f, 0.1f),
 				MakeVector4(sunScreen.x - sunSize.x * 256.0f, sunScreen.y - sunSize.y * 8.0f,
 				            sunScreen.x + sunSize.x * 256.0f, sunScreen.y + sunSize.y * 8.0f));
 
 			// Dust
-			drawFlare(white.GetPointerOrNull(), mask3.GetPointerOrNull(),
+			drawFlare(blurredVisibility.GetPointerOrNull(), white.GetPointerOrNull(), mask3.GetPointerOrNull(),
 				sunColor * aroundness * 0.4f,
 				MakeVector4(sunScreen.x - sunSize.x * 188.0f, sunScreen.y - sunSize.y * 188.0f,
 				            sunScreen.x + sunSize.x * 188.0f, sunScreen.y + sunSize.y * 188.0f));
 
 			if (reflections) {
 				// Reflection flares
-				drawFlare(flare2.GetPointerOrNull(), white.GetPointerOrNull(),
+				drawFlare(blurredVisibility.GetPointerOrNull(), flare2.GetPointerOrNull(), white.GetPointerOrNull(),
 					sunColor,
 					MakeVector4(-(sunScreen.x - sunSize.x * 18.0f) * 0.4f,
 					            -(sunScreen.y - sunSize.y * 18.0f) * 0.4f,
 					            -(sunScreen.x + sunSize.x * 18.0f) * 0.4f,
 					            -(sunScreen.y + sunSize.y * 18.0f) * 0.4f));
 
-				drawFlare(flare2.GetPointerOrNull(), white.GetPointerOrNull(),
+				drawFlare(blurredVisibility.GetPointerOrNull(), flare2.GetPointerOrNull(), white.GetPointerOrNull(),
 					sunColor * 0.3f,
 					MakeVector4(-(sunScreen.x - sunSize.x * 6.0f) * 0.39f,
 					            -(sunScreen.y - sunSize.y * 6.0f) * 0.39f,
 					            -(sunScreen.x + sunSize.x * 6.0f) * 0.39f,
 					            -(sunScreen.y + sunSize.y * 6.0f) * 0.39f));
 
-				drawFlare(flare2.GetPointerOrNull(), white.GetPointerOrNull(),
+				drawFlare(blurredVisibility.GetPointerOrNull(), flare2.GetPointerOrNull(), white.GetPointerOrNull(),
 					sunColor,
 					MakeVector4(-(sunScreen.x - sunSize.x * 6.0f) * 0.3f,
 					            -(sunScreen.y - sunSize.y * 6.0f) * 0.3f,
 					            -(sunScreen.x + sunSize.x * 6.0f) * 0.3f,
 					            -(sunScreen.y + sunSize.y * 6.0f) * 0.3f));
 
-				drawFlare(flare2.GetPointerOrNull(), white.GetPointerOrNull(),
+				drawFlare(blurredVisibility.GetPointerOrNull(), flare2.GetPointerOrNull(), white.GetPointerOrNull(),
 					sunColor * 0.3f,
 					MakeVector4((sunScreen.x - sunSize.x * 12.0f) * 0.6f,
 					            (sunScreen.y - sunSize.y * 12.0f) * 0.6f,
 					            (sunScreen.x + sunSize.x * 12.0f) * 0.6f,
 					            (sunScreen.y + sunSize.y * 12.0f) * 0.6f));
 
-				drawFlare(flare1.GetPointerOrNull(), mask2.GetPointerOrNull(),
+				drawFlare(blurredVisibility.GetPointerOrNull(), flare1.GetPointerOrNull(), mask2.GetPointerOrNull(),
 					MakeVector3(sunColor.x * 0.5f, sunColor.y * 0.4f, sunColor.z * 0.3f),
 					MakeVector4((sunScreen.x - sunSize.x * 96.0f) * 2.3f,
 					            (sunScreen.y - sunSize.y * 96.0f) * 2.3f,
 					            (sunScreen.x + sunSize.x * 96.0f) * 2.3f,
 					            (sunScreen.y + sunSize.y * 96.0f) * 2.3f));
 
-				drawFlare(flare1.GetPointerOrNull(), mask2.GetPointerOrNull(),
+				drawFlare(blurredVisibility.GetPointerOrNull(), flare1.GetPointerOrNull(), mask2.GetPointerOrNull(),
 					MakeVector3(sunColor.x * 0.3f, sunColor.y * 0.2f, sunColor.z * 0.1f),
 					MakeVector4((sunScreen.x - sunSize.x * 128.0f) * 0.8f,
 					            (sunScreen.y - sunSize.y * 128.0f) * 0.8f,
 					            (sunScreen.x + sunSize.x * 128.0f) * 0.8f,
 					            (sunScreen.y + sunSize.y * 128.0f) * 0.8f));
 
-				drawFlare(flare3.GetPointerOrNull(), mask2.GetPointerOrNull(),
+				drawFlare(blurredVisibility.GetPointerOrNull(), flare3.GetPointerOrNull(), mask2.GetPointerOrNull(),
 					sunColor * 0.3f,
 					MakeVector4((sunScreen.x - sunSize.x * 18.0f) * 0.5f,
 					            (sunScreen.y - sunSize.y * 18.0f) * 0.5f,
@@ -796,7 +807,7 @@ namespace spades {
 					            (sunScreen.y + sunSize.y * 18.0f) * 0.5f));
 
 				float reflSize = 50.0f + aroundness2 * 60.0f;
-				drawFlare(flare3.GetPointerOrNull(), mask1.GetPointerOrNull(),
+				drawFlare(blurredVisibility.GetPointerOrNull(), flare3.GetPointerOrNull(), mask1.GetPointerOrNull(),
 					MakeVector3(sunColor.x * 0.8f * aroundness2,
 					            sunColor.y * 0.5f * aroundness2,
 					            sunColor.z * 0.3f * aroundness2),
@@ -812,8 +823,215 @@ namespace spades {
 		}
 
 		Handle<VulkanImage> VulkanLensFlareFilter::Blur(VkCommandBuffer commandBuffer, VulkanImage* buffer, float spread) {
-			// Simplified blur - return input as-is for now
-			return Handle<VulkanImage>(buffer, false);
+			int w = buffer->GetWidth();
+			int h = buffer->GetHeight();
+
+			// Create temporary images for blur passes
+			Handle<VulkanImage> temp1 = Handle<VulkanImage>::New(device, w, h, VK_FORMAT_R8G8B8A8_UNORM,
+				VK_IMAGE_TILING_OPTIMAL,
+				VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+				VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+			Handle<VulkanImage> temp2 = Handle<VulkanImage>::New(device, w, h, VK_FORMAT_R8G8B8A8_UNORM,
+				VK_IMAGE_TILING_OPTIMAL,
+				VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+				VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+			// Create framebuffers for blur passes
+			VkFramebuffer fb1, fb2;
+
+			VkImageView attachments1[] = { temp1->GetImageView() };
+			VkFramebufferCreateInfo fbInfo = {};
+			fbInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+			fbInfo.renderPass = renderPass;  // Base class render pass for blur
+			fbInfo.attachmentCount = 1;
+			fbInfo.pAttachments = attachments1;
+			fbInfo.width = w;
+			fbInfo.height = h;
+			fbInfo.layers = 1;
+
+			if (vkCreateFramebuffer(device->GetDevice(), &fbInfo, nullptr, &fb1) != VK_SUCCESS) {
+				return Handle<VulkanImage>(buffer, false);
+			}
+
+			VkImageView attachments2[] = { temp2->GetImageView() };
+			fbInfo.pAttachments = attachments2;
+			if (vkCreateFramebuffer(device->GetDevice(), &fbInfo, nullptr, &fb2) != VK_SUCCESS) {
+				vkDestroyFramebuffer(device->GetDevice(), fb1, nullptr);
+				return Handle<VulkanImage>(buffer, false);
+			}
+
+			VkBuffer vertexBuffers[] = { quadVertexBuffer->GetBuffer() };
+			VkDeviceSize offsets[] = { 0 };
+
+			// Transition input to shader read
+			buffer->TransitionLayout(commandBuffer, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+				VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT,
+				VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+
+			// Pass 1: Horizontal blur (buffer -> temp1)
+			{
+				BlurUniforms uniforms;
+				uniforms.unitShift[0] = spread / (float)w;
+				uniforms.unitShift[1] = 0.0f;
+
+				void* data = blurUniformBuffer->Map();
+				memcpy(data, &uniforms, sizeof(uniforms));
+				blurUniformBuffer->Unmap();
+
+				VkDescriptorSetAllocateInfo allocInfo = {};
+				allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+				allocInfo.descriptorPool = descriptorPool;
+				allocInfo.descriptorSetCount = 1;
+				allocInfo.pSetLayouts = &blurDescLayout;
+
+				VkDescriptorSet descriptorSet;
+				if (vkAllocateDescriptorSets(device->GetDevice(), &allocInfo, &descriptorSet) != VK_SUCCESS) {
+					vkDestroyFramebuffer(device->GetDevice(), fb1, nullptr);
+					vkDestroyFramebuffer(device->GetDevice(), fb2, nullptr);
+					return Handle<VulkanImage>(buffer, false);
+				}
+
+				VkDescriptorImageInfo imageInfo = {};
+				imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+				imageInfo.imageView = buffer->GetImageView();
+				imageInfo.sampler = buffer->GetSampler();
+
+				VkDescriptorBufferInfo bufferInfo = {};
+				bufferInfo.buffer = blurUniformBuffer->GetBuffer();
+				bufferInfo.offset = 0;
+				bufferInfo.range = sizeof(BlurUniforms);
+
+				VkWriteDescriptorSet writes[2] = {};
+				writes[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+				writes[0].dstSet = descriptorSet;
+				writes[0].dstBinding = 0;
+				writes[0].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+				writes[0].descriptorCount = 1;
+				writes[0].pImageInfo = &imageInfo;
+
+				writes[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+				writes[1].dstSet = descriptorSet;
+				writes[1].dstBinding = 1;
+				writes[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+				writes[1].descriptorCount = 1;
+				writes[1].pBufferInfo = &bufferInfo;
+
+				vkUpdateDescriptorSets(device->GetDevice(), 2, writes, 0, nullptr);
+
+				VkRenderPassBeginInfo rpInfo = {};
+				rpInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+				rpInfo.renderPass = renderPass;
+				rpInfo.framebuffer = fb1;
+				rpInfo.renderArea.offset = { 0, 0 };
+				rpInfo.renderArea.extent = { (uint32_t)w, (uint32_t)h };
+
+				vkCmdBeginRenderPass(commandBuffer, &rpInfo, VK_SUBPASS_CONTENTS_INLINE);
+				vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, blurPipeline);
+
+				VkViewport viewport = { 0.0f, 0.0f, (float)w, (float)h, 0.0f, 1.0f };
+				VkRect2D scissor = { { 0, 0 }, { (uint32_t)w, (uint32_t)h } };
+				vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
+				vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
+
+				vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, blurLayout, 0, 1, &descriptorSet, 0, nullptr);
+				vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
+				vkCmdBindIndexBuffer(commandBuffer, quadIndexBuffer->GetBuffer(), 0, VK_INDEX_TYPE_UINT16);
+				vkCmdDrawIndexed(commandBuffer, 6, 1, 0, 0, 0);
+
+				vkCmdEndRenderPass(commandBuffer);
+				vkFreeDescriptorSets(device->GetDevice(), descriptorPool, 1, &descriptorSet);
+			}
+
+			// Transition temp1 to shader read
+			temp1->TransitionLayout(commandBuffer, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+				VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT,
+				VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+
+			// Pass 2: Vertical blur (temp1 -> temp2)
+			{
+				BlurUniforms uniforms;
+				uniforms.unitShift[0] = 0.0f;
+				uniforms.unitShift[1] = spread / (float)h;
+
+				void* data = blurUniformBuffer->Map();
+				memcpy(data, &uniforms, sizeof(uniforms));
+				blurUniformBuffer->Unmap();
+
+				VkDescriptorSetAllocateInfo allocInfo = {};
+				allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+				allocInfo.descriptorPool = descriptorPool;
+				allocInfo.descriptorSetCount = 1;
+				allocInfo.pSetLayouts = &blurDescLayout;
+
+				VkDescriptorSet descriptorSet;
+				if (vkAllocateDescriptorSets(device->GetDevice(), &allocInfo, &descriptorSet) != VK_SUCCESS) {
+					vkDestroyFramebuffer(device->GetDevice(), fb1, nullptr);
+					vkDestroyFramebuffer(device->GetDevice(), fb2, nullptr);
+					return temp1;
+				}
+
+				VkDescriptorImageInfo imageInfo = {};
+				imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+				imageInfo.imageView = temp1->GetImageView();
+				imageInfo.sampler = temp1->GetSampler();
+
+				VkDescriptorBufferInfo bufferInfo = {};
+				bufferInfo.buffer = blurUniformBuffer->GetBuffer();
+				bufferInfo.offset = 0;
+				bufferInfo.range = sizeof(BlurUniforms);
+
+				VkWriteDescriptorSet writes[2] = {};
+				writes[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+				writes[0].dstSet = descriptorSet;
+				writes[0].dstBinding = 0;
+				writes[0].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+				writes[0].descriptorCount = 1;
+				writes[0].pImageInfo = &imageInfo;
+
+				writes[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+				writes[1].dstSet = descriptorSet;
+				writes[1].dstBinding = 1;
+				writes[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+				writes[1].descriptorCount = 1;
+				writes[1].pBufferInfo = &bufferInfo;
+
+				vkUpdateDescriptorSets(device->GetDevice(), 2, writes, 0, nullptr);
+
+				VkRenderPassBeginInfo rpInfo = {};
+				rpInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+				rpInfo.renderPass = renderPass;
+				rpInfo.framebuffer = fb2;
+				rpInfo.renderArea.offset = { 0, 0 };
+				rpInfo.renderArea.extent = { (uint32_t)w, (uint32_t)h };
+
+				vkCmdBeginRenderPass(commandBuffer, &rpInfo, VK_SUBPASS_CONTENTS_INLINE);
+				vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, blurPipeline);
+
+				VkViewport viewport = { 0.0f, 0.0f, (float)w, (float)h, 0.0f, 1.0f };
+				VkRect2D scissor = { { 0, 0 }, { (uint32_t)w, (uint32_t)h } };
+				vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
+				vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
+
+				vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, blurLayout, 0, 1, &descriptorSet, 0, nullptr);
+				vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
+				vkCmdBindIndexBuffer(commandBuffer, quadIndexBuffer->GetBuffer(), 0, VK_INDEX_TYPE_UINT16);
+				vkCmdDrawIndexed(commandBuffer, 6, 1, 0, 0, 0);
+
+				vkCmdEndRenderPass(commandBuffer);
+				vkFreeDescriptorSets(device->GetDevice(), descriptorPool, 1, &descriptorSet);
+			}
+
+			// Cleanup framebuffers
+			vkDestroyFramebuffer(device->GetDevice(), fb1, nullptr);
+			vkDestroyFramebuffer(device->GetDevice(), fb2, nullptr);
+
+			// Transition output to shader read for next usage
+			temp2->TransitionLayout(commandBuffer, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+				VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT,
+				VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+
+			return temp2;
 		}
 	}
 }

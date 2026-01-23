@@ -49,6 +49,7 @@ namespace spades {
 			Handle<VulkanBuffer> quadIndexBuffer;
 			Handle<VulkanBuffer> scannerUniformBuffer;
 			Handle<VulkanBuffer> drawUniformBuffer;
+			Handle<VulkanBuffer> blurUniformBuffer;
 
 			Handle<VulkanProgram> blurProgram;
 			Handle<VulkanProgram> scannerProgram;
