@@ -122,25 +122,25 @@ namespace spades {
 
 			uint16_t indices[] = { 0, 1, 2, 2, 3, 0 };
 
-			quadVertexBuffer = new VulkanBuffer(device, sizeof(vertices),
+			quadVertexBuffer = Handle<VulkanBuffer>::New(device, sizeof(vertices),
 				VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
 				VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 			void* vertexData = quadVertexBuffer->Map();
 			memcpy(vertexData, vertices, sizeof(vertices));
 			quadVertexBuffer->Unmap();
 
-			quadIndexBuffer = new VulkanBuffer(device, sizeof(indices),
+			quadIndexBuffer = Handle<VulkanBuffer>::New(device, sizeof(indices),
 				VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
 				VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 			void* indexData = quadIndexBuffer->Map();
 			memcpy(indexData, indices, sizeof(indices));
 			quadIndexBuffer->Unmap();
 
-			downsampleUniformBuffer = new VulkanBuffer(device, sizeof(DownsampleUniforms),
+			downsampleUniformBuffer = Handle<VulkanBuffer>::New(device, sizeof(DownsampleUniforms),
 				VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
 				VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
-			compositeUniformBuffer = new VulkanBuffer(device, sizeof(CompositeUniforms),
+			compositeUniformBuffer = Handle<VulkanBuffer>::New(device, sizeof(CompositeUniforms),
 				VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
 				VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 		}
