@@ -436,7 +436,8 @@ namespace spades {
 			Vector2 fov = {tanf(def.fovX * 0.5f), tanf(def.fovY * 0.5f)};
 			Vector2 sunScreen;
 			sunScreen.x = sunView.x / (sunView.z * fov.x);
-			sunScreen.y = sunView.y / (sunView.z * fov.y);
+			// Negate Y for Vulkan's Y-down NDC coordinate system
+			sunScreen.y = -sunView.y / (sunView.z * fov.y);
 
 			const float sunRadiusTan = tanf(0.53f * 0.5f * static_cast<float>(M_PI) / 180.0f);
 			Vector2 sunSize = {sunRadiusTan / fov.x, sunRadiusTan / fov.y};
