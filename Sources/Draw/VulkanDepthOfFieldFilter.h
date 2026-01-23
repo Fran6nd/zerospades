@@ -81,6 +81,8 @@ namespace spades {
 				float offsetX, float offsetY, int width, int height);
 			Handle<VulkanImage> GaussBlur(VkCommandBuffer commandBuffer, VulkanImage* input, bool horizontal, float spread);
 
+			void Cleanup();
+
 		public:
 			VulkanDepthOfFieldFilter(VulkanRenderer&);
 			~VulkanDepthOfFieldFilter();
