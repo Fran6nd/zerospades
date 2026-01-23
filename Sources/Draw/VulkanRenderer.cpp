@@ -35,6 +35,7 @@
 #include "VulkanModelManager.h"
 #include "VulkanProgramManager.h"
 #include "VulkanPipelineCache.h"
+#include "VulkanTemporaryImagePool.h"
 #include <Gui/SDLVulkanDevice.h>
 #include <Client/GameMap.h>
 #include <Core/Bitmap.h>
@@ -91,6 +92,7 @@ namespace spades {
 			programManager = Handle<VulkanProgramManager>::New(device);
 			pipelineCache = Handle<VulkanPipelineCache>::New(device);
 			modelManager = Handle<VulkanModelManager>::New(*this);
+			temporaryImagePool = Handle<VulkanTemporaryImagePool>::New(device);
 			InitializeVulkanResources();  // Create semaphores for synchronization
 
 			// Create framebuffer manager for offscreen rendering
@@ -175,6 +177,11 @@ namespace spades {
 			delete framebufferManager;
 			framebufferManager = nullptr;
 			programManager = nullptr;
+
+			if (temporaryImagePool) {
+				temporaryImagePool->Clear();
+			}
+			temporaryImagePool = nullptr;
 
 			CleanupVulkanResources();
 
@@ -1063,6 +1070,11 @@ namespace spades {
 
 				// Present the image with proper synchronization
 				device->PresentImage(currentImageIndex, signalSemaphores, 1);
+			}
+
+			// Release all temporary images back to the pool for reuse next frame
+			if (temporaryImagePool) {
+				temporaryImagePool->ReleaseAll();
 			}
 		}
 

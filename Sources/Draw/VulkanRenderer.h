@@ -51,6 +51,7 @@ namespace spades {
 		class VulkanProgram;
 		class VulkanShader;
 		class VulkanImage;
+		class VulkanTemporaryImagePool;
 
 		class VulkanBuffer;
 
@@ -124,6 +125,7 @@ namespace spades {
 			Handle<VulkanModelManager> modelManager;
 			VulkanImageManager* imageManager;
 			Handle<VulkanPipelineCache> pipelineCache;
+			Handle<VulkanTemporaryImagePool> temporaryImagePool;
 
 			Handle<VulkanImage> whiteImage; // 1x1 white image for solid color rendering
 
@@ -254,6 +256,9 @@ namespace spades {
 
 			// Queue a buffer for deferred deletion (will be deleted after GPU is done with it)
 			void QueueBufferForDeletion(Handle<VulkanBuffer> buffer);
+
+			// Temporary image pool for render target reuse
+			VulkanTemporaryImagePool* GetTemporaryImagePool() { return temporaryImagePool.GetPointerOrNull(); }
 		};
 
 	} // namespace draw
