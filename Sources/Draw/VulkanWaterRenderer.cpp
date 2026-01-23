@@ -410,8 +410,8 @@ namespace spades {
 		SPADES_MARK_FUNCTION();
 		if (!waterPipeline || numIndices == 0) return;
 
-		// Use frame index 0 for now (will need proper frame-in-flight tracking later)
-		uint32_t frameIndex = 0;
+		// Get current frame index for proper double/triple buffering
+		uint32_t frameIndex = renderer.GetCurrentFrameIndex();
 
 		// Update uniform buffers with current renderer state
 		UpdateUniformBuffers(frameIndex);
