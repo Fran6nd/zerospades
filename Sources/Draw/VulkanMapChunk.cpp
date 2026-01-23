@@ -225,7 +225,17 @@ namespace spades {
 
 						uint32_t color = map->GetColor(wx, wy, wz);
 
-						// Emit faces for this voxel - match OpenGL exactly
+						// Apply damage darkening - match OpenGL exactly
+						// Health is stored in upper byte (0xHHBBGGRR format)
+						int health = color >> 24;
+						if (health < 100) {
+							// Damaged block: darken by 50%
+							color &= 0xFFFFFF;   // Mask to RGB only
+							color &= 0xFEFEFE;   // Clear low bits
+							color >>= 1;         // Divide RGB by 2
+						}
+
+						// Emit faces for this voxel
 						// +Z face (up)
 						if (!IsSolid(wx, wy, wz + 1)) {
 							EmitVertex(wx, wy, wz + 1, x + 1, y, z + 1, -1, 0, 0, 1, color, 0, 0, 1);
