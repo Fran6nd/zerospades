@@ -54,7 +54,8 @@ Lens flares appear stretched/elongated like lightsabers instead of proper circul
 
 - [ ] **Visibility texture UV mismatch** - [Draw.vk.fs:38](Resources/Shaders/LensFlare/Draw.vk.fs#L38) samples visibility with `texCoord` which might have incorrect Y orientation.
 
-- [ ] **Missing blur passes** - [VulkanLensFlareFilter.cpp:811-814](Sources/Draw/VulkanLensFlareFilter.cpp#L811-L814) - The blur function is a stub that returns input unchanged. OpenGL does 3 blur passes which softens the flare. This alone could cause sharp/stretched appearance.
+- [x] **Missing blur passes** - [VulkanLensFlareFilter.cpp:811-814](Sources/Draw/VulkanLensFlareFilter.cpp#L811-L814) - The blur function is a stub that returns input unchanged. OpenGL does 3 blur passes which softens the flare. This alone could cause sharp/stretched appearance.
+  **FIXED:** Implemented full two-pass Gaussian blur with 3 iterations (spread 1.0, 2.0, 4.0) matching OpenGL.
 
 ### Comparison with OpenGL
 | Aspect | OpenGL | Vulkan |
