@@ -40,12 +40,13 @@ Lens flares appear stretched/elongated like lightsabers instead of proper circul
   ```
   The OpenGL version has Y-up in NDC, Vulkan has Y-down.
 
-- [ ] **Viewport not flipped for lens flare pass** - [VulkanLensFlareFilter.cpp:689-696](Sources/Draw/VulkanLensFlareFilter.cpp#L689-L696) sets viewport with positive height:
+- [x] **Viewport not flipped for lens flare pass** - [VulkanLensFlareFilter.cpp:689-696](Sources/Draw/VulkanLensFlareFilter.cpp#L689-L696) sets viewport with positive height:
   ```cpp
   viewport.y = 0.0f;
   viewport.height = (float)renderHeight;  // NOT negated!
   ```
   This is inconsistent with the main scene rendering which uses negative height.
+  **FIXED:** Viewport now uses flipped Y to match main scene rendering.
 
 - [ ] **Draw range coordinates in wrong space** - The `drawRange` uniform ([VulkanLensFlareFilter.cpp:706-741](Sources/Draw/VulkanLensFlareFilter.cpp#L706-L741)) uses `sunScreen` coordinates directly without Y-flip transformation.
 
@@ -100,7 +101,8 @@ The Vulkan water renderer is a minimal port that lacks several features from the
   - `viewModelMatrix` calculation
   - `waterPlane` calculation ([VulkanWaterRenderer.cpp:917-920](Sources/Draw/VulkanWaterRenderer.cpp#L917-L920))
 
-- [ ] **Check fovTan uniform** - [VulkanWaterRenderer.cpp:909-914](Sources/Draw/VulkanWaterRenderer.cpp#L909-L914) has different signs than OpenGL ([GLWaterRenderer.cpp:699-700](Sources/Draw/GLWaterRenderer.cpp#L699-L700)). Vulkan uses `-tanFovY` in second component but OpenGL uses `-tanFovY` in third component.
+- [x] **Check fovTan uniform** - [VulkanWaterRenderer.cpp:909-914](Sources/Draw/VulkanWaterRenderer.cpp#L909-L914) has different signs than OpenGL ([GLWaterRenderer.cpp:699-700](Sources/Draw/GLWaterRenderer.cpp#L699-L700)). Vulkan uses `-tanFovY` in second component but OpenGL uses `-tanFovY` in third component.
+  **VERIFIED:** The fovTan values are actually identical between OpenGL and Vulkan. This TODO was incorrect.
 
 ### Files to Examine
 - [Sources/Draw/VulkanWaterRenderer.cpp](Sources/Draw/VulkanWaterRenderer.cpp)
@@ -124,7 +126,8 @@ The Vulkan water renderer is a minimal port that lacks several features from the
 
 ### Synchronization
 
-- [ ] **Use proper frame-in-flight tracking** - [VulkanWaterRenderer.cpp:414](Sources/Draw/VulkanWaterRenderer.cpp#L414) hardcodes `frameIndex = 0`. Should track actual frame index for proper double/triple buffering.
+- [x] **Use proper frame-in-flight tracking** - [VulkanWaterRenderer.cpp:414](Sources/Draw/VulkanWaterRenderer.cpp#L414) hardcodes `frameIndex = 0`. Should track actual frame index for proper double/triple buffering.
+  **FIXED:** Now uses `renderer.GetCurrentFrameIndex()` for proper tracking.
 
 - [ ] **Batch queue submissions** - Multiple `vkQueueSubmit` calls in [VulkanWaterRenderer.cpp:681-682](Sources/Draw/VulkanWaterRenderer.cpp#L681-L682) and similar locations. Batch into single submission where possible.
 
