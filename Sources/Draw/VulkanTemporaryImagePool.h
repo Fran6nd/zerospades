@@ -87,10 +87,10 @@ namespace spades {
 			Handle<VulkanImage> Acquire(uint32_t width, uint32_t height, VkFormat format);
 
 			/**
-			 * Release a previously acquired image back to the pool.
+			 * Return a previously acquired image back to the pool.
 			 * The image becomes available for reuse by subsequent Acquire() calls.
 			 */
-			void Release(VulkanImage* image);
+			void Return(VulkanImage* image);
 
 			/**
 			 * Release all images back to the pool.
