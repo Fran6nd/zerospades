@@ -76,7 +76,7 @@ namespace spades {
 			return newImage;
 		}
 
-		void VulkanTemporaryImagePool::Release(VulkanImage* image) {
+		void VulkanTemporaryImagePool::Return(VulkanImage* image) {
 			SPADES_MARK_FUNCTION();
 
 			if (!image) return;
