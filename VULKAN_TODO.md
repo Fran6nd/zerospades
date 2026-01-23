@@ -2,23 +2,6 @@
 
 All post-processing filters have placeholder implementations that don't actually work.
 
-### 16. Code Refactoring - Reduce Redundancy
-
-#### Render Pass Creation ✅
-**Files:** Multiple `Vulkan*Filter.cpp` files
-- [x] Extract common render pass creation logic
-- [x] Create utility function: `CreateSimpleColorRenderPass()`
-- [x] Update all filters to use common function
-- [x] Reduce code duplication across 8+ files
-
-#### Pipeline Creation Boilerplate ✅
-**Files:** Multiple `Vulkan*Filter.cpp` files
-- [x] Create pipeline builder helper class
-- [x] Simplify pipeline creation with fluent API
-- [x] Reduce boilerplate in each filter
-
----
-
 ### 17. Synchronization Audit
 **Files:** All `Vulkan*.cpp` files
 - [ ] Audit all image layout transitions
@@ -63,11 +46,12 @@ All post-processing filters have placeholder implementations that don't actually
 
 ---
 
-### 21. Memory Aliasing
+### 21. Memory Aliasing ✅
 **Files:** Resource management classes
-- [ ] Identify temporary resources (intermediate render targets)
-- [ ] Implement memory aliasing for temporary resources
+- [x] Identify temporary resources (intermediate render targets)
+- [x] Implement memory aliasing for temporary resources ([VulkanTemporaryImagePool.h](Sources/Draw/VulkanTemporaryImagePool.h))
 - [ ] Measure memory usage reduction
+- [ ] Update filters to use the pool (currently available via `VulkanRenderer::GetTemporaryImagePool()`)
 
 **Impact:** Reduces GPU memory consumption.
 
