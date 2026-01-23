@@ -81,65 +81,89 @@ namespace spades {
 			  cocRenderPass(VK_NULL_HANDLE),
 			  blurRenderPass(VK_NULL_HANDLE),
 			  descriptorPool(VK_NULL_HANDLE) {
-			CreateQuadBuffers();
-			CreateDescriptorPool();
-			CreateCoCRenderPass();
-			CreateBlurRenderPass();
-			CreateRenderPass();
-			CreatePipeline();
+			try {
+				CreateQuadBuffers();
+				CreateDescriptorPool();
+				CreateCoCRenderPass();
+				CreateBlurRenderPass();
+				CreateRenderPass();
+				CreatePipeline();
+			} catch (...) {
+				Cleanup();
+				throw;
+			}
 		}
 
 		VulkanDepthOfFieldFilter::~VulkanDepthOfFieldFilter() {
+			Cleanup();
+		}
+
+		void VulkanDepthOfFieldFilter::Cleanup() {
 			vkDeviceWaitIdle(device->GetDevice());
 
 			if (cocGenPipeline != VK_NULL_HANDLE) {
 				vkDestroyPipeline(device->GetDevice(), cocGenPipeline, nullptr);
+				cocGenPipeline = VK_NULL_HANDLE;
 			}
 			if (blurPipeline != VK_NULL_HANDLE) {
 				vkDestroyPipeline(device->GetDevice(), blurPipeline, nullptr);
+				blurPipeline = VK_NULL_HANDLE;
 			}
 			if (gaussPipeline != VK_NULL_HANDLE) {
 				vkDestroyPipeline(device->GetDevice(), gaussPipeline, nullptr);
+				gaussPipeline = VK_NULL_HANDLE;
 			}
 			if (finalMixPipeline != VK_NULL_HANDLE) {
 				vkDestroyPipeline(device->GetDevice(), finalMixPipeline, nullptr);
+				finalMixPipeline = VK_NULL_HANDLE;
 			}
 
 			if (cocGenLayout != VK_NULL_HANDLE) {
 				vkDestroyPipelineLayout(device->GetDevice(), cocGenLayout, nullptr);
+				cocGenLayout = VK_NULL_HANDLE;
 			}
 			if (blurLayout != VK_NULL_HANDLE) {
 				vkDestroyPipelineLayout(device->GetDevice(), blurLayout, nullptr);
+				blurLayout = VK_NULL_HANDLE;
 			}
 			if (gaussLayout != VK_NULL_HANDLE) {
 				vkDestroyPipelineLayout(device->GetDevice(), gaussLayout, nullptr);
+				gaussLayout = VK_NULL_HANDLE;
 			}
 			if (finalMixLayout != VK_NULL_HANDLE) {
 				vkDestroyPipelineLayout(device->GetDevice(), finalMixLayout, nullptr);
+				finalMixLayout = VK_NULL_HANDLE;
 			}
 
 			if (cocGenDescLayout != VK_NULL_HANDLE) {
 				vkDestroyDescriptorSetLayout(device->GetDevice(), cocGenDescLayout, nullptr);
+				cocGenDescLayout = VK_NULL_HANDLE;
 			}
 			if (blurDescLayout != VK_NULL_HANDLE) {
 				vkDestroyDescriptorSetLayout(device->GetDevice(), blurDescLayout, nullptr);
+				blurDescLayout = VK_NULL_HANDLE;
 			}
 			if (gaussDescLayout != VK_NULL_HANDLE) {
 				vkDestroyDescriptorSetLayout(device->GetDevice(), gaussDescLayout, nullptr);
+				gaussDescLayout = VK_NULL_HANDLE;
 			}
 			if (finalMixDescLayout != VK_NULL_HANDLE) {
 				vkDestroyDescriptorSetLayout(device->GetDevice(), finalMixDescLayout, nullptr);
+				finalMixDescLayout = VK_NULL_HANDLE;
 			}
 
 			if (descriptorPool != VK_NULL_HANDLE) {
 				vkDestroyDescriptorPool(device->GetDevice(), descriptorPool, nullptr);
+				descriptorPool = VK_NULL_HANDLE;
 			}
 			if (cocRenderPass != VK_NULL_HANDLE) {
 				vkDestroyRenderPass(device->GetDevice(), cocRenderPass, nullptr);
+				cocRenderPass = VK_NULL_HANDLE;
 			}
 			if (blurRenderPass != VK_NULL_HANDLE && blurRenderPass != cocRenderPass) {
 				vkDestroyRenderPass(device->GetDevice(), blurRenderPass, nullptr);
 			}
+			blurRenderPass = VK_NULL_HANDLE;
 
 			DestroyResources();
 		}
