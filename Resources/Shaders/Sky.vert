@@ -50,6 +50,6 @@ void main() {
 	vec3 right = pushConstants.viewAxisSide;
 	vec3 up = pushConstants.viewAxisUp;
 
-	// Account for Vulkan's flipped viewport (negative height)
-	viewDir = normalize(front + right * positionAttribute.x * tanFovX - up * positionAttribute.y * tanFovY);
+	// With flipped viewport, positionAttribute.y is already inverted, so use positive up
+	viewDir = normalize(front + right * positionAttribute.x * tanFovX + up * positionAttribute.y * tanFovY);
 }
