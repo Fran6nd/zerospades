@@ -102,6 +102,10 @@ namespace spades {
 			std::vector<Handle<VulkanBuffer>> waveStagingBufferPool;
 			size_t waveStagingBufferSize;
 
+			// Fences for async texture uploads
+			VkFence waveUploadFence;
+			VkFence textureUploadFence;
+
 			// Occlusion query for skipping water rendering when not visible
 			VkQueryPool occlusionQueryPool;
 			bool occlusionQueryActive;
