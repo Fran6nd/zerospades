@@ -610,7 +610,7 @@ namespace spades {
 
 		// Create pipeline using water render pass (with LOAD_OP to preserve scene content)
 		VkRenderPass waterRenderPass = renderer.GetFramebufferManager()->GetWaterRenderPass();
-		waterPipeline = Handle<VulkanPipeline>::New(device, waterProgram, cfg, waterRenderPass);
+		waterPipeline = Handle<VulkanPipeline>::New(device, waterProgram, cfg, waterRenderPass, renderer.GetPipelineCache());
 
 		// Create occlusion query pool
 		VkQueryPoolCreateInfo queryPoolInfo{};
