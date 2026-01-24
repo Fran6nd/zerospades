@@ -389,7 +389,7 @@ namespace spades {
 
 		VulkanWaterRenderer::VulkanWaterRenderer(VulkanRenderer& r, client::GameMap* map)
 	: renderer(r), device(r.GetDevice()), gameMap(map), waterProgram(nullptr),
-	  descriptorPool(VK_NULL_HANDLE) {
+	  descriptorPool(VK_NULL_HANDLE), waveStagingBufferSize(0) {
 			SPADES_MARK_FUNCTION();
 			SPLog("VulkanWaterRenderer created");
 
@@ -440,6 +440,14 @@ namespace spades {
 						VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_OPTIMAL,
 						VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
 						VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+				}
+
+				// Pre-allocate staging buffers for wave uploads
+				waveStagingBufferSize = size * size * sizeof(uint32_t);
+				for (size_t i = 0; i < numLayers; i++) {
+					waveStagingBufferPool.push_back(Handle<VulkanBuffer>::New(
+						device, waveStagingBufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+						VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT));
 				}
 			}
 
@@ -879,12 +887,10 @@ namespace spades {
 					0, VK_ACCESS_TRANSFER_WRITE_BIT,
 					VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
 
-				// Upload each layer
+				// Upload each layer using pooled staging buffers
 				for (size_t i = 0; i < waveTanksPlaceholder.size(); i++) {
 					IWaveTank* tank = (IWaveTank*)waveTanksPlaceholder[i];
-					Handle<VulkanBuffer> staging = Handle<VulkanBuffer>::New(
-						device, bmpSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-						VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+					Handle<VulkanBuffer>& staging = waveStagingBufferPool[i];
 					void* data = staging->Map();
 					memcpy(data, tank->GetBitmap(), bmpSize);
 					staging->Unmap();
