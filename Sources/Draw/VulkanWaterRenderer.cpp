@@ -10,6 +10,7 @@
 #include <Core/Settings.h>
 #include <Core/ConcurrentDispatch.h>
 #include <Client/GameMap.h>
+#include <kiss_fft130/kiss_fft.h>
 
 SPADES_SETTING(r_water);
 
@@ -82,7 +83,172 @@ namespace spades {
 			}
 		};
 
-		// For now, only implement StandardWaveTank (FTCS solver) to keep port simple
+		// SinCos lookup table for FFT wave tank
+		struct SinCosTable {
+			float sinCoarse[256];
+			float cosCoarse[256];
+			float sinFine[256];
+			float cosFine[256];
+
+		public:
+			SinCosTable() {
+				for (int i = 0; i < 256; i++) {
+					float ang = (float)i / 256.0F * (M_PI_F * 2.0F);
+					sinCoarse[i] = sinf(ang);
+					cosCoarse[i] = cosf(ang);
+
+					ang = (float)i / 65536.0F * (M_PI_F * 2.0F);
+					sinFine[i] = sinf(ang);
+					cosFine[i] = cosf(ang);
+				}
+			}
+
+			void Compute(unsigned int step, float& outSin, float& outCos) {
+				step &= 0xFFFF;
+				if (step == 0) {
+					outSin = 0;
+					outCos = 1.0F;
+					return;
+				}
+
+				int fine = step & 0xFF;
+				int coarse = step >> 8;
+
+				outSin = sinCoarse[coarse];
+				outCos = cosCoarse[coarse];
+
+				if (fine != 0) {
+					float c = cosFine[fine];
+					float s = sinFine[fine];
+					float c2 = outCos * c - outSin * s;
+					float s2 = outCos * s + outSin * c;
+					outCos = c2;
+					outSin = s2;
+				}
+			}
+		};
+
+		static SinCosTable sinCosTable;
+
+		// FFT-based wave solver for more realistic waves
+		template <int SizeBits> class FFTWaveTank : public IWaveTank {
+			enum { Size = 1 << SizeBits, SizeHalf = Size / 2 };
+			kiss_fft_cfg fft;
+
+			typedef kiss_fft_cpx Complex;
+
+			struct Cell {
+				float magnitude;
+				uint32_t phase;
+				float phasePerSecond;
+
+				float m00, m01;
+				float m10, m11;
+			};
+
+			Cell cells[SizeHalf + 1][Size];
+
+			Complex spectrum[SizeHalf + 1][Size];
+
+			Complex temp1[Size];
+			Complex temp2[Size];
+			Complex temp3[Size][Size];
+
+			float height[Size][Size];
+
+		public:
+			FFTWaveTank() : IWaveTank(Size) {
+				auto* getRandom = SampleRandomFloat;
+
+				fft = kiss_fft_alloc(Size, 1, NULL, NULL);
+
+				for (int x = 0; x < Size; x++) {
+					for (int y = 0; y <= SizeHalf; y++) {
+						Cell& cell = cells[y][x];
+						if (x == 0 && y == 0) {
+							cell.magnitude = 0;
+							cell.phasePerSecond = 0.0F;
+							cell.phase = 0;
+						} else {
+							int cx = std::min(x, Size - x);
+							float dist = (float)sqrt(cx * cx + y * y);
+							float mag = 0.8F / dist / (float)Size;
+							mag /= dist;
+
+							float scal = dist / (float)SizeHalf;
+							scal *= scal;
+							mag *= expf(-scal * 3.0F);
+
+							cell.magnitude = mag;
+							cell.phase = static_cast<uint32_t>(SampleRandom());
+							cell.phasePerSecond = dist * 1.0E+9F * 128 / Size;
+						}
+
+						cell.m00 = getRandom() - getRandom();
+						cell.m01 = getRandom() - getRandom();
+						cell.m10 = getRandom() - getRandom();
+						cell.m11 = getRandom() - getRandom();
+					}
+				}
+			}
+			~FFTWaveTank() { kiss_fft_free(fft); }
+
+			void Run() override {
+				// advance cells
+				for (int x = 0; x < Size; x++) {
+					for (int y = 0; y <= SizeHalf; y++) {
+						Cell& cell = cells[y][x];
+						uint32_t dphase;
+						dphase = (uint32_t)(cell.phasePerSecond * dt);
+						cell.phase += dphase;
+
+						unsigned int phase = cell.phase >> 16;
+						float c, s;
+						sinCosTable.Compute(phase, s, c);
+
+						float u, v;
+						u = c * cell.m00 + s * cell.m01;
+						v = c * cell.m10 + s * cell.m11;
+
+						spectrum[y][x].r = u * cell.magnitude;
+						spectrum[y][x].i = v * cell.magnitude;
+					}
+				}
+
+				// rfft
+				for (int y = 0; y <= SizeHalf; y++) {
+					for (int x = 0; x < Size; x++)
+						temp1[x] = spectrum[y][x];
+
+					kiss_fft(fft, temp1, temp2);
+
+					if (y == 0) {
+						for (int x = 0; x < Size; x++)
+							temp3[x][0] = temp2[x];
+					} else if (y == SizeHalf) {
+						for (int x = 0; x < Size; x++) {
+							temp3[x][SizeHalf].r = temp2[x].r;
+							temp3[x][SizeHalf].i = 0.0F;
+						}
+					} else {
+						for (int x = 0; x < Size; x++) {
+							temp3[x][y] = temp2[x];
+							temp3[x][Size - y].r = temp2[x].r;
+							temp3[x][Size - y].i = -temp2[x].i;
+						}
+					}
+				}
+				for (int x = 0; x < Size; x++) {
+					kiss_fft(fft, temp3[x], temp2);
+					for (int y = 0; y < Size; y++)
+						height[x][y] = temp2[y].r;
+				}
+
+				MakeBitmap((float*)height);
+			}
+		};
+
+		// FTCS PDE solver (fallback)
 		class StandardWaveTank : public IWaveTank {
 			float* height;
 			float* heightFiltered;
@@ -243,11 +409,14 @@ namespace spades {
 				VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
 				VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
-			// Create wave tanks (basic single layer by default)
+			// Create wave tanks using FFT solver for realistic waves
 			size_t numLayers = ((int)r_water >= 2) ? 3 : 1;
 			for (size_t i = 0; i < numLayers; i++) {
-				int size = ((int)r_water >= 3) ? (1 << 8) : (1 << 7);
-				StandardWaveTank* tank = new StandardWaveTank(size);
+				IWaveTank* tank;
+				if ((int)r_water >= 3)
+					tank = new FFTWaveTank<8>();
+				else
+					tank = new FFTWaveTank<7>();
 				waveTanksPlaceholder.push_back((void*)tank);
 			}
 
