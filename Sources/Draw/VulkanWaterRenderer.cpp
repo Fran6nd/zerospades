@@ -424,9 +424,10 @@ namespace spades {
 		}
 
 		// Get screen and depth textures from framebuffer manager
-		// The water shader samples from the main render target for underwater refraction
-		Handle<VulkanImage> screenImage = fbManager->GetColorImage();
-		Handle<VulkanImage> depthImage = fbManager->GetDepthImage();
+		// Use mirror images to avoid feedback loop (sampling from same image we're rendering to)
+		// When r_water >= 2, mirror images contain the reflected scene for proper reflections
+		Handle<VulkanImage> screenImage = fbManager->GetMirrorColorImage();
+		Handle<VulkanImage> depthImage = fbManager->GetMirrorDepthImage();
 
 		if (!screenImage || !depthImage) {
 			SPLog("Warning: Framebuffer manager textures not available");
