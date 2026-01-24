@@ -89,6 +89,10 @@ namespace spades {
 			// Copy data from buffer to specific array layer
 			void CopyFromBufferToLayer(VkCommandBuffer commandBuffer, VkBuffer buffer, uint32_t layer);
 
+			// Copy region from buffer to image
+			void CopyRegionFromBuffer(VkCommandBuffer commandBuffer, VkBuffer buffer,
+			                          uint32_t x, uint32_t y, uint32_t regionWidth, uint32_t regionHeight);
+
 			// Generate mipmaps
 			void GenerateMipmaps(VkCommandBuffer commandBuffer);
 

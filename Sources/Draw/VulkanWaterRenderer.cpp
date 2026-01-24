@@ -1018,9 +1018,79 @@ namespace spades {
 					for (size_t i = 0; i < updateBitmap.size(); i++)
 						updateBitmap[i] = 0;
 				} else {
-					// partial updates omitted for now
-					for (size_t i = 0; i < updateBitmap.size(); i++)
+					// Partial update - upload only changed regions
+					VkCommandBufferAllocateInfo allocInfo{};
+					allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+					allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+					allocInfo.commandPool = device->GetCommandPool();
+					allocInfo.commandBufferCount = 1;
+
+					VkCommandBuffer commandBuffer;
+					if (vkAllocateCommandBuffers(device->GetDevice(), &allocInfo, &commandBuffer) != VK_SUCCESS) {
+						SPRaise("Failed to allocate command buffer for partial water texture update");
+					}
+
+					VkCommandBufferBeginInfo beginInfo{};
+					beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+					beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+					vkBeginCommandBuffer(commandBuffer, &beginInfo);
+
+					textureImage->TransitionLayout(commandBuffer, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+						VK_ACCESS_SHADER_READ_BIT, VK_ACCESS_TRANSFER_WRITE_BIT,
+						VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
+
+					for (size_t i = 0; i < updateBitmap.size(); i++) {
+						if (updateBitmap[i] == 0) continue;
+
+						int y = static_cast<int>(i / updateBitmapPitch);
+						int x = static_cast<int>((i - y * updateBitmapPitch) * 32);
+
+						uint32_t* pixels = bitmap.data() + x + y * w;
+						bool modified = false;
+						for (int j = 0; j < 32; j++) {
+							uint32_t col = gameMap->GetColor(x + j, y, 63);
+							int r = (uint8_t)(col);
+							int g = (uint8_t)(col >> 8);
+							int b = (uint8_t)(col >> 16);
+							r = (r * r + 128) >> 8;
+							g = (g * g + 128) >> 8;
+							b = (b * b + 128) >> 8;
+							uint32_t lin = b | (g << 8) | (r << 16);
+
+							if (pixels[j] != lin) modified = true;
+							pixels[j] = lin;
+						}
+
+						if (modified) {
+							Handle<VulkanBuffer> staging = Handle<VulkanBuffer>::New(
+								device, 32 * sizeof(uint32_t), VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+								VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+							void* data = staging->Map();
+							memcpy(data, pixels, 32 * sizeof(uint32_t));
+							staging->Unmap();
+
+							textureImage->CopyRegionFromBuffer(commandBuffer, staging->GetBuffer(),
+								static_cast<uint32_t>(x), static_cast<uint32_t>(y), 32, 1);
+						}
+
 						updateBitmap[i] = 0;
+					}
+
+					textureImage->TransitionLayout(commandBuffer, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+						VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT,
+						VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+
+					vkEndCommandBuffer(commandBuffer);
+
+					VkSubmitInfo submitInfo{};
+					submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+					submitInfo.commandBufferCount = 1;
+					submitInfo.pCommandBuffers = &commandBuffer;
+
+					vkQueueSubmit(device->GetGraphicsQueue(), 1, &submitInfo, VK_NULL_HANDLE);
+					vkQueueWaitIdle(device->GetGraphicsQueue());
+
+					vkFreeCommandBuffers(device->GetDevice(), device->GetCommandPool(), 1, &commandBuffer);
 				}
 			}
 		}
