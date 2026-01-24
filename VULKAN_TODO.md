@@ -1,88 +1,10 @@
-# Vulkan Renderer Bug Investigation and TODO List
 
-## 1. Sky Glitchy When Moving Mouse
-
-### Symptoms
-The sky appears to move incorrectly or "glitch" when moving the mouse/camera.
-
-### Possible Causes to Investigate
-
-- [ ] **Viewport Y-axis flip inconsistency** - [Sky.vert:54](Resources/Shaders/Sky.vert#L54) negates the Y component (`-up * positionAttribute.y`), but this assumes the viewport is flipped with negative height. Verify the sky render pass uses the same flipped viewport as the main scene.
-  - Check: [VulkanRenderer.cpp:1225-1227](Sources/Draw/VulkanRenderer.cpp#L1225-L1227) - Main viewport uses `y = renderHeight` and `height = -renderHeight`
-  - Does the sky rendering use the same viewport setup?
-
-- [ ] **View axis frame lag** - The `sceneDef.viewAxis[]` arrays in push constants ([VulkanRenderer.cpp:1739-1749](Sources/Draw/VulkanRenderer.cpp#L1739-L1749)) might be from the previous frame if updated at the wrong time in the render loop.
-
-- [ ] **FOV calculation mismatch** - Compare how `fovX` and `fovY` are used in [Sky.vert](Resources/Shaders/Sky.vert) vs OpenGL. The vertex shader computes `tan(fov * 0.5)` at runtime - verify this matches the values the renderer expects.
-
-- [ ] **Depth buffer comparison** - Sky is rendered at `z = 1.0` (far plane). Verify the depth test is configured correctly so sky doesn't fight with scene geometry.
-
-- [ ] **NDC coordinate space** - OpenGL uses Z range [-1, 1], Vulkan uses [0, 1]. The sky shader sets `gl_Position.z = 1.0` which is correct for Vulkan, but verify the depth comparison is `LESS_OR_EQUAL` not just `LESS`.
-
-### Files to Examine
-- [Sources/Draw/VulkanRenderer.cpp](Sources/Draw/VulkanRenderer.cpp) - `RenderSky()` at line 1711
-- [Resources/Shaders/Sky.vert](Resources/Shaders/Sky.vert)
-- [Resources/Shaders/Sky.frag](Resources/Shaders/Sky.frag)
-
----
-
-## 2. Lens Flare "Lightsaber" Artifacts
-
-### Symptoms
-Lens flares appear stretched/elongated like lightsabers instead of proper circular flares.
-
-### Possible Causes to Investigate
-
-- [ ] **Missing Y-axis flip in sunScreen calculation** - [VulkanLensFlareFilter.cpp:437-439](Sources/Draw/VulkanLensFlareFilter.cpp#L437-L439) calculates `sunScreen` identically to OpenGL, but Vulkan's Y-axis is flipped:
-  ```cpp
-  sunScreen.x = sunView.x / (sunView.z * fov.x);
-  sunScreen.y = sunView.y / (sunView.z * fov.y);  // Should this be negated for Vulkan?
-  ```
-  The OpenGL version has Y-up in NDC, Vulkan has Y-down.
-
-- [x] **Viewport not flipped for lens flare pass** - [VulkanLensFlareFilter.cpp:689-696](Sources/Draw/VulkanLensFlareFilter.cpp#L689-L696) sets viewport with positive height:
-  ```cpp
-  viewport.y = 0.0f;
-  viewport.height = (float)renderHeight;  // NOT negated!
-  ```
-  This is inconsistent with the main scene rendering which uses negative height.
-  **FIXED:** Viewport now uses flipped Y to match main scene rendering.
-
-- [ ] **Draw range coordinates in wrong space** - The `drawRange` uniform ([VulkanLensFlareFilter.cpp:706-741](Sources/Draw/VulkanLensFlareFilter.cpp#L706-L741)) uses `sunScreen` coordinates directly without Y-flip transformation.
-
-- [ ] **Shader vertex position calculation** - [Draw.vk.vs:34](Resources/Shaders/LensFlare/Draw.vk.vs#L34) uses `mix(drawRange.xy, drawRange.zw, positionAttribute.xy)` which is identical to OpenGL. The issue is the `drawRange` values passed in, not the shader itself.
-
-- [ ] **Visibility texture UV mismatch** - [Draw.vk.fs:38](Resources/Shaders/LensFlare/Draw.vk.fs#L38) samples visibility with `texCoord` which might have incorrect Y orientation.
-
-- [x] **Missing blur passes** - [VulkanLensFlareFilter.cpp:811-814](Sources/Draw/VulkanLensFlareFilter.cpp#L811-L814) - The blur function is a stub that returns input unchanged. OpenGL does 3 blur passes which softens the flare. This alone could cause sharp/stretched appearance.
-  **FIXED:** Implemented full two-pass Gaussian blur with 3 iterations (spread 1.0, 2.0, 4.0) matching OpenGL.
-
-### Comparison with OpenGL
-| Aspect | OpenGL | Vulkan |
-|--------|--------|--------|
-| sunScreen.y | As-is | Should negate? |
-| Viewport | Normal | Needs flip |
-| Blur passes | 3 (1.0, 2.0, 4.0 spread) | Stub (none) |
-| Y-axis in NDC | Up | Down |
-
-### Files to Examine
-- [Sources/Draw/VulkanLensFlareFilter.cpp](Sources/Draw/VulkanLensFlareFilter.cpp)
-- [Sources/Draw/GLLensFlareFilter.cpp](Sources/Draw/GLLensFlareFilter.cpp) - Reference
-- [Resources/Shaders/LensFlare/Draw.vk.vs](Resources/Shaders/LensFlare/Draw.vk.vs)
-- [Resources/Shaders/LensFlare/Draw.vk.fs](Resources/Shaders/LensFlare/Draw.vk.fs)
-
----
-
-## 3. Water Renderer - Matching OpenGL
-
-### Current State
-The Vulkan water renderer is a minimal port that lacks several features from the OpenGL version.
 
 ### TODO: Feature Parity with OpenGL
 
-- [ ] **Implement FFT wave solver** - [VulkanWaterRenderer.cpp:85-221](Sources/Draw/VulkanWaterRenderer.cpp#L85-L221) only has `StandardWaveTank` (FTCS solver). OpenGL uses `FFTWaveTank` ([GLWaterRenderer.cpp:159-274](Sources/Draw/GLWaterRenderer.cpp#L159-L274)) which uses kiss_fft for more realistic waves.
+- [x] **Implement FFT wave solver** - Now uses `FFTWaveTank` with kiss_fft for realistic waves, matching OpenGL implementation.
 
-- [ ] **Support multiple wave layers** - OpenGL uses 3 wave tank layers for `r_water >= 2` ([GLWaterRenderer.cpp:501-509](Sources/Draw/GLWaterRenderer.cpp#L501-L509)). Vulkan creates 3 tanks but only uploads the first one ([VulkanWaterRenderer.cpp:629-631](Sources/Draw/VulkanWaterRenderer.cpp#L629-L631)).
+- [x] **Support multiple wave layers** - Now uploads all 3 wave tank layers for `r_water >= 2` using 2D array textures with proper per-layer time steps.
 
 - [ ] **Implement Water2/Water3 shaders** - Only basic Water shader is converted. OpenGL has:
   - `Shaders/Water.program` (basic)
@@ -91,11 +13,11 @@ The Vulkan water renderer is a minimal port that lacks several features from the
 
 - [ ] **Add mirror reflection support** - OpenGL Water3 uses mirror texture ([GLWaterRenderer.cpp:754-768](Sources/Draw/GLWaterRenderer.cpp#L754-L768)). Vulkan water renderer doesn't bind mirror textures.
 
-- [ ] **Implement partial texture updates** - [VulkanWaterRenderer.cpp:781-785](Sources/Draw/VulkanWaterRenderer.cpp#L781-L785) skips partial updates with comment "partial updates omitted for now". OpenGL does efficient partial updates ([GLWaterRenderer.cpp:910-939](Sources/Draw/GLWaterRenderer.cpp#L910-L939)).
+- [x] **Implement partial texture updates** - Now performs efficient partial updates for water color texture, only uploading modified 32-pixel regions.
 
-- [ ] **Add occlusion query support** - OpenGL uses `GL_SAMPLES_PASSED` occlusion query ([GLWaterRenderer.cpp:790-797](Sources/Draw/GLWaterRenderer.cpp#L790-L797)) to skip water rendering when not visible. Vulkan version doesn't have this optimization.
+- [x] **Add occlusion query support** - Now uses `VK_QUERY_TYPE_OCCLUSION` to skip water rendering when no samples passed in previous frame.
 
-- [ ] **Generate mipmaps for wave texture** - OpenGL generates mipmaps ([GLWaterRenderer.cpp:848-856](Sources/Draw/GLWaterRenderer.cpp#L848-L856)). Vulkan doesn't call `vkCmdBlitImage` or similar for mipmap generation.
+- [x] **Generate mipmaps for wave texture** - Now calls `GenerateMipmaps()` after wave texture uploads using `vkCmdBlitImage`.
 
 - [ ] **Verify matrix calculations match** - Compare uniform buffer contents:
   - `projectionViewModelMatrix` calculation
@@ -123,7 +45,7 @@ The Vulkan water renderer is a minimal port that lacks several features from the
 
 - [ ] **Use push constants for frequently changing uniforms** - Water renderer uses UBOs for per-frame data. Push constants (like sky renderer) would be faster for small, frequently updated data.
 
-- [ ] **Pool staging buffers** - [VulkanWaterRenderer.cpp:634-639](Sources/Draw/VulkanWaterRenderer.cpp#L634-L639) creates new staging buffers each frame. Should pool and reuse them.
+- [x] **Pool staging buffers** - Now pre-allocates and reuses staging buffers for wave texture uploads instead of creating new ones each frame.
 
 ### Synchronization
 
@@ -132,7 +54,7 @@ The Vulkan water renderer is a minimal port that lacks several features from the
 
 - [ ] **Batch queue submissions** - Multiple `vkQueueSubmit` calls in [VulkanWaterRenderer.cpp:681-682](Sources/Draw/VulkanWaterRenderer.cpp#L681-L682) and similar locations. Batch into single submission where possible.
 
-- [ ] **Remove vkQueueWaitIdle calls** - [VulkanWaterRenderer.cpp:682](Sources/Draw/VulkanWaterRenderer.cpp#L682), [VulkanWaterRenderer.cpp:774](Sources/Draw/VulkanWaterRenderer.cpp#L774) use `vkQueueWaitIdle` which stalls the GPU. Use fences or timeline semaphores instead.
+- [x] **Remove vkQueueWaitIdle calls** - Now uses fences (`waveUploadFence`, `textureUploadFence`) for proper async synchronization instead of blocking queue waits.
 
 ### Pipeline Optimization
 
@@ -170,6 +92,6 @@ The Vulkan water renderer is a minimal port that lacks several features from the
 
 1. **High** - Lens flare Y-axis flip (most visible bug)
 2. **High** - Sky viewport/coordinate consistency
-3. **Medium** - Water FFT wave solver (visual quality)
-4. **Medium** - Frame-in-flight tracking (correctness)
+3. ~~**Medium** - Water FFT wave solver (visual quality)~~ **DONE**
+4. ~~**Medium** - Frame-in-flight tracking (correctness)~~ **DONE**
 5. **Low** - Other optimizations (performance)

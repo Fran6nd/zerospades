@@ -390,6 +390,7 @@ namespace spades {
 		VulkanWaterRenderer::VulkanWaterRenderer(VulkanRenderer& r, client::GameMap* map)
 	: renderer(r), device(r.GetDevice()), gameMap(map), waterProgram(nullptr),
 	  descriptorPool(VK_NULL_HANDLE), waveStagingBufferSize(0),
+	  waveUploadFence(VK_NULL_HANDLE), textureUploadFence(VK_NULL_HANDLE),
 	  occlusionQueryPool(VK_NULL_HANDLE), occlusionQueryActive(false), lastOcclusionResult(1) {
 			SPADES_MARK_FUNCTION();
 			SPLog("VulkanWaterRenderer created");
@@ -450,6 +451,13 @@ namespace spades {
 						device, waveStagingBufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
 						VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT));
 				}
+
+				// Create fences for async uploads
+				VkFenceCreateInfo fenceInfo{};
+				fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+				fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+				vkCreateFence(device->GetDevice(), &fenceInfo, nullptr, &waveUploadFence);
+				vkCreateFence(device->GetDevice(), &fenceInfo, nullptr, &textureUploadFence);
 			}
 
 			// Build mesh
@@ -520,6 +528,14 @@ namespace spades {
 
 			// Destroy images and buffers
 			// VulkanImage and VulkanBuffer are ref-counted (Handle) and will be freed automatically
+
+			// Destroy fences
+			if (waveUploadFence != VK_NULL_HANDLE) {
+				vkDestroyFence(device->GetDevice(), waveUploadFence, nullptr);
+			}
+			if (textureUploadFence != VK_NULL_HANDLE) {
+				vkDestroyFence(device->GetDevice(), textureUploadFence, nullptr);
+			}
 
 			// Destroy occlusion query pool
 			if (occlusionQueryPool != VK_NULL_HANDLE) {
@@ -903,7 +919,11 @@ namespace spades {
 			}
 
 			// Upload wave data for all layers
-			if (!waveTanksPlaceholder.empty()) {
+			if (!waveTanksPlaceholder.empty() && waveUploadFence != VK_NULL_HANDLE) {
+				// Wait for previous upload to complete
+				vkWaitForFences(device->GetDevice(), 1, &waveUploadFence, VK_TRUE, UINT64_MAX);
+				vkResetFences(device->GetDevice(), 1, &waveUploadFence);
+
 				IWaveTank* t = (IWaveTank*)waveTanksPlaceholder[0];
 				size_t bmpSize = t->GetSize() * t->GetSize() * sizeof(uint32_t);
 
@@ -957,8 +977,7 @@ namespace spades {
 				submitInfo.commandBufferCount = 1;
 				submitInfo.pCommandBuffers = &commandBuffer;
 
-				vkQueueSubmit(device->GetGraphicsQueue(), 1, &submitInfo, VK_NULL_HANDLE);
-				vkQueueWaitIdle(device->GetGraphicsQueue());
+				vkQueueSubmit(device->GetGraphicsQueue(), 1, &submitInfo, waveUploadFence);
 
 				vkFreeCommandBuffers(device->GetDevice(), device->GetCommandPool(), 1, &commandBuffer);
 			}
@@ -1015,7 +1034,11 @@ namespace spades {
 						*(pixels++) = lin;
 					}
 
-					if (modified) {
+					if (modified && textureUploadFence != VK_NULL_HANDLE) {
+						// Wait for previous upload to complete
+						vkWaitForFences(device->GetDevice(), 1, &textureUploadFence, VK_TRUE, UINT64_MAX);
+						vkResetFences(device->GetDevice(), 1, &textureUploadFence);
+
 						// Upload full bitmap via staging buffer
 						size_t bmpSize = w * h * sizeof(uint32_t);
 						Handle<VulkanBuffer> staging = Handle<VulkanBuffer>::New(
@@ -1060,16 +1083,19 @@ namespace spades {
 						submitInfo.commandBufferCount = 1;
 						submitInfo.pCommandBuffers = &commandBuffer;
 
-						vkQueueSubmit(device->GetGraphicsQueue(), 1, &submitInfo, VK_NULL_HANDLE);
-						vkQueueWaitIdle(device->GetGraphicsQueue());
+						vkQueueSubmit(device->GetGraphicsQueue(), 1, &submitInfo, textureUploadFence);
 
 						vkFreeCommandBuffers(device->GetDevice(), device->GetCommandPool(), 1, &commandBuffer);
 					}
 
 					for (size_t i = 0; i < updateBitmap.size(); i++)
 						updateBitmap[i] = 0;
-				} else {
+				} else if (textureUploadFence != VK_NULL_HANDLE) {
 					// Partial update - upload only changed regions
+					// Wait for previous upload to complete
+					vkWaitForFences(device->GetDevice(), 1, &textureUploadFence, VK_TRUE, UINT64_MAX);
+					vkResetFences(device->GetDevice(), 1, &textureUploadFence);
+
 					VkCommandBufferAllocateInfo allocInfo{};
 					allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
 					allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
@@ -1138,8 +1164,7 @@ namespace spades {
 					submitInfo.commandBufferCount = 1;
 					submitInfo.pCommandBuffers = &commandBuffer;
 
-					vkQueueSubmit(device->GetGraphicsQueue(), 1, &submitInfo, VK_NULL_HANDLE);
-					vkQueueWaitIdle(device->GetGraphicsQueue());
+					vkQueueSubmit(device->GetGraphicsQueue(), 1, &submitInfo, textureUploadFence);
 
 					vkFreeCommandBuffers(device->GetDevice(), device->GetCommandPool(), 1, &commandBuffer);
 				}
