@@ -94,9 +94,10 @@ namespace spades {
 			std::vector<uint32_t> bitmap;
 
 			// Wave height textures
-			Handle<VulkanImage> waveImage;
-			std::vector<void*> waveTanksPlaceholder; // placeholder for actual wave tank objects
-			
+			Handle<VulkanImage> waveImage;       // Single layer (r_water < 2)
+			Handle<VulkanImage> waveImageArray;  // Multiple layers (r_water >= 2)
+			std::vector<void*> waveTanksPlaceholder;
+
 			// occlusion / queries (placeholder)
 			uint32_t occlusionQuery;
 		};

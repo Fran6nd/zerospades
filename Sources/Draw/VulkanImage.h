@@ -39,6 +39,8 @@ namespace spades {
 
 			uint32_t width;
 			uint32_t height;
+			uint32_t arrayLayers;
+			uint32_t mipLevels;
 			VkFormat format;
 			VkImageLayout currentLayout;
 
@@ -55,6 +57,12 @@ namespace spades {
 			            VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage,
 			            VkMemoryPropertyFlags properties);
 
+			// Create 2D array image with memory allocation
+			VulkanImage(Handle<gui::SDLVulkanDevice> device, uint32_t width, uint32_t height,
+			            uint32_t arrayLayers, uint32_t mipLevels, VkFormat format,
+			            VkImageTiling tiling, VkImageUsageFlags usage,
+			            VkMemoryPropertyFlags properties);
+
 			// Wrap existing image (e.g., from swapchain)
 			VulkanImage(Handle<gui::SDLVulkanDevice> device, VkImage existingImage,
 			            uint32_t width, uint32_t height, VkFormat format);
@@ -66,7 +74,9 @@ namespace spades {
 			uint32_t GetHeight() const { return height; }
 			VkFormat GetFormat() const { return format; }
 			VkImageLayout GetCurrentLayout() const { return currentLayout; }
-		Handle<gui::SDLVulkanDevice> GetDevice() const { return device; }
+			Handle<gui::SDLVulkanDevice> GetDevice() const { return device; }
+			uint32_t GetArrayLayers() const { return arrayLayers; }
+			uint32_t GetMipLevels() const { return mipLevels; }
 
 			// Transition image layout
 			void TransitionLayout(VkCommandBuffer commandBuffer, VkImageLayout newLayout,
@@ -75,6 +85,12 @@ namespace spades {
 
 			// Copy data from buffer to image
 			void CopyFromBuffer(VkCommandBuffer commandBuffer, VkBuffer buffer);
+
+			// Copy data from buffer to specific array layer
+			void CopyFromBufferToLayer(VkCommandBuffer commandBuffer, VkBuffer buffer, uint32_t layer);
+
+			// Generate mipmaps
+			void GenerateMipmaps(VkCommandBuffer commandBuffer);
 
 			// Create image view (called automatically in constructor)
 			void CreateImageView(VkImageAspectFlags aspectFlags = VK_IMAGE_ASPECT_COLOR_BIT);

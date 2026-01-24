@@ -11,6 +11,7 @@
 #include <Core/ConcurrentDispatch.h>
 #include <Client/GameMap.h>
 #include <kiss_fft130/kiss_fft.h>
+#include <cmath>
 
 SPADES_SETTING(r_water);
 
@@ -420,13 +421,26 @@ namespace spades {
 				waveTanksPlaceholder.push_back((void*)tank);
 			}
 
-			// Create wave image for single-layer case
+			// Create wave image(s)
 			if (!waveTanksPlaceholder.empty()) {
 				IWaveTank* tank = (IWaveTank*)waveTanksPlaceholder[0];
-				waveImage = Handle<VulkanImage>::New(device, tank->GetSize(), tank->GetSize(), VK_FORMAT_R8G8B8A8_UNORM,
-					VK_IMAGE_TILING_OPTIMAL,
-					VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-					VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+				uint32_t size = tank->GetSize();
+				uint32_t mipLevels = static_cast<uint32_t>(std::floor(std::log2(size))) + 1;
+
+				if (numLayers == 1) {
+					// Single layer - use 2D texture with mipmaps
+					waveImage = Handle<VulkanImage>::New(device, size, size, 1, mipLevels,
+						VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_OPTIMAL,
+						VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+						VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+				} else {
+					// Multiple layers - use 2D array texture with mipmaps
+					waveImageArray = Handle<VulkanImage>::New(device, size, size,
+						static_cast<uint32_t>(numLayers), mipLevels,
+						VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_OPTIMAL,
+						VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+						VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+				}
 			}
 
 			// Build mesh
@@ -653,11 +667,12 @@ namespace spades {
 		mainTextureWrite.pImageInfo = &mainImageInfo;
 		descriptorWrites.push_back(mainTextureWrite);
 
-		// Binding 3: waveTexture
+		// Binding 3: waveTexture (single layer) or waveTextureArray (multiple layers)
+		Handle<VulkanImage> activeWaveImage = waveImageArray ? waveImageArray : waveImage;
 		VkDescriptorImageInfo waveImageInfo{};
 		waveImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		waveImageInfo.imageView = waveImage->GetImageView();
-		waveImageInfo.sampler = waveImage->GetSampler();
+		waveImageInfo.imageView = activeWaveImage->GetImageView();
+		waveImageInfo.sampler = activeWaveImage->GetSampler();
 
 		VkWriteDescriptorSet waveTextureWrite{};
 		waveTextureWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -834,19 +849,11 @@ namespace spades {
 				t->Join();
 			}
 
-			// Upload wave data for first layer as example
+			// Upload wave data for all layers
 			if (!waveTanksPlaceholder.empty()) {
 				IWaveTank* t = (IWaveTank*)waveTanksPlaceholder[0];
-				// Create staging buffer
 				size_t bmpSize = t->GetSize() * t->GetSize() * sizeof(uint32_t);
-				Handle<VulkanBuffer> staging = Handle<VulkanBuffer>::New(
-					device, bmpSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-					VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-				void* data = staging->Map();
-				memcpy(data, t->GetBitmap(), bmpSize);
-				staging->Unmap();
 
-				// One-time command buffer copy
 				VkCommandBufferAllocateInfo allocInfo{};
 				allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
 				allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
@@ -865,19 +872,32 @@ namespace spades {
 					SPRaise("Failed to begin command buffer for wave texture update");
 				}
 
-				// Transition waveImage to TRANSFER_DST_OPTIMAL
-				waveImage->TransitionLayout(commandBuffer, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+				Handle<VulkanImage> targetImage = waveImageArray ? waveImageArray : waveImage;
+
+				// Transition to TRANSFER_DST_OPTIMAL
+				targetImage->TransitionLayout(commandBuffer, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
 					0, VK_ACCESS_TRANSFER_WRITE_BIT,
 					VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
 
-				// Copy buffer to image (full image)
-				// Note: VulkanImage::CopyFromBuffer expects the buffer to contain tightly packed pixels
-				waveImage->CopyFromBuffer(commandBuffer, staging->GetBuffer());
+				// Upload each layer
+				for (size_t i = 0; i < waveTanksPlaceholder.size(); i++) {
+					IWaveTank* tank = (IWaveTank*)waveTanksPlaceholder[i];
+					Handle<VulkanBuffer> staging = Handle<VulkanBuffer>::New(
+						device, bmpSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+						VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+					void* data = staging->Map();
+					memcpy(data, tank->GetBitmap(), bmpSize);
+					staging->Unmap();
 
-				// Transition waveImage to SHADER_READ_ONLY_OPTIMAL
-				waveImage->TransitionLayout(commandBuffer, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-					VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT,
-					VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+					if (waveTanksPlaceholder.size() == 1) {
+						targetImage->CopyFromBuffer(commandBuffer, staging->GetBuffer());
+					} else {
+						targetImage->CopyFromBufferToLayer(commandBuffer, staging->GetBuffer(), static_cast<uint32_t>(i));
+					}
+				}
+
+				// Generate mipmaps
+				targetImage->GenerateMipmaps(commandBuffer);
 
 				vkEndCommandBuffer(commandBuffer);
 
@@ -890,6 +910,17 @@ namespace spades {
 				vkQueueWaitIdle(device->GetGraphicsQueue());
 
 				vkFreeCommandBuffers(device->GetDevice(), device->GetCommandPool(), 1, &commandBuffer);
+			}
+
+			// Start wave simulations with time step variations per layer
+			for (size_t i = 0; i < waveTanksPlaceholder.size(); i++) {
+				IWaveTank* tank = (IWaveTank*)waveTanksPlaceholder[i];
+				switch (i) {
+					case 0: tank->SetTimeStep(dt); break;
+					case 1: tank->SetTimeStep(dt * 0.15704F / 0.08F); break;
+					case 2: tank->SetTimeStep(dt * 0.02344F / 0.08F); break;
+				}
+				tank->Start();
 			}
 
 			// Update water color texture from map (full update for now)
