@@ -87,9 +87,10 @@
 
 - [ ] **Async texture uploads** - Use transfer queue for texture uploads to overlap with graphics work.
 
-### Conclusion... Not yet.
-- [ ] read VULKAN_UNUSED_CODE_REPORT.md and vulkan_unused_code.csv. Check for each unused stuff if it is true. Then add to this document each step to perform for later fix. Clear all completed tasks.
-At the end remove the reports.
+### Code Cleanup
+
+- [x] **Verify unused members** - Audited all classes in VULKAN_UNUSED_CODE_REPORT.md. All reported members were false positives except `cacheVersion` in VulkanPipelineCache.
+- [x] **Remove VulkanPipelineCache::cacheVersion** - Removed unused member that was initialized but never used.
 
 ---
 

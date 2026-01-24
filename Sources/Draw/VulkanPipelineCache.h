@@ -36,9 +36,6 @@ namespace spades {
 			Handle<gui::SDLVulkanDevice> device;
 			VkPipelineCache pipelineCache;
 			std::string cachePath;
-			uint32_t cacheVersion;
-
-			static const uint32_t CACHE_VERSION = 1;
 
 			bool LoadFromDisk();
 			bool ValidateCacheHeader(const std::vector<uint8_t>& data);
