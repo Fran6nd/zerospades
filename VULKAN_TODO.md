@@ -19,10 +19,10 @@
 
 - [x] **Generate mipmaps for wave texture** - Now calls `GenerateMipmaps()` after wave texture uploads using `vkCmdBlitImage`.
 
-- [ ] **Verify matrix calculations match** - Compare uniform buffer contents:
-  - `projectionViewModelMatrix` calculation
-  - `viewModelMatrix` calculation
-  - `waterPlane` calculation ([VulkanWaterRenderer.cpp:917-920](Sources/Draw/VulkanWaterRenderer.cpp#L917-L920))
+- [x] **Verify matrix calculations match** - Verified calculations are identical to OpenGL:
+  - `projectionViewModelMatrix = projectionViewMatrix * modelMatrix`
+  - `viewModelMatrix = viewMatrix * modelMatrix`
+  - `waterPlane` uses same approach: `dir = viewModelMatrix.GetAxis(2), d = -dot(dir, origin)`
 
 - [x] **Check fovTan uniform** - [VulkanWaterRenderer.cpp:909-914](Sources/Draw/VulkanWaterRenderer.cpp#L909-L914) has different signs than OpenGL ([GLWaterRenderer.cpp:699-700](Sources/Draw/GLWaterRenderer.cpp#L699-L700)). Vulkan uses `-tanFovY` in second component but OpenGL uses `-tanFovY` in third component.
   **VERIFIED:** The fovTan values are actually identical between OpenGL and Vulkan. This TODO was incorrect.
@@ -89,6 +89,7 @@
 
 ### Conclusion... Not yet.
 - [ ] read VULKAN_UNUSED_CODE_REPORT.md and vulkan_unused_code.csv. Check for each unused stuff if it is true. Then add to this document each step to perform for later fix. Clear all completed tasks.
+At the end remove the reports.
 
 ---
 
