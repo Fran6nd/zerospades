@@ -31,8 +31,7 @@ namespace spades {
 
 		VulkanPipelineCache::VulkanPipelineCache(Handle<gui::SDLVulkanDevice> device)
 			: device(device),
-			  pipelineCache(VK_NULL_HANDLE),
-			  cacheVersion(CACHE_VERSION) {
+			  pipelineCache(VK_NULL_HANDLE) {
 
 			cachePath = "PipelineCache.bin";
 

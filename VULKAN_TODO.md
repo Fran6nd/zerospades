@@ -1,42 +1,6 @@
 
 
-### TODO: Feature Parity with OpenGL
-
-- [x] **Implement FFT wave solver** - Now uses `FFTWaveTank` with kiss_fft for realistic waves, matching OpenGL implementation.
-
-- [x] **Support multiple wave layers** - Now uploads all 3 wave tank layers for `r_water >= 2` using 2D array textures with proper per-layer time steps.
-
-- [x] **Implement Water2/Water3 shaders** - Ported Water2 (multiple wave layers with 2D array textures) and Water3 (SSR + mirror reflections) to Vulkan GLSL.
-  - `Shaders/Water.vk.program` (basic)
-  - `Shaders/Water2.vk.program` (multiple wave layers)
-  - `Shaders/Water3.vk.program` (mirror reflections + SSR)
-
-- [x] **Add mirror reflection support** - Water shaders now bind mirror texture at binding 6 and mirror depth texture at binding 7.
-
-- [x] **Implement partial texture updates** - Now performs efficient partial updates for water color texture, only uploading modified 32-pixel regions.
-
-- [x] **Add occlusion query support** - Now uses `VK_QUERY_TYPE_OCCLUSION` to skip water rendering when no samples passed in previous frame.
-
-- [x] **Generate mipmaps for wave texture** - Now calls `GenerateMipmaps()` after wave texture uploads using `vkCmdBlitImage`.
-
-- [x] **Verify matrix calculations match** - Verified calculations are identical to OpenGL:
-  - `projectionViewModelMatrix = projectionViewMatrix * modelMatrix`
-  - `viewModelMatrix = viewMatrix * modelMatrix`
-  - `waterPlane` uses same approach: `dir = viewModelMatrix.GetAxis(2), d = -dot(dir, origin)`
-
-- [x] **Check fovTan uniform** - [VulkanWaterRenderer.cpp:909-914](Sources/Draw/VulkanWaterRenderer.cpp#L909-L914) has different signs than OpenGL ([GLWaterRenderer.cpp:699-700](Sources/Draw/GLWaterRenderer.cpp#L699-L700)). Vulkan uses `-tanFovY` in second component but OpenGL uses `-tanFovY` in third component.
-  **VERIFIED:** The fovTan values are actually identical between OpenGL and Vulkan. This TODO was incorrect.
-
-### Files to Examine
-- [Sources/Draw/VulkanWaterRenderer.cpp](Sources/Draw/VulkanWaterRenderer.cpp)
-- [Sources/Draw/GLWaterRenderer.cpp](Sources/Draw/GLWaterRenderer.cpp) - Reference
-- [Resources/Shaders/Water.vk.vs](Resources/Shaders/Water.vk.vs)
-- [Resources/Shaders/Water2.vk.vs](Resources/Shaders/Water2.vk.vs) - Ported
-- [Resources/Shaders/Water3.vk.vs](Resources/Shaders/Water3.vk.vs) - Ported
-
----
-
-## 4. Vulkan Renderer Optimizations
+## Vulkan Renderer Optimizations
 
 ### Memory and Resource Management
 
@@ -46,20 +10,11 @@
 
 - [ ] **Use push constants for frequently changing uniforms** - Water renderer uses UBOs for per-frame data. Push constants (like sky renderer) would be faster for small, frequently updated data.
 
-- [x] **Pool staging buffers** - Now pre-allocates and reuses staging buffers for wave texture uploads instead of creating new ones each frame.
-
 ### Synchronization
-
-- [x] **Use proper frame-in-flight tracking** - [VulkanWaterRenderer.cpp:414](Sources/Draw/VulkanWaterRenderer.cpp#L414) hardcodes `frameIndex = 0`. Should track actual frame index for proper double/triple buffering.
-  **FIXED:** Now uses `renderer.GetCurrentFrameIndex()` for proper tracking.
 
 - [ ] **Batch queue submissions** - Multiple `vkQueueSubmit` calls in [VulkanWaterRenderer.cpp:681-682](Sources/Draw/VulkanWaterRenderer.cpp#L681-L682) and similar locations. Batch into single submission where possible.
 
-- [x] **Remove vkQueueWaitIdle calls** - Now uses fences (`waveUploadFence`, `textureUploadFence`) for proper async synchronization instead of blocking queue waits.
-
 ### Pipeline Optimization
-
-- [x] **Use pipeline cache** - Water pipeline now uses `renderer.GetPipelineCache()` for faster loading on subsequent runs.
 
 - [ ] **Consider pipeline derivatives** - Water/Water2/Water3 shaders could use pipeline derivatives since they share most state.
 
@@ -87,16 +42,10 @@
 
 - [ ] **Async texture uploads** - Use transfer queue for texture uploads to overlap with graphics work.
 
-### Conclusion... Not yet.
-- [ ] read VULKAN_UNUSED_CODE_REPORT.md and vulkan_unused_code.csv. Check for each unused stuff if it is true. Then add to this document each step to perform for later fix. Clear all completed tasks.
-At the end remove the reports.
-
 ---
 
 ## Priority Order
 
 1. **High** - Lens flare Y-axis flip (most visible bug)
 2. **High** - Sky viewport/coordinate consistency
-3. ~~**Medium** - Water FFT wave solver (visual quality)~~ **DONE**
-4. ~~**Medium** - Frame-in-flight tracking (correctness)~~ **DONE**
-5. **Low** - Other optimizations (performance)
+3. **Low** - Other optimizations (performance)
