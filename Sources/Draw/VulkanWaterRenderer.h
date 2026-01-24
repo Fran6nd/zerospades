@@ -102,8 +102,10 @@ namespace spades {
 			std::vector<Handle<VulkanBuffer>> waveStagingBufferPool;
 			size_t waveStagingBufferSize;
 
-			// occlusion / queries (placeholder)
-			uint32_t occlusionQuery;
+			// Occlusion query for skipping water rendering when not visible
+			VkQueryPool occlusionQueryPool;
+			bool occlusionQueryActive;
+			uint64_t lastOcclusionResult;
 		};
 	} // namespace draw
 } // namespace spades
