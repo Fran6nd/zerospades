@@ -136,6 +136,7 @@ namespace spades {
 			void ClearMirrorImage(VkCommandBuffer commandBuffer, Vector3 bgCol);
 			Handle<VulkanImage> GetMirrorColorImage() { return mirrorColorImage; }
 			Handle<VulkanImage> GetMirrorDepthImage() { return mirrorDepthImage; }
+			VkFramebuffer GetMirrorFramebuffer() { return mirrorFramebuffer; }
 		};
 
 		// Shorter name

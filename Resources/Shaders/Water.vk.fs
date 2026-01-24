@@ -45,6 +45,10 @@ layout(std140, binding = 4) uniform WaterUBO {
 	vec2 _pad1;
 } waterUBO;
 
+// Mirror textures for reflections (binding 6 and 7, skipping 5 for matrices UBO)
+layout(binding = 6) uniform sampler2D mirrorTexture;
+layout(binding = 7) uniform sampler2D mirrorDepthTexture;
+
 layout(location = 0) out vec4 fragColor;
 
 // Sun direction from OpenGL reference: (0, -1, -1) normalized
@@ -170,10 +174,14 @@ void main() {
 	reflective *= reflective;
 	reflective += 0.03;
 
-	// fresnel refrection to sky
-	fragColor.xyz = mix(fragColor.xyz,
-		mix(waterUBO.skyColor.xyz * reflective * 0.6,
-			waterUBO.fogColor.xyz, v_fogDensity), reflective);
+	// fresnel reflection - sample mirror texture for reflected scene
+	vec2 reflectCoord = origScrPos + wave.xy * 0.1 * waterUBO.displaceScale;
+	// Flip Y coordinate for Vulkan's flipped viewport in mirror pass
+	reflectCoord.y = 1.0 - reflectCoord.y;
+	vec3 reflected = texture(mirrorTexture, reflectCoord).xyz;
+	// Mix reflected scene with fog based on distance
+	reflected = mix(reflected, waterUBO.fogColor.xyz, v_fogDensity);
+	fragColor.xyz = mix(fragColor.xyz, reflected * reflective * 0.8, reflective);
 
 	// specular reflection
 	if (dot(sunlight, vec3(1.0)) > 0.0001) {

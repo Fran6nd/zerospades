@@ -47,6 +47,7 @@
 #include <vector>
 
 SPADES_SETTING(r_fogShadow);
+SPADES_SETTING(r_water);
 
 namespace spades {
 	namespace draw {
@@ -1195,6 +1196,117 @@ namespace spades {
 		// Render shadow maps BEFORE starting main render pass (shadow maps use their own render passes)
 		if (sceneUsedInThisFrame && shadowMapRenderer && r_fogShadow) {
 			shadowMapRenderer->Render(commandBuffer);
+		}
+
+		// Render mirror pass for water reflections (r_water >= 2)
+		if (sceneUsedInThisFrame && framebufferManager && waterRenderer && (int)r_water >= 2) {
+			renderingMirror = true;
+
+			// Save original matrices
+			Matrix4 originalViewMatrix = viewMatrix;
+			Matrix4 originalProjectionViewMatrix = projectionViewMatrix;
+
+			// Create reflected view matrix (reflect across water plane at z=63)
+			Matrix4 reflectedView = viewMatrix * Matrix4::Translate(0, 0, 63);
+			reflectedView = reflectedView * Matrix4::Scale(1, 1, -1);
+			reflectedView = reflectedView * Matrix4::Translate(0, 0, -63);
+			viewMatrix = reflectedView;
+			projectionViewMatrix = projectionMatrix * viewMatrix;
+
+			// Get fog color for background
+			Vector3 bgColor = GetFogColorForSolidPass();
+
+			// Clear mirror framebuffer
+			framebufferManager->ClearMirrorImage(commandBuffer, bgColor);
+
+			// Begin mirror render pass
+			VkRenderPassBeginInfo mirrorRenderPassInfo{};
+			mirrorRenderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+			mirrorRenderPassInfo.renderPass = framebufferManager->GetRenderPass();
+			mirrorRenderPassInfo.framebuffer = framebufferManager->GetMirrorFramebuffer();
+			mirrorRenderPassInfo.renderArea.offset = {0, 0};
+			mirrorRenderPassInfo.renderArea.extent = {static_cast<uint32_t>(renderWidth), static_cast<uint32_t>(renderHeight)};
+
+			VkClearValue mirrorClearValues[2];
+			mirrorClearValues[0].color = {{bgColor.x, bgColor.y, bgColor.z, 1.0f}};
+			mirrorClearValues[1].depthStencil = {1.0f, 0};
+			mirrorRenderPassInfo.clearValueCount = 2;
+			mirrorRenderPassInfo.pClearValues = mirrorClearValues;
+
+			vkCmdBeginRenderPass(commandBuffer, &mirrorRenderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+
+			// Set viewport with flipped Y for Vulkan
+			VkViewport mirrorViewport{};
+			mirrorViewport.x = 0.0f;
+			mirrorViewport.y = static_cast<float>(renderHeight);
+			mirrorViewport.width = static_cast<float>(renderWidth);
+			mirrorViewport.height = -static_cast<float>(renderHeight);
+			mirrorViewport.minDepth = 0.0f;
+			mirrorViewport.maxDepth = 1.0f;
+			vkCmdSetViewport(commandBuffer, 0, 1, &mirrorViewport);
+
+			VkRect2D mirrorScissor{};
+			mirrorScissor.offset = {0, 0};
+			mirrorScissor.extent = {static_cast<uint32_t>(renderWidth), static_cast<uint32_t>(renderHeight)};
+			vkCmdSetScissor(commandBuffer, 0, 1, &mirrorScissor);
+
+			// Render mirrored sky
+			RenderSky(commandBuffer);
+
+			// Render mirrored map
+			if (mapRenderer) {
+				mapRenderer->RenderSunlightPass(commandBuffer);
+			}
+
+			// Render mirrored models
+			if (modelRenderer) {
+				modelRenderer->RenderSunlightPass(commandBuffer, false);
+			}
+
+			vkCmdEndRenderPass(commandBuffer);
+
+			// Restore original matrices
+			viewMatrix = originalViewMatrix;
+			projectionViewMatrix = originalProjectionViewMatrix;
+			renderingMirror = false;
+
+			// Transition mirror images to shader read for water sampling
+			Handle<VulkanImage> mirrorColor = framebufferManager->GetMirrorColorImage();
+			Handle<VulkanImage> mirrorDepth = framebufferManager->GetMirrorDepthImage();
+
+			VkImageMemoryBarrier mirrorBarriers[2]{};
+			mirrorBarriers[0].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+			mirrorBarriers[0].oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+			mirrorBarriers[0].newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+			mirrorBarriers[0].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+			mirrorBarriers[0].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+			mirrorBarriers[0].image = mirrorColor->GetImage();
+			mirrorBarriers[0].subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+			mirrorBarriers[0].subresourceRange.baseMipLevel = 0;
+			mirrorBarriers[0].subresourceRange.levelCount = 1;
+			mirrorBarriers[0].subresourceRange.baseArrayLayer = 0;
+			mirrorBarriers[0].subresourceRange.layerCount = 1;
+			mirrorBarriers[0].srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+			mirrorBarriers[0].dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+
+			mirrorBarriers[1].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+			mirrorBarriers[1].oldLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+			mirrorBarriers[1].newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+			mirrorBarriers[1].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+			mirrorBarriers[1].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+			mirrorBarriers[1].image = mirrorDepth->GetImage();
+			mirrorBarriers[1].subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+			mirrorBarriers[1].subresourceRange.baseMipLevel = 0;
+			mirrorBarriers[1].subresourceRange.levelCount = 1;
+			mirrorBarriers[1].subresourceRange.baseArrayLayer = 0;
+			mirrorBarriers[1].subresourceRange.layerCount = 1;
+			mirrorBarriers[1].srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+			mirrorBarriers[1].dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+
+			vkCmdPipelineBarrier(commandBuffer,
+				VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
+				VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+				0, 0, nullptr, 0, nullptr, 2, mirrorBarriers);
 		}
 
 		// If we're rendering a 3D scene, render it to the offscreen framebuffer first
