@@ -6,12 +6,12 @@
 
 - [x] **Support multiple wave layers** - Now uploads all 3 wave tank layers for `r_water >= 2` using 2D array textures with proper per-layer time steps.
 
-- [ ] **Implement Water2/Water3 shaders** - Only basic Water shader is converted. OpenGL has:
-  - `Shaders/Water.program` (basic)
-  - `Shaders/Water2.program` (multiple wave layers)
-  - `Shaders/Water3.program` (mirror reflections + SSR)
+- [x] **Implement Water2/Water3 shaders** - Ported Water2 (multiple wave layers with 2D array textures) and Water3 (SSR + mirror reflections) to Vulkan GLSL.
+  - `Shaders/Water.vk.program` (basic)
+  - `Shaders/Water2.vk.program` (multiple wave layers)
+  - `Shaders/Water3.vk.program` (mirror reflections + SSR)
 
-- [ ] **Add mirror reflection support** - OpenGL Water3 uses mirror texture ([GLWaterRenderer.cpp:754-768](Sources/Draw/GLWaterRenderer.cpp#L754-L768)). Vulkan water renderer doesn't bind mirror textures.
+- [x] **Add mirror reflection support** - Water shaders now bind mirror texture at binding 6 and mirror depth texture at binding 7.
 
 - [x] **Implement partial texture updates** - Now performs efficient partial updates for water color texture, only uploading modified 32-pixel regions.
 
@@ -30,8 +30,9 @@
 ### Files to Examine
 - [Sources/Draw/VulkanWaterRenderer.cpp](Sources/Draw/VulkanWaterRenderer.cpp)
 - [Sources/Draw/GLWaterRenderer.cpp](Sources/Draw/GLWaterRenderer.cpp) - Reference
-- [Resources/Shaders/Water.vk.vs](Resources/Shaders/Water.vk.vs) (if exists)
-- `Resources/Shaders/Water2.program`, `Water3.program` - Need Vulkan ports
+- [Resources/Shaders/Water.vk.vs](Resources/Shaders/Water.vk.vs)
+- [Resources/Shaders/Water2.vk.vs](Resources/Shaders/Water2.vk.vs) - Ported
+- [Resources/Shaders/Water3.vk.vs](Resources/Shaders/Water3.vk.vs) - Ported
 
 ---
 
@@ -85,6 +86,9 @@
 - [ ] **Implement sparse textures** - For large textures, use `VK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT` for virtual texturing.
 
 - [ ] **Async texture uploads** - Use transfer queue for texture uploads to overlap with graphics work.
+
+### Conclusion... Not yet.
+- [ ] read VULKAN_UNUSED_CODE_REPORT.md and vulkan_unused_code.csv. Check for each unused stuff if it is true. Then add to this document each step to perform for later fix. Clear all completed tasks.
 
 ---
 
