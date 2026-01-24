@@ -531,6 +531,44 @@ namespace spades {
 		waterMatricesUBOWrite.pBufferInfo = &waterMatricesUBOInfo;
 		descriptorWrites.push_back(waterMatricesUBOWrite);
 
+		// Binding 6: mirrorTexture (for reflections)
+		Handle<VulkanImage> mirrorColorImage = fbManager->GetMirrorColorImage();
+		if (mirrorColorImage) {
+			VkDescriptorImageInfo mirrorColorInfo{};
+			mirrorColorInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+			mirrorColorInfo.imageView = mirrorColorImage->GetImageView();
+			mirrorColorInfo.sampler = mirrorColorImage->GetSampler();
+
+			VkWriteDescriptorSet mirrorColorWrite{};
+			mirrorColorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+			mirrorColorWrite.dstSet = descriptorSets[frameIndex];
+			mirrorColorWrite.dstBinding = 6;
+			mirrorColorWrite.dstArrayElement = 0;
+			mirrorColorWrite.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+			mirrorColorWrite.descriptorCount = 1;
+			mirrorColorWrite.pImageInfo = &mirrorColorInfo;
+			descriptorWrites.push_back(mirrorColorWrite);
+		}
+
+		// Binding 7: mirrorDepthTexture (for depth-aware reflections)
+		Handle<VulkanImage> mirrorDepthImage = fbManager->GetMirrorDepthImage();
+		if (mirrorDepthImage) {
+			VkDescriptorImageInfo mirrorDepthInfo{};
+			mirrorDepthInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+			mirrorDepthInfo.imageView = mirrorDepthImage->GetImageView();
+			mirrorDepthInfo.sampler = mirrorDepthImage->GetSampler();
+
+			VkWriteDescriptorSet mirrorDepthWrite{};
+			mirrorDepthWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+			mirrorDepthWrite.dstSet = descriptorSets[frameIndex];
+			mirrorDepthWrite.dstBinding = 7;
+			mirrorDepthWrite.dstArrayElement = 0;
+			mirrorDepthWrite.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+			mirrorDepthWrite.descriptorCount = 1;
+			mirrorDepthWrite.pImageInfo = &mirrorDepthInfo;
+			descriptorWrites.push_back(mirrorDepthWrite);
+		}
+
 		// Update descriptor sets
 		vkUpdateDescriptorSets(device->GetDevice(), static_cast<uint32_t>(descriptorWrites.size()),
 		                      descriptorWrites.data(), 0, nullptr);
