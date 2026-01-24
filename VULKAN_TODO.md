@@ -59,7 +59,7 @@
 
 ### Pipeline Optimization
 
-- [ ] **Use pipeline cache** - Verify all pipeline creation uses `renderer.GetPipelineCache()` for faster loading on subsequent runs.
+- [x] **Use pipeline cache** - Water pipeline now uses `renderer.GetPipelineCache()` for faster loading on subsequent runs.
 
 - [ ] **Consider pipeline derivatives** - Water/Water2/Water3 shaders could use pipeline derivatives since they share most state.
 
