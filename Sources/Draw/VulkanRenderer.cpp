@@ -1250,8 +1250,8 @@ namespace spades {
 			mirrorScissor.extent = {static_cast<uint32_t>(renderWidth), static_cast<uint32_t>(renderHeight)};
 			vkCmdSetScissor(commandBuffer, 0, 1, &mirrorScissor);
 
-			// Render mirrored sky
-			RenderSky(commandBuffer);
+			// Note: Don't render sky in mirror pass - OpenGL just uses fog color clear
+			// Rendering sky here with non-reflected view axes causes incorrect reflections
 
 			// Render mirrored map
 			if (mapRenderer) {
