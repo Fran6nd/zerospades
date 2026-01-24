@@ -317,6 +317,23 @@ namespace spades {
 			                       VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
 		}
 
+		void VulkanImage::CopyRegionFromBuffer(VkCommandBuffer commandBuffer, VkBuffer buffer,
+		                                       uint32_t x, uint32_t y, uint32_t regionWidth, uint32_t regionHeight) {
+			VkBufferImageCopy region{};
+			region.bufferOffset = 0;
+			region.bufferRowLength = regionWidth;
+			region.bufferImageHeight = regionHeight;
+			region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+			region.imageSubresource.mipLevel = 0;
+			region.imageSubresource.baseArrayLayer = 0;
+			region.imageSubresource.layerCount = 1;
+			region.imageOffset = {static_cast<int32_t>(x), static_cast<int32_t>(y), 0};
+			region.imageExtent = {regionWidth, regionHeight, 1};
+
+			vkCmdCopyBufferToImage(commandBuffer, buffer, image,
+			                       VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
+		}
+
 		void VulkanImage::GenerateMipmaps(VkCommandBuffer commandBuffer) {
 			if (mipLevels <= 1) return;
 
