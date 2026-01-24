@@ -1420,9 +1420,13 @@ namespace spades {
 				0, 0, nullptr, 0, nullptr, 2, barriers);
 
 			// Copy scene to mirror images so water can sample from them
-			if (waterRenderer && framebufferManager->GetMirrorColorImage()) {
+			// Skip copy when r_water >= 2 because mirror images already have reflected scene
+			if (waterRenderer && framebufferManager->GetMirrorColorImage() && (int)r_water < 2) {
 				// Copy color and depth from render targets to mirror targets
 				framebufferManager->CopyToMirrorImage(commandBuffer);
+			}
+
+			if (waterRenderer && framebufferManager->GetMirrorColorImage()) {
 
 				// Transition renderColorImage and renderDepthImage back to COLOR_ATTACHMENT_OPTIMAL
 				// for water rendering
