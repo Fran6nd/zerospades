@@ -98,6 +98,10 @@ namespace spades {
 			Handle<VulkanImage> waveImageArray;  // Multiple layers (r_water >= 2)
 			std::vector<void*> waveTanksPlaceholder;
 
+			// Staging buffer pool for wave uploads
+			std::vector<Handle<VulkanBuffer>> waveStagingBufferPool;
+			size_t waveStagingBufferSize;
+
 			// occlusion / queries (placeholder)
 			uint32_t occlusionQuery;
 		};
