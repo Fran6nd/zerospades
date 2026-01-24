@@ -175,13 +175,13 @@ void main() {
 	reflective += 0.03;
 
 	// fresnel reflection - sample mirror texture for reflected scene
-	vec2 reflectCoord = origScrPos + wave.xy * 0.1 * waterUBO.displaceScale;
-	// Flip Y coordinate for Vulkan's flipped viewport in mirror pass
-	reflectCoord.y = 1.0 - reflectCoord.y;
+	// Match OpenGL Water2.fs displacement calculation
+	vec2 reflectDisp = disp;
+	reflectDisp.y = -abs(reflectDisp.y * 3.0);
+	vec2 reflectCoord = origScrPos - reflectDisp * scale * waterUBO.displaceScale * 15.0;
 	vec3 reflected = texture(mirrorTexture, reflectCoord).xyz;
-	// Mix reflected scene with fog based on distance
-	reflected = mix(reflected, waterUBO.fogColor.xyz, v_fogDensity);
-	fragColor.xyz = mix(fragColor.xyz, reflected * reflective * 0.8, reflective);
+	// Mix reflection with water color based on fresnel and fog
+	fragColor.xyz = mix(fragColor.xyz, reflected, reflective * att);
 
 	// specular reflection
 	if (dot(sunlight, vec3(1.0)) > 0.0001) {
