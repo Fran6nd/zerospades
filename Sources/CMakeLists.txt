@@ -6,9 +6,21 @@ set(BINPACK_FILES binpack2d/binpack2d.hpp)
 file(GLOB CLIENT_FILES Client/*.cpp Client/*.h)
 file(GLOB CORE_FILES Core/*.c Core/*.cpp Core/*.h)
 file(GLOB DRAW_FILES Draw/*.cpp Draw/*.h)
+
+# Exclude Vulkan files if Vulkan is disabled
+if(NOT USE_VULKAN)
+	file(GLOB VULKAN_FILES Draw/Vulkan*.cpp Draw/Vulkan*.h)
+	list(REMOVE_ITEM DRAW_FILES ${VULKAN_FILES})
+endif()
 file(GLOB ENET_FILES ENet/*.c ENet/*.h)
 file(GLOB ENET_INCLUDE ENet/include/enet/*.h)
 file(GLOB GUI_FILES Gui/*.cpp Gui/*.h)
+
+# Exclude Vulkan device files if Vulkan is disabled
+if(NOT USE_VULKAN)
+	file(GLOB GUI_VULKAN_FILES Gui/SDLVulkanDevice.cpp Gui/SDLVulkanDevice.h)
+	list(REMOVE_ITEM GUI_FILES ${GUI_VULKAN_FILES})
+endif()
 file(GLOB IMPORTS_FILES Imports/*.h)
 file(GLOB KISS_FILES kiss_fft130/*.c kiss_fft130/*.h)
 file(GLOB JSON_FILES json/*.cpp json/*.h json/*.inl)
