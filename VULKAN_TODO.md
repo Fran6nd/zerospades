@@ -1,5 +1,4 @@
 
-
 ## Vulkan Renderer Optimizations
 
 ### Memory and Resource Management
@@ -41,11 +40,3 @@
 - [ ] **Implement sparse textures** - For large textures, use `VK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT` for virtual texturing.
 
 - [ ] **Async texture uploads** - Use transfer queue for texture uploads to overlap with graphics work.
-
----
-
-## Priority Order
-
-1. **High** - Lens flare Y-axis flip (most visible bug)
-2. **High** - Sky viewport/coordinate consistency
-3. **Low** - Other optimizations (performance)
