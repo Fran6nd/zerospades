@@ -35,6 +35,7 @@ void main() {
 	gl_Position.z = 0.5;
 	gl_Position.w = 1.0;
 
-	texCoord = mix(vec2(0.0), vec2(1.0), positionAttribute.xy);
+	// Flip Y for visibility texture since it was rendered without flipped viewport
+	texCoord = vec2(positionAttribute.x, 1.0 - positionAttribute.y);
 	modulationTexCoord = gl_Position.xy * 0.5 + vec2(0.5, 0.5);
 }
