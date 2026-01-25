@@ -20,6 +20,10 @@
 
 #pragma once
 
+#include <OpenSpades.h>
+
+#if USE_VULKAN
+
 #include <vector>
 #include <vulkan/vulkan.h>
 #include <Imports/SDL.h>
@@ -115,3 +119,5 @@ namespace spades {
 
 	} // namespace gui
 } // namespace spades
+
+#endif // USE_VULKAN
