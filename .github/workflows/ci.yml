@@ -113,7 +113,7 @@ jobs:
 
   build-macos-intel:
     name: Build (macOS Intel)
-    runs-on: macos-15-large
+    runs-on: macos-13
     steps:
       - name: Checkout
         uses: actions/checkout@v6
