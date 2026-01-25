@@ -40,7 +40,7 @@ jobs:
         run: |
           mkdir ${{ runner.workspace }}\openspades.mk
           cd ${{ runner.workspace }}\openspades.mk
-          cmake ${{ github.workspace }} -A Win32 -D CMAKE_BUILD_TYPE=Release -D CMAKE_TOOLCHAIN_FILE=${{ github.workspace }}\vcpkg\scripts\buildsystems\vcpkg.cmake -D VCPKG_TARGET_TRIPLET=x86-windows-static -D CMAKE_CXX_STANDARD=17
+          cmake ${{ github.workspace }} -A Win32 -D CMAKE_BUILD_TYPE=Release -D CMAKE_TOOLCHAIN_FILE=${{ github.workspace }}\vcpkg\scripts\buildsystems\vcpkg.cmake -D VCPKG_TARGET_TRIPLET=x86-windows-static -D CMAKE_CXX_STANDARD=17 -D Vulkan_LIBRARY=%VULKAN_SDK%\Lib32\vulkan-1.lib
         shell: cmd
 
       - name: Build Project
