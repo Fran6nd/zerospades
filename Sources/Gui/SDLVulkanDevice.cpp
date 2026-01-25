@@ -18,6 +18,10 @@
 
  */
 
+#include <OpenSpades.h>
+
+#if USE_VULKAN
+
 #include "SDLVulkanDevice.h"
 #include <Core/Debug.h>
 #include <Core/Exception.h>
@@ -659,3 +663,5 @@ namespace spades {
 
 	} // namespace gui
 } // namespace spades
+
+#endif // USE_VULKAN
