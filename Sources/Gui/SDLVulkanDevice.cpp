@@ -589,7 +589,8 @@ namespace spades {
 		}
 
 		uint32_t SDLVulkanDevice::AcquireNextImage(VkSemaphore* outImageAvailableSemaphore, VkSemaphore* outRenderFinishedSemaphore) {
-			vkWaitForFences(device, 1, &inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
+			// Note: Frame synchronization is handled by VulkanRenderer's fences in EndScene.
+			// Removed redundant fence wait that was causing frame timing issues.
 
 			uint32_t imageIndex;
 			VkResult result = vkAcquireNextImageKHR(device, swapchain, UINT64_MAX,
@@ -601,12 +602,6 @@ namespace spades {
 			} else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) {
 				SPRaise("Failed to acquire swapchain image");
 			}
-
-			// Check if a previous frame is using this image
-			if (imagesInFlight[imageIndex] != VK_NULL_HANDLE) {
-				vkWaitForFences(device, 1, &imagesInFlight[imageIndex], VK_TRUE, UINT64_MAX);
-			}
-			imagesInFlight[imageIndex] = inFlightFences[currentFrame];
 
 			*outImageAvailableSemaphore = imageAvailableSemaphores[currentFrame];
 			*outRenderFinishedSemaphore = renderFinishedSemaphores[currentFrame];
