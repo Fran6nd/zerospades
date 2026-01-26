@@ -35,7 +35,8 @@ layout(binding = 2) uniform sampler2D mainTexture;
 layout(binding = 8) uniform sampler2DArray waveTextureArray;
 layout(binding = 6) uniform sampler2D mirrorTexture;
 
-layout(std140, binding = 4) uniform WaterUBO {
+// Push constants for frequently updated per-frame data (112 bytes, within 128 byte limit)
+layout(push_constant) uniform WaterPushConstants {
 	vec4 fogColor; // xyz used
 	vec4 skyColor; // xyz used
 	vec2 zNearFar;
@@ -45,7 +46,7 @@ layout(std140, binding = 4) uniform WaterUBO {
 	vec4 viewOriginVector; // use .xyz
 	vec2 displaceScale;
 	vec2 _pad1;
-} waterUBO;
+} waterPC;
 
 layout(location = 0) out vec4 fragColor;
 
@@ -73,11 +74,11 @@ float decodeDepth(float w, float near, float far) {
 
 float depthAt(vec2 pt) {
 	float w = texture(depthTexture, pt).x;
-	return decodeDepth(w, waterUBO.zNearFar.x, waterUBO.zNearFar.y);
+	return decodeDepth(w, waterPC.zNearFar.x, waterPC.zNearFar.y);
 }
 
 void main() {
-	vec3 worldPositionFromOrigin = v_worldPosition - waterUBO.viewOriginVector.xyz;
+	vec3 worldPositionFromOrigin = v_worldPosition - waterPC.viewOriginVector.xyz;
 	vec4 waveCoord = v_worldPositionOriginal.xyxy
 		* vec4(vec2(0.08), vec2(0.15704))
 		+ vec4(0., 0., 0.754, 0.1315);
@@ -109,7 +110,7 @@ void main() {
 
 	float scale = 1.0 / v_viewPosition.z;
 	vec2 disp = wave.xy * 0.1;
-	scrPos += disp * scale * waterUBO.displaceScale * 4.0;
+	scrPos += disp * scale * waterPC.displaceScale * 4.0;
 
 	// check envelope length.
 	// if the displaced location points the out of the water,
@@ -117,8 +118,8 @@ void main() {
 	float depth = depthAt(scrPos);
 
 	// convert to view coord
-	vec3 sampledViewCoord = vec3(mix(waterUBO.fovTan.zw, waterUBO.fovTan.xy, scrPos), 1.0) * -depth;
-	float planeDistance = dot(vec4(sampledViewCoord, 1.0), waterUBO.waterPlane);
+	vec3 sampledViewCoord = vec3(mix(waterPC.fovTan.zw, waterPC.fovTan.xy, scrPos), 1.0) * -depth;
+	float planeDistance = dot(vec4(sampledViewCoord, 1.0), waterPC.waterPlane);
  	if (planeDistance < 0.0) {
 		// reset!
 		// original pos must be in the water.
@@ -130,7 +131,7 @@ void main() {
 			//discard; done by early-Z test
 		}
 	} else {
-		depth = planeDistance / abs(waterUBO.waterPlane.z);
+		depth = planeDistance / abs(waterPC.waterPlane.z);
 		depth -= v_viewPosition.z;
 	}
 
@@ -161,7 +162,7 @@ void main() {
 
 	// apply fog color to water color now.
 	// note that fog is already applied to underwater object.
-	waterColor = mix(waterColor, waterUBO.fogColor.xyz, v_fogDensity);
+	waterColor = mix(waterColor, waterPC.fogColor.xyz, v_fogDensity);
 
 	// blend water color with the underwater object's color.
 	fragColor.xyz = mix(fragColor.xyz, waterColor, envelope);
@@ -182,7 +183,7 @@ void main() {
 	// compute reflection color
 	vec2 scrPos2 = origScrPos;
 	disp.y = -abs(disp.y * 3.0);
-	scrPos2 -= disp * scale * waterUBO.displaceScale * 15.0;
+	scrPos2 -= disp * scale * waterPC.displaceScale * 15.0;
 
 	vec3 refl = textureLod(mirrorTexture, scrPos2, lodBias).xyz;
 #if !LINEAR_FRAMEBUFFER

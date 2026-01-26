@@ -741,21 +741,7 @@ namespace spades {
 		waveTextureWrite.pImageInfo = &waveImageInfo;
 		descriptorWrites.push_back(waveTextureWrite);
 
-		// Binding 4: WaterUBO
-		VkDescriptorBufferInfo waterUBOInfo{};
-		waterUBOInfo.buffer = waterUBOs[frameIndex]->GetBuffer();
-		waterUBOInfo.offset = 0;
-		waterUBOInfo.range = VK_WHOLE_SIZE;
-
-		VkWriteDescriptorSet waterUBOWrite{};
-		waterUBOWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-		waterUBOWrite.dstSet = descriptorSets[frameIndex];
-		waterUBOWrite.dstBinding = 4;
-		waterUBOWrite.dstArrayElement = 0;
-		waterUBOWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-		waterUBOWrite.descriptorCount = 1;
-		waterUBOWrite.pBufferInfo = &waterUBOInfo;
-		descriptorWrites.push_back(waterUBOWrite);
+		// Binding 4: WaterUBO is now push constants (see vkCmdPushConstants below)
 
 		// Binding 5: WaterMatricesUBO
 		VkDescriptorBufferInfo waterMatricesUBOInfo{};
@@ -838,6 +824,11 @@ namespace spades {
 		vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
 		                       waterProgram->GetPipelineLayout(), 0, 1,
 		                       &descriptorSets[frameIndex], 0, nullptr);
+
+		// Push constants for per-frame water data (replaces WaterUBO)
+		vkCmdPushConstants(commandBuffer, waterProgram->GetPipelineLayout(),
+		                   VK_SHADER_STAGE_FRAGMENT_BIT, 0,
+		                   sizeof(waterPushConstants), &waterPushConstants);
 
 		// Bind vertex/index buffers
 		VkDeviceSize offset = 0;
@@ -1179,7 +1170,7 @@ namespace spades {
 		poolSizes[0].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 		poolSizes[0].descriptorCount = 4 * frameCount; // 4 samplers per frame
 		poolSizes[1].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-		poolSizes[1].descriptorCount = 2 * frameCount; // 2 UBOs per frame
+		poolSizes[1].descriptorCount = 1 * frameCount; // 1 UBO per frame (WaterMatricesUBO only, WaterUBO is now push constants)
 
 		VkDescriptorPoolCreateInfo poolInfo{};
 		poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
@@ -1194,20 +1185,14 @@ namespace spades {
 
 	void VulkanWaterRenderer::CreateUniformBuffers() {
 		// Create uniform buffers for each frame in flight
+		// Note: WaterUBO is now push constants for better performance
 		uint32_t frameCount = 3;
-		waterUBOs.resize(frameCount);
 		waterMatricesUBOs.resize(frameCount);
 
-		// WaterUBO size: 4*4 + 4*4 + 2*4 + 2*4 + 4*4 + 4*4 + 4*4 + 2*4 + 2*4 = 108 bytes -> pad to 112
-		size_t waterUBOSize = 112;
-		// WaterMatricesUBO size: 3*4*16 + 4*4 + 4 + 3*4 = 212 bytes -> pad to 224
-		size_t waterMatricesUBOSize = 224;
+		// WaterMatricesUBO size: 4*4*16 + 4*4 + 4 + 3*4 = 276 bytes -> pad to 288
+		size_t waterMatricesUBOSize = 288;
 
 		for (uint32_t i = 0; i < frameCount; i++) {
-			waterUBOs[i] = Handle<VulkanBuffer>::New(device, waterUBOSize,
-				VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-				VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-
 			waterMatricesUBOs[i] = Handle<VulkanBuffer>::New(device, waterMatricesUBOSize,
 				VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
 				VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
@@ -1259,6 +1244,7 @@ namespace spades {
 			Matrix4 projectionViewModelMatrix;
 			Matrix4 modelMatrix;
 			Matrix4 viewModelMatrix;
+			Matrix4 viewMatrix; // Added for Water3 SSR
 			Vector4 viewOriginVector;
 			float fogDistance;
 			float _pad0[3];
@@ -1267,6 +1253,7 @@ namespace spades {
 		waterMatricesData.projectionViewModelMatrix = projectionViewMatrix * modelMatrix;
 		waterMatricesData.modelMatrix = modelMatrix;
 		waterMatricesData.viewModelMatrix = viewMatrix * modelMatrix;
+		waterMatricesData.viewMatrix = viewMatrix;
 		waterMatricesData.viewOriginVector = MakeVector4(sceneDef.viewOrigin.x, sceneDef.viewOrigin.y, sceneDef.viewOrigin.z, 0.0f);
 		waterMatricesData.fogDistance = fogDist;
 
@@ -1274,24 +1261,12 @@ namespace spades {
 		memcpy(data, &waterMatricesData, sizeof(waterMatricesData));
 		waterMatricesUBOs[frameIndex]->Unmap();
 
-		// Update WaterUBO (binding 4)
-		struct WaterUBO {
-			Vector4 fogColor;
-			Vector4 skyColor;
-			Vector2 zNearFar;
-			Vector2 _pad0;
-			Vector4 fovTan;
-			Vector4 waterPlane;
-			Vector4 viewOriginVector;
-			Vector2 displaceScale;
-			Vector2 _pad1;
-		} waterData;
+		// Update push constants (replaces WaterUBO binding 4)
+		waterPushConstants.fogColor = MakeVector4(fogCol.x, fogCol.y, fogCol.z, 0.0f);
+		waterPushConstants.skyColor = MakeVector4(skyCol.x, skyCol.y, skyCol.z, 0.0f);
+		waterPushConstants.zNearFar = MakeVector2(sceneDef.zNear, sceneDef.zFar);
 
-		waterData.fogColor = MakeVector4(fogCol.x, fogCol.y, fogCol.z, 0.0f);
-		waterData.skyColor = MakeVector4(skyCol.x, skyCol.y, skyCol.z, 0.0f);
-		waterData.zNearFar = MakeVector2(sceneDef.zNear, sceneDef.zFar);
-
-		waterData.fovTan = MakeVector4(
+		waterPushConstants.fovTan = MakeVector4(
 			tanf(sceneDef.fovX * 0.5f),
 			-tanf(sceneDef.fovY * 0.5f),
 			-tanf(sceneDef.fovX * 0.5f),
@@ -1302,14 +1277,10 @@ namespace spades {
 		Matrix4 waterModelView = viewMatrix * modelMatrix;
 		Vector3 planeNormal = waterModelView.GetAxis(2);
 		float planeD = -Vector3::Dot(planeNormal, waterModelView.GetOrigin());
-		waterData.waterPlane = MakeVector4(planeNormal.x, planeNormal.y, planeNormal.z, planeD);
+		waterPushConstants.waterPlane = MakeVector4(planeNormal.x, planeNormal.y, planeNormal.z, planeD);
 
-		waterData.viewOriginVector = MakeVector4(sceneDef.viewOrigin.x, sceneDef.viewOrigin.y, sceneDef.viewOrigin.z, 0.0f);
-		waterData.displaceScale = MakeVector2(1.0f / tanf(sceneDef.fovX * 0.5f), 1.0f / tanf(sceneDef.fovY * 0.5f));
-
-		data = waterUBOs[frameIndex]->Map();
-		memcpy(data, &waterData, sizeof(waterData));
-		waterUBOs[frameIndex]->Unmap();
+		waterPushConstants.viewOriginVector = MakeVector4(sceneDef.viewOrigin.x, sceneDef.viewOrigin.y, sceneDef.viewOrigin.z, 0.0f);
+		waterPushConstants.displaceScale = MakeVector2(1.0f / tanf(sceneDef.fovX * 0.5f), 1.0f / tanf(sceneDef.fovY * 0.5f));
 	}
 
 	void VulkanWaterRenderer::CleanupDescriptorResources() {
@@ -1320,7 +1291,6 @@ namespace spades {
 			descriptorPool = VK_NULL_HANDLE;
 		}
 
-		waterUBOs.clear();
 		waterMatricesUBOs.clear();
 		descriptorSets.clear();
 	}
