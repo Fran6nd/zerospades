@@ -306,13 +306,40 @@ namespace spades {
 			SPRaise("Failed to find suitable memory type");
 		}
 
+		uint32_t VulkanRenderer::FindMemoryTypeWithFallback(uint32_t typeFilter,
+		                                                   VkMemoryPropertyFlags preferred,
+		                                                   VkMemoryPropertyFlags fallback) {
+			VkPhysicalDeviceMemoryProperties memProperties;
+			vkGetPhysicalDeviceMemoryProperties(device->GetPhysicalDevice(), &memProperties);
+
+			// Try preferred first
+			for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++) {
+				if ((typeFilter & (1 << i)) &&
+				    (memProperties.memoryTypes[i].propertyFlags & preferred) == preferred) {
+					return i;
+				}
+			}
+
+			// Fall back to less strict requirements
+			for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++) {
+				if ((typeFilter & (1 << i)) &&
+				    (memProperties.memoryTypes[i].propertyFlags & fallback) == fallback) {
+					return i;
+				}
+			}
+
+			SPRaise("Failed to find suitable memory type");
+		}
+
 		void VulkanRenderer::CreateDepthResources() {
 			SPADES_MARK_FUNCTION();
 
 			VkExtent2D swapchainExtent = device->GetSwapchainExtent();
 			VkFormat depthFormat = VK_FORMAT_D32_SFLOAT;
 
-			// Create depth image
+			// Create depth image with transient attachment flag
+			// This allows GPUs to potentially avoid allocating memory for depth data
+			// that doesn't need to persist between render passes
 			VkImageCreateInfo imageInfo{};
 			imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
 			imageInfo.imageType = VK_IMAGE_TYPE_2D;
@@ -324,7 +351,8 @@ namespace spades {
 			imageInfo.format = depthFormat;
 			imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
 			imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-			imageInfo.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+			imageInfo.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT |
+			                  VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT;
 			imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
 			imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
@@ -334,14 +362,18 @@ namespace spades {
 			}
 
 			// Allocate memory for depth image
+			// Try lazily allocated memory first (optimal for transient attachments),
+			// fall back to device local if not supported
 			VkMemoryRequirements memRequirements;
 			vkGetImageMemoryRequirements(device->GetDevice(), depthImage, &memRequirements);
 
 			VkMemoryAllocateInfo allocInfo{};
 			allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
 			allocInfo.allocationSize = memRequirements.size;
-			allocInfo.memoryTypeIndex = FindMemoryType(memRequirements.memoryTypeBits,
-			                                            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+			allocInfo.memoryTypeIndex = FindMemoryTypeWithFallback(
+				memRequirements.memoryTypeBits,
+				VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | VK_MEMORY_PROPERTY_LAZILY_ALLOCATED_BIT,
+				VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
 			result = vkAllocateMemory(device->GetDevice(), &allocInfo, nullptr, &depthImageMemory);
 			if (result != VK_SUCCESS) {

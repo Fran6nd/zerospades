@@ -153,6 +153,9 @@ namespace spades {
 			void CleanupVulkanResources();
 
 			uint32_t FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties);
+			uint32_t FindMemoryTypeWithFallback(uint32_t typeFilter,
+			                                    VkMemoryPropertyFlags preferred,
+			                                    VkMemoryPropertyFlags fallback);
 
 			void RecordCommandBuffer(uint32_t imageIndex);
 			void Record2DCommandBuffer(uint32_t imageIndex);
