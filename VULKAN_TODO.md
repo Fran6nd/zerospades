@@ -5,13 +5,13 @@
 
 - [ ] **Use memory aliasing for transient render targets** - Render targets that aren't used simultaneously can share the same memory allocation. The `VulkanTemporaryImagePool` ([Sources/Draw/VulkanTemporaryImagePool.h](Sources/Draw/VulkanTemporaryImagePool.h)) exists but could be expanded.
 
-- [ ] **Batch descriptor set updates** - [VulkanWaterRenderer.cpp:436-536](Sources/Draw/VulkanWaterRenderer.cpp#L436-L536) updates descriptor sets every frame. Pre-allocate and reuse descriptor sets instead of updating each frame.
+- [x] **Batch descriptor set updates** - Pre-bind static descriptors (water color texture, wave texture, UBOs) during initialization. Only update dynamic descriptors (screen/depth/mirror textures) each frame.
 
-- [ ] **Use push constants for frequently changing uniforms** - Water renderer uses UBOs for per-frame data. Push constants (like sky renderer) would be faster for small, frequently updated data.
+- [x] **Use push constants for frequently changing uniforms** - Water renderer now uses push constants for per-frame data (fog color, sky color, z near/far, fov tan, water plane, view origin, displace scale).
 
 ### Synchronization
 
-- [ ] **Batch queue submissions** - Multiple `vkQueueSubmit` calls in [VulkanWaterRenderer.cpp:681-682](Sources/Draw/VulkanWaterRenderer.cpp#L681-L682) and similar locations. Batch into single submission where possible.
+- [x] **Batch queue submissions** - Water renderer now uses a single command buffer and fence for all texture uploads (wave and water color) instead of separate submissions.
 
 ### Pipeline Optimization
 
@@ -23,7 +23,7 @@
 
 - [ ] **Merge compatible render passes** - If multiple passes have compatible attachments, consider merging into subpasses.
 
-- [ ] **Use transient attachments** - Mark framebuffer attachments that don't need to persist as `VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT`.
+- [x] **Use transient attachments** - Depth buffer now uses `VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT` with lazily allocated memory where supported.
 
 - [ ] **Optimize load/store ops** - Review all render passes for unnecessary `LOAD_OP_LOAD` where `DONT_CARE` would suffice, and `STORE_OP_STORE` where `DONT_CARE` is acceptable.
 

@@ -390,7 +390,7 @@ namespace spades {
 		VulkanWaterRenderer::VulkanWaterRenderer(VulkanRenderer& r, client::GameMap* map)
 	: renderer(r), device(r.GetDevice()), gameMap(map), waterProgram(nullptr),
 	  descriptorPool(VK_NULL_HANDLE), waveStagingBufferSize(0),
-	  waveUploadFence(VK_NULL_HANDLE), textureUploadFence(VK_NULL_HANDLE),
+	  uploadFence(VK_NULL_HANDLE),
 	  occlusionQueryPool(VK_NULL_HANDLE), occlusionQueryActive(false), lastOcclusionResult(1) {
 			SPADES_MARK_FUNCTION();
 			SPLog("VulkanWaterRenderer created");
@@ -452,12 +452,11 @@ namespace spades {
 						VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT));
 				}
 
-				// Create fences for async uploads
+				// Create single fence for batched async uploads
 				VkFenceCreateInfo fenceInfo{};
 				fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
 				fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
-				vkCreateFence(device->GetDevice(), &fenceInfo, nullptr, &waveUploadFence);
-				vkCreateFence(device->GetDevice(), &fenceInfo, nullptr, &textureUploadFence);
+				vkCreateFence(device->GetDevice(), &fenceInfo, nullptr, &uploadFence);
 			}
 
 			// Build mesh
@@ -529,12 +528,9 @@ namespace spades {
 			// Destroy images and buffers
 			// VulkanImage and VulkanBuffer are ref-counted (Handle) and will be freed automatically
 
-			// Destroy fences
-			if (waveUploadFence != VK_NULL_HANDLE) {
-				vkDestroyFence(device->GetDevice(), waveUploadFence, nullptr);
-			}
-			if (textureUploadFence != VK_NULL_HANDLE) {
-				vkDestroyFence(device->GetDevice(), textureUploadFence, nullptr);
+			// Destroy fence
+			if (uploadFence != VK_NULL_HANDLE) {
+				vkDestroyFence(device->GetDevice(), uploadFence, nullptr);
 			}
 
 			// Destroy occlusion query pool
@@ -674,13 +670,17 @@ namespace spades {
 			return;
 		}
 
+		// Only update dynamic descriptors that change per-frame
+		// Static descriptors (bindings 2, 3/8, 5) are pre-bound in CreateDescriptorSets()
 		std::vector<VkWriteDescriptorSet> descriptorWrites;
+		std::vector<VkDescriptorImageInfo> imageInfos; // Keep alive until vkUpdateDescriptorSets
+		imageInfos.reserve(4);
 
-		// Binding 0: screenTexture (from framebuffer)
-		VkDescriptorImageInfo screenImageInfo{};
-		screenImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		screenImageInfo.imageView = screenImage->GetImageView();
-		screenImageInfo.sampler = screenImage->GetSampler();
+		// Binding 0: screenTexture (from framebuffer) - dynamic
+		imageInfos.push_back({});
+		imageInfos.back().imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+		imageInfos.back().imageView = screenImage->GetImageView();
+		imageInfos.back().sampler = screenImage->GetSampler();
 
 		VkWriteDescriptorSet screenTextureWrite{};
 		screenTextureWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -689,14 +689,14 @@ namespace spades {
 		screenTextureWrite.dstArrayElement = 0;
 		screenTextureWrite.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 		screenTextureWrite.descriptorCount = 1;
-		screenTextureWrite.pImageInfo = &screenImageInfo;
+		screenTextureWrite.pImageInfo = &imageInfos.back();
 		descriptorWrites.push_back(screenTextureWrite);
 
-		// Binding 1: depthTexture (from framebuffer)
-		VkDescriptorImageInfo depthImageInfo{};
-		depthImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		depthImageInfo.imageView = depthImage->GetImageView();
-		depthImageInfo.sampler = depthImage->GetSampler();
+		// Binding 1: depthTexture (from framebuffer) - dynamic
+		imageInfos.push_back({});
+		imageInfos.back().imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+		imageInfos.back().imageView = depthImage->GetImageView();
+		imageInfos.back().sampler = depthImage->GetSampler();
 
 		VkWriteDescriptorSet depthTextureWrite{};
 		depthTextureWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -705,67 +705,18 @@ namespace spades {
 		depthTextureWrite.dstArrayElement = 0;
 		depthTextureWrite.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 		depthTextureWrite.descriptorCount = 1;
-		depthTextureWrite.pImageInfo = &depthImageInfo;
+		depthTextureWrite.pImageInfo = &imageInfos.back();
 		descriptorWrites.push_back(depthTextureWrite);
 
-		// Binding 2: mainTexture (water color)
-		VkDescriptorImageInfo mainImageInfo{};
-		mainImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		mainImageInfo.imageView = textureImage->GetImageView();
-		mainImageInfo.sampler = textureImage->GetSampler();
+		// Bindings 2, 3/8, 5 are pre-bound (static) - no update needed
 
-		VkWriteDescriptorSet mainTextureWrite{};
-		mainTextureWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-		mainTextureWrite.dstSet = descriptorSets[frameIndex];
-		mainTextureWrite.dstBinding = 2;
-		mainTextureWrite.dstArrayElement = 0;
-		mainTextureWrite.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-		mainTextureWrite.descriptorCount = 1;
-		mainTextureWrite.pImageInfo = &mainImageInfo;
-		descriptorWrites.push_back(mainTextureWrite);
-
-		// Binding 3: waveTexture (single layer) or waveTextureArray (multiple layers)
-		Handle<VulkanImage> activeWaveImage = waveImageArray ? waveImageArray : waveImage;
-		VkDescriptorImageInfo waveImageInfo{};
-		waveImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		waveImageInfo.imageView = activeWaveImage->GetImageView();
-		waveImageInfo.sampler = activeWaveImage->GetSampler();
-
-		VkWriteDescriptorSet waveTextureWrite{};
-		waveTextureWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-		waveTextureWrite.dstSet = descriptorSets[frameIndex];
-		waveTextureWrite.dstBinding = 3;
-		waveTextureWrite.dstArrayElement = 0;
-		waveTextureWrite.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-		waveTextureWrite.descriptorCount = 1;
-		waveTextureWrite.pImageInfo = &waveImageInfo;
-		descriptorWrites.push_back(waveTextureWrite);
-
-		// Binding 4: WaterUBO is now push constants (see vkCmdPushConstants below)
-
-		// Binding 5: WaterMatricesUBO
-		VkDescriptorBufferInfo waterMatricesUBOInfo{};
-		waterMatricesUBOInfo.buffer = waterMatricesUBOs[frameIndex]->GetBuffer();
-		waterMatricesUBOInfo.offset = 0;
-		waterMatricesUBOInfo.range = VK_WHOLE_SIZE;
-
-		VkWriteDescriptorSet waterMatricesUBOWrite{};
-		waterMatricesUBOWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-		waterMatricesUBOWrite.dstSet = descriptorSets[frameIndex];
-		waterMatricesUBOWrite.dstBinding = 5;
-		waterMatricesUBOWrite.dstArrayElement = 0;
-		waterMatricesUBOWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-		waterMatricesUBOWrite.descriptorCount = 1;
-		waterMatricesUBOWrite.pBufferInfo = &waterMatricesUBOInfo;
-		descriptorWrites.push_back(waterMatricesUBOWrite);
-
-		// Binding 6: mirrorTexture (for reflections)
+		// Binding 6: mirrorTexture (for reflections) - dynamic
 		Handle<VulkanImage> mirrorColorImage = fbManager->GetMirrorColorImage();
 		if (mirrorColorImage) {
-			VkDescriptorImageInfo mirrorColorInfo{};
-			mirrorColorInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-			mirrorColorInfo.imageView = mirrorColorImage->GetImageView();
-			mirrorColorInfo.sampler = mirrorColorImage->GetSampler();
+			imageInfos.push_back({});
+			imageInfos.back().imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+			imageInfos.back().imageView = mirrorColorImage->GetImageView();
+			imageInfos.back().sampler = mirrorColorImage->GetSampler();
 
 			VkWriteDescriptorSet mirrorColorWrite{};
 			mirrorColorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -774,17 +725,17 @@ namespace spades {
 			mirrorColorWrite.dstArrayElement = 0;
 			mirrorColorWrite.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 			mirrorColorWrite.descriptorCount = 1;
-			mirrorColorWrite.pImageInfo = &mirrorColorInfo;
+			mirrorColorWrite.pImageInfo = &imageInfos.back();
 			descriptorWrites.push_back(mirrorColorWrite);
 		}
 
-		// Binding 7: mirrorDepthTexture (for depth-aware reflections)
+		// Binding 7: mirrorDepthTexture (for depth-aware reflections) - dynamic
 		Handle<VulkanImage> mirrorDepthImage = fbManager->GetMirrorDepthImage();
 		if (mirrorDepthImage) {
-			VkDescriptorImageInfo mirrorDepthInfo{};
-			mirrorDepthInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-			mirrorDepthInfo.imageView = mirrorDepthImage->GetImageView();
-			mirrorDepthInfo.sampler = mirrorDepthImage->GetSampler();
+			imageInfos.push_back({});
+			imageInfos.back().imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+			imageInfos.back().imageView = mirrorDepthImage->GetImageView();
+			imageInfos.back().sampler = mirrorDepthImage->GetSampler();
 
 			VkWriteDescriptorSet mirrorDepthWrite{};
 			mirrorDepthWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -793,11 +744,11 @@ namespace spades {
 			mirrorDepthWrite.dstArrayElement = 0;
 			mirrorDepthWrite.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 			mirrorDepthWrite.descriptorCount = 1;
-			mirrorDepthWrite.pImageInfo = &mirrorDepthInfo;
+			mirrorDepthWrite.pImageInfo = &imageInfos.back();
 			descriptorWrites.push_back(mirrorDepthWrite);
 		}
 
-		// Update descriptor sets
+		// Update only dynamic descriptor sets
 		vkUpdateDescriptorSets(device->GetDevice(), static_cast<uint32_t>(descriptorWrites.size()),
 		                      descriptorWrites.data(), 0, nullptr);
 
@@ -902,39 +853,57 @@ namespace spades {
 
 		void VulkanWaterRenderer::Update(float dt) {
 			SPADES_MARK_FUNCTION();
-			// Wait for simulations and upload wave/texture data
+
+			// Wait for simulations to complete
 			for (size_t i = 0; i < waveTanksPlaceholder.size(); i++) {
 				IWaveTank* t = (IWaveTank*)waveTanksPlaceholder[i];
-				// wait for previous run
 				t->Join();
 			}
 
-			// Upload wave data for all layers
-			if (!waveTanksPlaceholder.empty() && waveUploadFence != VK_NULL_HANDLE) {
-				// Wait for previous upload to complete
-				vkWaitForFences(device->GetDevice(), 1, &waveUploadFence, VK_TRUE, UINT64_MAX);
-				vkResetFences(device->GetDevice(), 1, &waveUploadFence);
+			// Check if we have any uploads to do
+			if (uploadFence == VK_NULL_HANDLE) {
+				// Start wave simulations for next frame
+				for (size_t i = 0; i < waveTanksPlaceholder.size(); i++) {
+					IWaveTank* tank = (IWaveTank*)waveTanksPlaceholder[i];
+					switch (i) {
+						case 0: tank->SetTimeStep(dt); break;
+						case 1: tank->SetTimeStep(dt * 0.15704F / 0.08F); break;
+						case 2: tank->SetTimeStep(dt * 0.02344F / 0.08F); break;
+					}
+					tank->Start();
+				}
+				return;
+			}
 
+			// Wait for previous batched upload to complete
+			vkWaitForFences(device->GetDevice(), 1, &uploadFence, VK_TRUE, UINT64_MAX);
+			vkResetFences(device->GetDevice(), 1, &uploadFence);
+
+			// Allocate single command buffer for all uploads
+			VkCommandBufferAllocateInfo allocInfo{};
+			allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+			allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+			allocInfo.commandPool = device->GetCommandPool();
+			allocInfo.commandBufferCount = 1;
+
+			VkCommandBuffer commandBuffer;
+			if (vkAllocateCommandBuffers(device->GetDevice(), &allocInfo, &commandBuffer) != VK_SUCCESS) {
+				SPRaise("Failed to allocate command buffer for water texture update");
+			}
+
+			VkCommandBufferBeginInfo beginInfo{};
+			beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+			beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+			if (vkBeginCommandBuffer(commandBuffer, &beginInfo) != VK_SUCCESS) {
+				SPRaise("Failed to begin command buffer for water texture update");
+			}
+
+			bool hasCommands = false;
+
+			// Upload wave data for all layers
+			if (!waveTanksPlaceholder.empty()) {
 				IWaveTank* t = (IWaveTank*)waveTanksPlaceholder[0];
 				size_t bmpSize = t->GetSize() * t->GetSize() * sizeof(uint32_t);
-
-				VkCommandBufferAllocateInfo allocInfo{};
-				allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-				allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-				allocInfo.commandPool = device->GetCommandPool();
-				allocInfo.commandBufferCount = 1;
-
-				VkCommandBuffer commandBuffer;
-				if (vkAllocateCommandBuffers(device->GetDevice(), &allocInfo, &commandBuffer) != VK_SUCCESS) {
-					SPRaise("Failed to allocate command buffer for wave texture update");
-				}
-
-				VkCommandBufferBeginInfo beginInfo{};
-				beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-				beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-				if (vkBeginCommandBuffer(commandBuffer, &beginInfo) != VK_SUCCESS) {
-					SPRaise("Failed to begin command buffer for wave texture update");
-				}
 
 				Handle<VulkanImage> targetImage = waveImageArray ? waveImageArray : waveImage;
 
@@ -960,54 +929,96 @@ namespace spades {
 
 				// Generate mipmaps
 				targetImage->GenerateMipmaps(commandBuffer);
-
-				vkEndCommandBuffer(commandBuffer);
-
-				VkSubmitInfo submitInfo{};
-				submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-				submitInfo.commandBufferCount = 1;
-				submitInfo.pCommandBuffers = &commandBuffer;
-
-				vkQueueSubmit(device->GetGraphicsQueue(), 1, &submitInfo, waveUploadFence);
-
-				vkFreeCommandBuffers(device->GetDevice(), device->GetCommandPool(), 1, &commandBuffer);
+				hasCommands = true;
 			}
 
-			// Start wave simulations with time step variations per layer
-			for (size_t i = 0; i < waveTanksPlaceholder.size(); i++) {
-				IWaveTank* tank = (IWaveTank*)waveTanksPlaceholder[i];
-				switch (i) {
-					case 0: tank->SetTimeStep(dt); break;
-					case 1: tank->SetTimeStep(dt * 0.15704F / 0.08F); break;
-					case 2: tank->SetTimeStep(dt * 0.02344F / 0.08F); break;
+			// Update water color texture from map
+			bool fullUpdate = true;
+			for (size_t i = 0; i < updateBitmap.size(); i++) {
+				if (updateBitmap[i] == 0) {
+					fullUpdate = false;
+					break;
 				}
-				tank->Start();
 			}
 
-			// Update water color texture from map (full update for now)
-			{
-				bool fullUpdate = true;
-				for (size_t i = 0; i < updateBitmap.size(); i++) {
-					if (updateBitmap[i] == 0) {
-						fullUpdate = false;
-						break;
+			// Keep staging buffers alive until submission completes
+			std::vector<Handle<VulkanBuffer>> stagingBuffers;
+
+			if (fullUpdate) {
+				uint32_t* pixels = bitmap.data();
+				bool modified = false;
+				int x = 0, y = 0;
+				for (int i = w * h; i > 0; i--) {
+					uint32_t col = gameMap->GetColor(x, y, 63);
+
+					x++;
+					if (x == w) {
+						x = 0;
+						y++;
 					}
+
+					// Linearize color as GL does
+					int r = (uint8_t)(col);
+					int g = (uint8_t)(col >> 8);
+					int b = (uint8_t)(col >> 16);
+					r = (r * r + 128) >> 8;
+					g = (g * g + 128) >> 8;
+					b = (b * b + 128) >> 8;
+					uint32_t lin = b | (g << 8) | (r << 16);
+
+					if (*pixels != lin)
+						modified = true;
+					else {
+						pixels++;
+						continue;
+					}
+					*(pixels++) = lin;
 				}
 
-				if (fullUpdate) {
-					uint32_t* pixels = bitmap.data();
+				if (modified) {
+					// Upload full bitmap via staging buffer
+					size_t bmpSize = w * h * sizeof(uint32_t);
+					Handle<VulkanBuffer> staging = Handle<VulkanBuffer>::New(
+						device, bmpSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+						VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+					void* data = staging->Map();
+					memcpy(data, bitmap.data(), bmpSize);
+					staging->Unmap();
+					stagingBuffers.push_back(staging);
+
+					textureImage->TransitionLayout(commandBuffer, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+						0, VK_ACCESS_TRANSFER_WRITE_BIT,
+						VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
+
+					textureImage->CopyFromBuffer(commandBuffer, staging->GetBuffer());
+
+					textureImage->TransitionLayout(commandBuffer, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+						VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT,
+						VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+
+					hasCommands = true;
+				}
+
+				for (size_t i = 0; i < updateBitmap.size(); i++)
+					updateBitmap[i] = 0;
+			} else {
+				// Partial update - upload only changed regions
+				bool hasPartialUpdates = false;
+
+				textureImage->TransitionLayout(commandBuffer, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+					VK_ACCESS_SHADER_READ_BIT, VK_ACCESS_TRANSFER_WRITE_BIT,
+					VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
+
+				for (size_t i = 0; i < updateBitmap.size(); i++) {
+					if (updateBitmap[i] == 0) continue;
+
+					int y = static_cast<int>(i / updateBitmapPitch);
+					int x = static_cast<int>((i - y * updateBitmapPitch) * 32);
+
+					uint32_t* pixels = bitmap.data() + x + y * w;
 					bool modified = false;
-					int x = 0, y = 0;
-					for (int i = w * h; i > 0; i--) {
-						uint32_t col = gameMap->GetColor(x, y, 63);
-
-						x++;
-						if (x == w) {
-							x = 0;
-							y++;
-						}
-
-						// Linearize color as GL does
+					for (int j = 0; j < 32; j++) {
+						uint32_t col = gameMap->GetColor(x + j, y, 63);
 						int r = (uint8_t)(col);
 						int g = (uint8_t)(col >> 8);
 						int b = (uint8_t)(col >> 16);
@@ -1016,149 +1027,58 @@ namespace spades {
 						b = (b * b + 128) >> 8;
 						uint32_t lin = b | (g << 8) | (r << 16);
 
-						if (*pixels != lin)
-							modified = true;
-						else {
-							pixels++;
-							continue;
-						}
-						*(pixels++) = lin;
+						if (pixels[j] != lin) modified = true;
+						pixels[j] = lin;
 					}
 
-					if (modified && textureUploadFence != VK_NULL_HANDLE) {
-						// Wait for previous upload to complete
-						vkWaitForFences(device->GetDevice(), 1, &textureUploadFence, VK_TRUE, UINT64_MAX);
-						vkResetFences(device->GetDevice(), 1, &textureUploadFence);
-
-						// Upload full bitmap via staging buffer
-						size_t bmpSize = w * h * sizeof(uint32_t);
+					if (modified) {
 						Handle<VulkanBuffer> staging = Handle<VulkanBuffer>::New(
-							device, bmpSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+							device, 32 * sizeof(uint32_t), VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
 							VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 						void* data = staging->Map();
-						memcpy(data, bitmap.data(), bmpSize);
+						memcpy(data, pixels, 32 * sizeof(uint32_t));
 						staging->Unmap();
+						stagingBuffers.push_back(staging);
 
-						VkCommandBufferAllocateInfo allocInfo{};
-						allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-						allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-						allocInfo.commandPool = device->GetCommandPool();
-						allocInfo.commandBufferCount = 1;
-
-						VkCommandBuffer commandBuffer;
-						if (vkAllocateCommandBuffers(device->GetDevice(), &allocInfo, &commandBuffer) != VK_SUCCESS) {
-							SPRaise("Failed to allocate command buffer for water texture update");
-						}
-
-						VkCommandBufferBeginInfo beginInfo{};
-						beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-						beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-						if (vkBeginCommandBuffer(commandBuffer, &beginInfo) != VK_SUCCESS) {
-							SPRaise("Failed to begin command buffer for water texture update");
-						}
-
-						textureImage->TransitionLayout(commandBuffer, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-							0, VK_ACCESS_TRANSFER_WRITE_BIT,
-							VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
-
-						textureImage->CopyFromBuffer(commandBuffer, staging->GetBuffer());
-
-						textureImage->TransitionLayout(commandBuffer, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-							VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT,
-							VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
-
-						vkEndCommandBuffer(commandBuffer);
-
-						VkSubmitInfo submitInfo{};
-						submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-						submitInfo.commandBufferCount = 1;
-						submitInfo.pCommandBuffers = &commandBuffer;
-
-						vkQueueSubmit(device->GetGraphicsQueue(), 1, &submitInfo, textureUploadFence);
-
-						vkFreeCommandBuffers(device->GetDevice(), device->GetCommandPool(), 1, &commandBuffer);
+						textureImage->CopyRegionFromBuffer(commandBuffer, staging->GetBuffer(),
+							static_cast<uint32_t>(x), static_cast<uint32_t>(y), 32, 1);
+						hasPartialUpdates = true;
 					}
 
-					for (size_t i = 0; i < updateBitmap.size(); i++)
-						updateBitmap[i] = 0;
-				} else if (textureUploadFence != VK_NULL_HANDLE) {
-					// Partial update - upload only changed regions
-					// Wait for previous upload to complete
-					vkWaitForFences(device->GetDevice(), 1, &textureUploadFence, VK_TRUE, UINT64_MAX);
-					vkResetFences(device->GetDevice(), 1, &textureUploadFence);
+					updateBitmap[i] = 0;
+				}
 
-					VkCommandBufferAllocateInfo allocInfo{};
-					allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-					allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-					allocInfo.commandPool = device->GetCommandPool();
-					allocInfo.commandBufferCount = 1;
-
-					VkCommandBuffer commandBuffer;
-					if (vkAllocateCommandBuffers(device->GetDevice(), &allocInfo, &commandBuffer) != VK_SUCCESS) {
-						SPRaise("Failed to allocate command buffer for partial water texture update");
-					}
-
-					VkCommandBufferBeginInfo beginInfo{};
-					beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-					beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-					vkBeginCommandBuffer(commandBuffer, &beginInfo);
-
-					textureImage->TransitionLayout(commandBuffer, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-						VK_ACCESS_SHADER_READ_BIT, VK_ACCESS_TRANSFER_WRITE_BIT,
-						VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
-
-					for (size_t i = 0; i < updateBitmap.size(); i++) {
-						if (updateBitmap[i] == 0) continue;
-
-						int y = static_cast<int>(i / updateBitmapPitch);
-						int x = static_cast<int>((i - y * updateBitmapPitch) * 32);
-
-						uint32_t* pixels = bitmap.data() + x + y * w;
-						bool modified = false;
-						for (int j = 0; j < 32; j++) {
-							uint32_t col = gameMap->GetColor(x + j, y, 63);
-							int r = (uint8_t)(col);
-							int g = (uint8_t)(col >> 8);
-							int b = (uint8_t)(col >> 16);
-							r = (r * r + 128) >> 8;
-							g = (g * g + 128) >> 8;
-							b = (b * b + 128) >> 8;
-							uint32_t lin = b | (g << 8) | (r << 16);
-
-							if (pixels[j] != lin) modified = true;
-							pixels[j] = lin;
-						}
-
-						if (modified) {
-							Handle<VulkanBuffer> staging = Handle<VulkanBuffer>::New(
-								device, 32 * sizeof(uint32_t), VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-								VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-							void* data = staging->Map();
-							memcpy(data, pixels, 32 * sizeof(uint32_t));
-							staging->Unmap();
-
-							textureImage->CopyRegionFromBuffer(commandBuffer, staging->GetBuffer(),
-								static_cast<uint32_t>(x), static_cast<uint32_t>(y), 32, 1);
-						}
-
-						updateBitmap[i] = 0;
-					}
-
+				if (hasPartialUpdates) {
 					textureImage->TransitionLayout(commandBuffer, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
 						VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT,
 						VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
-
-					vkEndCommandBuffer(commandBuffer);
-
-					VkSubmitInfo submitInfo{};
-					submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-					submitInfo.commandBufferCount = 1;
-					submitInfo.pCommandBuffers = &commandBuffer;
-
-					vkQueueSubmit(device->GetGraphicsQueue(), 1, &submitInfo, textureUploadFence);
-
-					vkFreeCommandBuffers(device->GetDevice(), device->GetCommandPool(), 1, &commandBuffer);
+					hasCommands = true;
 				}
+			}
+
+			vkEndCommandBuffer(commandBuffer);
+
+			// Submit single batched command buffer
+			if (hasCommands) {
+				VkSubmitInfo submitInfo{};
+				submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+				submitInfo.commandBufferCount = 1;
+				submitInfo.pCommandBuffers = &commandBuffer;
+
+				vkQueueSubmit(device->GetGraphicsQueue(), 1, &submitInfo, uploadFence);
+			}
+
+			vkFreeCommandBuffers(device->GetDevice(), device->GetCommandPool(), 1, &commandBuffer);
+
+			// Start wave simulations for next frame
+			for (size_t i = 0; i < waveTanksPlaceholder.size(); i++) {
+				IWaveTank* tank = (IWaveTank*)waveTanksPlaceholder[i];
+				switch (i) {
+					case 0: tank->SetTimeStep(dt); break;
+					case 1: tank->SetTimeStep(dt * 0.15704F / 0.08F); break;
+					case 2: tank->SetTimeStep(dt * 0.02344F / 0.08F); break;
+				}
+				tank->Start();
 			}
 		}
 
@@ -1216,8 +1136,73 @@ namespace spades {
 			SPRaise("Failed to allocate water descriptor sets");
 		}
 
-		// Note: Descriptor set contents will be updated in UpdateUniformBuffers()
-		// when we have valid texture handles
+		// Pre-bind static descriptors that don't change between frames
+		// This reduces vkUpdateDescriptorSets overhead each frame
+		for (uint32_t i = 0; i < frameCount; i++) {
+			std::vector<VkWriteDescriptorSet> staticWrites;
+
+			// Binding 2: mainTexture (water color) - static
+			if (textureImage) {
+				VkDescriptorImageInfo mainImageInfo{};
+				mainImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+				mainImageInfo.imageView = textureImage->GetImageView();
+				mainImageInfo.sampler = textureImage->GetSampler();
+
+				VkWriteDescriptorSet mainTextureWrite{};
+				mainTextureWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+				mainTextureWrite.dstSet = descriptorSets[i];
+				mainTextureWrite.dstBinding = 2;
+				mainTextureWrite.dstArrayElement = 0;
+				mainTextureWrite.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+				mainTextureWrite.descriptorCount = 1;
+				mainTextureWrite.pImageInfo = &mainImageInfo;
+				staticWrites.push_back(mainTextureWrite);
+			}
+
+			// Binding 3/8: waveTexture or waveTextureArray - static
+			Handle<VulkanImage> activeWaveImage = waveImageArray ? waveImageArray : waveImage;
+			if (activeWaveImage) {
+				VkDescriptorImageInfo waveImageInfo{};
+				waveImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+				waveImageInfo.imageView = activeWaveImage->GetImageView();
+				waveImageInfo.sampler = activeWaveImage->GetSampler();
+
+				// Binding 3 for single wave texture or array
+				VkWriteDescriptorSet waveTextureWrite{};
+				waveTextureWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+				waveTextureWrite.dstSet = descriptorSets[i];
+				waveTextureWrite.dstBinding = waveImageArray ? 8 : 3;
+				waveTextureWrite.dstArrayElement = 0;
+				waveTextureWrite.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+				waveTextureWrite.descriptorCount = 1;
+				waveTextureWrite.pImageInfo = &waveImageInfo;
+				staticWrites.push_back(waveTextureWrite);
+			}
+
+			// Binding 5: WaterMatricesUBO - buffer is static per frame index
+			if (waterMatricesUBOs[i]) {
+				VkDescriptorBufferInfo waterMatricesUBOInfo{};
+				waterMatricesUBOInfo.buffer = waterMatricesUBOs[i]->GetBuffer();
+				waterMatricesUBOInfo.offset = 0;
+				waterMatricesUBOInfo.range = VK_WHOLE_SIZE;
+
+				VkWriteDescriptorSet waterMatricesUBOWrite{};
+				waterMatricesUBOWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+				waterMatricesUBOWrite.dstSet = descriptorSets[i];
+				waterMatricesUBOWrite.dstBinding = 5;
+				waterMatricesUBOWrite.dstArrayElement = 0;
+				waterMatricesUBOWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+				waterMatricesUBOWrite.descriptorCount = 1;
+				waterMatricesUBOWrite.pBufferInfo = &waterMatricesUBOInfo;
+				staticWrites.push_back(waterMatricesUBOWrite);
+			}
+
+			if (!staticWrites.empty()) {
+				vkUpdateDescriptorSets(device->GetDevice(),
+				                       static_cast<uint32_t>(staticWrites.size()),
+				                       staticWrites.data(), 0, nullptr);
+			}
+		}
 	}
 
 	void VulkanWaterRenderer::UpdateUniformBuffers(uint32_t frameIndex) {
