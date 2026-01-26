@@ -24,6 +24,7 @@
 #include <vector>
 #include <Client/IGameMapListener.h>
 #include <Core/RefCountedObject.h>
+#include <Core/Math.h>
 
 namespace spades {
 	namespace gui {
@@ -50,8 +51,20 @@ namespace spades {
 			std::vector<VkDescriptorSet> descriptorSets; // Per frame
 
 			// Uniform buffers
-			std::vector<Handle<VulkanBuffer>> waterUBOs; // Per frame
 			std::vector<Handle<VulkanBuffer>> waterMatricesUBOs; // Per frame
+
+			// Push constants data (replaces WaterUBO for better performance)
+			struct WaterPushConstants {
+				Vector4 fogColor;
+				Vector4 skyColor;
+				Vector2 zNearFar;
+				Vector2 _pad0;
+				Vector4 fovTan;
+				Vector4 waterPlane;
+				Vector4 viewOriginVector;
+				Vector2 displaceScale;
+				Vector2 _pad1;
+			} waterPushConstants;
 
 		public:
 			VulkanWaterRenderer(VulkanRenderer& r, client::GameMap* map);

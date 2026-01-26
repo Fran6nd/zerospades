@@ -36,7 +36,8 @@ layout(binding = 8) uniform sampler2DArray waveTextureArray;
 layout(binding = 6) uniform sampler2D mirrorTexture;
 layout(binding = 7) uniform sampler2D mirrorDepthTexture;
 
-layout(std140, binding = 4) uniform WaterUBO {
+// Push constants for frequently updated per-frame data (112 bytes, within 128 byte limit)
+layout(push_constant) uniform WaterPushConstants {
 	vec4 fogColor; // xyz used
 	vec4 skyColor; // xyz used
 	vec2 zNearFar;
@@ -46,8 +47,18 @@ layout(std140, binding = 4) uniform WaterUBO {
 	vec4 viewOriginVector; // use .xyz
 	vec2 displaceScale;
 	vec2 _pad1;
+} waterPC;
+
+// Matrices UBO for viewMatrix (needed for SSR calculations)
+layout(std140, binding = 5) uniform WaterMatricesUBO {
+	mat4 projectionViewModelMatrix;
+	mat4 modelMatrix;
+	mat4 viewModelMatrix;
 	mat4 viewMatrix;
-} waterUBO;
+	vec4 viewOriginVector;
+	float fogDistance;
+	vec3 _pad2;
+} waterMat;
 
 layout(location = 0) out vec4 fragColor;
 
@@ -83,11 +94,11 @@ float encodeDepth(float z, float near, float far) {
 
 float depthAt(vec2 pt) {
 	float w = texture(depthTexture, pt).x;
-	return decodeDepth(w, waterUBO.zNearFar.x, waterUBO.zNearFar.y);
+	return decodeDepth(w, waterPC.zNearFar.x, waterPC.zNearFar.y);
 }
 
 void main() {
-	vec3 worldPositionFromOrigin = v_worldPosition - waterUBO.viewOriginVector.xyz;
+	vec3 worldPositionFromOrigin = v_worldPosition - waterPC.viewOriginVector.xyz;
 	vec4 waveCoord = v_worldPositionOriginal.xyxy * vec4(vec2(0.04), vec2(0.08704)) + vec4(0.0, 0.0, 0.754, 0.1315);
 	vec2 waveCoord2 = v_worldPositionOriginal.xy * 0.00844 + vec2(0.154, 0.7315);
 
@@ -117,7 +128,7 @@ void main() {
 	/* ------- Refraction -------- */
 
 	// Compute the line segment for refraction ray tracing
-	vec3 normalVS = (waterUBO.viewMatrix * vec4(-wave, 0.0)).xyz;
+	vec3 normalVS = (waterMat.viewMatrix * vec4(-wave, 0.0)).xyz;
 	vec3 refractedVS = refract(normalize(v_viewPosition.xyz), normalVS, 1.0 / 1.5);
 	vec3 refractTargetVS = v_viewPosition + refractedVS;
 	if (refractTargetVS.z > -0.001) {
@@ -126,13 +137,13 @@ void main() {
 	}
 
 	vec3 refractTargetNDC = vec3(
-		refractTargetVS.xy / refractTargetVS.z / waterUBO.fovTan.xy,
-		encodeDepth(refractTargetVS.z, waterUBO.zNearFar.x, waterUBO.zNearFar.y)
+		refractTargetVS.xy / refractTargetVS.z / waterPC.fovTan.xy,
+		encodeDepth(refractTargetVS.z, waterPC.zNearFar.x, waterPC.zNearFar.y)
 	);
 
 	float scale = 1.0 / v_viewPosition.z;
 	vec2 disp = wave.xy * 0.1;
-	scrPos += disp * scale * waterUBO.displaceScale * 4.0;
+	scrPos += disp * scale * waterPC.displaceScale * 4.0;
 
 	vec2 refractTargetSS = refractTargetNDC.xy * vec2(-0.5, 0.5) + 0.5;
 
@@ -156,12 +167,12 @@ void main() {
 	}
 
 	// convert to linear Z
-	depth = decodeDepth(depth, waterUBO.zNearFar.x, waterUBO.zNearFar.y);
+	depth = decodeDepth(depth, waterPC.zNearFar.x, waterPC.zNearFar.y);
 
 	// make sure the sampled point is above the water plane.
 	// convert to view coord
-	vec3 sampledViewCoord = vec3(mix(waterUBO.fovTan.zw, waterUBO.fovTan.xy, refractTargetSS), 1.0) * -depth;
-	float planeDistance = dot(vec4(sampledViewCoord, 1.0), waterUBO.waterPlane);
+	vec3 sampledViewCoord = vec3(mix(waterPC.fovTan.zw, waterPC.fovTan.xy, refractTargetSS), 1.0) * -depth;
+	float planeDistance = dot(vec4(sampledViewCoord, 1.0), waterPC.waterPlane);
  	if (planeDistance < 0.0) {
 		// reset!
 		// original pos must be in the water.
@@ -173,7 +184,7 @@ void main() {
 			//discard; done by early-Z test
 		}
 
-		sampledViewCoord = vec3(mix(waterUBO.fovTan.zw, waterUBO.fovTan.xy, refractTargetSS), 1.0) * -depth;
+		sampledViewCoord = vec3(mix(waterPC.fovTan.zw, waterPC.fovTan.xy, refractTargetSS), 1.0) * -depth;
 	}
 
 	float envelope = min(distance(v_viewPosition * vec3(-1.0, 1.0, 1.0), sampledViewCoord) * 0.8, 1.0);
@@ -203,7 +214,7 @@ void main() {
 
 	// apply fog color to water color now.
 	// note that fog is already applied to underwater object.
-	waterColor = mix(waterColor, waterUBO.fogColor.xyz, v_fogDensity);
+	waterColor = mix(waterColor, waterPC.fogColor.xyz, v_fogDensity);
 
 	// blend water color with the underwater object's color.
 	fragColor.xyz = mix(fragColor.xyz, waterColor, envelope);
@@ -215,7 +226,7 @@ void main() {
 
 	// Compute the line segment for refraction ray tracing
 	vec3 reflectedVS = reflect(normalize(v_viewPosition.xyz), normalVS);
-	reflectedVS = reflect(reflectedVS, waterUBO.waterPlane.xyz); // reflection's Z position is inverted
+	reflectedVS = reflect(reflectedVS, waterPC.waterPlane.xyz); // reflection's Z position is inverted
 	vec3 reflectTargetVS = v_viewPosition + reflectedVS * (abs(v_viewPosition.z) + 1.0);
 	if (reflectTargetVS.z > -0.001) {
 		reflectTargetVS = mix(v_viewPosition, reflectedVS,
@@ -223,8 +234,8 @@ void main() {
 	}
 
 	vec3 reflectTargetNDC = vec3(
-		reflectTargetVS.xy / reflectTargetVS.z / waterUBO.fovTan.xy,
-		encodeDepth(reflectTargetVS.z, waterUBO.zNearFar.x, waterUBO.zNearFar.y)
+		reflectTargetVS.xy / reflectTargetVS.z / waterPC.fovTan.xy,
+		encodeDepth(reflectTargetVS.z, waterPC.zNearFar.x, waterPC.zNearFar.y)
 	);
 
 	vec2 reflectTargetSS = reflectTargetNDC.xy * vec2(-0.5, 0.5) + 0.5;
@@ -247,11 +258,11 @@ void main() {
 
 	// convert to linear Z
 	bool reflectedSky = depth > 0.99999;
-	depth = decodeDepth(depth, waterUBO.zNearFar.x, waterUBO.zNearFar.y);
+	depth = decodeDepth(depth, waterPC.zNearFar.x, waterPC.zNearFar.y);
 
 	// make sure the reflection is from the above the water plane
-	sampledViewCoord = vec3(mix(waterUBO.fovTan.zw, waterUBO.fovTan.xy, reflectTargetSS), 1.0) * -depth;
-	planeDistance = dot(vec4(sampledViewCoord, 1.0), waterUBO.waterPlane);
+	sampledViewCoord = vec3(mix(waterPC.fovTan.zw, waterPC.fovTan.xy, reflectTargetSS), 1.0) * -depth;
+	planeDistance = dot(vec4(sampledViewCoord, 1.0), waterPC.waterPlane);
 	bool validReflection = planeDistance > 0.0;
 
 	vec3 reflected = texture(mirrorTexture, reflectTargetSS).xyz;
@@ -268,8 +279,8 @@ void main() {
 				(-0.001 - v_viewPosition.z) / (reflectedVS.z - v_viewPosition.z));
 		}
 		reflectTargetNDC = vec3(
-			reflectTargetVS.xy / reflectTargetVS.z / waterUBO.fovTan.xy,
-			encodeDepth(reflectTargetVS.z, waterUBO.zNearFar.x, waterUBO.zNearFar.y)
+			reflectTargetVS.xy / reflectTargetVS.z / waterPC.fovTan.xy,
+			encodeDepth(reflectTargetVS.z, waterPC.zNearFar.x, waterPC.zNearFar.y)
 		);
 
 		reflectTargetSS = reflectTargetNDC.xy * vec2(-0.5, 0.5) + 0.5;
@@ -305,7 +316,7 @@ void main() {
 	// compute reflection color
 	vec2 reflectionSS = origScrPos;
 	disp.y = -abs(disp.y * 3.0);
-	reflectionSS -= disp * scale * waterUBO.displaceScale * 15.0;
+	reflectionSS -= disp * scale * waterPC.displaceScale * 15.0;
 
 	vec3 refl = reflected;
 #if !LINEAR_FRAMEBUFFER
