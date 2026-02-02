@@ -1315,6 +1315,7 @@ namespace spades {
 							case HitTypeHead: hits = ++hitStats.numHeadHits; break;
 							case HitTypeArms:
 							case HitTypeLegs: hits = ++hitStats.numLimbHits; break;
+							default: break;
 						}
 						str += " (" + ToString(hits) + ")";
 					}
