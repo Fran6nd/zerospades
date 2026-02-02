@@ -20,6 +20,7 @@
  */
 
 #include <cstdarg>
+#include <cstdio>
 #include <cstdlib>
 #include <ctime>
 
@@ -70,8 +71,12 @@ namespace spades {
 	namespace client {
 
 		Client::Client(Handle<IRenderer> r, Handle<IAudioDevice> audioDev,
-					   const ServerAddress& host, Handle<FontManager> fontManager)
-			: playerName(cg_playerName.operator std::string().substr(0, 15)),
+					   const ServerAddress& host, Handle<FontManager> fontManager,
+					   const std::string& demoPath)
+			: isDemoMode(!demoPath.empty()),
+			  demoFilePath(demoPath),
+			  recordGameCount(0),
+			  playerName(cg_playerName.operator std::string().substr(0, 15)),
 			  logStream(nullptr),
 			  hostname(host),
 			  renderer(r),
@@ -150,8 +155,6 @@ namespace spades {
 			tcView = stmp::make_unique<TCProgressView>(*this);
 			scriptedUI = Handle<ClientUI>::New(renderer.GetPointerOrNull(),
 				audioDev.GetPointerOrNull(), fontManager.GetPointerOrNull(), this);
-
-			bloodMarks = stmp::make_unique<BloodMarks>(*this);
 
 			renderer->SetGameMap(nullptr);
 		}
@@ -244,6 +247,10 @@ namespace spades {
 				net->Disconnect();
 				net.reset();
 			}
+			if (demoNet) {
+				SPLog("Closing demo playback");
+				demoNet.reset();
+			}
 
 			SPLog("Disconnected");
 
@@ -272,6 +279,8 @@ namespace spades {
 		/** Initiate an initialization which likely to take some time */
 		void Client::DoInit() {
 			renderer->Init();
+
+			bloodMarks = stmp::make_unique<BloodMarks>(*this);
 
 			// load images
 			SmokeSpriteEntity::Preload(renderer.GetPointerOrNull());
@@ -535,9 +544,17 @@ namespace spades {
 			mumbleLink.SetContext(hostname.ToString(false));
 			mumbleLink.SetIdentity(playerName);
 
-			SPLog("Started connecting to '%s'", hostname.ToString().c_str());
-			net = stmp::make_unique<NetClient>(this);
-			net->Connect(hostname);
+			if (isDemoMode) {
+				SPLog("Starting demo playback: '%s'", demoFilePath.c_str());
+				demoNet = stmp::make_unique<DemoNetClient>(this);
+				if (!demoNet->OpenDemo(demoFilePath)) {
+					SPRaise("Failed to open demo file: %s", demoFilePath.c_str());
+				}
+			} else {
+				SPLog("Started connecting to '%s'", hostname.ToString().c_str());
+				net = stmp::make_unique<NetClient>(this);
+				net->Connect(hostname);
+			}
 
 			// get host/time string
 			std::string fn = hostname.ToString(false);
@@ -588,14 +605,19 @@ namespace spades {
 
 			timeSinceInit += std::min(dt, 0.03F);
 
-			// update network
+			// update network or demo playback
 			try {
-				if (net->GetStatus() == NetClientStatusConnected)
-					net->DoEvents(0);
-				else
-					net->DoEvents(10);
+				if (isDemoMode) {
+					demoNet->DoEvents(dt);
+				} else {
+					if (net->GetStatus() == NetClientStatusConnected)
+						net->DoEvents(0);
+					else
+						net->DoEvents(10);
+				}
 			} catch (const std::exception& ex) {
-				if (net->GetStatus() == NetClientStatusNotConnected) {
+				NetClientStatus status = isDemoMode ? demoNet->GetStatus() : net->GetStatus();
+				if (status == NetClientStatusNotConnected) {
 					SPLog("Disconnected because of error:\n%s", ex.what());
 					NetLog("Disconnected because of error:\n%s", ex.what());
 					throw;
@@ -625,9 +647,11 @@ namespace spades {
 			limbo->Update(dt);
 
 			// The loading screen
-			if (net->GetStatus() == NetClientStatusReceivingMap) {
+			NetClientStatus currentStatus = isDemoMode ? demoNet->GetStatus() : net->GetStatus();
+			if (currentStatus == NetClientStatusReceivingMap) {
 				// Apply temporal smoothing on the progress value
-				float progress = net->GetMapReceivingProgress();
+				float progress = isDemoMode ? demoNet->GetMapReceivingProgress()
+				                            : net->GetMapReceivingProgress();
 
 				if (mapReceivingProgressSmoothed > progress)
 					mapReceivingProgressSmoothed = progress;
@@ -678,6 +702,9 @@ namespace spades {
 		}
 
 		bool Client::IsLimboViewActive() {
+			// In demo mode, never show limbo view - user is spectating
+			if (isDemoMode)
+				return false;
 			return world && (!world->GetLocalPlayer() || inGameLimbo);
 		}
 
@@ -692,6 +719,10 @@ namespace spades {
 			int team = limbo->GetSelectedTeam();
 			if (team == 2)
 				team = 255;
+
+			// In demo mode, player actions are replayed from the demo file
+			if (isDemoMode)
+				return;
 
 			stmp::optional<Player&> maybePlayer = world->GetLocalPlayer();
 			if (!maybePlayer || maybePlayer->IsSpectator()) { // join
