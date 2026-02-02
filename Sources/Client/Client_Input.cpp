@@ -95,6 +95,9 @@ DEFINE_SPADES_SETTING(cg_keyAutoFocus, "MiddleMouseButton");
 DEFINE_SPADES_SETTING(cg_keyToggleSpectatorNames, "z");
 DEFINE_SPADES_SETTING(cg_keySpectatorZoom, "e");
 DEFINE_SPADES_SETTING(cg_keyStaffSpectating, "f5");
+DEFINE_SPADES_SETTING(cg_keyDemoPlayPause, "Space");
+DEFINE_SPADES_SETTING(cg_keyDemoSeekForward, "Right");
+DEFINE_SPADES_SETTING(cg_keyDemoSeekBackward, "Left");
 
 SPADES_SETTING(s_volume);
 DEFINE_SPADES_SETTING(cg_keyVolumeUp, "+");
@@ -386,6 +389,36 @@ namespace spades {
 
 				// In demo mode, we're always spectating without a local player
 				if (isDemoMode) {
+					// Handle demo playback controls (play/pause)
+					if (CheckKey(cg_keyDemoPlayPause, name) && down) {
+						if (demoNet) {
+							if (demoNet->IsFinished()) {
+								// Demo finished - seek to beginning and resume
+								demoNet->SeekToBeginning();
+							} else {
+								// Toggle pause
+								demoNet->TogglePause();
+							}
+						}
+						return;
+					}
+
+					// Handle demo seeking (arrow keys)
+					if (CheckKey(cg_keyDemoSeekForward, name) && down) {
+						if (demoNet) {
+							float newTime = demoNet->GetTime() + 5.0f;
+							demoNet->Seek(newTime);
+						}
+						return;
+					}
+					if (CheckKey(cg_keyDemoSeekBackward, name) && down) {
+						if (demoNet) {
+							float newTime = demoNet->GetTime() - 5.0f;
+							demoNet->Seek(std::max(0.0f, newTime));
+						}
+						return;
+					}
+
 					// Handle demo spectator controls
 					if (cameraMode == ClientCameraMode::Free) {
 						if (CheckKey(cg_keyAttack, name)) {

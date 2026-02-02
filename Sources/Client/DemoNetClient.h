@@ -103,6 +103,7 @@ namespace spades {
 			void TogglePause() { if (demoPlayer) demoPlayer->TogglePause(); }
 			void SetSpeed(float speed) { if (demoPlayer) demoPlayer->SetSpeed(speed); }
 			void Seek(float time);
+			void SeekToBeginning();
 			float GetTime() const { return demoPlayer ? demoPlayer->GetTime() : 0.0f; }
 			float GetDuration() const { return demoPlayer ? demoPlayer->GetDuration() : 0.0f; }
 			bool IsFinished() const { return demoPlayer ? demoPlayer->IsFinished() : true; }

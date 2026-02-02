@@ -273,10 +273,11 @@ namespace spades {
 				ProcessPacket(data);
 			});
 
-			// Check if demo finished
-			if (demoPlayer->IsFinished() && status == NetClientStatusConnected) {
+			// Check if demo finished - auto-pause when complete
+			if (demoPlayer->IsFinished() && status == NetClientStatusConnected && !demoPlayer->IsPaused()) {
 				SPLog("Demo playback finished");
-				statusString = _Tr("NetClient", "Demo finished");
+				statusString = _Tr("NetClient", "Demo finished - press Space to replay");
+				demoPlayer->Pause();
 			}
 		}
 
@@ -1006,9 +1007,20 @@ namespace spades {
 		void DemoNetClient::Seek(float time) {
 			if (!demoPlayer) return;
 
-			// Seeking requires reloading the world from scratch
-			// For now, just adjust playback time (forward seeking only works properly)
+			// Adjust playback time - note that seeking backward may result in
+			// inconsistent world state since packets won't be re-applied
 			demoPlayer->Seek(time);
+			statusString = _Tr("NetClient", "Playing demo");
+		}
+
+		void DemoNetClient::SeekToBeginning() {
+			if (!demoPlayer) return;
+
+			// Seek to beginning of timeline without reloading the world
+			// Note: World state may be inconsistent, but allows video-player-like scrubbing
+			demoPlayer->Seek(0.0f);
+			demoPlayer->Resume();
+			statusString = _Tr("NetClient", "Playing demo");
 		}
 
 	} // namespace client

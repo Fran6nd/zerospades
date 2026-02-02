@@ -1016,20 +1016,30 @@ namespace spades {
 
 		void Client::FollowNextPlayer(bool reverse) {
 			stmp::optional<Player&> maybePlayer = world->GetLocalPlayer();
-			SPAssert(maybePlayer);
 
-			Player& localPlayer = maybePlayer.value();
+			// In demo mode, there's no local player - we're always spectating
+			bool localPlayerIsSpectating = true;
+			bool skipDeadPlayers = false;
+			int localPlayerId = -1;
 
-			bool localPlayerIsSpectador = localPlayer.IsSpectator();
-			bool localPlayerIsSpectating = localPlayerIsSpectador || staffSpectating;
-			bool skipDeadPlayers = !localPlayerIsSpectador && cg_skipDeadPlayersWhenDead;
+			if (maybePlayer) {
+				Player& localPlayer = maybePlayer.value();
+				bool localPlayerIsSpectador = localPlayer.IsSpectator();
+				localPlayerIsSpectating = localPlayerIsSpectador || staffSpectating;
+				skipDeadPlayers = !localPlayerIsSpectador && cg_skipDeadPlayersWhenDead;
+				localPlayerId = localPlayer.GetId();
+			}
 
-			int localPlayerId = localPlayer.GetId();
 			int nextId = FollowsNonLocalPlayer(GetCameraMode())
 				? followedPlayerId : localPlayerId;
 
 			auto slots = world->GetNumPlayerSlots();
 
+			// Ensure nextId is valid
+			if (nextId < 0 || nextId >= static_cast<int>(slots))
+				nextId = 0;
+
+			int startId = nextId;
 			do {
 				reverse ? --nextId : ++nextId;
 
@@ -1041,7 +1051,7 @@ namespace spades {
 				stmp::optional<Player&> p = world->GetPlayer(nextId);
 				if (!p || p->IsSpectator())
 					continue; // Do not follow a non-existent player or spectator
-				if (!localPlayerIsSpectating && !p->IsTeammate(localPlayer))
+				if (!localPlayerIsSpectating && maybePlayer && !p->IsTeammate(maybePlayer.value()))
 					continue; // Skip enemies unless the local player is a spectator
 				if (skipDeadPlayers && !p->IsAlive())
 					continue; // Skip dead players if the local player is not a spectator
@@ -1051,10 +1061,10 @@ namespace spades {
 					continue;
 
 				break;
-			} while (nextId != followedPlayerId);
+			} while (nextId != startId);
 
 			followedPlayerId = nextId;
-			followCameraState.enabled = staffSpectating || (followedPlayerId != localPlayerId);
+			followCameraState.enabled = staffSpectating || isDemoMode || (followedPlayerId != localPlayerId);
 		}
 	} // namespace client
 } // namespace spades
