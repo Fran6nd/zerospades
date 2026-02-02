@@ -114,9 +114,6 @@ namespace spades {
 			  debugHitTestZoom(false),
 			  spectatorZoomState(0.0F),
 			  spectatorZoom(false),
-			  spectatorPlayerNames(true),
-			  staffSpectating(false),
-			  followedPlayerId(0),
 			  focalLength(20.0F),
 			  targetFocalLength(20.0F),
 			  autoFocusEnabled(true),
@@ -127,7 +124,10 @@ namespace spades {
 			  corpseSoftLimit(6),
 			  corpseHardLimit(16),
 			  nextScreenShotIndex(0),
-			  nextMapShotIndex(0) {
+			  nextMapShotIndex(0),
+			  staffSpectating(false),
+			  followedPlayerId(0),
+			  spectatorPlayerNames(true) {
 			SPADES_MARK_FUNCTION();
 			SPLog("Initializing...");
 
