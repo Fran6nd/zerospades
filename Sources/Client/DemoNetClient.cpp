@@ -436,7 +436,9 @@ namespace spades {
 						auto p = GetPlayerOrNull(r.ReadByte());
 						PlayerInput inp = ParsePlayerInput(r.ReadByte());
 						if (!p) break;
-						if (&*p == GetWorld()->GetLocalPlayer()) {
+						// In demo mode there's no local player (spectating), so check before comparing
+						auto localPlayer = GetLocalPlayerOrNull();
+						if (localPlayer && &*p == &*localPlayer) {
 							if (inp.jump) p->PlayerJump();
 							break;
 						}
@@ -449,7 +451,9 @@ namespace spades {
 						auto p = GetPlayerOrNull(r.ReadByte());
 						WeaponInput inp = ParseWeaponInput(r.ReadByte());
 						if (!p) break;
-						if (&*p == GetWorld()->GetLocalPlayer()) break;
+						// In demo mode there's no local player (spectating), so check before comparing
+						auto localPlayer = GetLocalPlayerOrNull();
+						if (localPlayer && &*p == &*localPlayer) break;
 						p->SetWeaponInput(inp);
 					}
 					break;
