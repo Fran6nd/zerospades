@@ -276,7 +276,7 @@ namespace spades {
 			// Check if demo finished - auto-pause when complete
 			if (demoPlayer->IsFinished() && status == NetClientStatusConnected && !demoPlayer->IsPaused()) {
 				SPLog("Demo playback finished");
-				statusString = _Tr("NetClient", "Demo finished - press Space to replay");
+				statusString = _Tr("NetClient", "Demo finished - press P to replay");
 				demoPlayer->Pause();
 			}
 		}

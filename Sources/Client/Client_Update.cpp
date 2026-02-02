@@ -305,71 +305,76 @@ namespace spades {
 				UpdateLocalSpectator(dt);
 			}
 
+			// Check if demo is paused - freeze game objects but allow camera movement
+			bool demoPaused = isDemoMode && demoNet && demoNet->IsPaused();
+
+			if (!demoPaused) {
 #if 0
-			// dynamic time step
-			// physics diverges from server
-			world->Advance(dt);
+				// dynamic time step
+				// physics diverges from server
+				world->Advance(dt);
 #else
-			// accurately resembles server's physics
-			// but not smooth
-			if (dt > 0.0F) {
-				worldSubFrame += dt;
-				worldSubFrameFast += dt;
-			}
+				// accurately resembles server's physics
+				// but not smooth
+				if (dt > 0.0F) {
+					worldSubFrame += dt;
+					worldSubFrameFast += dt;
+				}
 
-			// these run at exactly ~60fps
-			float frameStep = 1.0F / 60.0F;
-			while (worldSubFrame >= frameStep) {
-				world->Advance(frameStep); // physics update
-				worldSubFrame -= frameStep;
-			}
+				// these run at exactly ~60fps
+				float frameStep = 1.0F / 60.0F;
+				while (worldSubFrame >= frameStep) {
+					world->Advance(frameStep); // physics update
+					worldSubFrame -= frameStep;
+				}
 
-			// these run at min. ~60fps but as fast as possible
-			float step = std::min(dt, frameStep);
-			while (worldSubFrameFast >= step) {
-				world->UpdatePlayer(step, false); // smooth orientation update
-				worldSubFrameFast -= step;
-			}
+				// these run at min. ~60fps but as fast as possible
+				float step = std::min(dt, frameStep);
+				while (worldSubFrameFast >= step) {
+					world->UpdatePlayer(step, false); // smooth orientation update
+					worldSubFrameFast -= step;
+				}
 #endif
 
-			// update player view (doesn't affect physics/game logics)
-			for (const auto& clientPlayer : clientPlayers) {
-				if (clientPlayer)
-					clientPlayer->Update(dt);
-			}
+				// update player view (doesn't affect physics/game logics)
+				for (const auto& clientPlayer : clientPlayers) {
+					if (clientPlayer)
+						clientPlayer->Update(dt);
+				}
 
-			// corpse never accesses audio nor renderer, so
-			// we can do it in the separate thread
-			class CorpseUpdateDispatch : public ConcurrentDispatch {
-				Client& client;
-				float dt;
+				// corpse never accesses audio nor renderer, so
+				// we can do it in the separate thread
+				class CorpseUpdateDispatch : public ConcurrentDispatch {
+					Client& client;
+					float dt;
 
-			public:
-				CorpseUpdateDispatch(Client& c, float dt) : client{c}, dt{dt} {}
-				void Run() override {
-					for (const auto& c : client.corpses) {
-						for (int i = 0; i < 4; i++)
-							c->Update(dt / 4.0F);
+				public:
+					CorpseUpdateDispatch(Client& c, float dt) : client{c}, dt{dt} {}
+					void Run() override {
+						for (const auto& c : client.corpses) {
+							for (int i = 0; i < 4; i++)
+								c->Update(dt / 4.0F);
+						}
 					}
-				}
-			};
-			CorpseUpdateDispatch corpseDispatch{*this, dt};
-			corpseDispatch.Start();
+				};
+				CorpseUpdateDispatch corpseDispatch{*this, dt};
+				corpseDispatch.Start();
 
-			// local entities should be done in the client thread
-			{
-				decltype(localEntities)::iterator it;
-				std::vector<decltype(it)> its;
-				for (it = localEntities.begin(); it != localEntities.end(); it++) {
-					if (!(*it)->Update(dt))
-						its.push_back(it);
+				// local entities should be done in the client thread
+				{
+					decltype(localEntities)::iterator it;
+					std::vector<decltype(it)> its;
+					for (it = localEntities.begin(); it != localEntities.end(); it++) {
+						if (!(*it)->Update(dt))
+							its.push_back(it);
+					}
+					for (const auto& it : its)
+						localEntities.erase(it);
 				}
-				for (const auto& it : its)
-					localEntities.erase(it);
+
+				bloodMarks->Update(dt);
+				corpseDispatch.Join();
 			}
-
-			bloodMarks->Update(dt);
-			corpseDispatch.Join();
 
 			if (grenadeVibration > 0.0F) {
 				grenadeVibration -= dt;
