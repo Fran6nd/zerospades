@@ -1328,9 +1328,11 @@ namespace spades {
 			float sw = renderer->ScreenWidth();
 			float sh = renderer->ScreenHeight();
 
-			Player& p = world->GetLocalPlayer().value();
+			stmp::optional<Player&> maybePlayer = world->GetLocalPlayer();
 
-			bool localPlayerIsSpectator = p.IsSpectator() || staffSpectating;
+			// In demo mode there's no local player, treat as spectator
+			bool localPlayerIsSpectator = isDemoMode || staffSpectating ||
+				(maybePlayer && maybePlayer->IsSpectator());
 
 			float x = sw - 8.0F;
 			float minY = sh * 0.5F;
