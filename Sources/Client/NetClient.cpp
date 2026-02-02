@@ -1592,6 +1592,13 @@ namespace spades {
 			NetPacketWriter w(PacketTypeInputData);
 			w.WriteByte((uint8_t)GetLocalPlayer().GetId());
 			w.WriteByte(bits);
+
+			// Record to demo before sending (server doesn't echo this back)
+			if (demoRecorder && demoRecorder->IsRecording()) {
+				const auto& data = w.GetData();
+				demoRecorder->RecordPacket(data.data(), data.size());
+			}
+
 			enet_peer_send(peer, 0, w.CreatePacket());
 		}
 
@@ -1608,6 +1615,13 @@ namespace spades {
 			NetPacketWriter w(PacketTypeWeaponInput);
 			w.WriteByte((uint8_t)GetLocalPlayer().GetId());
 			w.WriteByte(bits);
+
+			// Record to demo before sending (server doesn't echo this back)
+			if (demoRecorder && demoRecorder->IsRecording()) {
+				const auto& data = w.GetData();
+				demoRecorder->RecordPacket(data.data(), data.size());
+			}
+
 			enet_peer_send(peer, 0, w.CreatePacket());
 		}
 
@@ -1635,6 +1649,13 @@ namespace spades {
 			w.WriteFloat(g.GetFuse());
 			w.WriteVector3(g.GetPosition());
 			w.WriteVector3(g.GetVelocity());
+
+			// Record to demo before sending (server doesn't echo this back)
+			if (demoRecorder && demoRecorder->IsRecording()) {
+				const auto& data = w.GetData();
+				demoRecorder->RecordPacket(data.data(), data.size());
+			}
+
 			enet_peer_send(peer, 0, w.CreatePacket());
 		}
 
@@ -1651,6 +1672,13 @@ namespace spades {
 				case Player::ToolGrenade: w.WriteByte((uint8_t)3); break;
 				default: SPInvalidEnum("tool", type);
 			}
+
+			// Record to demo before sending (server doesn't echo this back)
+			if (demoRecorder && demoRecorder->IsRecording()) {
+				const auto& data = w.GetData();
+				demoRecorder->RecordPacket(data.data(), data.size());
+			}
+
 			enet_peer_send(peer, 0, w.CreatePacket());
 		}
 
@@ -1660,6 +1688,13 @@ namespace spades {
 			NetPacketWriter w(PacketTypeSetColour);
 			w.WriteByte((uint8_t)GetLocalPlayer().GetId());
 			w.WriteColor(GetLocalPlayer().GetBlockColor());
+
+			// Record to demo before sending (server doesn't echo this back)
+			if (demoRecorder && demoRecorder->IsRecording()) {
+				const auto& data = w.GetData();
+				demoRecorder->RecordPacket(data.data(), data.size());
+			}
+
 			enet_peer_send(peer, 0, w.CreatePacket());
 		}
 
@@ -1707,6 +1742,13 @@ namespace spades {
 			w.WriteByte((uint8_t)GetLocalPlayer().GetId());
 			w.WriteByte((uint8_t)0); // clip_ammo; not used?
 			w.WriteByte((uint8_t)0); // reserve_ammo; not used?
+
+			// Record to demo before sending (server response is delayed)
+			if (demoRecorder && demoRecorder->IsRecording()) {
+				const auto& data = w.GetData();
+				demoRecorder->RecordPacket(data.data(), data.size());
+			}
+
 			enet_peer_send(peer, 0, w.CreatePacket());
 		}
 
