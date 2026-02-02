@@ -1359,10 +1359,11 @@ namespace spades {
 			auto cameraMode = GetCameraMode();
 
 			int playerId = GetCameraTargetPlayerId();
-			auto& camTarget = world->GetPlayer(playerId).value();
+			auto maybeCamTarget = world->GetPlayer(playerId);
 
 			// Help messages (make sure to synchronize these with the keyboard input handler)
-			if (FollowsNonLocalPlayer(cameraMode)) {
+			if (FollowsNonLocalPlayer(cameraMode) && maybeCamTarget) {
+				Player& camTarget = maybeCamTarget.value();
 				if (HasTargetPlayer(cameraMode)) {
 					addLine(_Tr("Client", "Following {0} [#{1}]",
 						world->GetPlayerName(playerId), playerId));
@@ -1382,7 +1383,7 @@ namespace spades {
 
 				if (localPlayerIsSpectator)
 					addLine(_Tr("Client", "[{0}] Unfollow", TrKey(cg_keyReloadWeapon)));
-			} else {
+			} else if (!FollowsNonLocalPlayer(cameraMode)) {
 				addLine(_Tr("Client", "[{0}/{1}] Follow a player",
 					TrKey(cg_keyAttack), TrKey(cg_keyAltAttack)));
 			}

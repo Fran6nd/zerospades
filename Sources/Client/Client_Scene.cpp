@@ -108,6 +108,16 @@ namespace spades {
 				case ClientCameraMode::None: SPUnreachable();
 				case ClientCameraMode::NotJoined:
 				case ClientCameraMode::Free:
+					SPAssert(world);
+					// In demo mode, there's no local player - use followed player or recorded player
+					if (isDemoMode) {
+						if (followedPlayerId >= 0 && world->GetPlayer(followedPlayerId))
+							return followedPlayerId;
+						if (demoNet)
+							return demoNet->GetRecordedLocalPlayerId();
+						return 0;
+					}
+					return world->GetLocalPlayerIndex().value();
 				case ClientCameraMode::FirstPersonLocal:
 				case ClientCameraMode::ThirdPersonLocal:
 					SPAssert(world);
