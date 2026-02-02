@@ -227,8 +227,6 @@ namespace spades {
 				}
 			} else if (tool == ToolWeapon && isLocal) {
 				weapon->SetShooting(newInput.primary);
-			} else {
-				SPAssert(false);
 			}
 
 			weapInput = newInput;
