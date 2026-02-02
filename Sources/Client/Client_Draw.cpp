@@ -1632,6 +1632,31 @@ namespace spades {
 			} else {
 				// world exists, but no local player: not joined (or demo mode)
 
+				if (isDemoMode && shouldDrawHUD) {
+					// Draw spectator HUD elements in demo mode
+					if (spectatorPlayerNames)
+						DrawPubOVL();
+
+					tcView->Draw();
+
+					if (cg_hudPlayerCount)
+						DrawAlivePlayersCount();
+
+					// Draw map
+					bool largeMap = largeMapView->IsZoomed();
+					if (!largeMap)
+						mapView->Draw();
+
+					DrawSpectateHUD();
+
+					chatWindow->Draw();
+					killfeedWindow->Draw();
+
+					// Large map view should come in front
+					if (largeMap)
+						largeMapView->Draw();
+				}
+
 				// In demo mode, only show scoreboard when toggled
 				if (!isDemoMode || scoreboardVisible) {
 					scoreboard->Draw();
