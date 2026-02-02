@@ -518,6 +518,38 @@ namespace spades {
 					} else if (CheckKey(cg_keyJump, name)) {
 						playerInput.jump = down;
 					}
+
+					// Handle map controls in demo mode
+					if (CheckKey(cg_keyChangeMapScale, name) && down) {
+						if (!largeMapView->IsZoomed()) {
+							renderer->UpdateFlatGameMap();
+							mapView->SwitchScale();
+							Handle<IAudioChunk> c =
+							  audioDevice->RegisterSound("Sounds/Misc/SwitchMapZoom.opus");
+							audioDevice->PlayLocal(c.GetPointerOrNull(), AudioParam());
+						}
+					} else if (CheckKey(cg_keyToggleMapZoom, name)) {
+						if (down || cg_holdMapZoom) {
+							bool zoomed = largeMapView->IsZoomed();
+							zoomed = !zoomed;
+							if (cg_holdMapZoom)
+								zoomed = down;
+
+							renderer->UpdateFlatGameMap();
+							largeMapView->SetZoom(zoomed);
+							Handle<IAudioChunk> c = zoomed
+								? audioDevice->RegisterSound("Sounds/Misc/OpenMap.opus")
+								: audioDevice->RegisterSound("Sounds/Misc/CloseMap.opus");
+							audioDevice->PlayLocal(c.GetPointerOrNull(), AudioParam());
+						}
+					} else if (CheckKey(cg_keyScoreboard, name)) {
+						scoreboardVisible = down;
+					} else if (CheckKey(cg_keyGlobalChat, name) && down) {
+						scriptedUI->EnterGlobalChatWindow();
+						scriptedUI->SetIgnored(name);
+					} else if (CheckKey(cg_keyZoomChatLog, name)) {
+						chatWindow->SetExpanded(down);
+					}
 					return;
 				}
 
