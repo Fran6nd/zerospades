@@ -63,6 +63,9 @@ SPADES_SETTING(cg_keyAltAttack);
 SPADES_SETTING(cg_keyCrouch);
 SPADES_SETTING(cg_keyLimbo);
 SPADES_SETTING(cg_keyToggleSpectatorNames);
+SPADES_SETTING(cg_keyDemoPlayPause);
+SPADES_SETTING(cg_keyDemoSeekForward);
+SPADES_SETTING(cg_keyDemoSeekBackward);
 DEFINE_SPADES_SETTING(cg_screenshotFormat, "jpeg");
 DEFINE_SPADES_SETTING(cg_stats, "0");
 DEFINE_SPADES_SETTING(cg_statsSmallFont, "0");
@@ -1399,8 +1402,14 @@ namespace spades {
 
 			y += lh * 0.5F;
 
-			if (!inGameLimbo)
+			if (isDemoMode) {
+				// Demo playback controls
+				addLine(_Tr("Client", "[{0}] Play/Pause", TrKey(cg_keyDemoPlayPause)));
+				addLine(_Tr("Client", "[{0}/{1}] Seek fwd/back",
+					TrKey(cg_keyDemoSeekForward), TrKey(cg_keyDemoSeekBackward)));
+			} else if (!inGameLimbo) {
 				addLine(_Tr("Client", "[{0}] Select Team/Weapon", TrKey(cg_keyLimbo)));
+			}
 		}
 
 		void Client::DrawBlockPaletteHUD(float winY) {
