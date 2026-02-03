@@ -478,7 +478,8 @@ namespace spades {
 							}
 							return;
 						} else if (CheckKey(cg_keyJump, name)) {
-							if (down && GetCameraTargetPlayer().IsAlive())
+							auto maybeTarget = world->GetPlayer(GetCameraTargetPlayerId());
+							if (down && maybeTarget && maybeTarget->IsAlive())
 								followCameraState.firstPerson = !followCameraState.firstPerson;
 							return;
 						} else if (CheckKey(cg_keyReloadWeapon, name) && followCameraState.enabled) {
@@ -606,7 +607,8 @@ namespace spades {
 							}
 							return;
 						} else if (CheckKey(cg_keyJump, name) && cameraMode != ClientCameraMode::Free) {
-							if (down && GetCameraTargetPlayer().IsAlive())
+							auto maybeTarget = world->GetPlayer(GetCameraTargetPlayerId());
+							if (down && maybeTarget && maybeTarget->IsAlive())
 								followCameraState.firstPerson = !followCameraState.firstPerson;
 							return;
 						} else if (CheckKey(cg_keyReloadWeapon, name)
