@@ -545,11 +545,6 @@ namespace spades {
 						}
 					} else if (CheckKey(cg_keyScoreboard, name)) {
 						scoreboardVisible = down;
-					} else if (CheckKey(cg_keyGlobalChat, name) && down) {
-						scriptedUI->EnterGlobalChatWindow();
-						scriptedUI->SetIgnored(name);
-					} else if (CheckKey(cg_keyZoomChatLog, name)) {
-						chatWindow->SetExpanded(down);
 					}
 					return;
 				}
