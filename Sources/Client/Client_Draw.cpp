@@ -608,7 +608,8 @@ namespace spades {
 			auto cameraMode = GetCameraMode();
 			bool isFollowingNonLocal = FollowsNonLocalPlayer(cameraMode);
 
-			auto& focusPlayer = GetCameraTargetPlayer();
+			int focusPlayerId = GetCameraTargetPlayerId();
+			auto maybeFocusPlayer = world->GetPlayer(focusPlayerId);
 
 			for (size_t i = 0; i < world->GetNumPlayerSlots(); i++) {
 				auto maybePlayer = world->GetPlayer(static_cast<unsigned int>(i));
@@ -620,7 +621,7 @@ namespace spades {
 					continue; // don't draw dead players or spectators
 
 				// dont draw the focused player name when following non-local players
-				if (&p == &focusPlayer && isFollowingNonLocal)
+				if (maybeFocusPlayer && &p == &maybeFocusPlayer.value() && isFollowingNonLocal)
 					continue;
 
 				// Do not draw a player with an invalid state
