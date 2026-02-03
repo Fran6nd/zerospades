@@ -68,9 +68,21 @@ namespace spades {
 				return ClientCameraMode::None;
 			stmp::optional<Player&> maybePlayer = world->GetLocalPlayer();
 			if (!maybePlayer) {
-				// In demo mode, use free camera (spectator) instead of NotJoined
-				if (isDemoMode)
+				// No local player - demo mode or not joined
+				if (isDemoMode) {
+					// In demo mode, check if we're following a player
+					if (followCameraState.enabled) {
+						auto followedPlayer = world->GetPlayer(followedPlayerId);
+						if (followedPlayer) {
+							bool isAlive = followedPlayer->IsAlive();
+							if (followCameraState.firstPerson && isAlive)
+								return ClientCameraMode::FirstPersonFollow;
+							else
+								return ClientCameraMode::ThirdPersonFollow;
+						}
+					}
 					return ClientCameraMode::Free;
+				}
 				return ClientCameraMode::NotJoined;
 			}
 
@@ -87,7 +99,8 @@ namespace spades {
 			} else {
 				// The local player is dead or a spectator
 				if (followCameraState.enabled) {
-					bool isAlive = world->GetPlayer(followedPlayerId)->IsAlive();
+					auto followedPlayer = world->GetPlayer(followedPlayerId);
+					bool isAlive = followedPlayer && followedPlayer->IsAlive();
 					if (followCameraState.firstPerson && isAlive)
 						return ClientCameraMode::FirstPersonFollow;
 					else
