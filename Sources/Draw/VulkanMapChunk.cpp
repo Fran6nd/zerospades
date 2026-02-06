@@ -19,6 +19,7 @@
  */
 
 #include <algorithm>
+#include <cmath>
 #include <cstddef>
 
 #include "VulkanMapChunk.h"
@@ -192,10 +193,15 @@ namespace spades {
 		bool VulkanMapChunk::IsSolid(int x, int y, int z) {
 			if (!map)
 				return false;
-			if (x < 0 || y < 0 || z < 0)
+			if (z < 0)
 				return false;
-			if (x >= map->Width() || y >= map->Height() || z >= map->Depth())
-				return false;
+			if (z >= 64)
+				return true;
+
+			// FIXME: variable map size
+			x &= 511;
+			y &= 511;
+
 			return map->IsSolid(x, y, z);
 		}
 
@@ -325,9 +331,20 @@ namespace spades {
 		}
 
 		float VulkanMapChunk::DistanceFromEye(const Vector3& eye) {
-			// Calculate distance from eye to chunk center
-			Vector3 diff = centerPos - eye;
-			return diff.GetLength() - radius;
+			Vector3 diff = eye - centerPos;
+
+			// FIXME: variable map size
+			if (diff.x < -256.0F)
+				diff.x += 512.0F;
+			if (diff.y < -256.0F)
+				diff.y += 512.0F;
+			if (diff.x > 256.0F)
+				diff.x -= 512.0F;
+			if (diff.y > 256.0F)
+				diff.y -= 512.0F;
+
+			float dist = std::max(fabsf(diff.x), fabsf(diff.y));
+			return std::max(dist - ((float)Size * 0.5F), 0.0F);
 		}
 
 		void VulkanMapChunk::UpdateIfNeeded() {
@@ -342,6 +359,20 @@ namespace spades {
 			if (indices.empty() || !vertexBuffer || !indexBuffer)
 				return;
 
+			const auto& eye = renderer.renderer.GetSceneDef().viewOrigin;
+			Vector3 diff = eye - centerPos;
+			float sx = 0.0F, sy = 0.0F;
+
+			// FIXME: variable map size
+			if (diff.x > 256.0F)
+				sx += 512.0F;
+			if (diff.y > 256.0F)
+				sy += 512.0F;
+			if (diff.x < -256.0F)
+				sx -= 512.0F;
+			if (diff.y < -256.0F)
+				sy -= 512.0F;
+
 			// Set up push constants (MVP matrix + model origin)
 			struct {
 				Matrix4 projectionViewMatrix;
@@ -350,8 +381,8 @@ namespace spades {
 
 			pushConstants.projectionViewMatrix = renderer.renderer.GetProjectionViewMatrix();
 			pushConstants.modelOrigin = MakeVector3(
-				(float)(chunkX << SizeBits),
-				(float)(chunkY << SizeBits),
+				(float)(chunkX << SizeBits) + sx,
+				(float)(chunkY << SizeBits) + sy,
 				(float)(chunkZ << SizeBits)
 			);
 
@@ -394,10 +425,24 @@ namespace spades {
 			if (indices.empty() || !vertexBuffer || !indexBuffer)
 				return;
 
+			const auto& eye = renderer.renderer.GetSceneDef().viewOrigin;
+			Vector3 diff = eye - centerPos;
+			float sx = 0.0F, sy = 0.0F;
+
+			// FIXME: variable map size
+			if (diff.x > 256.0F)
+				sx += 512.0F;
+			if (diff.y > 256.0F)
+				sy += 512.0F;
+			if (diff.x < -256.0F)
+				sx -= 512.0F;
+			if (diff.y < -256.0F)
+				sy -= 512.0F;
+
 			// Push model origin for this chunk
 			Vector3 modelOrigin = MakeVector3(
-				(float)(chunkX << SizeBits),
-				(float)(chunkY << SizeBits),
+				(float)(chunkX << SizeBits) + sx,
+				(float)(chunkY << SizeBits) + sy,
 				(float)(chunkZ << SizeBits)
 			);
 			vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT,

@@ -134,13 +134,11 @@ namespace spades {
 			for (int dx = -1; dx <= 1; dx++) {
 				for (int dy = -1; dy <= 1; dy++) {
 					for (int dz = -1; dz <= 1; dz++) {
-						int xx = cx + dx;
-						int yy = cy + dy;
+						int xx = (cx + dx) & (numChunkWidth - 1);
+						int yy = (cy + dy) & (numChunkHeight - 1);
 						int zz = cz + dz;
 
-						if (xx < 0 || yy < 0 || zz < 0)
-							continue;
-						if (xx >= numChunkWidth || yy >= numChunkHeight || zz >= numChunkDepth)
+						if (zz < 0 || zz >= numChunkDepth)
 							continue;
 
 						VulkanMapChunk* chunk = GetChunk(xx, yy, zz);
@@ -357,9 +355,9 @@ namespace spades {
 		                                        Vector3 eye) {
 			SPADES_MARK_FUNCTION();
 
-			if (cx < 0 || cy < 0 || cz < 0)
-				return;
-			if (cx >= numChunkWidth || cy >= numChunkHeight || cz >= numChunkDepth)
+			cx &= numChunkWidth - 1;
+			cy &= numChunkHeight - 1;
+			if (cz < 0 || cz >= numChunkDepth)
 				return;
 
 			VulkanMapChunk* chunk = GetChunk(cx, cy, cz);
@@ -372,9 +370,9 @@ namespace spades {
 		                                           Vector3 eye) {
 			SPADES_MARK_FUNCTION();
 
-			if (cx < 0 || cy < 0 || cz < 0)
-				return;
-			if (cx >= numChunkWidth || cy >= numChunkHeight || cz >= numChunkDepth)
+			cx &= numChunkWidth - 1;
+			cy &= numChunkHeight - 1;
+			if (cz < 0 || cz >= numChunkDepth)
 				return;
 
 			VulkanMapChunk* chunk = GetChunk(cx, cy, cz);
@@ -388,9 +386,9 @@ namespace spades {
 		                                               const std::vector<void*>& lights) {
 			SPADES_MARK_FUNCTION();
 
-			if (cx < 0 || cy < 0 || cz < 0)
-				return;
-			if (cx >= numChunkWidth || cy >= numChunkHeight || cz >= numChunkDepth)
+			cx &= numChunkWidth - 1;
+			cy &= numChunkHeight - 1;
+			if (cz < 0 || cz >= numChunkDepth)
 				return;
 
 			VulkanMapChunk* chunk = GetChunk(cx, cy, cz);
@@ -403,9 +401,9 @@ namespace spades {
 		                                          Vector3 eye) {
 			SPADES_MARK_FUNCTION();
 
-			if (cx < 0 || cy < 0 || cz < 0)
-				return;
-			if (cx >= numChunkWidth || cy >= numChunkHeight || cz >= numChunkDepth)
+			cx &= numChunkWidth - 1;
+			cy &= numChunkHeight - 1;
+			if (cz < 0 || cz >= numChunkDepth)
 				return;
 
 			VulkanMapChunk* chunk = GetChunk(cx, cy, cz);
