@@ -22,9 +22,14 @@
 
 layout(location = 0) in vec4 color;
 layout(location = 1) in vec3 normal;
+layout(location = 2) in vec3 fogDensity;
+layout(location = 3) in vec3 inFogColor;
 
 layout(location = 0) out vec4 fragColor;
 
 void main() {
 	fragColor = color;
+
+	// Apply fog fading
+	fragColor.xyz = mix(fragColor.xyz, inFogColor, fogDensity);
 }

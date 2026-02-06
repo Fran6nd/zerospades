@@ -373,10 +373,17 @@ namespace spades {
 			if (diff.y < -256.0F)
 				sy -= 512.0F;
 
-			// Set up push constants (MVP matrix + model origin)
+			// Set up push constants (MVP matrix + model origin + fog data)
+			Vector3 fogCol = renderer.renderer.GetFogColor();
+			fogCol *= fogCol; // linearize
+
 			struct {
 				Matrix4 projectionViewMatrix;
 				Vector3 modelOrigin;
+				float fogDistance;
+				Vector3 viewOrigin;
+				float _pad;
+				Vector3 fogColor;
 			} pushConstants;
 
 			pushConstants.projectionViewMatrix = renderer.renderer.GetProjectionViewMatrix();
@@ -385,6 +392,10 @@ namespace spades {
 				(float)(chunkY << SizeBits) + sy,
 				(float)(chunkZ << SizeBits)
 			);
+			pushConstants.fogDistance = renderer.renderer.GetFogDistance();
+			pushConstants.viewOrigin = eye;
+			pushConstants._pad = 0.0f;
+			pushConstants.fogColor = fogCol;
 
 			vkCmdPushConstants(commandBuffer, renderer.pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT,
 			                   0, sizeof(pushConstants), &pushConstants);

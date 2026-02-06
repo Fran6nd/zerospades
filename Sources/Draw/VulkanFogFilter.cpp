@@ -197,7 +197,7 @@ namespace spades {
 			uniforms.fogColor[0] = fogCol.x;
 			uniforms.fogColor[1] = fogCol.y;
 			uniforms.fogColor[2] = fogCol.z;
-			uniforms.fogDistance = 128.0f;
+			uniforms.fogDistance = renderer.GetFogDistance();
 
 			if (!uniformBuffer) {
 				uniformBuffer = Handle<VulkanBuffer>::New(
