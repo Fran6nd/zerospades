@@ -230,13 +230,37 @@ namespace spades {
 				createInfo.pNext = nullptr;
 			}
 
-			// On macOS, we need to enable the portability enumeration extension for MoltenVK
+			// On macOS with MoltenVK, enable portability enumeration if available.
+			// When linking directly to MoltenVK the extension may not be present,
+			// but MoltenVK still exposes its device without it.
 #ifdef __APPLE__
-			createInfo.flags |= VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR;
-			extensions.push_back(VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME);
-			extensions.push_back("VK_KHR_get_physical_device_properties2");
-			createInfo.enabledExtensionCount = static_cast<uint32_t>(extensions.size());
-			createInfo.ppEnabledExtensionNames = extensions.data();
+			{
+				uint32_t availableExtCount = 0;
+				vkEnumerateInstanceExtensionProperties(nullptr, &availableExtCount, nullptr);
+				std::vector<VkExtensionProperties> availableExts(availableExtCount);
+				if (availableExtCount > 0) {
+					vkEnumerateInstanceExtensionProperties(nullptr, &availableExtCount, availableExts.data());
+				}
+
+				bool hasPortabilityEnum = false;
+				bool hasPhysDevProps2 = false;
+				for (const auto& ext : availableExts) {
+					if (strcmp(ext.extensionName, VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME) == 0)
+						hasPortabilityEnum = true;
+					if (strcmp(ext.extensionName, "VK_KHR_get_physical_device_properties2") == 0)
+						hasPhysDevProps2 = true;
+				}
+
+				if (hasPortabilityEnum) {
+					createInfo.flags |= VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR;
+					extensions.push_back(VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME);
+				}
+				if (hasPhysDevProps2) {
+					extensions.push_back("VK_KHR_get_physical_device_properties2");
+				}
+				createInfo.enabledExtensionCount = static_cast<uint32_t>(extensions.size());
+				createInfo.ppEnabledExtensionNames = extensions.data();
+			}
 #endif
 
 			VkResult result = vkCreateInstance(&createInfo, nullptr, &instance);
