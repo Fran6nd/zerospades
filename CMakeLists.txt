@@ -109,74 +109,79 @@ endif()
 
 # Vulkan configuration
 if(USE_VULKAN)
-	find_package(Vulkan REQUIRED)
+	if(APPLE)
+		# On macOS, link directly to MoltenVK instead of the Vulkan loader.
+		# MoltenVK exports all Vulkan entry points, so the loader is unnecessary
+		# and this makes the .app bundle self-contained.
+		find_library(MOLTENVK_LIBRARY NAMES MoltenVK
+			HINTS /opt/local/lib /opt/homebrew/lib /usr/local/lib
+			      ENV VULKAN_SDK
+			PATH_SUFFIXES lib)
+		if(NOT MOLTENVK_LIBRARY)
+			message(FATAL_ERROR "MoltenVK not found. Install via: port install MoltenVK-latest  OR  brew install molten-vk")
+		endif()
+		message(STATUS "Using MoltenVK directly: ${MOLTENVK_LIBRARY}")
 
-	if(Vulkan_FOUND)
+		# Find Vulkan headers (provided by vulkan-headers or molten-vk package)
+		find_path(Vulkan_INCLUDE_DIRS NAMES vulkan/vulkan.h
+			HINTS /opt/local/include /opt/homebrew/include /usr/local/include
+			      ENV VULKAN_SDK
+			PATH_SUFFIXES include)
+		if(NOT Vulkan_INCLUDE_DIRS)
+			message(FATAL_ERROR "Vulkan headers not found. Install via: port install vulkan-headers  OR  brew install vulkan-headers")
+		endif()
+		message(STATUS "Vulkan headers: ${Vulkan_INCLUDE_DIRS}")
+	else()
+		# On non-Apple platforms, use the standard Vulkan SDK
+		find_package(Vulkan REQUIRED)
 		message(STATUS "Vulkan SDK found: ${Vulkan_INCLUDE_DIRS}")
 		message(STATUS "Vulkan library: ${Vulkan_LIBRARIES}")
+	endif()
 
-		# On macOS, we use MoltenVK
-		if(APPLE)
-			message(STATUS "Using MoltenVK for Vulkan on macOS")
-		endif()
-
-		# Find glslang for GLSL to SPIR-V compilation
-		# glslang is typically included with the Vulkan SDK
-		if(Vulkan_GLSLANG_VALIDATOR_EXECUTABLE)
-			message(STATUS "glslangValidator found: ${Vulkan_GLSLANG_VALIDATOR_EXECUTABLE}")
-			set(GLSLANG_VALIDATOR ${Vulkan_GLSLANG_VALIDATOR_EXECUTABLE})
-		else()
-			# Try to find it manually
-			find_program(GLSLANG_VALIDATOR
-				NAMES glslangValidator
-				HINTS
-					${Vulkan_INCLUDE_DIRS}/../bin
-					${Vulkan_INCLUDE_DIRS}/../../bin
-					ENV VULKAN_SDK
-				PATH_SUFFIXES bin
-			)
-			if(GLSLANG_VALIDATOR)
-				message(STATUS "glslangValidator found: ${GLSLANG_VALIDATOR}")
-			else()
-				message(WARNING "glslangValidator not found - shaders will be compiled at runtime")
-			endif()
-		endif()
-
-		# Find glslang library for runtime GLSL to SPIR-V compilation
-		find_library(GLSLANG_LIBRARY NAMES glslang HINTS /opt/local/lib)
-		find_library(GLSLANG_SPIRV_LIBRARY NAMES SPIRV HINTS /opt/local/lib)
-		find_library(GLSLANG_RESOURCE_LIMITS_LIBRARY NAMES glslang-default-resource-limits HINTS /opt/local/lib)
-		find_path(GLSLANG_INCLUDE_DIR NAMES glslang/Public/ShaderLang.h HINTS /opt/local/include)
-
-		if(GLSLANG_LIBRARY AND GLSLANG_SPIRV_LIBRARY AND GLSLANG_INCLUDE_DIR)
-			message(STATUS "glslang library found: ${GLSLANG_LIBRARY}")
-			message(STATUS "glslang SPIRV library found: ${GLSLANG_SPIRV_LIBRARY}")
-			message(STATUS "glslang include dir: ${GLSLANG_INCLUDE_DIR}")
-			set(GLSLANG_LIBRARIES ${GLSLANG_LIBRARY} ${GLSLANG_SPIRV_LIBRARY} ${GLSLANG_RESOURCE_LIMITS_LIBRARY})
-			set(HAVE_GLSLANG TRUE)
-		else()
-			message(WARNING "glslang library not found - runtime shader compilation will be disabled")
-			set(HAVE_GLSLANG FALSE)
-		endif()
-
-		# Find spirv-cross for shader reflection
-		find_library(SPIRV_CROSS_LIBRARY NAMES spirv-cross-core HINTS /opt/local/lib)
-		find_path(SPIRV_CROSS_INCLUDE_DIR NAMES spirv_cross/spirv_cross.hpp HINTS /opt/local/include)
-
-		if(SPIRV_CROSS_LIBRARY AND SPIRV_CROSS_INCLUDE_DIR)
-			message(STATUS "spirv-cross library found: ${SPIRV_CROSS_LIBRARY}")
-			message(STATUS "spirv-cross include dir: ${SPIRV_CROSS_INCLUDE_DIR}")
-			set(HAVE_SPIRV_CROSS TRUE)
-		else()
-			message(WARNING "spirv-cross library not found - shader reflection will be disabled")
-			set(HAVE_SPIRV_CROSS FALSE)
-		endif()
-
-		# Option to compile shaders at build time
-		option(VULKAN_PRECOMPILE_SHADERS "Precompile Vulkan shaders to SPIR-V at build time" OFF)
-
+	# Find glslang for GLSL to SPIR-V compilation (optional)
+	find_program(GLSLANG_VALIDATOR
+		NAMES glslangValidator
+		HINTS /opt/local/bin /opt/homebrew/bin /usr/local/bin
+		      ${Vulkan_INCLUDE_DIRS}/../bin
+		      ENV VULKAN_SDK
+		PATH_SUFFIXES bin)
+	if(GLSLANG_VALIDATOR)
+		message(STATUS "glslangValidator found: ${GLSLANG_VALIDATOR}")
 	else()
-		message(FATAL_ERROR "Vulkan SDK not found. Please install the Vulkan SDK.")
+		message(STATUS "glslangValidator not found - SPIR-V shaders are precompiled")
+	endif()
+
+	# Find glslang library for runtime GLSL to SPIR-V compilation (optional)
+	find_library(GLSLANG_LIBRARY NAMES glslang
+		HINTS /opt/local/lib /opt/homebrew/lib /usr/local/lib)
+	find_library(GLSLANG_SPIRV_LIBRARY NAMES SPIRV
+		HINTS /opt/local/lib /opt/homebrew/lib /usr/local/lib)
+	find_library(GLSLANG_RESOURCE_LIMITS_LIBRARY NAMES glslang-default-resource-limits
+		HINTS /opt/local/lib /opt/homebrew/lib /usr/local/lib)
+	find_path(GLSLANG_INCLUDE_DIR NAMES glslang/Public/ShaderLang.h
+		HINTS /opt/local/include /opt/homebrew/include /usr/local/include)
+
+	if(GLSLANG_LIBRARY AND GLSLANG_SPIRV_LIBRARY AND GLSLANG_INCLUDE_DIR)
+		message(STATUS "glslang library found: ${GLSLANG_LIBRARY}")
+		set(GLSLANG_LIBRARIES ${GLSLANG_LIBRARY} ${GLSLANG_SPIRV_LIBRARY} ${GLSLANG_RESOURCE_LIMITS_LIBRARY})
+		set(HAVE_GLSLANG TRUE)
+	else()
+		message(STATUS "glslang library not found - runtime shader compilation disabled")
+		set(HAVE_GLSLANG FALSE)
+	endif()
+
+	# Find spirv-cross for shader reflection (optional)
+	find_library(SPIRV_CROSS_LIBRARY NAMES spirv-cross-core
+		HINTS /opt/local/lib /opt/homebrew/lib /usr/local/lib)
+	find_path(SPIRV_CROSS_INCLUDE_DIR NAMES spirv_cross/spirv_cross.hpp
+		HINTS /opt/local/include /opt/homebrew/include /usr/local/include)
+
+	if(SPIRV_CROSS_LIBRARY AND SPIRV_CROSS_INCLUDE_DIR)
+		message(STATUS "spirv-cross library found: ${SPIRV_CROSS_LIBRARY}")
+		set(HAVE_SPIRV_CROSS TRUE)
+	else()
+		message(STATUS "spirv-cross library not found - shader reflection disabled")
+		set(HAVE_SPIRV_CROSS FALSE)
 	endif()
 endif()
 

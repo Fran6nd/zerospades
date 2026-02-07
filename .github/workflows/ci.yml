@@ -122,7 +122,7 @@ jobs:
 
       - name: Install Vulkan SDK and dependencies
         run: |
-          brew install molten-vk vulkan-headers vulkan-loader glslang spirv-cross
+          brew install molten-vk vulkan-headers glslang spirv-cross
 
       - name: Cache vcpkg and dependencies
         uses: actions/cache@v4
@@ -179,7 +179,7 @@ jobs:
 
       - name: Install Vulkan SDK and dependencies
         run: |
-          brew install molten-vk vulkan-headers vulkan-loader glslang spirv-cross
+          brew install molten-vk vulkan-headers glslang spirv-cross
 
       - name: Cache vcpkg and dependencies
         uses: actions/cache@v4

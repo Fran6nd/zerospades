@@ -158,7 +158,12 @@ endif()
 
 # Link Vulkan libraries if enabled
 if(USE_VULKAN)
-	target_link_libraries(OpenSpades Vulkan::Vulkan)
+	if(APPLE AND MOLTENVK_LIBRARY)
+		# Link directly to MoltenVK on macOS (no Vulkan loader needed)
+		target_link_libraries(OpenSpades ${MOLTENVK_LIBRARY})
+	else()
+		target_link_libraries(OpenSpades Vulkan::Vulkan)
+	endif()
 	if(Vulkan_INCLUDE_DIRS)
 		target_include_directories(OpenSpades PRIVATE ${Vulkan_INCLUDE_DIRS})
 	endif()
@@ -221,6 +226,25 @@ if(APPLE)
 			"$<TARGET_FILE:OpenSpades>"
 		COMMENT "Embedding OpenAL Soft into macOS bundle"
 	)
+
+	# Copy MoltenVK dylib into the bundle and fix paths
+	if(USE_VULKAN AND MOLTENVK_LIBRARY)
+		# Resolve the real dylib path (follow symlinks)
+		get_filename_component(MOLTENVK_REALPATH "${MOLTENVK_LIBRARY}" REALPATH)
+		get_filename_component(MOLTENVK_DIR "${MOLTENVK_LIBRARY}" DIRECTORY)
+		add_custom_command(TARGET OpenSpades POST_BUILD
+			COMMAND ${CMAKE_COMMAND} -E copy_if_different
+				"${MOLTENVK_REALPATH}"
+				"$<TARGET_BUNDLE_CONTENT_DIR:OpenSpades>/Frameworks/libMoltenVK.dylib"
+			# MoltenVK uses @rpath install name, so change it to a direct path
+			COMMAND install_name_tool -change "@rpath/libMoltenVK.dylib"
+				"@executable_path/../Frameworks/libMoltenVK.dylib"
+				"$<TARGET_FILE:OpenSpades>"
+			# Remove the system rpath that CMake adds (not needed in bundle)
+			COMMAND bash -c "install_name_tool -delete_rpath '${MOLTENVK_DIR}' '$<TARGET_FILE:OpenSpades>' || exit 0"
+			COMMENT "Embedding MoltenVK into macOS bundle"
+		)
+	endif()
 
 	# Fix library paths for YSRSpades if enabled
 	if(OPENSPADES_YSR)
