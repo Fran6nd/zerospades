@@ -370,6 +370,9 @@ namespace spades {
 			vkCmdBindIndexBuffer(commandBuffer, indexBuffer->GetBuffer(), 0, VK_INDEX_TYPE_UINT32);
 
 			const Matrix4& projectionViewMatrix = renderer.GetProjectionViewMatrix();
+			const auto& eye = renderer.GetSceneDef().viewOrigin;
+			Vector3 fogCol = renderer.GetFogColor();
+			float fogDist = renderer.GetFogDistance();
 
 			for (const auto& param : params) {
 				Matrix4 mvpMatrix = projectionViewMatrix * param.matrix;
@@ -377,16 +380,22 @@ namespace spades {
 				struct {
 					Matrix4 projectionViewMatrix;
 					Vector3 modelOrigin;
-					float padding1;
+					float fogDistance;
 					Vector3 customColor;
-					float padding2;
+					float _pad;
+					Vector3 viewOrigin;
+					float _pad2;
+					Vector3 fogColor;
 				} pushConstants;
 
 				pushConstants.projectionViewMatrix = mvpMatrix;
 				pushConstants.modelOrigin = origin;
-				pushConstants.padding1 = 0.0f;
+				pushConstants.fogDistance = fogDist;
 				pushConstants.customColor = param.customColor;
-				pushConstants.padding2 = 0.0f;
+				pushConstants._pad = 0.0f;
+				pushConstants.viewOrigin = eye;
+				pushConstants._pad2 = 0.0f;
+				pushConstants.fogColor = fogCol;
 
 				vkCmdPushConstants(commandBuffer, sharedPipeline.pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT,
 				                   0, sizeof(pushConstants), &pushConstants);
@@ -446,27 +455,34 @@ namespace spades {
 
 			// Get projection-view matrix from renderer
 			const Matrix4& projectionViewMatrix = renderer.GetProjectionViewMatrix();
+			const auto& eye = renderer.GetSceneDef().viewOrigin;
+			Vector3 fogCol = renderer.GetFogColor();
+			float fogDist = renderer.GetFogDistance();
 
 			// Draw each instance
 			for (const auto& param : params) {
 				// Compute final MVP matrix
 				Matrix4 mvpMatrix = projectionViewMatrix * param.matrix;
 
-				// Set up push constants (MVP matrix + model origin)
-				// Note: Vulkan requires vec3 to be 16-byte aligned in push constants
 				struct {
 					Matrix4 projectionViewMatrix;
 					Vector3 modelOrigin;
-					float padding1;
+					float fogDistance;
 					Vector3 customColor;
-					float padding2;
+					float _pad;
+					Vector3 viewOrigin;
+					float _pad2;
+					Vector3 fogColor;
 				} pushConstants;
 
 				pushConstants.projectionViewMatrix = mvpMatrix;
 				pushConstants.modelOrigin = origin;
-				pushConstants.padding1 = 0.0f;
+				pushConstants.fogDistance = fogDist;
 				pushConstants.customColor = param.customColor;
-				pushConstants.padding2 = 0.0f;
+				pushConstants._pad = 0.0f;
+				pushConstants.viewOrigin = eye;
+				pushConstants._pad2 = 0.0f;
+				pushConstants.fogColor = fogCol;
 
 				vkCmdPushConstants(commandBuffer, sharedPipeline.pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT,
 				                   0, sizeof(pushConstants), &pushConstants);
@@ -510,6 +526,9 @@ namespace spades {
 			vkCmdBindIndexBuffer(commandBuffer, indexBuffer->GetBuffer(), 0, VK_INDEX_TYPE_UINT32);
 
 			const Matrix4& projectionViewMatrix = renderer.GetProjectionViewMatrix();
+			const auto& eye = renderer.GetSceneDef().viewOrigin;
+			Vector3 fogCol = renderer.GetFogColor();
+			float fogDist = renderer.GetFogDistance();
 
 			for (const auto& param : params) {
 				Matrix4 mvpMatrix = projectionViewMatrix * param.matrix;
@@ -517,16 +536,22 @@ namespace spades {
 				struct {
 					Matrix4 projectionViewMatrix;
 					Vector3 modelOrigin;
-					float padding1;
+					float fogDistance;
 					Vector3 customColor;
-					float padding2;
+					float _pad;
+					Vector3 viewOrigin;
+					float _pad2;
+					Vector3 fogColor;
 				} pushConstants;
 
 				pushConstants.projectionViewMatrix = mvpMatrix;
 				pushConstants.modelOrigin = origin;
-				pushConstants.padding1 = 0.0f;
+				pushConstants.fogDistance = fogDist;
 				pushConstants.customColor = param.customColor;
-				pushConstants.padding2 = 0.0f;
+				pushConstants._pad = 0.0f;
+				pushConstants.viewOrigin = eye;
+				pushConstants._pad2 = 0.0f;
+				pushConstants.fogColor = fogCol;
 
 				vkCmdPushConstants(commandBuffer, sharedPipeline.pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT,
 				                   0, sizeof(pushConstants), &pushConstants);
@@ -569,6 +594,9 @@ namespace spades {
 			vkCmdBindIndexBuffer(commandBuffer, indexBuffer->GetBuffer(), 0, VK_INDEX_TYPE_UINT32);
 
 			const Matrix4& projectionViewMatrix = renderer.GetProjectionViewMatrix();
+			const auto& eye = renderer.GetSceneDef().viewOrigin;
+			Vector3 fogCol = renderer.GetFogColor();
+			float fogDist = renderer.GetFogDistance();
 
 			for (const auto& param : params) {
 				Matrix4 mvpMatrix = projectionViewMatrix * param.matrix;
@@ -576,16 +604,22 @@ namespace spades {
 				struct {
 					Matrix4 projectionViewMatrix;
 					Vector3 modelOrigin;
-					float padding1;
+					float fogDistance;
 					Vector3 customColor;
-					float padding2;
+					float _pad;
+					Vector3 viewOrigin;
+					float _pad2;
+					Vector3 fogColor;
 				} pushConstants;
 
 				pushConstants.projectionViewMatrix = mvpMatrix;
 				pushConstants.modelOrigin = origin;
-				pushConstants.padding1 = 0.0f;
+				pushConstants.fogDistance = fogDist;
 				pushConstants.customColor = param.customColor;
-				pushConstants.padding2 = 0.0f;
+				pushConstants._pad = 0.0f;
+				pushConstants.viewOrigin = eye;
+				pushConstants._pad2 = 0.0f;
+				pushConstants.fogColor = fogCol;
 
 				vkCmdPushConstants(commandBuffer, sharedPipeline.pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT,
 				                   0, sizeof(pushConstants), &pushConstants);
@@ -764,7 +798,10 @@ namespace spades {
 			VkPushConstantRange pushConstantRange{};
 			pushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
 			pushConstantRange.offset = 0;
-			pushConstantRange.size = sizeof(float) * 16 + sizeof(float) * 4 + sizeof(float) * 4; // mat4 + vec3 (origin) + padding + vec3 (customColor) + padding
+			// mat4 (64) + vec3 modelOrigin + float fogDistance (16) +
+			// vec3 customColor + float pad (16) + vec3 viewOrigin + float pad2 (16) +
+			// vec3 fogColor (12) = 124
+			pushConstantRange.size = 124;
 
 			VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
 			pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;

@@ -24,6 +24,8 @@ layout(location = 0) in vec4 color;
 layout(location = 1) in vec3 normal;
 layout(location = 2) in vec3 customColor;
 layout(location = 3) in float lighting;
+layout(location = 4) in vec3 fogDensity;
+layout(location = 5) in vec3 inFogColor;
 
 layout(location = 0) out vec4 fragColor;
 
@@ -38,4 +40,7 @@ void main() {
 
 	// Apply lighting after team color substitution
 	fragColor.xyz *= lighting;
+
+	// Apply fog fading
+	fragColor.xyz = mix(fragColor.xyz, inFogColor, fogDensity);
 }
