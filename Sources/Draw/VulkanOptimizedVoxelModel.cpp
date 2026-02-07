@@ -377,24 +377,27 @@ namespace spades {
 			for (const auto& param : params) {
 				Matrix4 mvpMatrix = projectionViewMatrix * param.matrix;
 
+				// Compute fog density from model's world position
+				Vector4 modelWorldPos4 = param.matrix * MakeVector4(origin.x, origin.y, origin.z, 1.0f);
+				float dx = modelWorldPos4.x - eye.x;
+				float dy = modelWorldPos4.y - eye.y;
+				float horzDistSq = dx * dx + dy * dy;
+				float fogDensity = std::min(horzDistSq / (fogDist * fogDist), 1.0f);
+
 				struct {
 					Matrix4 projectionViewMatrix;
 					Vector3 modelOrigin;
-					float fogDistance;
+					float fogDensity;
 					Vector3 customColor;
 					float _pad;
-					Vector3 viewOrigin;
-					float _pad2;
 					Vector3 fogColor;
 				} pushConstants;
 
 				pushConstants.projectionViewMatrix = mvpMatrix;
 				pushConstants.modelOrigin = origin;
-				pushConstants.fogDistance = fogDist;
+				pushConstants.fogDensity = fogDensity;
 				pushConstants.customColor = param.customColor;
 				pushConstants._pad = 0.0f;
-				pushConstants.viewOrigin = eye;
-				pushConstants._pad2 = 0.0f;
 				pushConstants.fogColor = fogCol;
 
 				vkCmdPushConstants(commandBuffer, sharedPipeline.pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT,
@@ -464,24 +467,27 @@ namespace spades {
 				// Compute final MVP matrix
 				Matrix4 mvpMatrix = projectionViewMatrix * param.matrix;
 
+				// Compute fog density from model's world position
+				Vector4 modelWorldPos4 = param.matrix * MakeVector4(origin.x, origin.y, origin.z, 1.0f);
+				float dx = modelWorldPos4.x - eye.x;
+				float dy = modelWorldPos4.y - eye.y;
+				float horzDistSq = dx * dx + dy * dy;
+				float fogDensity = std::min(horzDistSq / (fogDist * fogDist), 1.0f);
+
 				struct {
 					Matrix4 projectionViewMatrix;
 					Vector3 modelOrigin;
-					float fogDistance;
+					float fogDensity;
 					Vector3 customColor;
 					float _pad;
-					Vector3 viewOrigin;
-					float _pad2;
 					Vector3 fogColor;
 				} pushConstants;
 
 				pushConstants.projectionViewMatrix = mvpMatrix;
 				pushConstants.modelOrigin = origin;
-				pushConstants.fogDistance = fogDist;
+				pushConstants.fogDensity = fogDensity;
 				pushConstants.customColor = param.customColor;
 				pushConstants._pad = 0.0f;
-				pushConstants.viewOrigin = eye;
-				pushConstants._pad2 = 0.0f;
 				pushConstants.fogColor = fogCol;
 
 				vkCmdPushConstants(commandBuffer, sharedPipeline.pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT,
@@ -533,24 +539,27 @@ namespace spades {
 			for (const auto& param : params) {
 				Matrix4 mvpMatrix = projectionViewMatrix * param.matrix;
 
+				// Compute fog density from model's world position
+				Vector4 modelWorldPos4 = param.matrix * MakeVector4(origin.x, origin.y, origin.z, 1.0f);
+				float dx = modelWorldPos4.x - eye.x;
+				float dy = modelWorldPos4.y - eye.y;
+				float horzDistSq = dx * dx + dy * dy;
+				float fogDensity = std::min(horzDistSq / (fogDist * fogDist), 1.0f);
+
 				struct {
 					Matrix4 projectionViewMatrix;
 					Vector3 modelOrigin;
-					float fogDistance;
+					float fogDensity;
 					Vector3 customColor;
 					float _pad;
-					Vector3 viewOrigin;
-					float _pad2;
 					Vector3 fogColor;
 				} pushConstants;
 
 				pushConstants.projectionViewMatrix = mvpMatrix;
 				pushConstants.modelOrigin = origin;
-				pushConstants.fogDistance = fogDist;
+				pushConstants.fogDensity = fogDensity;
 				pushConstants.customColor = param.customColor;
 				pushConstants._pad = 0.0f;
-				pushConstants.viewOrigin = eye;
-				pushConstants._pad2 = 0.0f;
 				pushConstants.fogColor = fogCol;
 
 				vkCmdPushConstants(commandBuffer, sharedPipeline.pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT,
@@ -601,24 +610,27 @@ namespace spades {
 			for (const auto& param : params) {
 				Matrix4 mvpMatrix = projectionViewMatrix * param.matrix;
 
+				// Compute fog density from model's world position
+				Vector4 modelWorldPos4 = param.matrix * MakeVector4(origin.x, origin.y, origin.z, 1.0f);
+				float dx = modelWorldPos4.x - eye.x;
+				float dy = modelWorldPos4.y - eye.y;
+				float horzDistSq = dx * dx + dy * dy;
+				float fogDensity = std::min(horzDistSq / (fogDist * fogDist), 1.0f);
+
 				struct {
 					Matrix4 projectionViewMatrix;
 					Vector3 modelOrigin;
-					float fogDistance;
+					float fogDensity;
 					Vector3 customColor;
 					float _pad;
-					Vector3 viewOrigin;
-					float _pad2;
 					Vector3 fogColor;
 				} pushConstants;
 
 				pushConstants.projectionViewMatrix = mvpMatrix;
 				pushConstants.modelOrigin = origin;
-				pushConstants.fogDistance = fogDist;
+				pushConstants.fogDensity = fogDensity;
 				pushConstants.customColor = param.customColor;
 				pushConstants._pad = 0.0f;
-				pushConstants.viewOrigin = eye;
-				pushConstants._pad2 = 0.0f;
 				pushConstants.fogColor = fogCol;
 
 				vkCmdPushConstants(commandBuffer, sharedPipeline.pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT,
@@ -798,10 +810,9 @@ namespace spades {
 			VkPushConstantRange pushConstantRange{};
 			pushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
 			pushConstantRange.offset = 0;
-			// mat4 (64) + vec3 modelOrigin + float fogDistance (16) +
-			// vec3 customColor + float pad (16) + vec3 viewOrigin + float pad2 (16) +
-			// vec3 fogColor (12) = 124
-			pushConstantRange.size = 124;
+			// mat4 (64) + vec3 modelOrigin + float fogDensity (16) +
+			// vec3 customColor + float pad (16) + vec3 fogColor (12) = 108
+			pushConstantRange.size = 108;
 
 			VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
 			pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;

@@ -23,11 +23,9 @@
 layout(push_constant) uniform PushConstants {
 	mat4 projectionViewMatrix;
 	vec3 modelOrigin;
-	float fogDistance;
+	float fogDensity;
 	vec3 customColor;
 	float _pad;
-	vec3 viewOrigin;
-	float _pad2;
 	vec3 fogColor;
 } pushConstants;
 
@@ -39,7 +37,7 @@ layout(location = 0) out vec4 color;
 layout(location = 1) out vec3 normal;
 layout(location = 2) out vec3 customColorOut;
 layout(location = 3) out float lighting;
-layout(location = 4) out vec3 fogDensity;
+layout(location = 4) out vec3 fogDensityOut;
 layout(location = 5) out vec3 outFogColor;
 
 void main() {
@@ -63,9 +61,7 @@ void main() {
 	normal = normalFloat;
 	customColorOut = pushConstants.customColor;
 
-	// Fog density based on horizontal distance (matching map renderer)
-	vec2 horzRelativePos = worldPos.xy - pushConstants.viewOrigin.xy;
-	float horzDistance = dot(horzRelativePos, horzRelativePos);
-	fogDensity = vec3(min(horzDistance / (pushConstants.fogDistance * pushConstants.fogDistance), 1.0));
+	// Fog density pre-computed on CPU from model world position
+	fogDensityOut = vec3(pushConstants.fogDensity);
 	outFogColor = pushConstants.fogColor;
 }
