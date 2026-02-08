@@ -109,6 +109,10 @@ namespace spades {
 			void PresentImage(uint32_t imageIndex, VkSemaphore* waitSemaphores, uint32_t waitSemaphoreCount);
 			void WaitForFences();
 
+			// Frame index (cycles 0..MAX_FRAMES_IN_FLIGHT-1)
+			uint32_t GetCurrentFrame() const { return currentFrame; }
+			uint32_t GetMaxFramesInFlight() const { return 2; }
+
 			// Screen dimensions
 			int ScreenWidth() const { return w; }
 			int ScreenHeight() const { return h; }

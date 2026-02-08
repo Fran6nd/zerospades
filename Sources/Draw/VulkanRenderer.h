@@ -90,9 +90,10 @@ namespace spades {
 
 			// Frame synchronization
 			uint32_t currentImageIndex;
+			uint32_t currentFrameSlot; // cycles 0..maxFramesInFlight-1, matches semaphore slots
 			VkSemaphore imageAvailableSemaphore;
 			VkSemaphore renderFinishedSemaphore;
-			std::vector<VkFence> inFlightFences;
+			std::vector<VkFence> inFlightFences; // sized to maxFramesInFlight, not image count
 
 			// Deferred deletion queue for buffers that may still be in use by GPU
 			std::vector<DeferredDeletion> deferredDeletions;
@@ -256,7 +257,7 @@ namespace spades {
 			Handle<gui::SDLVulkanDevice> GetDevice() { return device; }
 			VkRenderPass GetRenderPass() const { return renderPass; } // Swapchain render pass (for UI)
 			VkRenderPass GetOffscreenRenderPass() const; // Offscreen render pass (for 3D)
-			uint32_t GetCurrentFrameIndex() const { return currentImageIndex; }
+			uint32_t GetCurrentFrameIndex() const { return currentFrameSlot; }
 
 			// Queue a buffer for deferred deletion (will be deleted after GPU is done with it)
 			void QueueBufferForDeletion(Handle<VulkanBuffer> buffer);

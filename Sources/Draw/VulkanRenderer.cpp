@@ -62,6 +62,7 @@ namespace spades {
 		  depthImageMemory(VK_NULL_HANDLE),
 		  depthImageView(VK_NULL_HANDLE),
 		  currentImageIndex(0),
+		  currentFrameSlot(0),
 		  imageAvailableSemaphore(VK_NULL_HANDLE),
 		  renderFinishedSemaphore(VK_NULL_HANDLE),
 		  fogDistance(128.0f),
@@ -206,15 +207,15 @@ namespace spades {
 			imageAvailableSemaphore = VK_NULL_HANDLE;
 			renderFinishedSemaphore = VK_NULL_HANDLE;
 
-			// Create fences for frame synchronization (one per swapchain image)
-			uint32_t imageCount = static_cast<uint32_t>(device->GetSwapchainImageViews().size());
-			inFlightFences.resize(imageCount);
+			// Create fences for frame synchronization (one per frame-in-flight slot)
+			uint32_t maxFrames = device->GetMaxFramesInFlight();
+			inFlightFences.resize(maxFrames);
 
 			VkFenceCreateInfo fenceInfo{};
 			fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
 			fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT; // Start signaled so first frame doesn't wait
 
-			for (size_t i = 0; i < imageCount; i++) {
+			for (size_t i = 0; i < maxFrames; i++) {
 				VkResult result = vkCreateFence(vkDevice, &fenceInfo, nullptr, &inFlightFences[i]);
 				if (result != VK_SUCCESS) {
 					// Clean up previously created fences
@@ -742,15 +743,16 @@ namespace spades {
 			BuildProjectionMatrix();
 			BuildView();
 
+			// Wait for the previous frame that used this semaphore slot to finish
+			currentFrameSlot = device->GetCurrentFrame();
+			vkWaitForFences(device->GetDevice(), 1, &inFlightFences[currentFrameSlot], VK_TRUE, UINT64_MAX);
+
 			// Acquire next swapchain image
 			currentImageIndex = device->AcquireNextImage(&imageAvailableSemaphore, &renderFinishedSemaphore);
 			if (currentImageIndex == UINT32_MAX) {
 				// Swapchain was recreated, try again
 				currentImageIndex = device->AcquireNextImage(&imageAvailableSemaphore, &renderFinishedSemaphore);
 			}
-
-			// Wait for the previous frame to finish (if any)
-			// Note: Fences are waited on and reset in EndScene before submission
 		}
 
 		void VulkanRenderer::AddDebugLine(Vector3 a, Vector3 b, Vector4 color) {
@@ -833,9 +835,8 @@ namespace spades {
 			SPADES_MARK_FUNCTION();
 			EnsureSceneStarted();
 
-			// Wait for the fence for this frame to ensure the GPU is done with the command buffer
-			vkWaitForFences(device->GetDevice(), 1, &inFlightFences[currentImageIndex], VK_TRUE, UINT64_MAX);
-			vkResetFences(device->GetDevice(), 1, &inFlightFences[currentImageIndex]);
+			// Reset the fence for this frame slot (waited on in StartScene)
+			vkResetFences(device->GetDevice(), 1, &inFlightFences[currentFrameSlot]);
 
 			// Record command buffer for this frame
 			RecordCommandBuffer(currentImageIndex);
@@ -857,7 +858,7 @@ namespace spades {
 			submitInfo.signalSemaphoreCount = 1;
 			submitInfo.pSignalSemaphores = signalSemaphores;
 
-			VkResult result = vkQueueSubmit(device->GetGraphicsQueue(), 1, &submitInfo, inFlightFences[currentImageIndex]);
+			VkResult result = vkQueueSubmit(device->GetGraphicsQueue(), 1, &submitInfo, inFlightFences[currentFrameSlot]);
 			if (result != VK_SUCCESS) {
 				SPLog("Warning: Failed to submit draw command buffer (error code: %d)", result);
 			}
@@ -1065,6 +1066,10 @@ namespace spades {
 			} else {
 				// 2D-only rendering (like loading screen) - need to record and submit command buffer
 
+				// Wait for the previous frame using this semaphore slot
+				currentFrameSlot = device->GetCurrentFrame();
+				vkWaitForFences(device->GetDevice(), 1, &inFlightFences[currentFrameSlot], VK_TRUE, UINT64_MAX);
+
 				// Acquire next swapchain image
 				currentImageIndex = device->AcquireNextImage(&imageAvailableSemaphore, &renderFinishedSemaphore);
 				if (currentImageIndex == UINT32_MAX) {
@@ -1072,9 +1077,7 @@ namespace spades {
 					return;
 				}
 
-				// Wait for the fence for this frame to ensure the GPU is done with the command buffer
-				vkWaitForFences(device->GetDevice(), 1, &inFlightFences[currentImageIndex], VK_TRUE, UINT64_MAX);
-				vkResetFences(device->GetDevice(), 1, &inFlightFences[currentImageIndex]);
+				vkResetFences(device->GetDevice(), 1, &inFlightFences[currentFrameSlot]);
 
 				// Record command buffer with the batched 2D images
 				RecordCommandBuffer(currentImageIndex);
@@ -1096,7 +1099,7 @@ namespace spades {
 				submitInfo.signalSemaphoreCount = 1;
 				submitInfo.pSignalSemaphores = signalSemaphores;
 
-				VkResult result = vkQueueSubmit(device->GetGraphicsQueue(), 1, &submitInfo, inFlightFences[currentImageIndex]);
+				VkResult result = vkQueueSubmit(device->GetGraphicsQueue(), 1, &submitInfo, inFlightFences[currentFrameSlot]);
 				if (result != VK_SUCCESS) {
 					SPLog("[VulkanRenderer::Flip] Failed to submit command buffer (error code: %d)", result);
 				}
@@ -1147,7 +1150,7 @@ namespace spades {
 
 			// Process deferred deletions for buffers that are no longer in use by the GPU
 			// We keep buffers alive for MAX_FRAMES_IN_FLIGHT frames to ensure the GPU is done with them
-			const uint32_t MAX_FRAMES_IN_FLIGHT = static_cast<uint32_t>(inFlightFences.size());
+			const uint32_t MAX_FRAMES_IN_FLIGHT = device->GetMaxFramesInFlight();
 
 			auto it = deferredDeletions.begin();
 			while (it != deferredDeletions.end()) {

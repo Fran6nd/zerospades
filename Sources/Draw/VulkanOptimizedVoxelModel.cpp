@@ -646,6 +646,8 @@ namespace spades {
 			// Clean up old pipeline if render pass changed
 			VkDevice vkDevice = device->GetDevice();
 			if (sharedPipeline.pipeline != VK_NULL_HANDLE && sharedPipeline.renderPass != renderPass) {
+				// Wait for GPU to finish using the old pipeline before destroying it
+				vkDeviceWaitIdle(vkDevice);
 				vkDestroyPipeline(vkDevice, sharedPipeline.pipeline, nullptr);
 				sharedPipeline.pipeline = VK_NULL_HANDLE;
 				if (sharedPipeline.pipelineLayout != VK_NULL_HANDLE) {
