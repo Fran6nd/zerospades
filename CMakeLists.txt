@@ -1,4 +1,9 @@
 cmake_minimum_required(VERSION 3.10)
+
+if(APPLE AND NOT CMAKE_OSX_DEPLOYMENT_TARGET)
+	set(CMAKE_OSX_DEPLOYMENT_TARGET "12.0" CACHE STRING "Minimum macOS deployment version")
+endif()
+
 project(OpenSpades)
 
 set(OPENSPADES_VERSION_MAJOR 0)

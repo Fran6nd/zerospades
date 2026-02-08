@@ -151,6 +151,7 @@ jobs:
             -D CMAKE_TOOLCHAIN_FILE=${{ github.workspace }}/vcpkg/scripts/buildsystems/vcpkg.cmake \
             -D VCPKG_TARGET_TRIPLET=x64-osx \
             -D CMAKE_OSX_ARCHITECTURES=x86_64 \
+            -D CMAKE_OSX_DEPLOYMENT_TARGET=12.0 \
             -D CMAKE_CXX_STANDARD=17 \
             -D OPENSPADES_YSR=ON
 
@@ -208,6 +209,7 @@ jobs:
             -D CMAKE_TOOLCHAIN_FILE=${{ github.workspace }}/vcpkg/scripts/buildsystems/vcpkg.cmake \
             -D VCPKG_TARGET_TRIPLET=arm64-osx \
             -D CMAKE_OSX_ARCHITECTURES=arm64 \
+            -D CMAKE_OSX_DEPLOYMENT_TARGET=12.0 \
             -D CMAKE_CXX_STANDARD=17
 
       - name: Build Project
