@@ -231,17 +231,19 @@ if(APPLE)
 	if(USE_VULKAN AND MOLTENVK_LIBRARY)
 		# Resolve the real dylib path (follow symlinks)
 		get_filename_component(MOLTENVK_REALPATH "${MOLTENVK_LIBRARY}" REALPATH)
-		get_filename_component(MOLTENVK_DIR "${MOLTENVK_LIBRARY}" DIRECTORY)
+		# Extract the install name from the dylib (this is what the linker records in the binary)
+		execute_process(
+			COMMAND otool -D "${MOLTENVK_REALPATH}"
+			OUTPUT_VARIABLE _moltenvk_id_output
+			OUTPUT_STRIP_TRAILING_WHITESPACE
+			ERROR_QUIET)
+		string(REGEX REPLACE ".*\n" "" MOLTENVK_INSTALL_NAME "${_moltenvk_id_output}")
+		message(STATUS "MoltenVK install name: ${MOLTENVK_INSTALL_NAME}")
 		add_custom_command(TARGET OpenSpades POST_BUILD
 			COMMAND ${CMAKE_COMMAND} -E copy_if_different
 				"${MOLTENVK_REALPATH}"
 				"$<TARGET_BUNDLE_CONTENT_DIR:OpenSpades>/Frameworks/libMoltenVK.dylib"
-			# Fix MoltenVK reference to use the bundled copy.
-			# Handle both @rpath install name and absolute path from Homebrew/MacPorts.
-			COMMAND install_name_tool -change "@rpath/libMoltenVK.dylib"
-				"@executable_path/../Frameworks/libMoltenVK.dylib"
-				"$<TARGET_FILE:OpenSpades>"
-			COMMAND install_name_tool -change "${MOLTENVK_REALPATH}"
+			COMMAND install_name_tool -change "${MOLTENVK_INSTALL_NAME}"
 				"@executable_path/../Frameworks/libMoltenVK.dylib"
 				"$<TARGET_FILE:OpenSpades>"
 			COMMENT "Embedding MoltenVK into macOS bundle"
