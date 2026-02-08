@@ -227,28 +227,14 @@ if(APPLE)
 		COMMENT "Embedding OpenAL Soft into macOS bundle"
 	)
 
-	# Copy MoltenVK dylib into the bundle and fix paths
-	if(USE_VULKAN AND MOLTENVK_LIBRARY)
-		# Resolve the real dylib path (follow symlinks)
-		get_filename_component(MOLTENVK_REALPATH "${MOLTENVK_LIBRARY}" REALPATH)
-		# Extract the install name from the dylib (this is what the linker records in the binary)
-		execute_process(
-			COMMAND otool -D "${MOLTENVK_REALPATH}"
-			OUTPUT_VARIABLE _moltenvk_id_output
-			OUTPUT_STRIP_TRAILING_WHITESPACE
-			ERROR_QUIET)
-		string(REGEX REPLACE ".*\n" "" MOLTENVK_INSTALL_NAME "${_moltenvk_id_output}")
-		message(STATUS "MoltenVK install name: ${MOLTENVK_INSTALL_NAME}")
-		add_custom_command(TARGET OpenSpades POST_BUILD
-			COMMAND ${CMAKE_COMMAND} -E copy_if_different
-				"${MOLTENVK_REALPATH}"
-				"$<TARGET_BUNDLE_CONTENT_DIR:OpenSpades>/Frameworks/libMoltenVK.dylib"
-			COMMAND install_name_tool -change "${MOLTENVK_INSTALL_NAME}"
-				"@executable_path/../Frameworks/libMoltenVK.dylib"
-				"$<TARGET_FILE:OpenSpades>"
-			COMMENT "Embedding MoltenVK into macOS bundle"
-		)
-	endif()
+	# Bundle all third-party dylibs into the .app and fix load paths.
+	# This handles MoltenVK, glslang, spirv-cross, and any transitive dependencies.
+	add_custom_command(TARGET OpenSpades POST_BUILD
+		COMMAND bash "${CMAKE_SOURCE_DIR}/cmake/bundle_macos_dylibs.sh"
+			"$<TARGET_FILE:OpenSpades>"
+			"$<TARGET_BUNDLE_CONTENT_DIR:OpenSpades>/Frameworks"
+		COMMENT "Bundling third-party dylibs into macOS app"
+	)
 
 	# Fix library paths for YSRSpades if enabled
 	if(OPENSPADES_YSR)
