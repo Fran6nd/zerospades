@@ -17,12 +17,24 @@ fix_dylib_refs() {
     otool -L "$binary" | tail -n +2 | awk '{print $1}' | while read -r dep; do
         case "$dep" in
             /usr/lib/*|/System/*) continue ;;
-            @executable_path/*|@rpath/*|@loader_path/*) continue ;;
+            @executable_path/*) continue ;;
         esac
 
         local filename
         filename=$(basename "$dep")
         local dest="$FRAMEWORKS_DIR/$filename"
+
+        # For @rpath or @loader_path references, we can't copy from the
+        # original path, but if the library is already bundled we just
+        # need to rewrite the reference.
+        case "$dep" in
+            @rpath/*|@loader_path/*)
+                if [ -f "$dest" ]; then
+                    install_name_tool -change "$dep" "@executable_path/../Frameworks/$filename" "$binary"
+                fi
+                continue
+                ;;
+        esac
 
         # Copy the dylib if not already bundled
         if [ ! -f "$dest" ]; then
@@ -48,7 +60,7 @@ fix_dylib_refs() {
 # Fix the main executable
 fix_dylib_refs "$EXECUTABLE"
 
-# Fix cross-references between bundled dylibs
+# Fix cross-references between bundled dylibs (including @rpath refs)
 for dylib in "$FRAMEWORKS_DIR"/*.dylib; do
     [ -f "$dylib" ] || continue
     fix_dylib_refs "$dylib"
