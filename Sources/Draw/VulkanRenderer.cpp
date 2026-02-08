@@ -1768,7 +1768,7 @@ namespace spades {
 			VkPushConstantRange pushConstantRange{};
 			pushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
 			pushConstantRange.offset = 0;
-			pushConstantRange.size = sizeof(float) * 16;  // fogColor + 3 view axes + 2 fov
+			pushConstantRange.size = sizeof(float) * 18;  // fogColor(3+1) + 3 view axes(3+1 each) + fovX + fovY
 
 			VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
 			pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
