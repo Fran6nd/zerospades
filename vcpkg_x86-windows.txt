@@ -3,7 +3,7 @@ opusfile:x86-windows-static
 opus:x86-windows-static
 libogg:x86-windows-static
 sdl2[vulkan]:x86-windows-static
-libjpeg-turbo:x86-windows-static
+libjpeg-turbo[jpeg8]:x86-windows-static
 sdl2-image[libjpeg-turbo]:x86-windows-static
 glew:x86-windows-static
 curl:x86-windows-static
