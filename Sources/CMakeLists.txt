@@ -252,7 +252,7 @@ if(APPLE)
 	if(OPENSPADES_YSR)
 		add_custom_command(TARGET OpenSpades POST_BUILD
 			# Add rpath (ignore error if rpath already exists)
-			COMMAND bash -c "install_name_tool -add_rpath '@executable_path/../Resources' '$<TARGET_FILE:OpenSpades>' 2>/dev/null; true"
+			COMMAND bash -c "install_name_tool -add_rpath '@executable_path/../Resources' '$<TARGET_FILE:OpenSpades>' || true"
 			# Change library reference to use @rpath
 			COMMAND install_name_tool -change "/usr/local/lib/libysrspades.dylib" "@rpath/libysrspades.dylib" "$<TARGET_FILE:OpenSpades>"
 			COMMENT "Fixing library paths for macOS bundle"
