@@ -236,8 +236,12 @@ if(APPLE)
 			COMMAND ${CMAKE_COMMAND} -E copy_if_different
 				"${MOLTENVK_REALPATH}"
 				"$<TARGET_BUNDLE_CONTENT_DIR:OpenSpades>/Frameworks/libMoltenVK.dylib"
-			# MoltenVK uses @rpath install name, so change it to a direct path
+			# Fix MoltenVK reference to use the bundled copy.
+			# Handle both @rpath install name and absolute path from Homebrew/MacPorts.
 			COMMAND install_name_tool -change "@rpath/libMoltenVK.dylib"
+				"@executable_path/../Frameworks/libMoltenVK.dylib"
+				"$<TARGET_FILE:OpenSpades>"
+			COMMAND install_name_tool -change "${MOLTENVK_REALPATH}"
 				"@executable_path/../Frameworks/libMoltenVK.dylib"
 				"$<TARGET_FILE:OpenSpades>"
 			COMMENT "Embedding MoltenVK into macOS bundle"
