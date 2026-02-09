@@ -22,6 +22,7 @@
 #include "VulkanMapRenderer.h"
 #include "VulkanModelRenderer.h"
 #include "VulkanSpriteRenderer.h"
+#include "VulkanLongSpriteRenderer.h"
 #include "VulkanImageRenderer.h"
 #include "VulkanWaterRenderer.h"
 #include "VulkanFlatMapRenderer.h"
@@ -76,6 +77,7 @@ namespace spades {
 		  mapRenderer(nullptr),
 		  modelRenderer(nullptr),
 		  spriteRenderer(nullptr),
+		  longSpriteRenderer(nullptr),
 			imageRenderer(nullptr),
 		waterRenderer(nullptr),
 		flatMapRenderer(nullptr),
@@ -109,6 +111,7 @@ namespace spades {
 				mapRenderer = nullptr;
 				modelRenderer = new VulkanModelRenderer(*this);
 				spriteRenderer = new VulkanSpriteRenderer(*this);
+				longSpriteRenderer = new VulkanLongSpriteRenderer(*this);
 				imageRenderer = new VulkanImageRenderer(*this);
 			imageManager = new VulkanImageManager(*this, device);
 			waterRenderer = new VulkanWaterRenderer(*this, map);
@@ -164,6 +167,8 @@ namespace spades {
 			imageRenderer = nullptr;
 			delete spriteRenderer;
 			spriteRenderer = nullptr;
+			delete longSpriteRenderer;
+			longSpriteRenderer = nullptr;
 			delete modelRenderer;
 			modelRenderer = nullptr;
 			delete imageManager;
@@ -789,12 +794,6 @@ namespace spades {
 			EnsureInitialized();
 			EnsureSceneStarted();
 
-			// Approximate long sprite with two regular sprites
-			Vector3 center = (p1 + p2) * 0.5f;
-			Vector3 diff = p2 - p1;
-			float length = diff.GetLength();
-			float angle = atan2f(diff.y, diff.x);
-
 			VulkanImage* vkImage = nullptr;
 			VulkanImageWrapper* wrapper = dynamic_cast<VulkanImageWrapper*>(&img);
 			if (wrapper) {
@@ -803,8 +802,8 @@ namespace spades {
 				vkImage = dynamic_cast<VulkanImage*>(&img);
 			}
 
-			if (vkImage && spriteRenderer) {
-				spriteRenderer->Add(vkImage, center, std::max(radius, length * 0.5f), angle, drawColorAlphaPremultiplied);
+			if (vkImage && longSpriteRenderer) {
+				longSpriteRenderer->Add(vkImage, p1, p2, radius, drawColorAlphaPremultiplied);
 			}
 		}
 
@@ -1400,10 +1399,16 @@ namespace spades {
 			if (spriteRenderer) {
 				spriteRenderer->Render(commandBuffer, imageIndex);
 			}
+			if (longSpriteRenderer) {
+				longSpriteRenderer->Render(commandBuffer, imageIndex);
+			}
 
 			// Clear for next frame
 			if (spriteRenderer) {
 				spriteRenderer->Clear();
+			}
+			if (longSpriteRenderer) {
+				longSpriteRenderer->Clear();
 			}
 			if (modelRenderer) {
 				modelRenderer->Clear();

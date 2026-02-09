@@ -39,6 +39,7 @@ namespace spades {
 		class VulkanMapRenderer;
 		class VulkanModelRenderer;
 		class VulkanSpriteRenderer;
+		class VulkanLongSpriteRenderer;
 		class VulkanImageRenderer;
 		class VulkanWaterRenderer;
 		class VulkanFlatMapRenderer;
@@ -117,6 +118,7 @@ namespace spades {
 			VulkanMapRenderer* mapRenderer;
 			VulkanModelRenderer* modelRenderer;
 			VulkanSpriteRenderer* spriteRenderer;
+			VulkanLongSpriteRenderer* longSpriteRenderer;
 			VulkanImageRenderer* imageRenderer;
 			VulkanWaterRenderer* waterRenderer;
 			VulkanFlatMapRenderer* flatMapRenderer;
