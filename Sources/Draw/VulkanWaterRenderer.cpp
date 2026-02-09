@@ -561,9 +561,217 @@ namespace spades {
 			MarkUpdate(x, y);
 		}
 
+	void VulkanWaterRenderer::SetGameMap(client::GameMap* map) {
+		SPADES_MARK_FUNCTION();
+
+		if (gameMap == map)
+			return;
+
+		gameMap = map;
+
+		// If we now have a valid map and textures don't exist, create them
+		if (gameMap && !textureImage) {
+			SPLog("SetGameMap: Creating water resources for new map");
+			w = gameMap->Width();
+			h = gameMap->Height();
+			updateBitmapPitch = (w + 31) / 32;
+			updateBitmap.resize(updateBitmapPitch * h);
+			bitmap.resize(w * h);
+			std::fill(updateBitmap.begin(), updateBitmap.end(), 0xffffffffUL);
+			std::fill(bitmap.begin(), bitmap.end(), 0xffffffffUL);
+
+			textureImage = Handle<VulkanImage>::New(device, w, h, VK_FORMAT_R8G8B8A8_UNORM,
+				VK_IMAGE_TILING_OPTIMAL,
+				VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+				VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+			// Create wave tanks using FFT solver for realistic waves
+			size_t numLayers = ((int)r_water >= 2) ? 3 : 1;
+
+			// Clear existing wave tanks if any
+			for (void* p : waveTanksPlaceholder) {
+				IWaveTank* t = (IWaveTank*)p;
+				t->Join();
+				delete t;
+			}
+			waveTanksPlaceholder.clear();
+			waveStagingBufferPool.clear();
+
+			for (size_t i = 0; i < numLayers; i++) {
+				IWaveTank* tank;
+				if ((int)r_water >= 3)
+					tank = new FFTWaveTank<8>();
+				else
+					tank = new FFTWaveTank<7>();
+				waveTanksPlaceholder.push_back((void*)tank);
+			}
+
+			// Create wave image(s)
+			if (!waveTanksPlaceholder.empty()) {
+				IWaveTank* tank = (IWaveTank*)waveTanksPlaceholder[0];
+				uint32_t size = tank->GetSize();
+				uint32_t mipLevels = static_cast<uint32_t>(std::floor(std::log2(size))) + 1;
+
+				if (numLayers == 1) {
+					// Single layer - use 2D texture with mipmaps
+					waveImage = Handle<VulkanImage>::New(device, size, size, 1, mipLevels,
+						VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_OPTIMAL,
+						VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+						VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+				} else {
+					// Multiple layers - use 2D array texture with mipmaps
+					waveImageArray = Handle<VulkanImage>::New(device, size, size,
+						static_cast<uint32_t>(numLayers), mipLevels,
+						VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_OPTIMAL,
+						VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+						VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+				}
+
+				// Pre-allocate staging buffers for wave uploads
+				waveStagingBufferSize = size * size * sizeof(uint32_t);
+				for (size_t i = 0; i < numLayers; i++) {
+					waveStagingBufferPool.push_back(Handle<VulkanBuffer>::New(
+						device, waveStagingBufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+						VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT));
+				}
+
+				// Create single fence for batched async uploads if not already created
+				if (uploadFence == VK_NULL_HANDLE) {
+					VkFenceCreateInfo fenceInfo{};
+					fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+					fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+					vkCreateFence(device->GetDevice(), &fenceInfo, nullptr, &uploadFence);
+				}
+			}
+
+			// Trigger full update of water color texture
+			for (size_t i = 0; i < updateBitmap.size(); i++)
+				updateBitmap[i] = 0xffffffffUL;
+		}
+	}
+
 		void VulkanWaterRenderer::Realize() {
 			SPADES_MARK_FUNCTION();
 		SPLog("VulkanWaterRenderer::Realize: creating pipeline");
+
+		// Create water resources if not already created (in case constructor returned early due to null map)
+		if (!textureImage && gameMap) {
+			SPLog("Creating water resources (textures, wave images)");
+			w = gameMap->Width();
+			h = gameMap->Height();
+			updateBitmapPitch = (w + 31) / 32;
+			updateBitmap.resize(updateBitmapPitch * h);
+			bitmap.resize(w * h);
+			std::fill(updateBitmap.begin(), updateBitmap.end(), 0xffffffffUL);
+			std::fill(bitmap.begin(), bitmap.end(), 0xffffffffUL);
+
+			textureImage = Handle<VulkanImage>::New(device, w, h, VK_FORMAT_R8G8B8A8_UNORM,
+				VK_IMAGE_TILING_OPTIMAL,
+				VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+				VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+			// Create wave tanks using FFT solver for realistic waves
+			size_t numLayers = ((int)r_water >= 2) ? 3 : 1;
+			for (size_t i = 0; i < numLayers; i++) {
+				IWaveTank* tank;
+				if ((int)r_water >= 3)
+					tank = new FFTWaveTank<8>();
+				else
+					tank = new FFTWaveTank<7>();
+				waveTanksPlaceholder.push_back((void*)tank);
+			}
+
+			// Create wave image(s)
+			if (!waveTanksPlaceholder.empty()) {
+				IWaveTank* tank = (IWaveTank*)waveTanksPlaceholder[0];
+				uint32_t size = tank->GetSize();
+				uint32_t mipLevels = static_cast<uint32_t>(std::floor(std::log2(size))) + 1;
+
+				if (numLayers == 1) {
+					// Single layer - use 2D texture with mipmaps
+					waveImage = Handle<VulkanImage>::New(device, size, size, 1, mipLevels,
+						VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_OPTIMAL,
+						VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+						VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+				} else {
+					// Multiple layers - use 2D array texture with mipmaps
+					waveImageArray = Handle<VulkanImage>::New(device, size, size,
+						static_cast<uint32_t>(numLayers), mipLevels,
+						VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_OPTIMAL,
+						VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+						VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+				}
+
+				// Pre-allocate staging buffers for wave uploads
+				waveStagingBufferSize = size * size * sizeof(uint32_t);
+				for (size_t i = 0; i < numLayers; i++) {
+					waveStagingBufferPool.push_back(Handle<VulkanBuffer>::New(
+						device, waveStagingBufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+						VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT));
+				}
+
+				// Create single fence for batched async uploads
+				VkFenceCreateInfo fenceInfo{};
+				fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+				fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+				vkCreateFence(device->GetDevice(), &fenceInfo, nullptr, &uploadFence);
+			}
+		}
+
+		// Build mesh if not already built (in case constructor returned early due to null map)
+		if (numIndices == 0) {
+			SPLog("Building water mesh");
+			std::vector<float> vertices;
+			std::vector<uint32_t> indices;
+
+			int meshSize = 16;
+			if ((int)r_water >= 2)
+				meshSize = 128;
+			float meshSizeInv = 1.0F / (float)meshSize;
+			for (int y = -meshSize; y <= meshSize; y++) {
+				for (int x = -meshSize; x <= meshSize; x++) {
+					float vx = (float)(x)*meshSizeInv;
+					float vy = (float)(y)*meshSizeInv;
+					vx *= vx * vx;
+					vy *= vy * vy;
+					vertices.push_back(vx);
+					vertices.push_back(vy);
+				}
+			}
+#define VID(x, y) (((x) + meshSize) + ((y) + meshSize) * (meshSize * 2 + 1))
+			for (int x = -meshSize; x < meshSize; x++) {
+				for (int y = -meshSize; y < meshSize; y++) {
+					indices.push_back(VID(x, y));
+					indices.push_back(VID(x + 1, y));
+					indices.push_back(VID(x, y + 1));
+
+					indices.push_back(VID(x + 1, y));
+					indices.push_back(VID(x + 1, y + 1));
+					indices.push_back(VID(x, y + 1));
+				}
+			}
+
+			if (!vertices.empty()) {
+				size_t vbSize = vertices.size() * sizeof(float);
+				vertexBuffer = Handle<VulkanBuffer>::New(device, vbSize, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+					VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+				void* vdata = vertexBuffer->Map();
+				memcpy(vdata, vertices.data(), vbSize);
+				vertexBuffer->Unmap();
+			}
+
+			if (!indices.empty()) {
+				size_t ibSize = indices.size() * sizeof(uint32_t);
+				indexBuffer = Handle<VulkanBuffer>::New(device, ibSize, VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+					VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+				void* idata = indexBuffer->Map();
+				memcpy(idata, indices.data(), ibSize);
+				indexBuffer->Unmap();
+
+				numIndices = static_cast<unsigned int>(indices.size());
+				SPLog("Water mesh built: %d indices", numIndices);
+			}
+		}
 
 		// Select program variant based on water quality setting (matches GL renderer)
 		std::string name;
@@ -598,6 +806,7 @@ namespace spades {
 		cfg.vertexAttributes.push_back(attr);
 
 		cfg.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+		cfg.frontFace = VK_FRONT_FACE_CLOCKWISE; // Account for negative viewport height (Y-flip)
 		cfg.blendEnable = VK_TRUE;
 		cfg.srcColorBlendFactor = VK_BLEND_FACTOR_ONE;
 		cfg.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
@@ -636,7 +845,18 @@ namespace spades {
 
 	void VulkanWaterRenderer::RenderSunlightPass(VkCommandBuffer commandBuffer) {
 		SPADES_MARK_FUNCTION();
-		if (!waterPipeline || numIndices == 0) return;
+
+		// Lazy initialization: realize pipeline on first use
+		if (!waterPipeline) {
+			SPLog("Water pipeline not created yet, calling Realize()");
+			Realize();
+		}
+
+		SPLog("RenderSunlightPass called: waterPipeline=%p, numIndices=%d", waterPipeline.GetPointerOrNull(), numIndices);
+		if (!waterPipeline || numIndices == 0) {
+			SPLog("Early return: waterPipeline or numIndices is 0");
+			return;
+		}
 
 		// Check occlusion query result from previous frame
 		if (occlusionQueryPool != VK_NULL_HANDLE && occlusionQueryActive) {
@@ -647,13 +867,17 @@ namespace spades {
 			if (queryResult == VK_SUCCESS) {
 				lastOcclusionResult = result;
 				occlusionQueryActive = false;
+				SPLog("Occlusion query result: %llu", result);
 			}
 		}
 
 		// Skip water rendering if no samples passed in previous frame
-		if (lastOcclusionResult == 0) {
-			return;
-		}
+		SPLog("lastOcclusionResult = %llu", lastOcclusionResult);
+		// TEMPORARILY DISABLED for debugging
+		// if (lastOcclusionResult == 0) {
+		// 	SPLog("Skipping water rendering: occluded (lastOcclusionResult=0)");
+		// 	return;
+		// }
 
 		// Get current frame index for proper double/triple buffering
 		uint32_t frameIndex = renderer.GetCurrentFrameIndex();
@@ -665,7 +889,8 @@ namespace spades {
 		VulkanFramebufferManager* fbManager = renderer.GetFramebufferManager();
 		Handle<VulkanImage> activeWaveImage = waveImageArray ? waveImageArray : waveImage;
 		if (!fbManager || !textureImage || !activeWaveImage) {
-			SPLog("Warning: Missing required resources for water rendering");
+			SPLog("Warning: Missing required resources - fbManager=%p, textureImage=%p, activeWaveImage=%p",
+			      fbManager, textureImage.GetPointerOrNull(), activeWaveImage.GetPointerOrNull());
 			return;
 		}
 
@@ -718,42 +943,57 @@ namespace spades {
 
 		// Bindings 2, 3/8, 5 are pre-bound (static) - no update needed
 
-		// Binding 6: mirrorTexture (for reflections) - dynamic
-		Handle<VulkanImage> mirrorColorImage = fbManager->GetMirrorColorImage();
-		if (mirrorColorImage) {
-			imageInfos.push_back({});
-			imageInfos.back().imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-			imageInfos.back().imageView = mirrorColorImage->GetImageView();
-			imageInfos.back().sampler = mirrorColorImage->GetSampler();
+		// Binding 6: mirrorTexture (for reflections) - dynamic, only for r_water >= 2
+		// Binding 7: mirrorDepthTexture (for depth-aware reflections) - dynamic, only for r_water >= 3
+		SPLog("r_water = %d", (int)r_water);
+		if ((int)r_water >= 2) {
+			Handle<VulkanImage> mirrorColorImage = fbManager->GetMirrorColorImage();
+			SPLog("mirrorColorImage = %p", mirrorColorImage.GetPointerOrNull());
+			if (mirrorColorImage) {
+				imageInfos.push_back({});
+				imageInfos.back().imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+				imageInfos.back().imageView = mirrorColorImage->GetImageView();
+				imageInfos.back().sampler = mirrorColorImage->GetSampler();
 
-			VkWriteDescriptorSet mirrorColorWrite{};
-			mirrorColorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-			mirrorColorWrite.dstSet = descriptorSets[frameIndex];
-			mirrorColorWrite.dstBinding = 6;
-			mirrorColorWrite.dstArrayElement = 0;
-			mirrorColorWrite.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-			mirrorColorWrite.descriptorCount = 1;
-			mirrorColorWrite.pImageInfo = &imageInfos.back();
-			descriptorWrites.push_back(mirrorColorWrite);
-		}
+				VkWriteDescriptorSet mirrorColorWrite{};
+				mirrorColorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+				mirrorColorWrite.dstSet = descriptorSets[frameIndex];
+				mirrorColorWrite.dstBinding = 6;
+				mirrorColorWrite.dstArrayElement = 0;
+				mirrorColorWrite.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+				mirrorColorWrite.descriptorCount = 1;
+				mirrorColorWrite.pImageInfo = &imageInfos.back();
+				descriptorWrites.push_back(mirrorColorWrite);
+				SPLog("Bound mirrorColorImage to binding 6");
+			} else {
+				SPLog("WARNING: mirrorColorImage is null, skipping binding 6");
+			}
 
-		// Binding 7: mirrorDepthTexture (for depth-aware reflections) - dynamic
-		Handle<VulkanImage> mirrorDepthImage = fbManager->GetMirrorDepthImage();
-		if (mirrorDepthImage) {
-			imageInfos.push_back({});
-			imageInfos.back().imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-			imageInfos.back().imageView = mirrorDepthImage->GetImageView();
-			imageInfos.back().sampler = mirrorDepthImage->GetSampler();
+			if ((int)r_water >= 3) {
+				Handle<VulkanImage> mirrorDepthImage = fbManager->GetMirrorDepthImage();
+				SPLog("mirrorDepthImage = %p", mirrorDepthImage.GetPointerOrNull());
+				if (mirrorDepthImage) {
+					imageInfos.push_back({});
+					imageInfos.back().imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+					imageInfos.back().imageView = mirrorDepthImage->GetImageView();
+					imageInfos.back().sampler = mirrorDepthImage->GetSampler();
 
-			VkWriteDescriptorSet mirrorDepthWrite{};
-			mirrorDepthWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-			mirrorDepthWrite.dstSet = descriptorSets[frameIndex];
-			mirrorDepthWrite.dstBinding = 7;
-			mirrorDepthWrite.dstArrayElement = 0;
-			mirrorDepthWrite.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-			mirrorDepthWrite.descriptorCount = 1;
-			mirrorDepthWrite.pImageInfo = &imageInfos.back();
-			descriptorWrites.push_back(mirrorDepthWrite);
+					VkWriteDescriptorSet mirrorDepthWrite{};
+					mirrorDepthWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+					mirrorDepthWrite.dstSet = descriptorSets[frameIndex];
+					mirrorDepthWrite.dstBinding = 7;
+					mirrorDepthWrite.dstArrayElement = 0;
+					mirrorDepthWrite.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+					mirrorDepthWrite.descriptorCount = 1;
+					mirrorDepthWrite.pImageInfo = &imageInfos.back();
+					descriptorWrites.push_back(mirrorDepthWrite);
+					SPLog("Bound mirrorDepthImage to binding 7");
+				} else {
+					SPLog("WARNING: mirrorDepthImage is null, skipping binding 7");
+				}
+			}
+		} else {
+			SPLog("r_water < 2, skipping mirror texture bindings");
 		}
 
 		// Update only dynamic descriptor sets
@@ -1148,76 +1388,82 @@ namespace spades {
 			SPRaise("Failed to allocate water descriptor sets");
 		}
 
-		// Pre-bind static descriptors that don't change between frames
-		// This reduces vkUpdateDescriptorSets overhead each frame
-		for (uint32_t i = 0; i < frameCount; i++) {
-			std::vector<VkWriteDescriptorSet> staticWrites;
+	// Pre-bind static descriptors that don't change between frames
+	// This reduces vkUpdateDescriptorSets overhead each frame
+	for (uint32_t i = 0; i < frameCount; i++) {
+		std::vector<VkWriteDescriptorSet> staticWrites;
+		std::vector<VkDescriptorImageInfo> imageInfos;  // Keep alive until vkUpdateDescriptorSets
+		std::vector<VkDescriptorBufferInfo> bufferInfos; // Keep alive until vkUpdateDescriptorSets
 
-			// Binding 2: mainTexture (water color) - static
-			if (textureImage) {
-				VkDescriptorImageInfo mainImageInfo{};
-				mainImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-				mainImageInfo.imageView = textureImage->GetImageView();
-				mainImageInfo.sampler = textureImage->GetSampler();
+		// Reserve space to prevent reallocation (which would invalidate pointers)
+		imageInfos.reserve(3);    // max: textureImage + waveImage + spare
+		bufferInfos.reserve(1);   // waterMatricesUBO
 
-				VkWriteDescriptorSet mainTextureWrite{};
-				mainTextureWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-				mainTextureWrite.dstSet = descriptorSets[i];
-				mainTextureWrite.dstBinding = 2;
-				mainTextureWrite.dstArrayElement = 0;
-				mainTextureWrite.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-				mainTextureWrite.descriptorCount = 1;
-				mainTextureWrite.pImageInfo = &mainImageInfo;
-				staticWrites.push_back(mainTextureWrite);
-			}
+		// Binding 2: mainTexture (water color) - static
+		if (textureImage) {
+			imageInfos.push_back({});
+			imageInfos.back().imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+			imageInfos.back().imageView = textureImage->GetImageView();
+			imageInfos.back().sampler = textureImage->GetSampler();
 
-			// Binding 3/8: waveTexture or waveTextureArray - static
-			Handle<VulkanImage> activeWaveImage = waveImageArray ? waveImageArray : waveImage;
-			if (activeWaveImage) {
-				VkDescriptorImageInfo waveImageInfo{};
-				waveImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-				waveImageInfo.imageView = activeWaveImage->GetImageView();
-				waveImageInfo.sampler = activeWaveImage->GetSampler();
+			VkWriteDescriptorSet mainTextureWrite{};
+			mainTextureWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+			mainTextureWrite.dstSet = descriptorSets[i];
+			mainTextureWrite.dstBinding = 2;
+			mainTextureWrite.dstArrayElement = 0;
+			mainTextureWrite.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+			mainTextureWrite.descriptorCount = 1;
+			mainTextureWrite.pImageInfo = &imageInfos.back();
+			staticWrites.push_back(mainTextureWrite);
+		}
 
-				// Binding 3 for single wave texture or array
-				VkWriteDescriptorSet waveTextureWrite{};
-				waveTextureWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-				waveTextureWrite.dstSet = descriptorSets[i];
-				waveTextureWrite.dstBinding = waveImageArray ? 8 : 3;
-				waveTextureWrite.dstArrayElement = 0;
-				waveTextureWrite.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-				waveTextureWrite.descriptorCount = 1;
-				waveTextureWrite.pImageInfo = &waveImageInfo;
-				staticWrites.push_back(waveTextureWrite);
-			}
+		// Binding 3/8: waveTexture or waveTextureArray - static
+		Handle<VulkanImage> activeWaveImage = waveImageArray ? waveImageArray : waveImage;
+		if (activeWaveImage) {
+			imageInfos.push_back({});
+			imageInfos.back().imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+			imageInfos.back().imageView = activeWaveImage->GetImageView();
+			imageInfos.back().sampler = activeWaveImage->GetSampler();
 
-			// Binding 5: WaterMatricesUBO - buffer is static per frame index
-			if (waterMatricesUBOs[i]) {
-				VkDescriptorBufferInfo waterMatricesUBOInfo{};
-				waterMatricesUBOInfo.buffer = waterMatricesUBOs[i]->GetBuffer();
-				waterMatricesUBOInfo.offset = 0;
-				waterMatricesUBOInfo.range = VK_WHOLE_SIZE;
+			// Binding 3 for single wave texture or array
+			VkWriteDescriptorSet waveTextureWrite{};
+			waveTextureWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+			waveTextureWrite.dstSet = descriptorSets[i];
+			waveTextureWrite.dstBinding = waveImageArray ? 8 : 3;
+			waveTextureWrite.dstArrayElement = 0;
+			waveTextureWrite.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+			waveTextureWrite.descriptorCount = 1;
+			waveTextureWrite.pImageInfo = &imageInfos.back();
+			staticWrites.push_back(waveTextureWrite);
+		}
 
-				VkWriteDescriptorSet waterMatricesUBOWrite{};
-				waterMatricesUBOWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-				waterMatricesUBOWrite.dstSet = descriptorSets[i];
-				waterMatricesUBOWrite.dstBinding = 5;
-				waterMatricesUBOWrite.dstArrayElement = 0;
-				waterMatricesUBOWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-				waterMatricesUBOWrite.descriptorCount = 1;
-				waterMatricesUBOWrite.pBufferInfo = &waterMatricesUBOInfo;
-				staticWrites.push_back(waterMatricesUBOWrite);
-			}
+		// Binding 5: WaterMatricesUBO - buffer is static per frame index
+		if (waterMatricesUBOs[i]) {
+			bufferInfos.push_back({});
+			bufferInfos.back().buffer = waterMatricesUBOs[i]->GetBuffer();
+			bufferInfos.back().offset = 0;
+			bufferInfos.back().range = VK_WHOLE_SIZE;
 
-			if (!staticWrites.empty()) {
-				vkUpdateDescriptorSets(device->GetDevice(),
-				                       static_cast<uint32_t>(staticWrites.size()),
-				                       staticWrites.data(), 0, nullptr);
-			}
+			VkWriteDescriptorSet waterMatricesUBOWrite{};
+			waterMatricesUBOWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+			waterMatricesUBOWrite.dstSet = descriptorSets[i];
+			waterMatricesUBOWrite.dstBinding = 5;
+			waterMatricesUBOWrite.dstArrayElement = 0;
+			waterMatricesUBOWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+			waterMatricesUBOWrite.descriptorCount = 1;
+			waterMatricesUBOWrite.pBufferInfo = &bufferInfos.back();
+			staticWrites.push_back(waterMatricesUBOWrite);
+		}
+
+		if (!staticWrites.empty()) {
+			vkUpdateDescriptorSets(device->GetDevice(),
+			                       static_cast<uint32_t>(staticWrites.size()),
+			                       staticWrites.data(), 0, nullptr);
 		}
 	}
+}
 
-	void VulkanWaterRenderer::UpdateUniformBuffers(uint32_t frameIndex) {
+void VulkanWaterRenderer::UpdateUniformBuffers(uint32_t frameIndex) {
 		const client::SceneDefinition& sceneDef = renderer.GetSceneDef();
 		float fogDist = renderer.GetFogDistance();
 		Vector3 fogCol = renderer.GetFogColorForSolidPass();

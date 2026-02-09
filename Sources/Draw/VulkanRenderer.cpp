@@ -717,7 +717,7 @@ namespace spades {
 
 			// Notify water renderer about map change
 			if (waterRenderer) {
-				waterRenderer->GameMapChanged(0, 0, 0, map);
+				waterRenderer->SetGameMap(map);
 			}
 		}
 

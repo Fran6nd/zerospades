@@ -73,6 +73,7 @@ namespace spades {
 			static void PreloadShaders(VulkanRenderer&);
 
 			void GameMapChanged(int x, int y, int z, client::GameMap*);
+			void SetGameMap(client::GameMap* map);
 
 			void Realize();
 			void Prerender();
