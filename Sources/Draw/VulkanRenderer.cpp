@@ -1395,6 +1395,21 @@ namespace spades {
 				modelRenderer->RenderSunlightPass(commandBuffer, false);
 			}
 
+			// Render dynamic lights (muzzle flash, flashlight, etc.)
+			if (!lights.empty()) {
+				std::vector<void*> lightPtrs;
+				lightPtrs.reserve(lights.size());
+				for (auto& l : lights) {
+					lightPtrs.push_back(&l);
+				}
+				if (mapRenderer) {
+					mapRenderer->RenderDynamicLightPass(commandBuffer, lightPtrs);
+				}
+				if (modelRenderer) {
+					modelRenderer->RenderDynamicLightPass(commandBuffer, lightPtrs);
+				}
+			}
+
 			// Render sprites
 			if (spriteRenderer) {
 				spriteRenderer->Render(commandBuffer, imageIndex);

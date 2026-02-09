@@ -73,6 +73,10 @@ namespace spades {
 				vkDestroyPipelineLayout(vkDevice, sharedPipeline.pipelineLayout, nullptr);
 				sharedPipeline.pipelineLayout = VK_NULL_HANDLE;
 			}
+			if (sharedPipeline.dlightPipelineLayout != VK_NULL_HANDLE) {
+				vkDestroyPipelineLayout(vkDevice, sharedPipeline.dlightPipelineLayout, nullptr);
+				sharedPipeline.dlightPipelineLayout = VK_NULL_HANDLE;
+			}
 			if (sharedPipeline.descriptorSetLayout != VK_NULL_HANDLE) {
 				vkDestroyDescriptorSetLayout(vkDevice, sharedPipeline.descriptorSetLayout, nullptr);
 				sharedPipeline.descriptorSetLayout = VK_NULL_HANDLE;
@@ -178,6 +182,10 @@ namespace spades {
 				if (sharedPipeline.pipelineLayout != VK_NULL_HANDLE) {
 					vkDestroyPipelineLayout(vkDevice, sharedPipeline.pipelineLayout, nullptr);
 					sharedPipeline.pipelineLayout = VK_NULL_HANDLE;
+				}
+				if (sharedPipeline.dlightPipelineLayout != VK_NULL_HANDLE) {
+					vkDestroyPipelineLayout(vkDevice, sharedPipeline.dlightPipelineLayout, nullptr);
+					sharedPipeline.dlightPipelineLayout = VK_NULL_HANDLE;
 				}
 				if (sharedPipeline.descriptorSetLayout != VK_NULL_HANDLE) {
 					vkDestroyDescriptorSetLayout(vkDevice, sharedPipeline.descriptorSetLayout, nullptr);
@@ -502,26 +510,21 @@ namespace spades {
 		                                                       std::vector<void*> lights) {
 			SPADES_MARK_FUNCTION();
 
-			// Dynamic lights render additively with light parameters
-
 			if (numIndices == 0 || !vertexBuffer || !indexBuffer)
 				return;
 
 			if (params.empty() || lights.empty())
 				return;
 
-			// Note: Full dynamic light implementation requires:
-			// - Dynamic light pipeline with additive blending
-			// - Light uniform buffers or push constants
-			// - Per-light rendering or batched light processing
-			// For now, using standard pipeline as placeholder
-
 			VkRenderPass renderPass = renderer.GetOffscreenRenderPass();
-			if (sharedPipeline.pipeline == VK_NULL_HANDLE || sharedPipeline.renderPass != renderPass) {
+			if (sharedPipeline.dlightPipeline == VK_NULL_HANDLE || sharedPipeline.renderPass != renderPass) {
 				CreatePipeline(renderPass);
 			}
 
-			vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, sharedPipeline.pipeline);
+			if (sharedPipeline.dlightPipeline == VK_NULL_HANDLE)
+				return;
+
+			vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, sharedPipeline.dlightPipeline);
 
 			// Bind vertex buffer
 			VkBuffer vb = vertexBuffer->GetBuffer();
@@ -533,39 +536,73 @@ namespace spades {
 
 			const Matrix4& projectionViewMatrix = renderer.GetProjectionViewMatrix();
 			const auto& eye = renderer.GetSceneDef().viewOrigin;
-			Vector3 fogCol = renderer.GetFogColor();
 			float fogDist = renderer.GetFogDistance();
 
-			for (const auto& param : params) {
-				Matrix4 mvpMatrix = projectionViewMatrix * param.matrix;
+			for (void* lightPtr : lights) {
+				const client::DynamicLightParam* light =
+				    static_cast<const client::DynamicLightParam*>(lightPtr);
 
-				// Compute fog density from model's world position
-				Vector4 modelWorldPos4 = param.matrix * MakeVector4(origin.x, origin.y, origin.z, 1.0f);
-				float dx = modelWorldPos4.x - eye.x;
-				float dy = modelWorldPos4.y - eye.y;
-				float horzDistSq = dx * dx + dy * dy;
-				float fogDensity = std::min(horzDistSq / (fogDist * fogDist), 1.0f);
+				// Light type
+				float lightType = 0.0f; // point
+				if (light->type == client::DynamicLightTypeLinear)
+					lightType = 1.0f;
+				else if (light->type == client::DynamicLightTypeSpotlight)
+					lightType = 2.0f;
 
-				struct {
-					Matrix4 projectionViewMatrix;
-					Vector3 modelOrigin;
-					float fogDensity;
-					Vector3 customColor;
-					float _pad;
-					Vector3 fogColor;
-				} pushConstants;
+				// Linear light direction and length
+				Vector3 linearDir = MakeVector3(0, 0, 0);
+				float linearLength = 0.0f;
+				if (light->type == client::DynamicLightTypeLinear) {
+					Vector3 dir = light->point2 - light->origin;
+					linearLength = dir.GetLength();
+					if (linearLength > 0.0001f)
+						linearDir = dir / linearLength;
+				}
 
-				pushConstants.projectionViewMatrix = mvpMatrix;
-				pushConstants.modelOrigin = origin;
-				pushConstants.fogDensity = fogDensity;
-				pushConstants.customColor = param.customColor;
-				pushConstants._pad = 0.0f;
-				pushConstants.fogColor = fogCol;
+				for (const auto& param : params) {
+					Matrix4 mvpMatrix = projectionViewMatrix * param.matrix;
 
-				vkCmdPushConstants(commandBuffer, sharedPipeline.pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT,
-				                   0, sizeof(pushConstants), &pushConstants);
+					// Compute fog density from model's world position
+					Vector4 modelWorldPos4 = param.matrix * MakeVector4(origin.x, origin.y, origin.z, 1.0f);
+					float dx = modelWorldPos4.x - eye.x;
+					float dy = modelWorldPos4.y - eye.y;
+					float horzDistSq = dx * dx + dy * dy;
+					float fogDensity = std::min(horzDistSq / (fogDist * fogDist), 1.0f);
 
-				vkCmdDrawIndexed(commandBuffer, numIndices, 1, 0, 0, 0);
+					struct {
+						Matrix4 projectionViewModelMatrix;
+						Matrix4 modelMatrix;
+						Vector3 modelOrigin;
+						float fogDensityVal;
+						Vector3 customColor;
+						float lightRadius;
+						Vector3 lightOrigin;
+						float lightTypeVal;
+						Vector3 lightColor;
+						float lightRadiusInversed;
+						Vector3 lightLinearDirection;
+						float lightLinearLength;
+					} pushConstants;
+
+					pushConstants.projectionViewModelMatrix = mvpMatrix;
+					pushConstants.modelMatrix = param.matrix;
+					pushConstants.modelOrigin = origin;
+					pushConstants.fogDensityVal = fogDensity;
+					pushConstants.customColor = param.customColor;
+					pushConstants.lightRadius = light->radius;
+					pushConstants.lightOrigin = light->origin;
+					pushConstants.lightTypeVal = lightType;
+					pushConstants.lightColor = light->color;
+					pushConstants.lightRadiusInversed = 1.0f / light->radius;
+					pushConstants.lightLinearDirection = linearDir;
+					pushConstants.lightLinearLength = linearLength;
+
+					vkCmdPushConstants(commandBuffer, sharedPipeline.dlightPipelineLayout,
+					                   VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+					                   0, sizeof(pushConstants), &pushConstants);
+
+					vkCmdDrawIndexed(commandBuffer, numIndices, 1, 0, 0, 0);
+				}
 			}
 		}
 
@@ -858,6 +895,119 @@ namespace spades {
 			}
 
 			SPLog("Created shared model rendering pipeline (vertex colors)");
+
+			// --- Create dynamic light pipeline ---
+			{
+				std::vector<uint32_t> dlVertCode = LoadSPIRVFile("Shaders/ModelDynamicLit.vert.spv");
+				std::vector<uint32_t> dlFragCode = LoadSPIRVFile("Shaders/ModelDynamicLit.frag.spv");
+
+				VkShaderModuleCreateInfo dlVertInfo{};
+				dlVertInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+				dlVertInfo.codeSize = dlVertCode.size() * sizeof(uint32_t);
+				dlVertInfo.pCode = dlVertCode.data();
+				VkShaderModule dlVertModule;
+				result = vkCreateShaderModule(vkDevice, &dlVertInfo, nullptr, &dlVertModule);
+				if (result != VK_SUCCESS) {
+					SPLog("Warning: Failed to create model dlight vertex shader module");
+					return;
+				}
+
+				VkShaderModuleCreateInfo dlFragInfo{};
+				dlFragInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+				dlFragInfo.codeSize = dlFragCode.size() * sizeof(uint32_t);
+				dlFragInfo.pCode = dlFragCode.data();
+				VkShaderModule dlFragModule;
+				result = vkCreateShaderModule(vkDevice, &dlFragInfo, nullptr, &dlFragModule);
+				if (result != VK_SUCCESS) {
+					vkDestroyShaderModule(vkDevice, dlVertModule, nullptr);
+					SPLog("Warning: Failed to create model dlight fragment shader module");
+					return;
+				}
+
+				VkPipelineShaderStageCreateInfo dlStages[2]{};
+				dlStages[0].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+				dlStages[0].stage = VK_SHADER_STAGE_VERTEX_BIT;
+				dlStages[0].module = dlVertModule;
+				dlStages[0].pName = "main";
+				dlStages[1].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+				dlStages[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+				dlStages[1].module = dlFragModule;
+				dlStages[1].pName = "main";
+
+				// Dlight pipeline layout: 208 bytes push constants
+				VkPushConstantRange dlPushRange{};
+				dlPushRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+				dlPushRange.offset = 0;
+				dlPushRange.size = 208;
+
+				VkPipelineLayoutCreateInfo dlLayoutInfo{};
+				dlLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+				dlLayoutInfo.pushConstantRangeCount = 1;
+				dlLayoutInfo.pPushConstantRanges = &dlPushRange;
+
+				result = vkCreatePipelineLayout(vkDevice, &dlLayoutInfo, nullptr, &sharedPipeline.dlightPipelineLayout);
+				if (result != VK_SUCCESS) {
+					vkDestroyShaderModule(vkDevice, dlVertModule, nullptr);
+					vkDestroyShaderModule(vkDevice, dlFragModule, nullptr);
+					SPLog("Warning: Failed to create model dlight pipeline layout");
+					return;
+				}
+
+				// Depth: test LESS_OR_EQUAL, no write
+				VkPipelineDepthStencilStateCreateInfo dlDepth{};
+				dlDepth.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+				dlDepth.depthTestEnable = VK_TRUE;
+				dlDepth.depthWriteEnable = VK_FALSE;
+				dlDepth.depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
+				dlDepth.depthBoundsTestEnable = VK_FALSE;
+				dlDepth.stencilTestEnable = VK_FALSE;
+
+				// Additive blending
+				VkPipelineColorBlendAttachmentState dlBlend{};
+				dlBlend.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
+				                         VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+				dlBlend.blendEnable = VK_TRUE;
+				dlBlend.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+				dlBlend.dstColorBlendFactor = VK_BLEND_FACTOR_ONE;
+				dlBlend.colorBlendOp = VK_BLEND_OP_ADD;
+				dlBlend.srcAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+				dlBlend.dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+				dlBlend.alphaBlendOp = VK_BLEND_OP_ADD;
+
+				VkPipelineColorBlendStateCreateInfo dlColorBlending{};
+				dlColorBlending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+				dlColorBlending.logicOpEnable = VK_FALSE;
+				dlColorBlending.attachmentCount = 1;
+				dlColorBlending.pAttachments = &dlBlend;
+
+				VkGraphicsPipelineCreateInfo dlPipelineInfo{};
+				dlPipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+				dlPipelineInfo.stageCount = 2;
+				dlPipelineInfo.pStages = dlStages;
+				dlPipelineInfo.pVertexInputState = &vertexInputInfo;
+				dlPipelineInfo.pInputAssemblyState = &inputAssembly;
+				dlPipelineInfo.pViewportState = &viewportState;
+				dlPipelineInfo.pRasterizationState = &rasterizer;
+				dlPipelineInfo.pMultisampleState = &multisampling;
+				dlPipelineInfo.pDepthStencilState = &dlDepth;
+				dlPipelineInfo.pColorBlendState = &dlColorBlending;
+				dlPipelineInfo.pDynamicState = &dynamicState;
+				dlPipelineInfo.layout = sharedPipeline.dlightPipelineLayout;
+				dlPipelineInfo.renderPass = renderPass;
+				dlPipelineInfo.subpass = 0;
+
+				result = vkCreateGraphicsPipelines(vkDevice, renderer.GetPipelineCache(), 1, &dlPipelineInfo, nullptr, &sharedPipeline.dlightPipeline);
+
+				vkDestroyShaderModule(vkDevice, dlVertModule, nullptr);
+				vkDestroyShaderModule(vkDevice, dlFragModule, nullptr);
+
+				if (result != VK_SUCCESS) {
+					SPLog("Warning: Failed to create model dlight pipeline (error code: %d)", result);
+					sharedPipeline.dlightPipeline = VK_NULL_HANDLE;
+				} else {
+					SPLog("Created shared model dynamic light pipeline");
+				}
+			}
 		}
 
 	} // namespace draw

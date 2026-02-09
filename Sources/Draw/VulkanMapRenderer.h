@@ -53,6 +53,7 @@ namespace spades {
 			VkPipeline outlinesPipeline;
 
 			VkPipelineLayout pipelineLayout;
+			VkPipelineLayout dlightPipelineLayout;
 			VkDescriptorSetLayout descriptorSetLayout;
 			VkDescriptorPool descriptorPool;
 			VkDescriptorSet textureDescriptorSet;
@@ -86,7 +87,7 @@ namespace spades {
 			void DrawColumnDepth(VkCommandBuffer commandBuffer, int cx, int cy, int cz, Vector3 eye);
 			void DrawColumnSunlight(VkCommandBuffer commandBuffer, int cx, int cy, int cz, Vector3 eye);
 			void DrawColumnDynamicLight(VkCommandBuffer commandBuffer, int cx, int cy, int cz, Vector3 eye,
-			                            const std::vector<void*>& lights);
+			                            const client::DynamicLightParam& light);
 			void DrawColumnOutline(VkCommandBuffer commandBuffer, int cx, int cy, int cz, Vector3 eye);
 
 			void RenderBackface(VkCommandBuffer commandBuffer);

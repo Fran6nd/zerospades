@@ -95,7 +95,7 @@ namespace spades {
 			void RenderSunlightPass(VkCommandBuffer commandBuffer);
 			void RenderDepthPass(VkCommandBuffer commandBuffer);
 			void RenderShadowMapPass(VkCommandBuffer commandBuffer, VkPipelineLayout pipelineLayout);
-			void RenderDynamicLightPass(VkCommandBuffer commandBuffer, std::vector<void*> lights);
+			void RenderDynamicLightPass(VkCommandBuffer commandBuffer, const client::DynamicLightParam& light);
 			void RenderOutlinePass(VkCommandBuffer commandBuffer);
 
 			uint32_t GetIndexCount() const { return (uint32_t)indices.size(); }

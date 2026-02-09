@@ -48,6 +48,7 @@ namespace spades {
 		      backfacePipeline(VK_NULL_HANDLE),
 		      outlinesPipeline(VK_NULL_HANDLE),
 		      pipelineLayout(VK_NULL_HANDLE),
+		      dlightPipelineLayout(VK_NULL_HANDLE),
 		      descriptorSetLayout(VK_NULL_HANDLE),
 		      descriptorPool(VK_NULL_HANDLE),
 		      textureDescriptorSet(VK_NULL_HANDLE) {
@@ -241,30 +242,40 @@ namespace spades {
 			if (lights.empty())
 				return;
 
+			if (dlightPipeline == VK_NULL_HANDLE) {
+				return;
+			}
+
+			vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, dlightPipeline);
+
 			Vector3 viewOrigin = renderer.GetSceneDef().viewOrigin;
 			IntVector3 c = viewOrigin.Floor();
 			c.x >>= VulkanMapChunk::SizeBits;
 			c.y >>= VulkanMapChunk::SizeBits;
 			c.z >>= VulkanMapChunk::SizeBits;
 
-			// Draw from nearest to farthest
-			// Include all vertical chunks
-			for (int cz = 0; cz < numChunkDepth; cz++) {
-				DrawColumnDynamicLight(commandBuffer, c.x, c.y, cz, viewOrigin, lights);
-			}
+			// For each light, render all visible chunks
+			for (void* lightPtr : lights) {
+				const client::DynamicLightParam* light =
+				    static_cast<const client::DynamicLightParam*>(lightPtr);
 
-			// Draw in a spiral pattern outward from the camera
-			for (int dist = 1; dist <= 128 / VulkanMapChunk::Size; dist++) {
-				for (int x = c.x - dist; x <= c.x + dist; x++) {
-					for (int cz = 0; cz < numChunkDepth; cz++) {
-						DrawColumnDynamicLight(commandBuffer, x, c.y + dist, cz, viewOrigin, lights);
-						DrawColumnDynamicLight(commandBuffer, x, c.y - dist, cz, viewOrigin, lights);
-					}
+				// Draw from nearest to farthest
+				for (int cz = 0; cz < numChunkDepth; cz++) {
+					DrawColumnDynamicLight(commandBuffer, c.x, c.y, cz, viewOrigin, *light);
 				}
-				for (int y = c.y - dist + 1; y <= c.y + dist - 1; y++) {
-					for (int cz = 0; cz < numChunkDepth; cz++) {
-						DrawColumnDynamicLight(commandBuffer, c.x + dist, y, cz, viewOrigin, lights);
-						DrawColumnDynamicLight(commandBuffer, c.x - dist, y, cz, viewOrigin, lights);
+
+				for (int dist = 1; dist <= 128 / VulkanMapChunk::Size; dist++) {
+					for (int x = c.x - dist; x <= c.x + dist; x++) {
+						for (int cz = 0; cz < numChunkDepth; cz++) {
+							DrawColumnDynamicLight(commandBuffer, x, c.y + dist, cz, viewOrigin, *light);
+							DrawColumnDynamicLight(commandBuffer, x, c.y - dist, cz, viewOrigin, *light);
+						}
+					}
+					for (int y = c.y - dist + 1; y <= c.y + dist - 1; y++) {
+						for (int cz = 0; cz < numChunkDepth; cz++) {
+							DrawColumnDynamicLight(commandBuffer, c.x + dist, y, cz, viewOrigin, *light);
+							DrawColumnDynamicLight(commandBuffer, c.x - dist, y, cz, viewOrigin, *light);
+						}
 					}
 				}
 			}
@@ -383,7 +394,7 @@ namespace spades {
 
 		void VulkanMapRenderer::DrawColumnDynamicLight(VkCommandBuffer commandBuffer, int cx, int cy,
 		                                               int cz, Vector3 eye,
-		                                               const std::vector<void*>& lights) {
+		                                               const client::DynamicLightParam& light) {
 			SPADES_MARK_FUNCTION();
 
 			cx &= numChunkWidth - 1;
@@ -393,7 +404,7 @@ namespace spades {
 
 			VulkanMapChunk* chunk = GetChunk(cx, cy, cz);
 			if (chunk && chunk->IsRealized()) {
-				chunk->RenderDynamicLightPass(commandBuffer, lights);
+				chunk->RenderDynamicLightPass(commandBuffer, light);
 			}
 		}
 
@@ -656,6 +667,119 @@ namespace spades {
 			// No descriptor sets needed for BasicMap shader - it renders voxels with vertex colors
 
 			SPLog("Map renderer pipeline created successfully");
+
+			// --- Create dynamic light pipeline ---
+			{
+				std::vector<uint32_t> dlVertCode = LoadSPIRVFile("Shaders/BasicBlockDynamicLit.vert.spv");
+				std::vector<uint32_t> dlFragCode = LoadSPIRVFile("Shaders/BasicBlockDynamicLit.frag.spv");
+
+				VkShaderModuleCreateInfo dlVertInfo{};
+				dlVertInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+				dlVertInfo.codeSize = dlVertCode.size() * sizeof(uint32_t);
+				dlVertInfo.pCode = dlVertCode.data();
+				VkShaderModule dlVertModule;
+				result = vkCreateShaderModule(vkDevice, &dlVertInfo, nullptr, &dlVertModule);
+				if (result != VK_SUCCESS) {
+					SPLog("Warning: Failed to create dlight vertex shader module");
+					return;
+				}
+
+				VkShaderModuleCreateInfo dlFragInfo{};
+				dlFragInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+				dlFragInfo.codeSize = dlFragCode.size() * sizeof(uint32_t);
+				dlFragInfo.pCode = dlFragCode.data();
+				VkShaderModule dlFragModule;
+				result = vkCreateShaderModule(vkDevice, &dlFragInfo, nullptr, &dlFragModule);
+				if (result != VK_SUCCESS) {
+					vkDestroyShaderModule(vkDevice, dlVertModule, nullptr);
+					SPLog("Warning: Failed to create dlight fragment shader module");
+					return;
+				}
+
+				VkPipelineShaderStageCreateInfo dlStages[2]{};
+				dlStages[0].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+				dlStages[0].stage = VK_SHADER_STAGE_VERTEX_BIT;
+				dlStages[0].module = dlVertModule;
+				dlStages[0].pName = "main";
+				dlStages[1].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+				dlStages[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+				dlStages[1].module = dlFragModule;
+				dlStages[1].pName = "main";
+
+				// Dlight pipeline layout: 224 bytes push constants for both vertex + fragment
+				VkPushConstantRange dlPushRange{};
+				dlPushRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+				dlPushRange.offset = 0;
+				dlPushRange.size = 224;
+
+				VkPipelineLayoutCreateInfo dlLayoutInfo{};
+				dlLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+				dlLayoutInfo.pushConstantRangeCount = 1;
+				dlLayoutInfo.pPushConstantRanges = &dlPushRange;
+
+				result = vkCreatePipelineLayout(vkDevice, &dlLayoutInfo, nullptr, &dlightPipelineLayout);
+				if (result != VK_SUCCESS) {
+					vkDestroyShaderModule(vkDevice, dlVertModule, nullptr);
+					vkDestroyShaderModule(vkDevice, dlFragModule, nullptr);
+					SPLog("Warning: Failed to create dlight pipeline layout");
+					return;
+				}
+
+				// Depth: test EQUAL, no write (additive pass on existing geometry)
+				VkPipelineDepthStencilStateCreateInfo dlDepth{};
+				dlDepth.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+				dlDepth.depthTestEnable = VK_TRUE;
+				dlDepth.depthWriteEnable = VK_FALSE;
+				dlDepth.depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
+				dlDepth.depthBoundsTestEnable = VK_FALSE;
+				dlDepth.stencilTestEnable = VK_FALSE;
+
+				// Additive blending: src*srcAlpha + dst*1 for color, 0 + dst*1 for alpha
+				VkPipelineColorBlendAttachmentState dlBlend{};
+				dlBlend.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
+				                         VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+				dlBlend.blendEnable = VK_TRUE;
+				dlBlend.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+				dlBlend.dstColorBlendFactor = VK_BLEND_FACTOR_ONE;
+				dlBlend.colorBlendOp = VK_BLEND_OP_ADD;
+				dlBlend.srcAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+				dlBlend.dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+				dlBlend.alphaBlendOp = VK_BLEND_OP_ADD;
+
+				VkPipelineColorBlendStateCreateInfo dlColorBlending{};
+				dlColorBlending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+				dlColorBlending.logicOpEnable = VK_FALSE;
+				dlColorBlending.attachmentCount = 1;
+				dlColorBlending.pAttachments = &dlBlend;
+
+				VkGraphicsPipelineCreateInfo dlPipelineInfo{};
+				dlPipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+				dlPipelineInfo.stageCount = 2;
+				dlPipelineInfo.pStages = dlStages;
+				dlPipelineInfo.pVertexInputState = &vertexInputInfo;
+				dlPipelineInfo.pInputAssemblyState = &inputAssembly;
+				dlPipelineInfo.pViewportState = &viewportState;
+				dlPipelineInfo.pRasterizationState = &rasterizer;
+				dlPipelineInfo.pMultisampleState = &multisampling;
+				dlPipelineInfo.pDepthStencilState = &dlDepth;
+				dlPipelineInfo.pColorBlendState = &dlColorBlending;
+				dlPipelineInfo.pDynamicState = &dynamicState;
+				dlPipelineInfo.layout = dlightPipelineLayout;
+				dlPipelineInfo.renderPass = renderPass;
+				dlPipelineInfo.subpass = 0;
+
+				result = vkCreateGraphicsPipelines(vkDevice, renderer.GetPipelineCache(), 1, &dlPipelineInfo, nullptr, &dlightPipeline);
+
+				vkDestroyShaderModule(vkDevice, dlVertModule, nullptr);
+				vkDestroyShaderModule(vkDevice, dlFragModule, nullptr);
+
+				if (result != VK_SUCCESS) {
+					SPLog("Warning: Failed to create dlight pipeline (error code: %d)", result);
+					dlightPipeline = VK_NULL_HANDLE;
+				} else {
+					SPLog("Map dynamic light pipeline created successfully");
+				}
+			}
 		}
 
 		void VulkanMapRenderer::DestroyPipelines() {
@@ -691,6 +815,11 @@ namespace spades {
 			if (pipelineLayout != VK_NULL_HANDLE) {
 				vkDestroyPipelineLayout(vkDevice, pipelineLayout, nullptr);
 				pipelineLayout = VK_NULL_HANDLE;
+			}
+
+			if (dlightPipelineLayout != VK_NULL_HANDLE) {
+				vkDestroyPipelineLayout(vkDevice, dlightPipelineLayout, nullptr);
+				dlightPipelineLayout = VK_NULL_HANDLE;
 			}
 
 			if (descriptorSetLayout != VK_NULL_HANDLE) {

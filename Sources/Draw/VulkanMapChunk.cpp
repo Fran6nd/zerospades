@@ -26,6 +26,7 @@
 #include "VulkanMapRenderer.h"
 #include "VulkanRenderer.h"
 #include "VulkanBuffer.h"
+#include "VulkanDynamicLight.h"
 #include <Gui/SDLVulkanDevice.h>
 #include <Client/GameMap.h>
 #include <Core/Debug.h>
@@ -472,11 +473,94 @@ namespace spades {
 		}
 
 		void VulkanMapChunk::RenderDynamicLightPass(VkCommandBuffer commandBuffer,
-		                                            std::vector<void*> lights) {
+		                                            const client::DynamicLightParam& light) {
 			SPADES_MARK_FUNCTION_DEBUG();
 
 			if (indices.empty() || !vertexBuffer || !indexBuffer)
 				return;
+
+			const auto& eye = renderer.renderer.GetSceneDef().viewOrigin;
+			Vector3 diff = eye - centerPos;
+			float sx = 0.0F, sy = 0.0F;
+
+			if (diff.x > 256.0F)
+				sx += 512.0F;
+			if (diff.y > 256.0F)
+				sy += 512.0F;
+			if (diff.x < -256.0F)
+				sx -= 512.0F;
+			if (diff.y < -256.0F)
+				sy -= 512.0F;
+
+			Vector3 fogCol = renderer.renderer.GetFogColor();
+			fogCol *= fogCol; // linearize
+
+			// Build spot matrix for spotlights
+			VulkanDynamicLight vkLight(light);
+			Matrix4 spotMatrix;
+			if (light.type == client::DynamicLightTypeSpotlight) {
+				spotMatrix = Matrix4::Scale(0.5f) * Matrix4::Translate(1, 1, 1) *
+				             vkLight.GetProjectionMatrix();
+			} else {
+				spotMatrix = Matrix4::Identity();
+			}
+
+			// Determine light type for shader
+			float lightType = 0.0f; // point
+			if (light.type == client::DynamicLightTypeLinear)
+				lightType = 1.0f;
+			else if (light.type == client::DynamicLightTypeSpotlight)
+				lightType = 2.0f;
+
+			// Linear light direction and length
+			Vector3 linearDir = MakeVector3(0, 0, 0);
+			float linearLength = 0.0f;
+			if (light.type == client::DynamicLightTypeLinear) {
+				Vector3 dir = light.point2 - light.origin;
+				linearLength = dir.GetLength();
+				if (linearLength > 0.0001f)
+					linearDir = dir / linearLength;
+			}
+
+			struct {
+				Matrix4 projectionViewMatrix;
+				Vector3 modelOrigin;
+				float fogDistance;
+				Vector3 viewOrigin;
+				float lightRadius;
+				Vector3 fogColor;
+				float lightRadiusInversed;
+				Vector3 lightOrigin;
+				float lightTypeVal;
+				Vector3 lightColor;
+				float lightLinearLength;
+				Vector3 lightLinearDirection;
+				float _pad;
+				Matrix4 lightSpotMatrix;
+			} pushConstants;
+
+			pushConstants.projectionViewMatrix = renderer.renderer.GetProjectionViewMatrix();
+			pushConstants.modelOrigin = MakeVector3(
+				(float)(chunkX << SizeBits) + sx,
+				(float)(chunkY << SizeBits) + sy,
+				(float)(chunkZ << SizeBits)
+			);
+			pushConstants.fogDistance = renderer.renderer.GetFogDistance();
+			pushConstants.viewOrigin = eye;
+			pushConstants.lightRadius = light.radius;
+			pushConstants.fogColor = fogCol;
+			pushConstants.lightRadiusInversed = 1.0f / light.radius;
+			pushConstants.lightOrigin = light.origin;
+			pushConstants.lightTypeVal = lightType;
+			pushConstants.lightColor = light.color;
+			pushConstants.lightLinearLength = linearLength;
+			pushConstants.lightLinearDirection = linearDir;
+			pushConstants._pad = 0.0f;
+			pushConstants.lightSpotMatrix = spotMatrix;
+
+			vkCmdPushConstants(commandBuffer, renderer.dlightPipelineLayout,
+			                   VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+			                   0, sizeof(pushConstants), &pushConstants);
 
 			// Bind vertex buffer
 			VkBuffer vb = vertexBuffer->GetBuffer();

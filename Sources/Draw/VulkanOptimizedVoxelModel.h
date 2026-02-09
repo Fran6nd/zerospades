@@ -59,11 +59,13 @@ namespace spades {
 				VkPipeline shadowMapPipeline;
 				VkPipeline outlinesPipeline;
 				VkPipelineLayout pipelineLayout;
+				VkPipelineLayout dlightPipelineLayout;
 				VkDescriptorSetLayout descriptorSetLayout;
 
 				PipelineCache() : renderPass(VK_NULL_HANDLE), pipeline(VK_NULL_HANDLE),
 				                  dlightPipeline(VK_NULL_HANDLE), shadowMapPipeline(VK_NULL_HANDLE),
 				                  outlinesPipeline(VK_NULL_HANDLE), pipelineLayout(VK_NULL_HANDLE),
+				                  dlightPipelineLayout(VK_NULL_HANDLE),
 				                  descriptorSetLayout(VK_NULL_HANDLE) {}
 			};
 
