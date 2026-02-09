@@ -47,9 +47,9 @@ void main() {
 	vec4 vertexPos = vec4(positionAttribute.xy, 0.0, 1.0);
 
 	v_worldPosition = (waterMat.modelMatrix * vertexPos).xyz;
-	v_viewPosition = (waterMat.viewModelMatrix * vertexPos).xyz;
+	v_viewPosition = (waterMat.viewModelMatrix * vec4(v_worldPosition, 1.0)).xyz;
 
-	gl_Position = waterMat.projectionViewModelMatrix * vertexPos;
+	gl_Position = waterMat.projectionViewModelMatrix * vec4(v_worldPosition, 1.0);
 	v_screenPosition = gl_Position.xyw;
 	v_screenPosition.xy = (v_screenPosition.xy + v_screenPosition.z) * 0.5;
 

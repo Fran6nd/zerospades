@@ -544,8 +544,12 @@ namespace spades {
 		void VulkanWaterRenderer::PreloadShaders(VulkanRenderer& r) {
 			SPADES_MARK_FUNCTION();
 		SPLog("Preloading Vulkan water shaders");
-		// For now, only the basic Water shader is converted (Water2 and Water3 need conversion)
-		r.RegisterProgram("Shaders/Water.vk.program");
+		if ((int)r_water >= 3)
+			r.RegisterProgram("Shaders/Water3.vk.program");
+		else if ((int)r_water >= 2)
+			r.RegisterProgram("Shaders/Water2.vk.program");
+		else
+			r.RegisterProgram("Shaders/Water.vk.program");
 		}
 
 		void VulkanWaterRenderer::GameMapChanged(int x, int y, int z, client::GameMap* map) {
@@ -561,9 +565,14 @@ namespace spades {
 			SPADES_MARK_FUNCTION();
 		SPLog("VulkanWaterRenderer::Realize: creating pipeline");
 
-		// Select program variant based on settings
-		// For now, use the basic Water shader (Water2 and Water3 need conversion)
-		std::string name = "Shaders/Water.vk.program";
+		// Select program variant based on water quality setting (matches GL renderer)
+		std::string name;
+		if ((int)r_water >= 3)
+			name = "Shaders/Water3.vk.program";
+		else if ((int)r_water >= 2)
+			name = "Shaders/Water2.vk.program";
+		else
+			name = "Shaders/Water.vk.program";
 
 		waterProgram = renderer.RegisterProgram(name);
 		if (!waterProgram) {
@@ -654,19 +663,18 @@ namespace spades {
 
 		// Update descriptor sets with textures and uniform buffers
 		VulkanFramebufferManager* fbManager = renderer.GetFramebufferManager();
-		if (!fbManager || !textureImage || !waveImage) {
+		Handle<VulkanImage> activeWaveImage = waveImageArray ? waveImageArray : waveImage;
+		if (!fbManager || !textureImage || !activeWaveImage) {
 			SPLog("Warning: Missing required resources for water rendering");
 			return;
 		}
 
-		// Get screen and depth textures from framebuffer manager
-		// Use mirror images to avoid feedback loop (sampling from same image we're rendering to)
-		// When r_water >= 2, mirror images contain the reflected scene for proper reflections
-		Handle<VulkanImage> screenImage = fbManager->GetMirrorColorImage();
-		Handle<VulkanImage> depthImage = fbManager->GetMirrorDepthImage();
+		// Get screen copy images for refraction (copy of main scene, not the render target)
+		Handle<VulkanImage> screenImage = fbManager->GetScreenCopyColorImage();
+		Handle<VulkanImage> depthImage = fbManager->GetScreenCopyDepthImage();
 
 		if (!screenImage || !depthImage) {
-			SPLog("Warning: Framebuffer manager textures not available");
+			SPLog("Warning: Screen copy textures not available");
 			return;
 		}
 
@@ -1086,9 +1094,13 @@ namespace spades {
 	void VulkanWaterRenderer::CreateDescriptorPool() {
 		// Create descriptor pool for water rendering (3 frames in flight)
 		uint32_t frameCount = 3;
+		// Water3: 6 samplers (screen, depth, main, waveArray, mirror, mirrorDepth)
+		// Water2: 5 samplers (screen, depth, main, waveArray, mirror)
+		// Water:  4 samplers (screen, depth, main, wave)
+		uint32_t samplersPerFrame = ((int)r_water >= 3) ? 6 : (((int)r_water >= 2) ? 5 : 4);
 		std::vector<VkDescriptorPoolSize> poolSizes(2);
 		poolSizes[0].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-		poolSizes[0].descriptorCount = 4 * frameCount; // 4 samplers per frame
+		poolSizes[0].descriptorCount = samplersPerFrame * frameCount;
 		poolSizes[1].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 		poolSizes[1].descriptorCount = 1 * frameCount; // 1 UBO per frame (WaterMatricesUBO only, WaterUBO is now push constants)
 
@@ -1235,9 +1247,12 @@ namespace spades {
 			float _pad0[3];
 		} waterMatricesData;
 
-		waterMatricesData.projectionViewModelMatrix = projectionViewMatrix * modelMatrix;
+		// Shaders transform vertices to world space via modelMatrix, then use these
+		// matrices on the world-space position. So we pass PV and V (not PV*M, V*M)
+		// to avoid double-applying the model matrix.
+		waterMatricesData.projectionViewModelMatrix = projectionViewMatrix;
 		waterMatricesData.modelMatrix = modelMatrix;
-		waterMatricesData.viewModelMatrix = viewMatrix * modelMatrix;
+		waterMatricesData.viewModelMatrix = viewMatrix;
 		waterMatricesData.viewMatrix = viewMatrix;
 		waterMatricesData.viewOriginVector = MakeVector4(sceneDef.viewOrigin.x, sceneDef.viewOrigin.y, sceneDef.viewOrigin.z, 0.0f);
 		waterMatricesData.fogDistance = fogDist;

@@ -95,6 +95,11 @@ namespace spades {
 			Handle<VulkanImage> mirrorColorImage;
 			Handle<VulkanImage> mirrorDepthImage;
 
+			// Screen copy images for water refraction sampling
+			// (can't sample from render targets during the water pass)
+			Handle<VulkanImage> screenCopyColorImage;
+			Handle<VulkanImage> screenCopyDepthImage;
+
 			// Render pass used for all framebuffers
 			VkRenderPass renderPass;
 			VkRenderPass waterRenderPass; // Render pass with LOAD_OP for water rendering
@@ -137,6 +142,10 @@ namespace spades {
 			Handle<VulkanImage> GetMirrorColorImage() { return mirrorColorImage; }
 			Handle<VulkanImage> GetMirrorDepthImage() { return mirrorDepthImage; }
 			VkFramebuffer GetMirrorFramebuffer() { return mirrorFramebuffer; }
+
+			void CopySceneForWaterSampling(VkCommandBuffer commandBuffer);
+			Handle<VulkanImage> GetScreenCopyColorImage() { return screenCopyColorImage; }
+			Handle<VulkanImage> GetScreenCopyDepthImage() { return screenCopyDepthImage; }
 		};
 
 		// Shorter name

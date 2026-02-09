@@ -1474,11 +1474,15 @@ namespace spades {
 				VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
 				0, 0, nullptr, 0, nullptr, 2, barriers);
 
-			// Copy scene to mirror images so water can sample from them
-			// Skip copy when r_water >= 2 because mirror images already have reflected scene
+			// Copy scene to mirror images for water refraction when no real mirror pass
 			if (waterRenderer && framebufferManager->GetMirrorColorImage() && (int)r_water < 2) {
-				// Copy color and depth from render targets to mirror targets
 				framebufferManager->CopyToMirrorImage(commandBuffer);
+			}
+
+			// Copy scene to screen copy images for water refraction sampling
+			// (water renders to the same framebuffer, so it can't sample from it directly)
+			if (waterRenderer) {
+				framebufferManager->CopySceneForWaterSampling(commandBuffer);
 			}
 
 			if (waterRenderer && framebufferManager->GetMirrorColorImage()) {

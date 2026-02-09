@@ -86,7 +86,8 @@ namespace spades {
 			renderDepthImage = Handle<VulkanImage>::New(
 			    device, renderWidth, renderHeight, fbDepthFormat,
 			    VK_IMAGE_TILING_OPTIMAL,
-			    VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+			    VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT |
+			        VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
 			    VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 			renderDepthImage->CreateImageView(VK_IMAGE_ASPECT_DEPTH_BIT);
 			renderDepthImage->CreateSampler(VK_FILTER_NEAREST, VK_FILTER_NEAREST,
@@ -153,6 +154,29 @@ namespace spades {
 				}
 				SPLog("Mirror framebuffer created");
 			}
+
+			// Create screen copy images for water refraction sampling
+			// The water shader needs to read the scene, but it also renders to the same
+			// framebuffer. We copy the scene to these images before the water pass.
+			SPLog("Creating screen copy images for water sampling");
+			screenCopyColorImage = Handle<VulkanImage>::New(
+			    device, renderWidth, renderHeight, fbColorFormat,
+			    VK_IMAGE_TILING_OPTIMAL,
+			    VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
+			    VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+			screenCopyColorImage->CreateImageView(VK_IMAGE_ASPECT_COLOR_BIT);
+			screenCopyColorImage->CreateSampler(VK_FILTER_LINEAR, VK_FILTER_LINEAR,
+			                                    VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, false);
+
+			screenCopyDepthImage = Handle<VulkanImage>::New(
+			    device, renderWidth, renderHeight, fbDepthFormat,
+			    VK_IMAGE_TILING_OPTIMAL,
+			    VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
+			    VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+			screenCopyDepthImage->CreateImageView(VK_IMAGE_ASPECT_DEPTH_BIT);
+			screenCopyDepthImage->CreateSampler(VK_FILTER_NEAREST, VK_FILTER_NEAREST,
+			                                    VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, false);
+			SPLog("Screen copy images created");
 
 			// Add main render buffer to managed buffers
 			Buffer buf;
@@ -375,6 +399,127 @@ namespace spades {
 				               mirrorDepthImage->GetImage(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
 				               1, &depthCopyRegion);
 			}
+		}
+
+		void VulkanFramebufferManager::CopySceneForWaterSampling(VkCommandBuffer commandBuffer) {
+			SPADES_MARK_FUNCTION();
+
+			// Transition source images to TRANSFER_SRC_OPTIMAL
+			VkImageMemoryBarrier srcBarriers[2]{};
+			srcBarriers[0].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+			srcBarriers[0].oldLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+			srcBarriers[0].newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+			srcBarriers[0].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+			srcBarriers[0].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+			srcBarriers[0].image = renderColorImage->GetImage();
+			srcBarriers[0].subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
+			srcBarriers[0].srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
+			srcBarriers[0].dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+
+			srcBarriers[1].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+			srcBarriers[1].oldLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+			srcBarriers[1].newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+			srcBarriers[1].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+			srcBarriers[1].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+			srcBarriers[1].image = renderDepthImage->GetImage();
+			srcBarriers[1].subresourceRange = {VK_IMAGE_ASPECT_DEPTH_BIT, 0, 1, 0, 1};
+			srcBarriers[1].srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
+			srcBarriers[1].dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+
+			// Transition destination images to TRANSFER_DST_OPTIMAL
+			VkImageMemoryBarrier dstBarriers[2]{};
+			dstBarriers[0].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+			dstBarriers[0].oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+			dstBarriers[0].newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+			dstBarriers[0].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+			dstBarriers[0].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+			dstBarriers[0].image = screenCopyColorImage->GetImage();
+			dstBarriers[0].subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
+			dstBarriers[0].srcAccessMask = 0;
+			dstBarriers[0].dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+
+			dstBarriers[1].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+			dstBarriers[1].oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+			dstBarriers[1].newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+			dstBarriers[1].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+			dstBarriers[1].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+			dstBarriers[1].image = screenCopyDepthImage->GetImage();
+			dstBarriers[1].subresourceRange = {VK_IMAGE_ASPECT_DEPTH_BIT, 0, 1, 0, 1};
+			dstBarriers[1].srcAccessMask = 0;
+			dstBarriers[1].dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+
+			VkImageMemoryBarrier allBarriers[4] = {srcBarriers[0], srcBarriers[1], dstBarriers[0], dstBarriers[1]};
+			vkCmdPipelineBarrier(commandBuffer,
+				VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
+				VK_PIPELINE_STAGE_TRANSFER_BIT,
+				0, 0, nullptr, 0, nullptr, 4, allBarriers);
+
+			// Copy color
+			VkImageCopy colorCopy = {};
+			colorCopy.srcSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
+			colorCopy.dstSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
+			colorCopy.extent = {(uint32_t)renderWidth, (uint32_t)renderHeight, 1};
+			vkCmdCopyImage(commandBuffer,
+			               renderColorImage->GetImage(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+			               screenCopyColorImage->GetImage(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+			               1, &colorCopy);
+
+			// Copy depth
+			VkImageCopy depthCopy = {};
+			depthCopy.srcSubresource = {VK_IMAGE_ASPECT_DEPTH_BIT, 0, 0, 1};
+			depthCopy.dstSubresource = {VK_IMAGE_ASPECT_DEPTH_BIT, 0, 0, 1};
+			depthCopy.extent = {(uint32_t)renderWidth, (uint32_t)renderHeight, 1};
+			vkCmdCopyImage(commandBuffer,
+			               renderDepthImage->GetImage(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+			               screenCopyDepthImage->GetImage(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+			               1, &depthCopy);
+
+			// Transition screen copies to SHADER_READ_ONLY and source back to SHADER_READ_ONLY
+			VkImageMemoryBarrier postBarriers[4]{};
+			postBarriers[0].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+			postBarriers[0].oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+			postBarriers[0].newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+			postBarriers[0].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+			postBarriers[0].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+			postBarriers[0].image = renderColorImage->GetImage();
+			postBarriers[0].subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
+			postBarriers[0].srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+			postBarriers[0].dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+
+			postBarriers[1].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+			postBarriers[1].oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+			postBarriers[1].newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+			postBarriers[1].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+			postBarriers[1].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+			postBarriers[1].image = renderDepthImage->GetImage();
+			postBarriers[1].subresourceRange = {VK_IMAGE_ASPECT_DEPTH_BIT, 0, 1, 0, 1};
+			postBarriers[1].srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+			postBarriers[1].dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+
+			postBarriers[2].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+			postBarriers[2].oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+			postBarriers[2].newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+			postBarriers[2].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+			postBarriers[2].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+			postBarriers[2].image = screenCopyColorImage->GetImage();
+			postBarriers[2].subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
+			postBarriers[2].srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+			postBarriers[2].dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+
+			postBarriers[3].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+			postBarriers[3].oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+			postBarriers[3].newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+			postBarriers[3].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+			postBarriers[3].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+			postBarriers[3].image = screenCopyDepthImage->GetImage();
+			postBarriers[3].subresourceRange = {VK_IMAGE_ASPECT_DEPTH_BIT, 0, 1, 0, 1};
+			postBarriers[3].srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+			postBarriers[3].dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+
+			vkCmdPipelineBarrier(commandBuffer,
+				VK_PIPELINE_STAGE_TRANSFER_BIT,
+				VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+				0, 0, nullptr, 0, nullptr, 4, postBarriers);
 		}
 
 		VulkanFramebufferManager::BufferHandle VulkanFramebufferManager::StartPostProcessing() {
