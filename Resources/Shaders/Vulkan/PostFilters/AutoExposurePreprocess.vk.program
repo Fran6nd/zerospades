@@ -1,0 +1,2 @@
+Shaders/Vulkan/PostFilters/AutoExposurePreprocess.vk.vs
+Shaders/Vulkan/PostFilters/AutoExposurePreprocess.vk.fs

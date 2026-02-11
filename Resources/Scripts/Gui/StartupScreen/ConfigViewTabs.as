@@ -32,6 +32,7 @@ namespace spades {
 
 		spades::ui::CheckBox@ fullscreenCheck;
 		spades::ui::RadioButton@ driverOpenGL;
+		spades::ui::RadioButton@ driverVulkan;
 		spades::ui::RadioButton@ driverSoftware;
 
 		spades::ui::TextViewer@ helpView;
@@ -98,8 +99,23 @@ namespace spades {
 			}
 			{
 				spades::ui::RadioButton e(Manager);
-				e.Caption = _Tr("StartupScreen", "Software");
+				e.Caption = _Tr("StartupScreen", "Vulkan");
 				e.Bounds = AABB2(260.0F, 30.0F, 140.0F, 24.0F);
+				e.GroupName = "driver";
+				HelpHandler(
+					helpView,
+					_Tr("StartupScreen",
+						"Vulkan renderer uses modern graphics API for improved "
+						"performance and compatibility on macOS via MoltenVK."))
+					.Watch(e);
+				@e.Activated = spades::ui::EventHandler(this.OnDriverVulkan);
+				AddChild(e);
+				@driverVulkan = e;
+			}
+			{
+				spades::ui::RadioButton e(Manager);
+				e.Caption = _Tr("StartupScreen", "Software");
+				e.Bounds = AABB2(410.0F, 30.0F, 140.0F, 24.0F);
 				e.GroupName = "driver";
 				HelpHandler(
 					helpView,
@@ -275,6 +291,10 @@ namespace spades {
 			r_renderer.StringValue = "gl";
 			LoadConfig();
 		}
+		private void OnDriverVulkan(spades::ui::UIElement@) {
+			r_renderer.StringValue = "vulkan";
+			LoadConfig();
+		}
 		private void OnDriverSoftware(spades::ui::UIElement@) {
 			r_renderer.StringValue = "sw";
 			LoadConfig();
@@ -290,6 +310,10 @@ namespace spades {
 				driverSoftware.Check();
 				configViewGL.Visible = false;
 				configViewSoftware.Visible = true;
+			} else if (r_renderer.StringValue == "vulkan") {
+				driverVulkan.Check();
+				configViewGL.Visible = true;
+				configViewSoftware.Visible = false;
 			} else {
 				driverOpenGL.Check();
 				configViewGL.Visible = true;
@@ -297,6 +321,7 @@ namespace spades {
 			}
 			fullscreenCheck.Toggled = r_fullscreen.IntValue != 0;
 			driverOpenGL.Enable = ui.helper.CheckConfigCapability("r_renderer", "gl").length == 0;
+			driverVulkan.Enable = ui.helper.CheckConfigCapability("r_renderer", "vulkan").length == 0;
 			driverSoftware.Enable = ui.helper.CheckConfigCapability("r_renderer", "sw").length == 0;
 			configViewGL.LoadConfig();
 			configViewSoftware.LoadConfig();
