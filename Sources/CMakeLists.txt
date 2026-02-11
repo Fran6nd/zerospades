@@ -11,6 +11,12 @@ file(GLOB DRAW_VK_FILES Draw/Vulkan/*.cpp Draw/Vulkan/*.h)
 file(GLOB ENET_FILES ENet/*.c ENet/*.h)
 file(GLOB ENET_INCLUDE ENet/include/enet/*.h)
 file(GLOB GUI_FILES Gui/*.cpp Gui/*.h)
+
+# Exclude Vulkan device files if Vulkan is disabled
+if(NOT USE_VULKAN)
+	file(GLOB GUI_VULKAN_FILES Gui/SDLVulkanDevice.cpp Gui/SDLVulkanDevice.h)
+	list(REMOVE_ITEM GUI_FILES ${GUI_VULKAN_FILES})
+endif()
 file(GLOB IMPORTS_FILES Imports/*.h)
 file(GLOB KISS_FILES kiss_fft130/*.c kiss_fft130/*.h)
 file(GLOB JSON_FILES json/*.cpp json/*.h json/*.inl)
@@ -162,6 +168,38 @@ target_link_libraries(OpenSpades
 if(NOT APPLE)
 	target_link_libraries(OpenSpades ${GLEW_LIBRARY})
 endif()
+
+# Link Vulkan libraries if enabled
+if(USE_VULKAN)
+	if(APPLE AND MOLTENVK_LIBRARY)
+		# Link directly to MoltenVK on macOS (no Vulkan loader needed)
+		target_link_libraries(OpenSpades ${MOLTENVK_LIBRARY})
+	else()
+		target_link_libraries(OpenSpades Vulkan::Vulkan)
+	endif()
+	if(Vulkan_INCLUDE_DIRS)
+		target_include_directories(OpenSpades PRIVATE ${Vulkan_INCLUDE_DIRS})
+	endif()
+
+	# Link glslang libraries if available
+	if(HAVE_GLSLANG)
+		target_link_libraries(OpenSpades ${GLSLANG_LIBRARIES})
+		if(GLSLANG_INCLUDE_DIR)
+			target_include_directories(OpenSpades PRIVATE ${GLSLANG_INCLUDE_DIR})
+		endif()
+		target_compile_definitions(OpenSpades PRIVATE HAVE_GLSLANG=1)
+	endif()
+
+	# Link spirv-cross if available
+	if(HAVE_SPIRV_CROSS)
+		target_link_libraries(OpenSpades ${SPIRV_CROSS_LIBRARIES})
+		if(SPIRV_CROSS_INCLUDE_DIR)
+			target_include_directories(OpenSpades PRIVATE ${SPIRV_CROSS_INCLUDE_DIR})
+		endif()
+		target_compile_definitions(OpenSpades PRIVATE HAVE_SPIRV_CROSS=1)
+	endif()
+endif()
+
 if(USE_VCPKG)
 	target_link_libraries(OpenSpades Ogg::ogg Opus::opus)
 endif()
@@ -213,6 +251,16 @@ if(APPLE)
 			"$<TARGET_FILE:OpenSpades>"
 		COMMENT "Embedding OpenAL Soft into macOS bundle"
 	)
+
+	# Bundle all third-party dylibs into the .app and fix load paths.
+	# This handles MoltenVK, glslang, spirv-cross, and any transitive dependencies.
+	add_custom_command(TARGET OpenSpades POST_BUILD
+		COMMAND bash "${CMAKE_SOURCE_DIR}/cmake/bundle_macos_dylibs.sh"
+			"$<TARGET_FILE:OpenSpades>"
+			"$<TARGET_BUNDLE_CONTENT_DIR:OpenSpades>/Frameworks"
+		COMMENT "Bundling third-party dylibs into macOS app"
+	)
+
 
 	# Add optional code signing (can be configured via MACOSX_CODESIGN_IDENTITY)
 	# To sign: cmake -DMACOSX_CODESIGN_IDENTITY="Developer ID Application: Your Name" ..

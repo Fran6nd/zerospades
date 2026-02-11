@@ -91,7 +91,7 @@ namespace spades {
 				case GL_OUT_OF_MEMORY: return "Out of Memory";
 				default: {
 					char buf[256];
-					sprintf(buf, "0x%08x", (unsigned int)err);
+					snprintf(buf, sizeof(buf), "0x%08x", (unsigned int)err);
 					return buf;
 				}
 			}
@@ -100,8 +100,10 @@ namespace spades {
 		static void ReportError(GLenum err, int line, const char* func) {
 			std::string msg;
 			msg = ErrorToString(err);
-			// Don't call glGetError() again to avoid potential infinite recursion
-			// if glGetError() itself triggers an error (can happen on macOS/Rosetta)
+			while ((err = glGetError()) != GL_NO_ERROR) {
+				msg += ", ";
+				msg += ErrorToString(err);
+			}
 			if (r_ignoreGLErrors) {
 				SPRaise("GL error %s in %s at %s:%d\n\n"
 				        "WARNING: r_ignoreGLErrors is enabled. "
