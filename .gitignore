@@ -33,6 +33,7 @@ Makefile
 CMakeCache.txt
 *CMakeFiles/
 *.cmake
+!cmake/triplets/*.cmake
 
 # mac related
 *.DS_Store
