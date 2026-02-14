@@ -179,7 +179,7 @@ void main() {
 	// specular reflection
 	if (dot(sunlight, vec3(1.0)) > 0.0001) {
 		vec3 refl = reflect(ongoing, wave);
-		float spec = max(dot(refl, -sunDirection), 0.0);
+		float spec = max(dot(refl, sunDirection), 0.0);
 		spec *= spec; // ^2
 		spec *= spec; // ^4
 		spec *= spec; // ^16
