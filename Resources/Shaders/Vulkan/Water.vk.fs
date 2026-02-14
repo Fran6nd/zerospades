@@ -100,6 +100,7 @@ void main() {
 	wave.xyz = normalize(wave.xyz);
 
 	vec2 origScrPos = v_screenPosition.xy / v_screenPosition.z;
+	origScrPos = origScrPos * 0.5 + 0.5;
 	vec2 scrPos = origScrPos;
 
 	float scale = 1.0 / v_viewPosition.z;
