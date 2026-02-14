@@ -1475,17 +1475,17 @@ namespace spades {
 				0, 0, nullptr, 0, nullptr, 2, barriers);
 
 			// Copy scene to mirror images for water refraction when no real mirror pass
-			if (waterRenderer && framebufferManager->GetMirrorColorImage() && (int)r_water < 2) {
+			if ((int)r_water > 0 && waterRenderer && framebufferManager->GetMirrorColorImage() && (int)r_water < 2) {
 				framebufferManager->CopyToMirrorImage(commandBuffer);
 			}
 
 			// Copy scene to screen copy images for water refraction sampling
 			// (water renders to the same framebuffer, so it can't sample from it directly)
-			if (waterRenderer) {
+			if ((int)r_water > 0 && waterRenderer) {
 				framebufferManager->CopySceneForWaterSampling(commandBuffer);
 			}
 
-			if (waterRenderer && framebufferManager->GetMirrorColorImage()) {
+			if ((int)r_water > 0 && waterRenderer && framebufferManager->GetMirrorColorImage()) {
 
 				// Transition renderColorImage and renderDepthImage back to COLOR_ATTACHMENT_OPTIMAL
 				// for water rendering
