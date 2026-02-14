@@ -7,6 +7,9 @@ file(GLOB CLIENT_FILES Client/*.cpp Client/*.h)
 file(GLOB CORE_FILES Core/*.c Core/*.cpp Core/*.h)
 file(GLOB DRAW_GL_FILES Draw/OpenGL/*.cpp Draw/OpenGL/*.h)
 file(GLOB DRAW_SW_FILES Draw/SW/*.cpp Draw/SW/*.h)
+if(USE_VULKAN)
+	file(GLOB DRAW_VK_FILES Draw/Vulkan/*.cpp Draw/Vulkan/*.h)
+endif()
 file(GLOB ENET_FILES ENet/*.c ENet/*.h)
 file(GLOB ENET_INCLUDE ENet/include/enet/*.h)
 file(GLOB GUI_FILES Gui/*.cpp Gui/*.h)
@@ -47,7 +50,7 @@ endif()
 
 add_executable(OpenSpades
 	${AUDIO_FILES} ${AUDIO_AL_FILES} ${BINPACK_FILES} ${CLIENT_FILES}
-	${CORE_FILES} ${PLATFORM_FILES} ${DRAW_GL_FILES} ${DRAW_SW_FILES} ${ENET_FILES}
+	${CORE_FILES} ${PLATFORM_FILES} ${DRAW_GL_FILES} ${DRAW_SW_FILES} ${DRAW_VK_FILES} ${ENET_FILES}
 	${ENET_INCLUDE} ${GUI_FILES} ${IMPORTS_FILES} ${KISS_FILES}
 	${JSON_FILES} ${JSON_INCLUDE} ${UNZIP_FILES} ${SCRIPTBINDING_FILES}
 	${RESOURCE_FILES})
@@ -149,6 +152,7 @@ source_group("Core" FILES ${CORE_FILES})
 source_group("Platform-specific" FILES ${PLATFORM_FILES})
 source_group("Draw\\OpenGL" FILES ${DRAW_GL_FILES})
 source_group("Draw\\SW" FILES ${DRAW_SW_FILES})
+source_group("Draw\\Vulkan" FILES ${DRAW_VK_FILES})
 source_group("libs\\Enet" FILES ${ENET_FILES})
 source_group("libs\\Enet\\include" FILES ${ENET_INCLUDE})
 source_group("Gui" FILES ${GUI_FILES})
