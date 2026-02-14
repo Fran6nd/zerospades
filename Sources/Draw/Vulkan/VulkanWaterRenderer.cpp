@@ -390,7 +390,6 @@ namespace spades {
 		VulkanWaterRenderer::VulkanWaterRenderer(VulkanRenderer& r, client::GameMap* map)
 	: renderer(r), device(r.GetDevice()), gameMap(map), waterProgram(nullptr),
 	  descriptorPool(VK_NULL_HANDLE), waveStagingBufferSize(0),
-	  uploadFence(VK_NULL_HANDLE),
 	  occlusionQueryPool(VK_NULL_HANDLE), occlusionQueryActive(false), lastOcclusionResult(1) {
 			SPADES_MARK_FUNCTION();
 			SPLog("VulkanWaterRenderer created");
@@ -451,12 +450,6 @@ namespace spades {
 						device, waveStagingBufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
 						VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT));
 				}
-
-				// Create single fence for batched async uploads
-				VkFenceCreateInfo fenceInfo{};
-				fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-				fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
-				vkCreateFence(device->GetDevice(), &fenceInfo, nullptr, &uploadFence);
 			}
 
 			// Build mesh
@@ -527,11 +520,6 @@ namespace spades {
 
 			// Destroy images and buffers
 			// VulkanImage and VulkanBuffer are ref-counted (Handle) and will be freed automatically
-
-			// Destroy fence
-			if (uploadFence != VK_NULL_HANDLE) {
-				vkDestroyFence(device->GetDevice(), uploadFence, nullptr);
-			}
 
 			// Destroy occlusion query pool
 			if (occlusionQueryPool != VK_NULL_HANDLE) {
@@ -634,14 +622,6 @@ namespace spades {
 						device, waveStagingBufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
 						VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT));
 				}
-
-				// Create single fence for batched async uploads if not already created
-				if (uploadFence == VK_NULL_HANDLE) {
-					VkFenceCreateInfo fenceInfo{};
-					fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-					fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
-					vkCreateFence(device->GetDevice(), &fenceInfo, nullptr, &uploadFence);
-				}
 			}
 
 			// Trigger full update of water color texture
@@ -709,12 +689,6 @@ namespace spades {
 						device, waveStagingBufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
 						VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT));
 				}
-
-				// Create single fence for batched async uploads
-				VkFenceCreateInfo fenceInfo{};
-				fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-				fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
-				vkCreateFence(device->GetDevice(), &fenceInfo, nullptr, &uploadFence);
 			}
 		}
 
@@ -808,14 +782,14 @@ namespace spades {
 		cfg.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
 		cfg.frontFace = VK_FRONT_FACE_CLOCKWISE; // Account for negative viewport height (Y-flip)
 		cfg.blendEnable = VK_TRUE;
-		cfg.srcColorBlendFactor = VK_BLEND_FACTOR_ONE;
+		cfg.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
 		cfg.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
 		cfg.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
-		cfg.dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+		cfg.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
 
 		cfg.depthTestEnable = VK_TRUE;
 		cfg.depthWriteEnable = VK_FALSE; // transparent water
-		cfg.depthCompareOp = VK_COMPARE_OP_LESS;
+		cfg.depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
 
 		// Create descriptor resources
 		CreateDescriptorPool();
@@ -1093,54 +1067,29 @@ namespace spades {
 			updateBitmap[(x >> 5) + y * updateBitmapPitch] |= 1UL << (x & 31);
 		}
 
-		void VulkanWaterRenderer::Update(float dt) {
+		void VulkanWaterRenderer::UpdateSimulation(float dt) {
 			SPADES_MARK_FUNCTION();
 
-			// Wait for simulations to complete
+			// Wait for simulations from previous frame to complete
 			for (size_t i = 0; i < waveTanksPlaceholder.size(); i++) {
 				IWaveTank* t = (IWaveTank*)waveTanksPlaceholder[i];
 				t->Join();
 			}
 
-			// Check if we have any uploads to do
-			if (uploadFence == VK_NULL_HANDLE) {
-				// Start wave simulations for next frame
-				for (size_t i = 0; i < waveTanksPlaceholder.size(); i++) {
-					IWaveTank* tank = (IWaveTank*)waveTanksPlaceholder[i];
-					switch (i) {
-						case 0: tank->SetTimeStep(dt); break;
-						case 1: tank->SetTimeStep(dt * 0.15704F / 0.08F); break;
-						case 2: tank->SetTimeStep(dt * 0.02344F / 0.08F); break;
-					}
-					tank->Start();
+			// Start wave simulations for the next frame
+			for (size_t i = 0; i < waveTanksPlaceholder.size(); i++) {
+				IWaveTank* tank = (IWaveTank*)waveTanksPlaceholder[i];
+				switch (i) {
+					case 0: tank->SetTimeStep(dt); break;
+					case 1: tank->SetTimeStep(dt * 0.15704F / 0.08F); break;
+					case 2: tank->SetTimeStep(dt * 0.02344F / 0.08F); break;
 				}
-				return;
+				tank->Start();
 			}
+		}
 
-			// Wait for previous batched upload to complete
-			vkWaitForFences(device->GetDevice(), 1, &uploadFence, VK_TRUE, UINT64_MAX);
-			vkResetFences(device->GetDevice(), 1, &uploadFence);
-
-			// Allocate single command buffer for all uploads
-			VkCommandBufferAllocateInfo allocInfo{};
-			allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-			allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-			allocInfo.commandPool = device->GetCommandPool();
-			allocInfo.commandBufferCount = 1;
-
-			VkCommandBuffer commandBuffer;
-			if (vkAllocateCommandBuffers(device->GetDevice(), &allocInfo, &commandBuffer) != VK_SUCCESS) {
-				SPRaise("Failed to allocate command buffer for water texture update");
-			}
-
-			VkCommandBufferBeginInfo beginInfo{};
-			beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-			beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-			if (vkBeginCommandBuffer(commandBuffer, &beginInfo) != VK_SUCCESS) {
-				SPRaise("Failed to begin command buffer for water texture update");
-			}
-
-			bool hasCommands = false;
+		void VulkanWaterRenderer::UploadWaveTextures(VkCommandBuffer commandBuffer) {
+			SPADES_MARK_FUNCTION();
 
 			// Upload wave data for all layers
 			if (!waveTanksPlaceholder.empty()) {
@@ -1151,8 +1100,8 @@ namespace spades {
 
 				// Transition to TRANSFER_DST_OPTIMAL
 				targetImage->TransitionLayout(commandBuffer, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-					0, VK_ACCESS_TRANSFER_WRITE_BIT,
-					VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
+					VK_ACCESS_SHADER_READ_BIT, VK_ACCESS_TRANSFER_WRITE_BIT,
+					VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
 
 				// Upload each layer using pooled staging buffers
 				for (size_t i = 0; i < waveTanksPlaceholder.size(); i++) {
@@ -1171,7 +1120,6 @@ namespace spades {
 
 				// Generate mipmaps
 				targetImage->GenerateMipmaps(commandBuffer);
-				hasCommands = true;
 			}
 
 			// Update water color texture from map
@@ -1226,11 +1174,11 @@ namespace spades {
 					void* data = staging->Map();
 					memcpy(data, bitmap.data(), bmpSize);
 					staging->Unmap();
-					stagingBuffers.push_back(staging);
+					renderer.QueueBufferForDeletion(staging); // Queue for deferred deletion
 
 					textureImage->TransitionLayout(commandBuffer, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-						0, VK_ACCESS_TRANSFER_WRITE_BIT,
-						VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
+						VK_ACCESS_SHADER_READ_BIT, VK_ACCESS_TRANSFER_WRITE_BIT,
+						VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
 
 					textureImage->CopyFromBuffer(commandBuffer, staging->GetBuffer());
 
@@ -1238,7 +1186,6 @@ namespace spades {
 						VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT,
 						VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
 
-					hasCommands = true;
 				}
 
 				for (size_t i = 0; i < updateBitmap.size(); i++)
@@ -1246,10 +1193,6 @@ namespace spades {
 			} else {
 				// Partial update - upload only changed regions
 				bool hasPartialUpdates = false;
-
-				textureImage->TransitionLayout(commandBuffer, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-					VK_ACCESS_SHADER_READ_BIT, VK_ACCESS_TRANSFER_WRITE_BIT,
-					VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
 
 				for (size_t i = 0; i < updateBitmap.size(); i++) {
 					if (updateBitmap[i] == 0) continue;
@@ -1260,6 +1203,7 @@ namespace spades {
 					uint32_t* pixels = bitmap.data() + x + y * w;
 					bool modified = false;
 					for (int j = 0; j < 32; j++) {
+						if (x + j >= w) continue;
 						uint32_t col = gameMap->GetColor(x + j, y, 63);
 						int r = (uint8_t)(col);
 						int g = (uint8_t)(col >> 8);
@@ -1280,7 +1224,13 @@ namespace spades {
 						void* data = staging->Map();
 						memcpy(data, pixels, 32 * sizeof(uint32_t));
 						staging->Unmap();
-						stagingBuffers.push_back(staging);
+						renderer.QueueBufferForDeletion(staging); // Queue for deferred deletion
+
+						if (!hasPartialUpdates) {
+							textureImage->TransitionLayout(commandBuffer, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+								VK_ACCESS_SHADER_READ_BIT, VK_ACCESS_TRANSFER_WRITE_BIT,
+								VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
+						}
 
 						textureImage->CopyRegionFromBuffer(commandBuffer, staging->GetBuffer(),
 							static_cast<uint32_t>(x), static_cast<uint32_t>(y), 32, 1);
@@ -1294,35 +1244,10 @@ namespace spades {
 					textureImage->TransitionLayout(commandBuffer, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
 						VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT,
 						VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
-					hasCommands = true;
 				}
-			}
-
-			vkEndCommandBuffer(commandBuffer);
-
-			// Submit single batched command buffer
-			if (hasCommands) {
-				VkSubmitInfo submitInfo{};
-				submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-				submitInfo.commandBufferCount = 1;
-				submitInfo.pCommandBuffers = &commandBuffer;
-
-				vkQueueSubmit(device->GetGraphicsQueue(), 1, &submitInfo, uploadFence);
-			}
-
-			vkFreeCommandBuffers(device->GetDevice(), device->GetCommandPool(), 1, &commandBuffer);
-
-			// Start wave simulations for next frame
-			for (size_t i = 0; i < waveTanksPlaceholder.size(); i++) {
-				IWaveTank* tank = (IWaveTank*)waveTanksPlaceholder[i];
-				switch (i) {
-					case 0: tank->SetTimeStep(dt); break;
-					case 1: tank->SetTimeStep(dt * 0.15704F / 0.08F); break;
-					case 2: tank->SetTimeStep(dt * 0.02344F / 0.08F); break;
-				}
-				tank->Start();
 			}
 		}
+
 
 
 	void VulkanWaterRenderer::CreateDescriptorPool() {
