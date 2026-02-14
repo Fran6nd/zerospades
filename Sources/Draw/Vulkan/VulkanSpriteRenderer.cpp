@@ -28,6 +28,7 @@
 #include <Core/Exception.h>
 #include <Core/FileManager.h>
 #include <Core/IStream.h>
+#include <algorithm>
 #include <cstring>
 #include <fstream>
 
@@ -456,6 +457,10 @@ namespace spades {
 
 			// Reset descriptor pool for this frame to free all descriptor sets
 			vkResetDescriptorPool(vkDevice, perFrameDescriptorPools[frameIndex], 0);
+
+			// Sort sprites by image to minimize batch breaks and descriptor set allocations
+			std::sort(sprites.begin(), sprites.end(),
+			          [](const Sprite& a, const Sprite& b) { return a.image < b.image; });
 
 			// Build billboard sprites as quads
 			for (const auto& sprite : sprites) {
