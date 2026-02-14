@@ -118,13 +118,13 @@ namespace spades {
 
 			// Determine shader type from extension
 			VulkanShader::Type type;
-			if (name.find(".vert.spv") != std::string::npos || name.find(".vs") != std::string::npos) {
+			if (name.find(".vert.spv") != std::string::npos || name.find(".vk.vs") != std::string::npos) {
 				type = VulkanShader::VertexShader;
-			} else if (name.find(".frag.spv") != std::string::npos || name.find(".fs") != std::string::npos) {
+			} else if (name.find(".frag.spv") != std::string::npos || name.find(".vk.fs") != std::string::npos) {
 				type = VulkanShader::FragmentShader;
-			} else if (name.find(".geom.spv") != std::string::npos || name.find(".gs") != std::string::npos) {
+			} else if (name.find(".geom.spv") != std::string::npos || name.find(".vk.gs") != std::string::npos) {
 				type = VulkanShader::GeometryShader;
-			} else if (name.find(".comp.spv") != std::string::npos || name.find(".cs") != std::string::npos) {
+			} else if (name.find(".comp.spv") != std::string::npos || name.find(".vk.cs") != std::string::npos) {
 				type = VulkanShader::ComputeShader;
 			} else {
 				SPRaise("Unknown shader type for '%s'", name.c_str());
