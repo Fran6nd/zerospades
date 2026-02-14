@@ -167,7 +167,7 @@ void main() {
 	vec3 sunlight = EvaluateSunLight();
 	vec3 ongoing = normalize(worldPositionFromOrigin);
 	float reflective = dot(wave, ongoing);
-	reflective = clamp(1.0 + reflective, 0.0, 1.0);
+	reflective = clamp(1.0 - reflective, 0.0, 1.0);
 	reflective *= reflective;
 	reflective *= reflective;
 	reflective += 0.03;
