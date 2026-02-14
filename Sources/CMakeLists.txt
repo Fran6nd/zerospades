@@ -183,15 +183,6 @@ if(USE_VULKAN)
 		target_include_directories(OpenSpades PRIVATE ${Vulkan_INCLUDE_DIRS})
 	endif()
 
-	# Link glslang libraries if available
-	if(HAVE_GLSLANG)
-		target_link_libraries(OpenSpades ${GLSLANG_LIBRARIES})
-		if(GLSLANG_INCLUDE_DIR)
-			target_include_directories(OpenSpades PRIVATE ${GLSLANG_INCLUDE_DIR})
-		endif()
-		target_compile_definitions(OpenSpades PRIVATE HAVE_GLSLANG=1)
-	endif()
-
 	# Link spirv-cross if available
 	if(HAVE_SPIRV_CROSS)
 		target_link_libraries(OpenSpades ${SPIRV_CROSS_LIBRARIES})
