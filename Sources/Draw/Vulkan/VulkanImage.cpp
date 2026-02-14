@@ -68,13 +68,31 @@ namespace spades {
 			}
 
 			// Allocate memory
-			VkMemoryRequirements memRequirements;
-			vkGetImageMemoryRequirements(vkDevice, image, &memRequirements);
+			VkImageMemoryRequirementsInfo2 imageReqsInfo{};
+			imageReqsInfo.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_REQUIREMENTS_INFO_2;
+			imageReqsInfo.image = image;
+
+			VkMemoryDedicatedRequirements dedicatedReqs{};
+			dedicatedReqs.sType = VK_STRUCTURE_TYPE_MEMORY_DEDICATED_REQUIREMENTS;
+
+			VkMemoryRequirements2 memReqs2{};
+			memReqs2.sType = VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2;
+			memReqs2.pNext = &dedicatedReqs;
+
+			vkGetImageMemoryRequirements2(vkDevice, &imageReqsInfo, &memReqs2);
+
+			VkMemoryDedicatedAllocateInfo dedicatedAllocInfo{};
+			dedicatedAllocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO;
+			dedicatedAllocInfo.image = image;
 
 			VkMemoryAllocateInfo allocInfo{};
 			allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-			allocInfo.allocationSize = memRequirements.size;
-			allocInfo.memoryTypeIndex = FindMemoryType(memRequirements.memoryTypeBits, properties);
+			allocInfo.allocationSize = memReqs2.memoryRequirements.size;
+			allocInfo.memoryTypeIndex = FindMemoryType(memReqs2.memoryRequirements.memoryTypeBits, properties);
+
+			if (dedicatedReqs.prefersDedicatedAllocation || dedicatedReqs.requiresDedicatedAllocation) {
+				allocInfo.pNext = &dedicatedAllocInfo;
+			}
 
 			result = vkAllocateMemory(vkDevice, &allocInfo, nullptr, &memory);
 			if (result != VK_SUCCESS) {
@@ -131,13 +149,31 @@ namespace spades {
 			}
 
 			// Allocate memory
-			VkMemoryRequirements memRequirements;
-			vkGetImageMemoryRequirements(vkDevice, image, &memRequirements);
+			VkImageMemoryRequirementsInfo2 imageReqsInfo{};
+			imageReqsInfo.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_REQUIREMENTS_INFO_2;
+			imageReqsInfo.image = image;
+
+			VkMemoryDedicatedRequirements dedicatedReqs{};
+			dedicatedReqs.sType = VK_STRUCTURE_TYPE_MEMORY_DEDICATED_REQUIREMENTS;
+
+			VkMemoryRequirements2 memReqs2{};
+			memReqs2.sType = VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2;
+			memReqs2.pNext = &dedicatedReqs;
+
+			vkGetImageMemoryRequirements2(vkDevice, &imageReqsInfo, &memReqs2);
+
+			VkMemoryDedicatedAllocateInfo dedicatedAllocInfo{};
+			dedicatedAllocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO;
+			dedicatedAllocInfo.image = image;
 
 			VkMemoryAllocateInfo allocInfo{};
 			allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-			allocInfo.allocationSize = memRequirements.size;
-			allocInfo.memoryTypeIndex = FindMemoryType(memRequirements.memoryTypeBits, properties);
+			allocInfo.allocationSize = memReqs2.memoryRequirements.size;
+			allocInfo.memoryTypeIndex = FindMemoryType(memReqs2.memoryRequirements.memoryTypeBits, properties);
+
+			if (dedicatedReqs.prefersDedicatedAllocation || dedicatedReqs.requiresDedicatedAllocation) {
+				allocInfo.pNext = &dedicatedAllocInfo;
+			}
 
 			result = vkAllocateMemory(vkDevice, &allocInfo, nullptr, &memory);
 			if (result != VK_SUCCESS) {
