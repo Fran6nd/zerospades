@@ -1,2 +1,2 @@
-Shaders/Vulkan/PostFilters/TemporalAA.vk.vs
-Shaders/Vulkan/PostFilters/TemporalAA.vk.fs
+Shaders/Vulkan/PostFilters/TemporalAA.vk.vs.spv
+Shaders/Vulkan/PostFilters/TemporalAA.vk.fs.spv

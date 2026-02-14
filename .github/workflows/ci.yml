@@ -124,7 +124,7 @@ jobs:
 
       - name: Install Vulkan SDK and dependencies
         run: |
-          brew install molten-vk vulkan-headers
+          brew install molten-vk vulkan-headers glslang
 
       - name: Cache vcpkg and dependencies
         uses: actions/cache@v5
@@ -176,7 +176,7 @@ jobs:
 
       - name: Install Vulkan SDK and dependencies
         run: |
-          brew install molten-vk vulkan-headers
+          brew install molten-vk vulkan-headers glslang
 
       - name: Cache vcpkg and dependencies
         uses: actions/cache@v5

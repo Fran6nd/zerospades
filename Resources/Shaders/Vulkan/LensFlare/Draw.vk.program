@@ -1,2 +1,2 @@
-Shaders/Vulkan/LensFlare/Draw.vk.vs
-Shaders/Vulkan/LensFlare/Draw.vk.fs
+Shaders/Vulkan/LensFlare/Draw.vk.vs.spv
+Shaders/Vulkan/LensFlare/Draw.vk.fs.spv

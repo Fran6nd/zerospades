@@ -1,2 +1,2 @@
-Shaders/Vulkan/PostFilters/AutoExposureApply.vk.vs
-Shaders/Vulkan/PostFilters/AutoExposureApply.vk.fs
+Shaders/Vulkan/PostFilters/AutoExposureApply.vk.vs.spv
+Shaders/Vulkan/PostFilters/AutoExposureApply.vk.fs.spv

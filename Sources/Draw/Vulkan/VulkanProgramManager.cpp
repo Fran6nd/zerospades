@@ -116,6 +116,12 @@ namespace spades {
 
 			SPLog("Loading Vulkan shader '%s'", name.c_str());
 
+			// All shaders must be pre-compiled SPIR-V (.spv files)
+			if (name.find(".spv") == std::string::npos) {
+				SPRaise("Shader '%s' is not a pre-compiled SPIR-V file. "
+				        "All Vulkan shaders must be compiled to .spv at build time.", name.c_str());
+			}
+
 			// Determine shader type from extension
 			VulkanShader::Type type;
 			if (name.find(".vert.spv") != std::string::npos || name.find(".vk.vs") != std::string::npos) {
@@ -132,20 +138,11 @@ namespace spades {
 
 			auto shader = Handle<VulkanShader>::New(device, type, name);
 
-			// Load shader source
+			// Load pre-compiled SPIR-V binary
 			std::string source = FileManager::ReadAllBytes(name.c_str());
-
-			// Check if this is a pre-compiled SPIR-V file
-			if (name.find(".spv") != std::string::npos) {
-				// Load as pre-compiled SPIR-V binary
-				std::vector<uint32_t> spirvCode(source.size() / sizeof(uint32_t));
-				memcpy(spirvCode.data(), source.data(), source.size());
-				shader->LoadSPIRV(spirvCode);
-			} else {
-				// Compile from GLSL source
-				shader->SetSource(source);
-				shader->Compile();
-			}
+			std::vector<uint32_t> spirvCode(source.size() / sizeof(uint32_t));
+			memcpy(spirvCode.data(), source.data(), source.size());
+			shader->LoadSPIRV(spirvCode);
 
 			return shader;
 		}

@@ -1,2 +1,2 @@
-Shaders/Vulkan/PostFilters/BloomDownsample.vk.vs
-Shaders/Vulkan/PostFilters/BloomDownsample.vk.fs
+Shaders/Vulkan/PostFilters/BloomDownsample.vk.vs.spv
+Shaders/Vulkan/PostFilters/BloomDownsample.vk.fs.spv

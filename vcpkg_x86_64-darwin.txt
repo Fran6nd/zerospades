@@ -5,5 +5,4 @@ libogg
 sdl2[vulkan]
 libjpeg-turbo[jpeg8]
 sdl2-image[libjpeg-turbo]
-glslang[opt]
 spirv-cross
