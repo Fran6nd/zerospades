@@ -32,7 +32,7 @@
 
             src = self;
 
-            nativeBuildInputs = with pkgs; [ cmake imagemagick unzip zip file ];
+            nativeBuildInputs = with pkgs; [ cmake imagemagick unzip zip file glslang ];
 
             buildInputs = with pkgs;
               ([

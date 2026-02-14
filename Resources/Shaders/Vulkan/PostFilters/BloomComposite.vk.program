@@ -1,2 +1,2 @@
-Shaders/Vulkan/PostFilters/BloomComposite.vk.vs
-Shaders/Vulkan/PostFilters/BloomComposite.vk.fs
+Shaders/Vulkan/PostFilters/BloomComposite.vk.vs.spv
+Shaders/Vulkan/PostFilters/BloomComposite.vk.fs.spv

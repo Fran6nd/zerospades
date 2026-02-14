@@ -1,2 +1,2 @@
-Shaders/Vulkan/PostFilters/DoFCoCGen.vk.vs
-Shaders/Vulkan/PostFilters/DoFCoCGen.vk.fs
+Shaders/Vulkan/PostFilters/DoFCoCGen.vk.vs.spv
+Shaders/Vulkan/PostFilters/DoFCoCGen.vk.fs.spv
