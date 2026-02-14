@@ -28,6 +28,7 @@
 #include <Core/Exception.h>
 #include <Core/FileManager.h>
 #include <Core/IStream.h>
+#include <algorithm>
 #include <cstring>
 
 namespace spades {
@@ -453,6 +454,10 @@ namespace spades {
 
 			// Reset descriptor pool for this frame
 			vkResetDescriptorPool(vkDevice, perFrameDescriptorPools[frameIndex], 0);
+
+			// Sort sprites by image to minimize batch breaks and descriptor set allocations
+			std::sort(sprites.begin(), sprites.end(),
+			          [](const Sprite& a, const Sprite& b) { return a.image < b.image; });
 
 			const client::SceneDefinition &def = renderer.GetSceneDef();
 
