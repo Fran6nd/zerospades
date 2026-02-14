@@ -83,7 +83,8 @@ namespace spades {
 			void RenderDepthPass(VkCommandBuffer commandBuffer);
 
 			// Water update tick
-			void Update(float dt);
+			void UpdateSimulation(float dt);
+			void UploadWaveTextures(VkCommandBuffer commandBuffer);
 
 			// Mark parts of the water color texture to be updated
 			void MarkUpdate(int x, int y);
@@ -115,9 +116,6 @@ namespace spades {
 			// Staging buffer pool for wave uploads
 			std::vector<Handle<VulkanBuffer>> waveStagingBufferPool;
 			size_t waveStagingBufferSize;
-
-			// Single fence for batched async texture uploads
-			VkFence uploadFence;
 
 			// Occlusion query for skipping water rendering when not visible
 			VkQueryPool occlusionQueryPool;

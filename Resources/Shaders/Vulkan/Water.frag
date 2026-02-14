@@ -198,5 +198,5 @@ void main() {
 	fragColor.xyz = sqrt(fragColor.xyz);
 #endif
 
-	fragColor.w = 1.0;
+	fragColor.w = envelope;
 }
