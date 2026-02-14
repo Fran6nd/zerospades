@@ -1490,9 +1490,9 @@ void VulkanWaterRenderer::UpdateUniformBuffers(uint32_t frameIndex) {
 		// Shaders transform vertices to world space via modelMatrix, then use these
 		// matrices on the world-space position. So we pass PV and V (not PV*M, V*M)
 		// to avoid double-applying the model matrix.
-		waterMatricesData.projectionViewModelMatrix = projectionViewMatrix;
+		waterMatricesData.projectionViewModelMatrix = projectionViewMatrix * modelMatrix;
 		waterMatricesData.modelMatrix = modelMatrix;
-		waterMatricesData.viewModelMatrix = viewMatrix;
+		waterMatricesData.viewModelMatrix = viewMatrix * modelMatrix;
 		waterMatricesData.viewMatrix = viewMatrix;
 		waterMatricesData.viewOriginVector = MakeVector4(sceneDef.viewOrigin.x, sceneDef.viewOrigin.y, sceneDef.viewOrigin.z, 0.0f);
 		waterMatricesData.fogDistance = fogDist;
