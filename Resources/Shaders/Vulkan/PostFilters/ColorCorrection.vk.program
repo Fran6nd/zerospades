@@ -1,2 +1,2 @@
-Shaders/Vulkan/PostFilters/ColorCorrection.vk.vs
-Shaders/Vulkan/PostFilters/ColorCorrection.vk.fs
+Shaders/Vulkan/PostFilters/ColorCorrection.vk.vs.spv
+Shaders/Vulkan/PostFilters/ColorCorrection.vk.fs.spv

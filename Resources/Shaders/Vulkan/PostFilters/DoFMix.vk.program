@@ -1,2 +1,2 @@
-Shaders/Vulkan/PostFilters/DoFMix.vk.vs
-Shaders/Vulkan/PostFilters/DoFMix.vk.fs
+Shaders/Vulkan/PostFilters/DoFMix.vk.vs.spv
+Shaders/Vulkan/PostFilters/DoFMix.vk.fs.spv

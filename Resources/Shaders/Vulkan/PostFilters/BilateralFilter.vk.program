@@ -1,2 +1,2 @@
-Shaders/Vulkan/PostFilters/BilateralFilter.vk.vs
-Shaders/Vulkan/PostFilters/BilateralFilter.vk.fs
+Shaders/Vulkan/PostFilters/BilateralFilter.vk.vs.spv
+Shaders/Vulkan/PostFilters/BilateralFilter.vk.fs.spv

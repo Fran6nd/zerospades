@@ -46,24 +46,14 @@ namespace spades {
 			VkShaderModule shaderModule;
 			Type type;
 			std::string name;
-			std::vector<std::string> sources;
 			std::vector<uint32_t> spirvCode;
 			bool compiled;
-
-			// Convert GLSL to SPIR-V
-			bool CompileGLSLToSPIRV(const std::string& glslSource);
 
 		protected:
 			~VulkanShader();
 
 		public:
 			VulkanShader(Handle<gui::SDLVulkanDevice> device, Type type, const std::string& name = "");
-
-			void AddSource(const std::string& source);
-			void SetSource(const std::string& source);
-
-			// Compile GLSL sources to SPIR-V and create shader module
-			void Compile();
 
 			// Create shader module from pre-compiled SPIR-V
 			void LoadSPIRV(const std::vector<uint32_t>& spirv);
