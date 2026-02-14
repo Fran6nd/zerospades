@@ -190,7 +190,7 @@ void main() {
 		spec *= spec; // ^512
 		spec *= spec; // ^1024
 		spec *= reflective;
-		fragColor.xyz += sunlight * spec * 50.0 * att;
+		fragColor.xyz += sunlight * spec * 1000.0 * att;
 	}
 
 #if !LINEAR_FRAMEBUFFER
