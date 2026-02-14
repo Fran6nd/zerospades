@@ -172,6 +172,11 @@ void main() {
 	reflective *= reflective;
 	reflective += 0.03;
 
+	// fresnel reflection to sky
+	fragColor.xyz = mix(fragColor.xyz,
+		mix(waterPC.skyColor.xyz * reflective * 0.6,
+			waterPC.fogColor.xyz, v_fogDensity), reflective * att);
+
 	// specular reflection
 	if (dot(sunlight, vec3(1.0)) > 0.0001) {
 		vec3 refl = reflect(ongoing, wave);
