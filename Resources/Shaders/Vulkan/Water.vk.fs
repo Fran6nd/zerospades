@@ -145,7 +145,6 @@ void main() {
 	vec2 subCoord = 1.0 - clamp((vec2(0.5) - startPos) / diffPos, 0.0, 1.0);
 	vec2 sampCoord = integralCoord + subCoord * blurDirSign;
 	vec3 waterColor = texture(mainTexture, sampCoord / 512.0).xyz;
-	waterColor *= EvaluateSunLight() + EvaluateAmbientLight(1.0);
 
 	// underwater object color
 	fragColor = texture(screenTexture, scrPos);
