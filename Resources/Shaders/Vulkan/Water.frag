@@ -115,7 +115,7 @@ void main() {
 	// convert to view coord
 	vec3 sampledViewCoord = vec3(mix(waterUBO.fovTan.zw, waterUBO.fovTan.xy, scrPos), 1.0) * -depth;
 	float planeDistance = dot(vec4(sampledViewCoord, 1.0), waterUBO.waterPlane);
- 	if (planeDistance < 0.0) {
+ 	if (planeDistance > 0.0) {
 		// reset!
 		// original pos must be in the water.
 		scrPos = origScrPos;
