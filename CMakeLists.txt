@@ -139,7 +139,7 @@ if(USE_VULKAN)
 		message(STATUS "Vulkan library: ${Vulkan_LIBRARIES}")
 	endif()
 
-	# Find glslang for GLSL to SPIR-V compilation (optional)
+	# Find glslangValidator for build-time GLSL to SPIR-V compilation (required)
 	find_program(GLSLANG_VALIDATOR
 		NAMES glslangValidator
 		HINTS /opt/local/bin /opt/homebrew/bin /usr/local/bin
@@ -149,26 +149,11 @@ if(USE_VULKAN)
 	if(GLSLANG_VALIDATOR)
 		message(STATUS "glslangValidator found: ${GLSLANG_VALIDATOR}")
 	else()
-		message(STATUS "glslangValidator not found - SPIR-V shaders are precompiled")
+		message(FATAL_ERROR "glslangValidator not found - required for Vulkan shader compilation. Install the Vulkan SDK or glslang package.")
 	endif()
 
-	# Find glslang library for runtime GLSL to SPIR-V compilation (optional)
 	# Find spirv-cross for shader reflection (optional)
 	if(USE_VCPKG)
-		# Use vcpkg cmake config for proper static library transitive dependencies.
-		# Brew-installed dylibs target the CI runner's macOS version (14+), which
-		# crashes on older systems. vcpkg builds from source as static libraries
-		# with the correct deployment target.
-		find_package(glslang CONFIG QUIET)
-		if(glslang_FOUND)
-			set(GLSLANG_LIBRARIES glslang::glslang glslang::glslang-default-resource-limits glslang::SPIRV)
-			set(HAVE_GLSLANG TRUE)
-			message(STATUS "glslang library found (vcpkg)")
-		else()
-			set(HAVE_GLSLANG FALSE)
-			message(STATUS "glslang library not found - runtime shader compilation disabled")
-		endif()
-
 		find_package(spirv_cross_core CONFIG QUIET)
 		if(spirv_cross_core_FOUND)
 			set(SPIRV_CROSS_LIBRARIES spirv-cross-core)
@@ -179,24 +164,6 @@ if(USE_VULKAN)
 			message(STATUS "spirv-cross library not found - shader reflection disabled")
 		endif()
 	else()
-		find_library(GLSLANG_LIBRARY NAMES glslang
-			HINTS /opt/local/lib /opt/homebrew/lib /usr/local/lib)
-		find_library(GLSLANG_SPIRV_LIBRARY NAMES SPIRV
-			HINTS /opt/local/lib /opt/homebrew/lib /usr/local/lib)
-		find_library(GLSLANG_RESOURCE_LIMITS_LIBRARY NAMES glslang-default-resource-limits
-			HINTS /opt/local/lib /opt/homebrew/lib /usr/local/lib)
-		find_path(GLSLANG_INCLUDE_DIR NAMES glslang/Public/ShaderLang.h
-			HINTS /opt/local/include /opt/homebrew/include /usr/local/include)
-
-		if(GLSLANG_LIBRARY AND GLSLANG_SPIRV_LIBRARY AND GLSLANG_INCLUDE_DIR)
-			message(STATUS "glslang library found: ${GLSLANG_LIBRARY}")
-			set(GLSLANG_LIBRARIES ${GLSLANG_LIBRARY} ${GLSLANG_SPIRV_LIBRARY} ${GLSLANG_RESOURCE_LIMITS_LIBRARY})
-			set(HAVE_GLSLANG TRUE)
-		else()
-			message(STATUS "glslang library not found - runtime shader compilation disabled")
-			set(HAVE_GLSLANG FALSE)
-		endif()
-
 		find_library(SPIRV_CROSS_LIBRARY NAMES spirv-cross-core
 			HINTS /opt/local/lib /opt/homebrew/lib /usr/local/lib)
 		find_path(SPIRV_CROSS_INCLUDE_DIR NAMES spirv_cross/spirv_cross.hpp
