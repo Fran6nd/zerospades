@@ -32,6 +32,8 @@
 #include <Core/Debug.h>
 #include <Core/Settings.h>
 
+SPADES_SETTING(r_water);
+
 namespace spades {
 	namespace draw {
 		VulkanMapChunk::VulkanMapChunk(VulkanMapRenderer& r, client::GameMap* mp, int cx, int cy, int cz)
@@ -198,6 +200,8 @@ namespace spades {
 				return false;
 			if (z >= 64)
 				return true;
+			if ((int)r_water > 0 && z >= 63)
+				return false;
 
 			// FIXME: variable map size
 			x &= 511;
@@ -211,6 +215,7 @@ namespace spades {
 
 			if (!map)
 				return;
+
 
 			vertices.clear();
 			indices.clear();

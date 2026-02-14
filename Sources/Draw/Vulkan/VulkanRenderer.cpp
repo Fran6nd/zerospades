@@ -834,6 +834,19 @@ namespace spades {
 			SPADES_MARK_FUNCTION();
 			EnsureSceneStarted();
 
+			if (sceneUsedInThisFrame) {
+				// Calculate delta time for animations
+				float dt = (float)(sceneDef.time - lastTime) / 1000.0f;
+				if (dt > 0.1f) dt = 0.1f; // Cap dt to avoid large jumps
+				if (dt < 0.0f) dt = 0.0f; // Handle timer wrap-around
+				if (lastTime == 0) dt = 0.0f; // No animation on the first frame
+
+				// Update water simulation
+				if (waterRenderer) {
+					waterRenderer->UpdateSimulation(dt);
+				}
+			}
+
 			// Reset the fence for this frame slot (waited on in StartScene)
 			vkResetFences(device->GetDevice(), 1, &inFlightFences[currentFrameSlot]);
 
@@ -1059,10 +1072,10 @@ namespace spades {
 			if (sceneUsedInThisFrame) {
 				// Present the image (already rendered in EndScene)
 				VkSemaphore waitSemaphores[] = {renderFinishedSemaphore};
-				device->PresentImage(currentImageIndex, waitSemaphores, 1);
-
-				sceneUsedInThisFrame = false;
-			} else {
+						device->PresentImage(currentImageIndex, waitSemaphores, 1);
+				
+						lastTime = sceneDef.time;
+						sceneUsedInThisFrame = false;			} else {
 				// 2D-only rendering (like loading screen) - need to record and submit command buffer
 
 				// Wait for the previous frame using this semaphore slot
@@ -1202,6 +1215,10 @@ namespace spades {
 			if (result != VK_SUCCESS) {
 				SPLog("Warning: Failed to begin recording command buffer");
 				return;
+			}
+
+			if (waterRenderer) {
+				waterRenderer->UploadWaveTextures(commandBuffer);
 			}
 
 
