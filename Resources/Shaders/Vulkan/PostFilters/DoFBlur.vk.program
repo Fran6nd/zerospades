@@ -1,2 +1,2 @@
-Shaders/Vulkan/PostFilters/DoFBlur.vk.vs
-Shaders/Vulkan/PostFilters/DoFBlur.vk.fs
+Shaders/Vulkan/PostFilters/DoFBlur.vk.vs.spv
+Shaders/Vulkan/PostFilters/DoFBlur.vk.fs.spv
