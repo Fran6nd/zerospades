@@ -44,6 +44,7 @@ namespace spades {
 		class VulkanWaterRenderer;
 		class VulkanFlatMapRenderer;
 		class VulkanShadowMapRenderer;
+		class VulkanMapShadowRenderer;
 		class VulkanFramebufferManager;
 		class VulkanProgramManager;
 		class VulkanModelManager;
@@ -123,6 +124,7 @@ namespace spades {
 			VulkanWaterRenderer* waterRenderer;
 			VulkanFlatMapRenderer* flatMapRenderer;
 			VulkanShadowMapRenderer* shadowMapRenderer;
+			VulkanMapShadowRenderer* mapShadowRenderer;
 			VulkanFramebufferManager* framebufferManager;
 			Handle<VulkanProgramManager> programManager;
 			Handle<VulkanModelManager> modelManager;
@@ -250,6 +252,7 @@ namespace spades {
 			VulkanSpriteRenderer* GetSpriteRenderer() { return spriteRenderer; }
 			VulkanWaterRenderer* GetWaterRenderer() { return waterRenderer; }
 			VulkanShadowMapRenderer* GetShadowMapRenderer() { return shadowMapRenderer; }
+			VulkanMapShadowRenderer* GetMapShadowRenderer() { return mapShadowRenderer; }
 			VulkanFramebufferManager* GetFramebufferManager() { return framebufferManager; }
 			VkPipelineCache GetPipelineCache() const;
 
