@@ -115,6 +115,8 @@ namespace spades {
 
 			void CreatePipelines(VkRenderPass renderPass);
 			void DestroyPipelines();
+
+			void UpdateShadowDescriptor(VulkanImage* shadowImage);
 		};
 	} // namespace draw
 } // namespace spades
