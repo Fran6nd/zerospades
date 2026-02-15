@@ -23,7 +23,7 @@
 layout(location = 0) in vec4 color;
 layout(location = 1) in vec3 normal;
 layout(location = 2) in vec3 customColor;
-layout(location = 3) in float lighting;
+layout(location = 3) in vec3 diffuseShading;
 layout(location = 4) in vec3 fogDensity;
 layout(location = 5) in vec3 inFogColor;
 
@@ -38,8 +38,11 @@ void main() {
 		fragColor.xyz = customColor;
 	}
 
-	// Apply lighting after team color substitution
-	fragColor.xyz *= lighting;
+	// Linearize color (after team color substitution, matching OpenGL)
+	fragColor.xyz *= fragColor.xyz;
+
+	// Apply lighting after linearization
+	fragColor.xyz *= diffuseShading;
 
 	// Apply fog fading
 	fragColor.xyz = mix(fragColor.xyz, inFogColor, fogDensity);
