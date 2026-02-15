@@ -36,7 +36,7 @@ layout(location = 2) in ivec3 normalAttribute;
 layout(location = 0) out vec4 color;
 layout(location = 1) out vec3 normal;
 layout(location = 2) out vec3 customColorOut;
-layout(location = 3) out float lighting;
+layout(location = 3) out vec3 diffuseShading;
 layout(location = 4) out vec3 fogDensityOut;
 layout(location = 5) out vec3 outFogColor;
 
@@ -49,11 +49,20 @@ void main() {
 	// Convert int8 normal to float and normalize
 	vec3 normalFloat = normalize(vec3(normalAttribute));
 
-	// Simple lighting from above
-	vec3 sunDir = normalize(vec3(-1.0, -1.0, -1.0));
-	lighting = max(dot(normalFloat, sunDir), 0.2);
+	// Sun direction matching OpenGL: normalize(vec3(0, -1, -1))
+	vec3 sunDir = normalize(vec3(0.0, -1.0, -1.0));
+	float lambert = max(dot(normalFloat, sunDir), 0.0);
 
-	// Convert color from uint8 [0,255] to float [0,1]
+	// Ambient light matching OpenGL null radiosity formula
+	// fogColor is already linearized in C++ code
+	float hemisphere = 1.0 - normalFloat.z * 0.2;
+	vec3 ambientColor = mix(pushConstants.fogColor, vec3(1.0), 0.5);
+	vec3 ambient = ambientColor * 0.5 * hemisphere;
+
+	// Sunlight
+	vec3 sun = vec3(0.6) * lambert;
+	diffuseShading = ambient + sun;
+
 	// Pass the unlit color to fragment shader so it can detect black voxels
 	vec3 vertexColor = vec3(colorAttribute) / 255.0;
 

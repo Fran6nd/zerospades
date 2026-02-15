@@ -380,6 +380,7 @@ namespace spades {
 			const Matrix4& projectionViewMatrix = renderer.GetProjectionViewMatrix();
 			const auto& eye = renderer.GetSceneDef().viewOrigin;
 			Vector3 fogCol = renderer.GetFogColor();
+			fogCol *= fogCol; // linearize
 			float fogDist = renderer.GetFogDistance();
 
 			for (const auto& param : params) {
@@ -468,6 +469,7 @@ namespace spades {
 			const Matrix4& projectionViewMatrix = renderer.GetProjectionViewMatrix();
 			const auto& eye = renderer.GetSceneDef().viewOrigin;
 			Vector3 fogCol = renderer.GetFogColor();
+			fogCol *= fogCol; // linearize
 			float fogDist = renderer.GetFogDistance();
 
 			// Draw each instance
@@ -642,6 +644,7 @@ namespace spades {
 			const Matrix4& projectionViewMatrix = renderer.GetProjectionViewMatrix();
 			const auto& eye = renderer.GetSceneDef().viewOrigin;
 			Vector3 fogCol = renderer.GetFogColor();
+			fogCol *= fogCol; // linearize
 			float fogDist = renderer.GetFogDistance();
 
 			for (const auto& param : params) {
