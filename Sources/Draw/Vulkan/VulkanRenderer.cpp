@@ -369,9 +369,15 @@ namespace spades {
 
 			// Allocate memory for depth image
 			// Try lazily allocated memory first (optimal for transient attachments),
-			// fall back to device local if not supported
+			// fall back to device local if not supported.
+			// Always use dedicated allocation to avoid MoltenVK placement heap
+			// assertions on Intel GPUs.
 			VkMemoryRequirements memRequirements;
 			vkGetImageMemoryRequirements(device->GetDevice(), depthImage, &memRequirements);
+
+			VkMemoryDedicatedAllocateInfo dedicatedAllocInfo{};
+			dedicatedAllocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO;
+			dedicatedAllocInfo.image = depthImage;
 
 			VkMemoryAllocateInfo allocInfo{};
 			allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
@@ -380,6 +386,7 @@ namespace spades {
 				memRequirements.memoryTypeBits,
 				VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | VK_MEMORY_PROPERTY_LAZILY_ALLOCATED_BIT,
 				VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+			allocInfo.pNext = &dedicatedAllocInfo;
 
 			result = vkAllocateMemory(device->GetDevice(), &allocInfo, nullptr, &depthImageMemory);
 			if (result != VK_SUCCESS) {
