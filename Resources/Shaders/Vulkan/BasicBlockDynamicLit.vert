@@ -55,6 +55,7 @@ void main() {
 
 	// Vertex color
 	vec3 vertexColor = vec3(colorAttribute) / 255.0;
+	vertexColor *= vertexColor; // linearize
 	color = vec4(vertexColor, 1.0);
 
 	// Normal
