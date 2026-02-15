@@ -30,6 +30,7 @@
 #include <Core/Debug.h>
 #include <Core/Exception.h>
 #include <Core/FileManager.h>
+#include <Core/Settings.h>
 #include <Core/IStream.h>
 #include <array>
 #include <map>
@@ -402,6 +403,9 @@ namespace spades {
 					Vector3 customColor;
 					float _pad;
 					Vector3 fogColor;
+					float _pad2;
+					Matrix4 viewMatrix;
+					Vector3 viewOrigin;
 				} pushConstants;
 
 				pushConstants.projectionViewMatrix = mvpMatrix;
@@ -412,8 +416,17 @@ namespace spades {
 				pushConstants._pad = 0.0f;
 				pushConstants.fogColor = fogCol;
 
-				vkCmdPushConstants(commandBuffer, sharedPipeline.pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT,
-				                   0, sizeof(pushConstants), &pushConstants);
+				uint32_t pcSize = 172;
+				VkShaderStageFlags pcStages = VK_SHADER_STAGE_VERTEX_BIT;
+				if (sharedPipeline.physicalLighting) {
+					pushConstants._pad2 = 0.0f;
+					pushConstants.viewMatrix = renderer.GetViewMatrix();
+					pushConstants.viewOrigin = renderer.GetSceneDef().viewOrigin;
+					pcSize = sizeof(pushConstants);
+					pcStages = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+				}
+				vkCmdPushConstants(commandBuffer, sharedPipeline.pipelineLayout, pcStages,
+				                   0, pcSize, &pushConstants);
 
 				vkCmdDrawIndexed(commandBuffer, numIndices, 1, 0, 0, 0);
 			}
@@ -506,6 +519,9 @@ namespace spades {
 					Vector3 customColor;
 					float _pad;
 					Vector3 fogColor;
+					float _pad2;
+					Matrix4 viewMatrix;
+					Vector3 viewOrigin;
 				} pushConstants;
 
 				pushConstants.projectionViewMatrix = mvpMatrix;
@@ -516,8 +532,17 @@ namespace spades {
 				pushConstants._pad = 0.0f;
 				pushConstants.fogColor = fogCol;
 
-				vkCmdPushConstants(commandBuffer, sharedPipeline.pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT,
-				                   0, sizeof(pushConstants), &pushConstants);
+				uint32_t pcSize = 172;
+				VkShaderStageFlags pcStages = VK_SHADER_STAGE_VERTEX_BIT;
+				if (sharedPipeline.physicalLighting) {
+					pushConstants._pad2 = 0.0f;
+					pushConstants.viewMatrix = renderer.GetViewMatrix();
+					pushConstants.viewOrigin = renderer.GetSceneDef().viewOrigin;
+					pcSize = sizeof(pushConstants);
+					pcStages = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+				}
+				vkCmdPushConstants(commandBuffer, sharedPipeline.pipelineLayout, pcStages,
+				                   0, pcSize, &pushConstants);
 
 				vkCmdDrawIndexed(commandBuffer, numIndices, 1, 0, 0, 0);
 			}
@@ -681,6 +706,9 @@ namespace spades {
 					Vector3 customColor;
 					float _pad;
 					Vector3 fogColor;
+					float _pad2;
+					Matrix4 viewMatrix;
+					Vector3 viewOrigin;
 				} pushConstants;
 
 				pushConstants.projectionViewMatrix = mvpMatrix;
@@ -691,8 +719,17 @@ namespace spades {
 				pushConstants._pad = 0.0f;
 				pushConstants.fogColor = fogCol;
 
-				vkCmdPushConstants(commandBuffer, sharedPipeline.pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT,
-				                   0, sizeof(pushConstants), &pushConstants);
+				uint32_t pcSize = 172;
+				VkShaderStageFlags pcStages = VK_SHADER_STAGE_VERTEX_BIT;
+				if (sharedPipeline.physicalLighting) {
+					pushConstants._pad2 = 0.0f;
+					pushConstants.viewMatrix = renderer.GetViewMatrix();
+					pushConstants.viewOrigin = renderer.GetSceneDef().viewOrigin;
+					pcSize = sizeof(pushConstants);
+					pcStages = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+				}
+				vkCmdPushConstants(commandBuffer, sharedPipeline.pipelineLayout, pcStages,
+				                   0, pcSize, &pushConstants);
 
 				vkCmdDrawIndexed(commandBuffer, numIndices, 1, 0, 0, 0);
 			}
@@ -716,6 +753,11 @@ namespace spades {
 
 			sharedPipeline.renderPass = renderPass;
 
+			{
+				SPADES_SETTING(r_physicalLighting);
+				sharedPipeline.physicalLighting = (int)r_physicalLighting != 0;
+			}
+
 			// Load SPIR-V shaders
 			auto LoadSPIRVFile = [](const char* filename) -> std::vector<uint32_t> {
 				std::unique_ptr<IStream> stream = FileManager::OpenForReading(filename);
@@ -728,8 +770,14 @@ namespace spades {
 				return code;
 			};
 
-			std::vector<uint32_t> vertCode = LoadSPIRVFile("Shaders/Vulkan/BasicModelVertexColor.vert.spv");
-			std::vector<uint32_t> fragCode = LoadSPIRVFile("Shaders/Vulkan/BasicModelVertexColor.frag.spv");
+			std::vector<uint32_t> vertCode, fragCode;
+			if (sharedPipeline.physicalLighting) {
+				vertCode = LoadSPIRVFile("Shaders/Vulkan/BasicModelVertexColorPhys.vert.spv");
+				fragCode = LoadSPIRVFile("Shaders/Vulkan/BasicModelVertexColorPhys.frag.spv");
+			} else {
+				vertCode = LoadSPIRVFile("Shaders/Vulkan/BasicModelVertexColor.vert.spv");
+				fragCode = LoadSPIRVFile("Shaders/Vulkan/BasicModelVertexColor.frag.spv");
+			}
 
 			// Create shader modules
 			VkShaderModuleCreateInfo vertShaderModuleInfo{};
@@ -887,11 +935,15 @@ namespace spades {
 
 			// Pipeline layout with push constants and shadow map descriptor set
 			VkPushConstantRange pushConstantRange{};
-			pushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
 			pushConstantRange.offset = 0;
-			// mat4 MVP (64) + mat4 modelMatrix (64) + vec3 modelOrigin + float fogDensity (16) +
-			// vec3 customColor + float pad (16) + vec3 fogColor (12) = 172
-			pushConstantRange.size = 172;
+			if (sharedPipeline.physicalLighting) {
+				// 172 + pad (4) + mat4 viewMatrix (64) + vec3 viewOrigin (12) = 252
+				pushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+				pushConstantRange.size = 252;
+			} else {
+				pushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+				pushConstantRange.size = 172;
+			}
 
 			VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
 			pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;

@@ -45,6 +45,8 @@ namespace spades {
 			VulkanRenderer& renderer;
 			Handle<gui::SDLVulkanDevice> device;
 
+			bool physicalLighting;
+
 			// Shader programs/pipelines
 			VkPipeline depthonlyPipeline;
 			VkPipeline basicPipeline;

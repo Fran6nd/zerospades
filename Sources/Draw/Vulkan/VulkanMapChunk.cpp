@@ -383,28 +383,58 @@ namespace spades {
 			Vector3 fogCol = renderer.renderer.GetFogColor();
 			fogCol *= fogCol; // linearize
 
-			struct {
-				Matrix4 projectionViewMatrix;
-				Vector3 modelOrigin;
-				float fogDistance;
-				Vector3 viewOrigin;
-				float _pad;
-				Vector3 fogColor;
-			} pushConstants;
+			if (renderer.physicalLighting) {
+				struct {
+					Matrix4 projectionViewMatrix;
+					Vector3 modelOrigin;
+					float fogDistance;
+					Vector3 viewOrigin;
+					float _pad;
+					Vector3 fogColor;
+					float _pad2;
+					Matrix4 viewMatrix;
+				} pushConstants;
 
-			pushConstants.projectionViewMatrix = renderer.renderer.GetProjectionViewMatrix();
-			pushConstants.modelOrigin = MakeVector3(
-				(float)(chunkX << SizeBits) + sx,
-				(float)(chunkY << SizeBits) + sy,
-				(float)(chunkZ << SizeBits)
-			);
-			pushConstants.fogDistance = renderer.renderer.GetFogDistance();
-			pushConstants.viewOrigin = eye;
-			pushConstants._pad = 0.0f;
-			pushConstants.fogColor = fogCol;
+				pushConstants.projectionViewMatrix = renderer.renderer.GetProjectionViewMatrix();
+				pushConstants.modelOrigin = MakeVector3(
+					(float)(chunkX << SizeBits) + sx,
+					(float)(chunkY << SizeBits) + sy,
+					(float)(chunkZ << SizeBits)
+				);
+				pushConstants.fogDistance = renderer.renderer.GetFogDistance();
+				pushConstants.viewOrigin = eye;
+				pushConstants._pad = 0.0f;
+				pushConstants.fogColor = fogCol;
+				pushConstants._pad2 = 0.0f;
+				pushConstants.viewMatrix = renderer.renderer.GetViewMatrix();
 
-			vkCmdPushConstants(commandBuffer, renderer.pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT,
-			                   0, sizeof(pushConstants), &pushConstants);
+				vkCmdPushConstants(commandBuffer, renderer.pipelineLayout,
+				                   VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+				                   0, sizeof(pushConstants), &pushConstants);
+			} else {
+				struct {
+					Matrix4 projectionViewMatrix;
+					Vector3 modelOrigin;
+					float fogDistance;
+					Vector3 viewOrigin;
+					float _pad;
+					Vector3 fogColor;
+				} pushConstants;
+
+				pushConstants.projectionViewMatrix = renderer.renderer.GetProjectionViewMatrix();
+				pushConstants.modelOrigin = MakeVector3(
+					(float)(chunkX << SizeBits) + sx,
+					(float)(chunkY << SizeBits) + sy,
+					(float)(chunkZ << SizeBits)
+				);
+				pushConstants.fogDistance = renderer.renderer.GetFogDistance();
+				pushConstants.viewOrigin = eye;
+				pushConstants._pad = 0.0f;
+				pushConstants.fogColor = fogCol;
+
+				vkCmdPushConstants(commandBuffer, renderer.pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT,
+				                   0, sizeof(pushConstants), &pushConstants);
+			}
 
 			// Bind shadow map descriptor set
 			if (renderer.textureDescriptorSet != VK_NULL_HANDLE) {

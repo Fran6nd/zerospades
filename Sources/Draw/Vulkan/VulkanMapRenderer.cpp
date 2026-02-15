@@ -51,10 +51,16 @@ namespace spades {
 		      dlightPipelineLayout(VK_NULL_HANDLE),
 		      descriptorSetLayout(VK_NULL_HANDLE),
 		      descriptorPool(VK_NULL_HANDLE),
-		      textureDescriptorSet(VK_NULL_HANDLE) {
+		      textureDescriptorSet(VK_NULL_HANDLE),
+		      physicalLighting(false) {
 			SPADES_MARK_FUNCTION();
 
-			SPLog("Initializing Vulkan map renderer");
+			{
+				SPADES_SETTING(r_physicalLighting);
+				physicalLighting = (int)r_physicalLighting != 0;
+			}
+
+			SPLog("Initializing Vulkan map renderer (physicalLighting=%d)", (int)physicalLighting);
 
 			int w = map->Width();
 			int h = map->Height();
@@ -474,8 +480,14 @@ namespace spades {
 				return code;
 			};
 
-			std::vector<uint32_t> vertCode = LoadSPIRVFile("Shaders/Vulkan/BasicMap.vert.spv");
-			std::vector<uint32_t> fragCode = LoadSPIRVFile("Shaders/Vulkan/BasicMap.frag.spv");
+			std::vector<uint32_t> vertCode, fragCode;
+			if (physicalLighting) {
+				vertCode = LoadSPIRVFile("Shaders/Vulkan/BasicMapPhys.vert.spv");
+				fragCode = LoadSPIRVFile("Shaders/Vulkan/BasicMapPhys.frag.spv");
+			} else {
+				vertCode = LoadSPIRVFile("Shaders/Vulkan/BasicMap.vert.spv");
+				fragCode = LoadSPIRVFile("Shaders/Vulkan/BasicMap.frag.spv");
+			}
 
 			// Create shader modules
 			VkShaderModuleCreateInfo vertShaderModuleInfo{};
@@ -662,11 +674,15 @@ namespace spades {
 
 			// Pipeline layout with push constants and shadow map descriptor set
 			VkPushConstantRange pushConstantRange{};
-			pushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
 			pushConstantRange.offset = 0;
-			// mat4 (64) + vec3 modelOrigin (12) + float fogDistance (4) +
-			// vec3 viewOrigin (12) + float pad (4) + vec3 fogColor (12) = 108
-			pushConstantRange.size = 108;
+			if (physicalLighting) {
+				// Non-physical: 108 bytes + pad (4) + mat4 viewMatrix (64) = 176
+				pushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+				pushConstantRange.size = 176;
+			} else {
+				pushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+				pushConstantRange.size = 108;
+			}
 
 			VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
 			pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
