@@ -48,14 +48,24 @@ void main() {
 	// Convert int8 normal to float and normalize
 	vec3 normalFloat = normalize(vec3(normalAttribute));
 
-	// Simple lighting from above
+	// Sun direction matching OpenGL: normalize(vec3(0, -1, -1))
 	vec3 sunDir = normalize(vec3(0.0, -1.0, -1.0));
-	float lighting = max(dot(normalFloat, -sunDir), 0.2);
+	float lambert = max(dot(normalFloat, sunDir), 0.0);
 
-	// Convert color from uint8 [0,255] to float [0,1]
+	// Convert color from uint8 [0,255] to float [0,1] and linearize
 	vec3 vertexColor = vec3(colorAttribute) / 255.0;
+	vertexColor *= vertexColor;
 
-	color = vec4(vertexColor * lighting, 1.0);
+	// Ambient light matching OpenGL null radiosity formula
+	// fogColor is already linearized in C++ code
+	float hemisphere = 1.0 - normalFloat.z * 0.2;
+	vec3 ambientColor = mix(pushConstants.fogColor, vec3(1.0), 0.5);
+	vec3 ambient = ambientColor * 0.5 * hemisphere;
+
+	// Sunlight
+	vec3 sun = vec3(0.6) * lambert;
+
+	color = vec4(vertexColor * (ambient + sun), 1.0);
 	normal = normalFloat;
 
 	// Fog density based on horizontal distance (matching SW/GL implementation)
