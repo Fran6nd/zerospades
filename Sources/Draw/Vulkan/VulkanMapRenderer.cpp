@@ -615,7 +615,52 @@ namespace spades {
 			dynamicState.dynamicStateCount = 2;
 			dynamicState.pDynamicStates = dynamicStates;
 
-			// Pipeline layout with push constants (no descriptor sets needed for BasicMap shader)
+			// Create descriptor set layout for shadow map sampler (set 0, binding 0)
+			VkDescriptorSetLayoutBinding shadowSamplerBinding{};
+			shadowSamplerBinding.binding = 0;
+			shadowSamplerBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+			shadowSamplerBinding.descriptorCount = 1;
+			shadowSamplerBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+
+			VkDescriptorSetLayoutCreateInfo descriptorLayoutInfo{};
+			descriptorLayoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+			descriptorLayoutInfo.bindingCount = 1;
+			descriptorLayoutInfo.pBindings = &shadowSamplerBinding;
+
+			result = vkCreateDescriptorSetLayout(vkDevice, &descriptorLayoutInfo, nullptr, &descriptorSetLayout);
+			if (result != VK_SUCCESS) {
+				SPRaise("Failed to create descriptor set layout (error code: %d)", result);
+			}
+
+			// Create descriptor pool
+			VkDescriptorPoolSize poolSize{};
+			poolSize.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+			poolSize.descriptorCount = 1;
+
+			VkDescriptorPoolCreateInfo poolInfo{};
+			poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+			poolInfo.poolSizeCount = 1;
+			poolInfo.pPoolSizes = &poolSize;
+			poolInfo.maxSets = 1;
+
+			result = vkCreateDescriptorPool(vkDevice, &poolInfo, nullptr, &descriptorPool);
+			if (result != VK_SUCCESS) {
+				SPRaise("Failed to create descriptor pool (error code: %d)", result);
+			}
+
+			// Allocate descriptor set
+			VkDescriptorSetAllocateInfo dsAllocInfo{};
+			dsAllocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+			dsAllocInfo.descriptorPool = descriptorPool;
+			dsAllocInfo.descriptorSetCount = 1;
+			dsAllocInfo.pSetLayouts = &descriptorSetLayout;
+
+			result = vkAllocateDescriptorSets(vkDevice, &dsAllocInfo, &textureDescriptorSet);
+			if (result != VK_SUCCESS) {
+				SPRaise("Failed to allocate descriptor set (error code: %d)", result);
+			}
+
+			// Pipeline layout with push constants and shadow map descriptor set
 			VkPushConstantRange pushConstantRange{};
 			pushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
 			pushConstantRange.offset = 0;
@@ -625,8 +670,8 @@ namespace spades {
 
 			VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
 			pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-			pipelineLayoutInfo.setLayoutCount = 0;
-			pipelineLayoutInfo.pSetLayouts = nullptr;
+			pipelineLayoutInfo.setLayoutCount = 1;
+			pipelineLayoutInfo.pSetLayouts = &descriptorSetLayout;
 			pipelineLayoutInfo.pushConstantRangeCount = 1;
 			pipelineLayoutInfo.pPushConstantRanges = &pushConstantRange;
 
@@ -831,6 +876,27 @@ namespace spades {
 				vkDestroyDescriptorPool(vkDevice, descriptorPool, nullptr);
 				descriptorPool = VK_NULL_HANDLE;
 			}
+		}
+
+		void VulkanMapRenderer::UpdateShadowDescriptor(VulkanImage* shadowImage) {
+			if (!shadowImage || textureDescriptorSet == VK_NULL_HANDLE)
+				return;
+
+			VkDescriptorImageInfo imageInfo{};
+			imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+			imageInfo.imageView = shadowImage->GetImageView();
+			imageInfo.sampler = shadowImage->GetSampler();
+
+			VkWriteDescriptorSet descriptorWrite{};
+			descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+			descriptorWrite.dstSet = textureDescriptorSet;
+			descriptorWrite.dstBinding = 0;
+			descriptorWrite.dstArrayElement = 0;
+			descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+			descriptorWrite.descriptorCount = 1;
+			descriptorWrite.pImageInfo = &imageInfo;
+
+			vkUpdateDescriptorSets(device->GetDevice(), 1, &descriptorWrite, 0, nullptr);
 		}
 
 	} // namespace draw

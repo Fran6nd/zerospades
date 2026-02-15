@@ -27,6 +27,7 @@
 #include "VulkanWaterRenderer.h"
 #include "VulkanFlatMapRenderer.h"
 #include "VulkanShadowMapRenderer.h"
+#include "VulkanMapShadowRenderer.h"
 #include "VulkanFramebufferManager.h"
 #include "VulkanImageWrapper.h"
 #include "VulkanImageManager.h"
@@ -82,6 +83,7 @@ namespace spades {
 		waterRenderer(nullptr),
 		flatMapRenderer(nullptr),
 		shadowMapRenderer(nullptr),
+		mapShadowRenderer(nullptr),
 		framebufferManager(nullptr),
 		programManager(nullptr),
 		imageManager(nullptr),
@@ -181,6 +183,8 @@ namespace spades {
 			waterRenderer = nullptr;
 			delete shadowMapRenderer;
 			shadowMapRenderer = nullptr;
+			delete mapShadowRenderer;
+			mapShadowRenderer = nullptr;
 			delete framebufferManager;
 			framebufferManager = nullptr;
 			programManager = nullptr;
@@ -694,17 +698,30 @@ namespace spades {
 				map->AddListener(this);
 			}
 
+			// Initialize map shadow renderer (heightmap shadow) BEFORE map renderer
+			if (map) {
+				delete mapShadowRenderer;
+				mapShadowRenderer = new VulkanMapShadowRenderer(*this, map);
+			} else {
+				delete mapShadowRenderer;
+				mapShadowRenderer = nullptr;
+			}
+
 			// Initialize map renderer
 			if (map) {
 				delete mapRenderer;
 				mapRenderer = new VulkanMapRenderer(map, *this);
 				mapRenderer->CreatePipelines(framebufferManager->GetRenderPass()); // Use offscreen render pass for 3D rendering
+				// Link shadow texture to map renderer
+				if (mapShadowRenderer) {
+					mapRenderer->UpdateShadowDescriptor(mapShadowRenderer->GetShadowImage());
+				}
 			} else {
 				delete mapRenderer;
 				mapRenderer = nullptr;
 			}
 
-			// Initialize shadow map renderer
+			// Initialize shadow map renderer (cascaded depth maps for fog)
 			if (map) {
 				delete shadowMapRenderer;
 				shadowMapRenderer = new VulkanShadowMapRenderer(*this);
@@ -1158,6 +1175,8 @@ namespace spades {
 			SPADES_MARK_FUNCTION();
 			if (mapRenderer)
 				mapRenderer->GameMapChanged(x, y, z, map);
+			if (mapShadowRenderer)
+				mapShadowRenderer->GameMapChanged(x, y, z, map);
 			if (flatMapRenderer)
 				flatMapRenderer->GameMapChanged(x, y, z, *map);
 			if (waterRenderer)
@@ -1249,6 +1268,11 @@ namespace spades {
 				0, nullptr,
 				0, nullptr
 			);
+		}
+
+		// Update map shadow heightmap texture (incremental updates from block changes)
+		if (sceneUsedInThisFrame && mapShadowRenderer) {
+			mapShadowRenderer->Update(commandBuffer);
 		}
 
 		// Render shadow maps BEFORE starting main render pass (shadow maps use their own render passes)

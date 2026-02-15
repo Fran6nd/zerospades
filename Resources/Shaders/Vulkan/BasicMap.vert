@@ -34,10 +34,11 @@ layout(location = 1) in uvec2 aoCoordAttribute;
 layout(location = 2) in uvec3 colorAttribute;  // colorRed, colorGreen, colorBlue
 layout(location = 3) in ivec3 normalAttribute;
 
-layout(location = 0) out vec4 color;
-layout(location = 1) out vec3 normal;
+layout(location = 0) out vec4 color;          // xyz = linearized vertex color, w = sun lambert
+layout(location = 1) out vec3 ambientLight;    // ambient lighting component
 layout(location = 2) out vec3 fogDensity;
 layout(location = 3) out vec3 outFogColor;
+layout(location = 4) out vec3 shadowCoord;     // shadow map coordinates
 
 void main() {
 	// Convert uint8 position to float
@@ -62,11 +63,16 @@ void main() {
 	vec3 ambientColor = mix(pushConstants.fogColor, vec3(1.0), 0.5);
 	vec3 ambient = ambientColor * 0.5 * hemisphere;
 
-	// Sunlight
-	vec3 sun = vec3(0.6) * lambert;
+	// Pass vertex color (xyz) and sun lambert (w) to fragment shader
+	color = vec4(vertexColor, lambert);
+	ambientLight = ambient;
 
-	color = vec4(vertexColor * (ambient + sun), 1.0);
-	normal = normalFloat;
+	// Shadow coordinate matching OpenGL Map.vs: PrepareForMapShadow
+	// mapShadowCoord.y -= mapShadowCoord.z (diagonal sun projection)
+	// mapShadowCoord.z /= 255.0 (normalize height)
+	// mapShadowCoord.xy /= 512.0 (normalize to texture coords)
+	vec3 wPos = worldPos.xyz;
+	shadowCoord = vec3(wPos.x / 512.0, (wPos.y - wPos.z) / 512.0, wPos.z / 255.0);
 
 	// Fog density based on horizontal distance (matching SW/GL implementation)
 	vec2 horzRelativePos = worldPos.xy - pushConstants.viewOrigin.xy;

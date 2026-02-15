@@ -406,6 +406,13 @@ namespace spades {
 			vkCmdPushConstants(commandBuffer, renderer.pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT,
 			                   0, sizeof(pushConstants), &pushConstants);
 
+			// Bind shadow map descriptor set
+			if (renderer.textureDescriptorSet != VK_NULL_HANDLE) {
+				vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+				                        renderer.pipelineLayout, 0, 1,
+				                        &renderer.textureDescriptorSet, 0, nullptr);
+			}
+
 			// Bind vertex buffer
 			VkBuffer vb = vertexBuffer->GetBuffer();
 			VkDeviceSize offsets[] = {0};
