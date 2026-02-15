@@ -67,19 +67,12 @@ namespace spades {
 				SPRaise("Failed to create Vulkan image (error code: %d)", result);
 			}
 
-			// Allocate memory
-			VkImageMemoryRequirementsInfo2 imageReqsInfo{};
-			imageReqsInfo.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_REQUIREMENTS_INFO_2;
-			imageReqsInfo.image = image;
-
-			VkMemoryDedicatedRequirements dedicatedReqs{};
-			dedicatedReqs.sType = VK_STRUCTURE_TYPE_MEMORY_DEDICATED_REQUIREMENTS;
-
-			VkMemoryRequirements2 memReqs2{};
-			memReqs2.sType = VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2;
-			memReqs2.pNext = &dedicatedReqs;
-
-			vkGetImageMemoryRequirements2(vkDevice, &imageReqsInfo, &memReqs2);
+			// Allocate memory using dedicated allocation.
+			// Always use dedicated allocation for images to avoid MoltenVK's
+			// MTLHeap-based allocation path, which triggers placement heap assertions
+			// on Intel GPUs that don't support this Metal feature.
+			VkMemoryRequirements memRequirements;
+			vkGetImageMemoryRequirements(vkDevice, image, &memRequirements);
 
 			VkMemoryDedicatedAllocateInfo dedicatedAllocInfo{};
 			dedicatedAllocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO;
@@ -87,12 +80,9 @@ namespace spades {
 
 			VkMemoryAllocateInfo allocInfo{};
 			allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-			allocInfo.allocationSize = memReqs2.memoryRequirements.size;
-			allocInfo.memoryTypeIndex = FindMemoryType(memReqs2.memoryRequirements.memoryTypeBits, properties);
-
-			if (dedicatedReqs.prefersDedicatedAllocation || dedicatedReqs.requiresDedicatedAllocation) {
-				allocInfo.pNext = &dedicatedAllocInfo;
-			}
+			allocInfo.allocationSize = memRequirements.size;
+			allocInfo.memoryTypeIndex = FindMemoryType(memRequirements.memoryTypeBits, properties);
+			allocInfo.pNext = &dedicatedAllocInfo;
 
 			result = vkAllocateMemory(vkDevice, &allocInfo, nullptr, &memory);
 			if (result != VK_SUCCESS) {
@@ -148,19 +138,9 @@ namespace spades {
 				SPRaise("Failed to create Vulkan array image (error code: %d)", result);
 			}
 
-			// Allocate memory
-			VkImageMemoryRequirementsInfo2 imageReqsInfo{};
-			imageReqsInfo.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_REQUIREMENTS_INFO_2;
-			imageReqsInfo.image = image;
-
-			VkMemoryDedicatedRequirements dedicatedReqs{};
-			dedicatedReqs.sType = VK_STRUCTURE_TYPE_MEMORY_DEDICATED_REQUIREMENTS;
-
-			VkMemoryRequirements2 memReqs2{};
-			memReqs2.sType = VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2;
-			memReqs2.pNext = &dedicatedReqs;
-
-			vkGetImageMemoryRequirements2(vkDevice, &imageReqsInfo, &memReqs2);
+			// Allocate memory (always dedicated, see first constructor for rationale)
+			VkMemoryRequirements memRequirements;
+			vkGetImageMemoryRequirements(vkDevice, image, &memRequirements);
 
 			VkMemoryDedicatedAllocateInfo dedicatedAllocInfo{};
 			dedicatedAllocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO;
@@ -168,12 +148,9 @@ namespace spades {
 
 			VkMemoryAllocateInfo allocInfo{};
 			allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-			allocInfo.allocationSize = memReqs2.memoryRequirements.size;
-			allocInfo.memoryTypeIndex = FindMemoryType(memReqs2.memoryRequirements.memoryTypeBits, properties);
-
-			if (dedicatedReqs.prefersDedicatedAllocation || dedicatedReqs.requiresDedicatedAllocation) {
-				allocInfo.pNext = &dedicatedAllocInfo;
-			}
+			allocInfo.allocationSize = memRequirements.size;
+			allocInfo.memoryTypeIndex = FindMemoryType(memRequirements.memoryTypeBits, properties);
+			allocInfo.pNext = &dedicatedAllocInfo;
 
 			result = vkAllocateMemory(vkDevice, &allocInfo, nullptr, &memory);
 			if (result != VK_SUCCESS) {
