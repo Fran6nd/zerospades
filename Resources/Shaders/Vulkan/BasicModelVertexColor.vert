@@ -22,6 +22,7 @@
 
 layout(push_constant) uniform PushConstants {
 	mat4 projectionViewMatrix;
+	mat4 modelMatrix;
 	vec3 modelOrigin;
 	float fogDensity;
 	vec3 customColor;
@@ -33,18 +34,21 @@ layout(location = 0) in uvec3 positionAttribute;
 layout(location = 1) in uvec3 colorAttribute;  // RGB color stored in u,v as (R, G, B)
 layout(location = 2) in ivec3 normalAttribute;
 
-layout(location = 0) out vec4 color;
-layout(location = 1) out vec3 normal;
+layout(location = 0) out vec4 color;           // xyz = vertexColor, w = sun lambert
+layout(location = 1) out vec3 ambientLight;    // ambient lighting component
 layout(location = 2) out vec3 customColorOut;
-layout(location = 3) out vec3 diffuseShading;
+layout(location = 3) out vec3 shadowCoord;     // shadow map coordinates
 layout(location = 4) out vec3 fogDensityOut;
 layout(location = 5) out vec3 outFogColor;
 
 void main() {
 	// Convert uint8 position to float
 	vec3 position = vec3(positionAttribute);
-	vec4 worldPos = vec4(position + pushConstants.modelOrigin, 1.0);
-	gl_Position = pushConstants.projectionViewMatrix * worldPos;
+	vec4 localPos = vec4(position + pushConstants.modelOrigin, 1.0);
+	gl_Position = pushConstants.projectionViewMatrix * localPos;
+
+	// World position via model matrix
+	vec3 worldPos = (pushConstants.modelMatrix * localPos).xyz;
 
 	// Convert int8 normal to float and normalize
 	vec3 normalFloat = normalize(vec3(normalAttribute));
@@ -57,18 +61,15 @@ void main() {
 	// fogColor is already linearized in C++ code
 	float hemisphere = 1.0 - normalFloat.z * 0.2;
 	vec3 ambientColor = mix(pushConstants.fogColor, vec3(1.0), 0.5);
-	vec3 ambient = ambientColor * 0.5 * hemisphere;
+	ambientLight = ambientColor * 0.5 * hemisphere;
 
-	// Sunlight
-	vec3 sun = vec3(0.6) * lambert;
-	diffuseShading = ambient + sun;
-
-	// Pass the unlit color to fragment shader so it can detect black voxels
+	// Pass vertex color + lambert to fragment shader
 	vec3 vertexColor = vec3(colorAttribute) / 255.0;
-
-	color = vec4(vertexColor, 1.0);
-	normal = normalFloat;
+	color = vec4(vertexColor, lambert);
 	customColorOut = pushConstants.customColor;
+
+	// Shadow map coordinates (sun projects diagonally along y-z)
+	shadowCoord = vec3(worldPos.x / 512.0, (worldPos.y - worldPos.z) / 512.0, worldPos.z / 255.0);
 
 	// Fog density pre-computed on CPU from model world position
 	fogDensityOut = vec3(pushConstants.fogDensity);

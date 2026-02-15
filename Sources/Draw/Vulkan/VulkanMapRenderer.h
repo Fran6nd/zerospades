@@ -117,6 +117,9 @@ namespace spades {
 			void DestroyPipelines();
 
 			void UpdateShadowDescriptor(VulkanImage* shadowImage);
+
+			VkDescriptorSet GetShadowDescriptorSet() const { return textureDescriptorSet; }
+			VkDescriptorSetLayout GetShadowDescriptorSetLayout() const { return descriptorSetLayout; }
 		};
 	} // namespace draw
 } // namespace spades
