@@ -61,6 +61,8 @@ void main() {
 	// Replace black voxels with custom color (team color)
 	if (dot(vertexColor, vec3(1.0)) < 0.0001)
 		vertexColor = pc.customColor;
+	// Linearize color (after team color substitution, matching OpenGL)
+	vertexColor *= vertexColor;
 	color = vec4(vertexColor, 1.0);
 
 	// Light position computation

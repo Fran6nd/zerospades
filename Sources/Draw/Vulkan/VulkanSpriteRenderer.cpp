@@ -413,7 +413,8 @@ namespace spades {
 			} pushConstants;
 
 			const Matrix4& projViewMatrix = renderer.GetProjectionViewMatrix();
-			const Vector3& fogCol = renderer.GetFogColor();
+			Vector3 fogCol = renderer.GetFogColor();
+			fogCol *= fogCol; // linearize
 			float fogDist = renderer.GetFogDistance();
 			const client::SceneDefinition& sceneDef = renderer.GetSceneDef();
 
