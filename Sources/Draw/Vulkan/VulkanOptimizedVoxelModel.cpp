@@ -20,6 +20,7 @@
 
 #include "VulkanOptimizedVoxelModel.h"
 #include "VulkanRenderer.h"
+#include "VulkanMapRenderer.h"
 #include "VulkanBuffer.h"
 #include "VulkanImage.h"
 #include "VulkanImageWrapper.h"
@@ -395,6 +396,7 @@ namespace spades {
 
 				struct {
 					Matrix4 projectionViewMatrix;
+					Matrix4 modelMatrix;
 					Vector3 modelOrigin;
 					float fogDensity;
 					Vector3 customColor;
@@ -403,6 +405,7 @@ namespace spades {
 				} pushConstants;
 
 				pushConstants.projectionViewMatrix = mvpMatrix;
+				pushConstants.modelMatrix = param.matrix;
 				pushConstants.modelOrigin = origin;
 				pushConstants.fogDensity = fogDensity;
 				pushConstants.customColor = param.customColor;
@@ -457,6 +460,17 @@ namespace spades {
 			// Bind pipeline
 			vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, sharedPipeline.pipeline);
 
+			// Bind shadow map descriptor set from map renderer
+			VulkanMapRenderer* mapRenderer = renderer.GetMapRenderer();
+			if (mapRenderer) {
+				VkDescriptorSet shadowDs = mapRenderer->GetShadowDescriptorSet();
+				if (shadowDs != VK_NULL_HANDLE) {
+					vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+					                        sharedPipeline.pipelineLayout, 0, 1,
+					                        &shadowDs, 0, nullptr);
+				}
+			}
+
 			// Bind vertex buffer
 			VkBuffer vb = vertexBuffer->GetBuffer();
 			VkDeviceSize offsets[] = {0};
@@ -486,6 +500,7 @@ namespace spades {
 
 				struct {
 					Matrix4 projectionViewMatrix;
+					Matrix4 modelMatrix;
 					Vector3 modelOrigin;
 					float fogDensity;
 					Vector3 customColor;
@@ -494,6 +509,7 @@ namespace spades {
 				} pushConstants;
 
 				pushConstants.projectionViewMatrix = mvpMatrix;
+				pushConstants.modelMatrix = param.matrix;
 				pushConstants.modelOrigin = origin;
 				pushConstants.fogDensity = fogDensity;
 				pushConstants.customColor = param.customColor;
@@ -659,6 +675,7 @@ namespace spades {
 
 				struct {
 					Matrix4 projectionViewMatrix;
+					Matrix4 modelMatrix;
 					Vector3 modelOrigin;
 					float fogDensity;
 					Vector3 customColor;
@@ -667,6 +684,7 @@ namespace spades {
 				} pushConstants;
 
 				pushConstants.projectionViewMatrix = mvpMatrix;
+				pushConstants.modelMatrix = param.matrix;
 				pushConstants.modelOrigin = origin;
 				pushConstants.fogDensity = fogDensity;
 				pushConstants.customColor = param.customColor;
@@ -848,18 +866,37 @@ namespace spades {
 			dynamicState.dynamicStateCount = 2;
 			dynamicState.pDynamicStates = dynamicStates;
 
-			// Pipeline layout with push constants (no descriptor sets for vertex color shader)
+			// Create descriptor set layout for shadow map sampler (set 0, binding 0)
+			{
+				VkDescriptorSetLayoutBinding shadowSamplerBinding{};
+				shadowSamplerBinding.binding = 0;
+				shadowSamplerBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+				shadowSamplerBinding.descriptorCount = 1;
+				shadowSamplerBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+
+				VkDescriptorSetLayoutCreateInfo descriptorLayoutInfo{};
+				descriptorLayoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+				descriptorLayoutInfo.bindingCount = 1;
+				descriptorLayoutInfo.pBindings = &shadowSamplerBinding;
+
+				result = vkCreateDescriptorSetLayout(vkDevice, &descriptorLayoutInfo, nullptr, &sharedPipeline.descriptorSetLayout);
+				if (result != VK_SUCCESS) {
+					SPRaise("Failed to create model descriptor set layout (error code: %d)", result);
+				}
+			}
+
+			// Pipeline layout with push constants and shadow map descriptor set
 			VkPushConstantRange pushConstantRange{};
 			pushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
 			pushConstantRange.offset = 0;
-			// mat4 (64) + vec3 modelOrigin + float fogDensity (16) +
-			// vec3 customColor + float pad (16) + vec3 fogColor (12) = 108
-			pushConstantRange.size = 108;
+			// mat4 MVP (64) + mat4 modelMatrix (64) + vec3 modelOrigin + float fogDensity (16) +
+			// vec3 customColor + float pad (16) + vec3 fogColor (12) = 172
+			pushConstantRange.size = 172;
 
 			VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
 			pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-			pipelineLayoutInfo.setLayoutCount = 0;
-			pipelineLayoutInfo.pSetLayouts = nullptr;
+			pipelineLayoutInfo.setLayoutCount = 1;
+			pipelineLayoutInfo.pSetLayouts = &sharedPipeline.descriptorSetLayout;
 			pipelineLayoutInfo.pushConstantRangeCount = 1;
 			pipelineLayoutInfo.pPushConstantRanges = &pushConstantRange;
 

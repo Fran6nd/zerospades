@@ -20,29 +20,37 @@
 
 #version 450
 
-layout(location = 0) in vec4 color;
-layout(location = 1) in vec3 normal;
+layout(set = 0, binding = 0) uniform sampler2D mapShadowTexture;
+
+layout(location = 0) in vec4 color;           // xyz = vertexColor, w = sun lambert
+layout(location = 1) in vec3 ambientLight;
 layout(location = 2) in vec3 customColor;
-layout(location = 3) in vec3 diffuseShading;
+layout(location = 3) in vec3 shadowCoord;
 layout(location = 4) in vec3 fogDensity;
 layout(location = 5) in vec3 inFogColor;
 
 layout(location = 0) out vec4 fragColor;
 
 void main() {
-	fragColor = color;
+	// Evaluate map shadow (matching OpenGL Map.fs: EvaluateMapShadow)
+	float shadowVal = texture(mapShadowTexture, shadowCoord.xy).w;
+	float shadow = (shadowVal < shadowCoord.z - 0.0001) ? 0.0 : 1.0;
+
+	vec3 vertexColor = color.xyz;
 
 	// If the vertex color is very dark/black (near zero), replace with customColor
 	// This allows team colors to override black voxels in player/weapon models
-	if (dot(fragColor.xyz, vec3(1.0)) < 0.0001) {
-		fragColor.xyz = customColor;
+	if (dot(vertexColor, vec3(1.0)) < 0.0001) {
+		vertexColor = customColor;
 	}
 
 	// Linearize color (after team color substitution, matching OpenGL)
-	fragColor.xyz *= fragColor.xyz;
+	vertexColor *= vertexColor;
 
-	// Apply lighting after linearization
-	fragColor.xyz *= diffuseShading;
+	// Combine lighting: ambient + sun * shadow
+	float sunLambert = color.w;
+	vec3 sun = vec3(0.6) * sunLambert * shadow;
+	fragColor = vec4(vertexColor * (ambientLight + sun), 1.0);
 
 	// Apply fog fading
 	fragColor.xyz = mix(fragColor.xyz, inFogColor, fogDensity);
