@@ -406,6 +406,11 @@ namespace spades {
 			} else {
 				SPLog("Warning: Sample rate shading not supported on this device");
 			}
+			if (supportedFeatures.fillModeNonSolid) {
+				deviceFeatures.fillModeNonSolid = VK_TRUE;
+			} else {
+				SPLog("Warning: fillModeNonSolid not supported - outlines will be disabled");
+			}
 
 			VkDeviceCreateInfo createInfo{};
 			createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
