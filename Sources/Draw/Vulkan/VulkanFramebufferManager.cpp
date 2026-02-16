@@ -42,7 +42,9 @@ namespace spades {
 		      renderFramebuffer(VK_NULL_HANDLE),
 		      mirrorFramebuffer(VK_NULL_HANDLE),
 		      renderPass(VK_NULL_HANDLE),
-		      waterRenderPass(VK_NULL_HANDLE) {
+		      waterRenderPass(VK_NULL_HANDLE),
+		      spriteRenderPass(VK_NULL_HANDLE),
+		      spriteFramebuffer(VK_NULL_HANDLE) {
 			SPADES_MARK_FUNCTION();
 
 			SPLog("Initializing Vulkan framebuffer manager");
@@ -124,6 +126,27 @@ namespace spades {
 				SPRaise("Failed to create Vulkan render framebuffer");
 			}
 			SPLog("Main render framebuffer created");
+
+			// Create sprite framebuffer (color-only, for soft sprite rendering)
+			{
+				VkImageView spriteAttachments[] = {
+				    renderColorImage->GetImageView()
+				};
+
+				VkFramebufferCreateInfo spriteFbInfo = {};
+				spriteFbInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+				spriteFbInfo.renderPass = spriteRenderPass;
+				spriteFbInfo.attachmentCount = 1;
+				spriteFbInfo.pAttachments = spriteAttachments;
+				spriteFbInfo.width = renderWidth;
+				spriteFbInfo.height = renderHeight;
+				spriteFbInfo.layers = 1;
+
+				if (vkCreateFramebuffer(vkDevice, &spriteFbInfo, nullptr, &spriteFramebuffer) != VK_SUCCESS) {
+					SPRaise("Failed to create Vulkan sprite framebuffer");
+				}
+				SPLog("Sprite framebuffer created");
+			}
 
 			// Create mirror framebuffer for water reflections
 			// Always create these - water shader needs them for reflections at all quality levels
@@ -224,12 +247,20 @@ namespace spades {
 				vkDestroyFramebuffer(vkDevice, mirrorFramebuffer, nullptr);
 			}
 
+			if (spriteFramebuffer != VK_NULL_HANDLE) {
+				vkDestroyFramebuffer(vkDevice, spriteFramebuffer, nullptr);
+			}
+
 			if (renderPass != VK_NULL_HANDLE) {
 				vkDestroyRenderPass(vkDevice, renderPass, nullptr);
 			}
 
 			if (waterRenderPass != VK_NULL_HANDLE) {
 				vkDestroyRenderPass(vkDevice, waterRenderPass, nullptr);
+			}
+
+			if (spriteRenderPass != VK_NULL_HANDLE) {
+				vkDestroyRenderPass(vkDevice, spriteRenderPass, nullptr);
 			}
 
 			buffers.clear();
@@ -315,6 +346,38 @@ namespace spades {
 
 			if (vkCreateRenderPass(vkDevice, &waterRenderPassInfo, nullptr, &waterRenderPass) != VK_SUCCESS) {
 				SPRaise("Failed to create Vulkan water render pass");
+			}
+
+			// Create sprite render pass (color-only, no depth attachment) for soft sprite rendering
+			VkAttachmentDescription spriteColorAttachment = colorAttachment;
+			spriteColorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+			spriteColorAttachment.initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+			VkSubpassDescription spriteSubpass = {};
+			spriteSubpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+			spriteSubpass.colorAttachmentCount = 1;
+			spriteSubpass.pColorAttachments = &colorAttachmentRef;
+			spriteSubpass.pDepthStencilAttachment = nullptr;
+
+			VkSubpassDependency spriteDependency = {};
+			spriteDependency.srcSubpass = VK_SUBPASS_EXTERNAL;
+			spriteDependency.dstSubpass = 0;
+			spriteDependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+			spriteDependency.srcAccessMask = 0;
+			spriteDependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+			spriteDependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+
+			VkRenderPassCreateInfo spriteRenderPassInfo = {};
+			spriteRenderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+			spriteRenderPassInfo.attachmentCount = 1;
+			spriteRenderPassInfo.pAttachments = &spriteColorAttachment;
+			spriteRenderPassInfo.subpassCount = 1;
+			spriteRenderPassInfo.pSubpasses = &spriteSubpass;
+			spriteRenderPassInfo.dependencyCount = 1;
+			spriteRenderPassInfo.pDependencies = &spriteDependency;
+
+			if (vkCreateRenderPass(vkDevice, &spriteRenderPassInfo, nullptr, &spriteRenderPass) != VK_SUCCESS) {
+				SPRaise("Failed to create Vulkan sprite render pass");
 			}
 		}
 

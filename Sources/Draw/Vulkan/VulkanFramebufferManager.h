@@ -103,6 +103,8 @@ namespace spades {
 			// Render pass used for all framebuffers
 			VkRenderPass renderPass;
 			VkRenderPass waterRenderPass; // Render pass with LOAD_OP for water rendering
+			VkRenderPass spriteRenderPass; // Color-only render pass for soft sprite rendering
+			VkFramebuffer spriteFramebuffer;
 
 			std::vector<Buffer> buffers;
 
@@ -125,7 +127,9 @@ namespace spades {
 			VkFormat GetMainColorFormat() { return fbColorFormat; }
 			VkRenderPass GetRenderPass() { return renderPass; }
 			VkRenderPass GetWaterRenderPass() { return waterRenderPass; }
+			VkRenderPass GetSpriteRenderPass() { return spriteRenderPass; }
 			VkFramebuffer GetRenderFramebuffer() { return renderFramebuffer; }
+			VkFramebuffer GetSpriteFramebuffer() { return spriteFramebuffer; }
 
 			/**
 			 * Creates BufferHandle with a given size and format.
