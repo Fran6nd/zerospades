@@ -290,6 +290,11 @@ namespace spades {
 		void VulkanMapRenderer::RenderOutlinePass(VkCommandBuffer commandBuffer) {
 			SPADES_MARK_FUNCTION();
 
+			if (outlinesPipeline == VK_NULL_HANDLE)
+				return;
+
+			vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, outlinesPipeline);
+
 			Vector3 viewOrigin = renderer.GetSceneDef().viewOrigin;
 			IntVector3 c = viewOrigin.Floor();
 			c.x >>= VulkanMapChunk::SizeBits;
@@ -728,6 +733,84 @@ namespace spades {
 			// No descriptor sets needed for BasicMap shader - it renders voxels with vertex colors
 
 			SPLog("Map renderer pipeline created successfully");
+
+			// --- Create outline pipeline ---
+			{
+				std::vector<uint32_t> olVertCode = LoadSPIRVFile("Shaders/Vulkan/MapOutline.vert.spv");
+				std::vector<uint32_t> olFragCode = LoadSPIRVFile("Shaders/Vulkan/Outline.frag.spv");
+
+				VkShaderModuleCreateInfo olVertInfo{};
+				olVertInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+				olVertInfo.codeSize = olVertCode.size() * sizeof(uint32_t);
+				olVertInfo.pCode = olVertCode.data();
+				VkShaderModule olVertModule;
+				result = vkCreateShaderModule(vkDevice, &olVertInfo, nullptr, &olVertModule);
+				if (result != VK_SUCCESS) {
+					SPLog("Warning: Failed to create outline vertex shader module");
+				} else {
+					VkShaderModuleCreateInfo olFragInfo{};
+					olFragInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+					olFragInfo.codeSize = olFragCode.size() * sizeof(uint32_t);
+					olFragInfo.pCode = olFragCode.data();
+					VkShaderModule olFragModule;
+					result = vkCreateShaderModule(vkDevice, &olFragInfo, nullptr, &olFragModule);
+					if (result != VK_SUCCESS) {
+						vkDestroyShaderModule(vkDevice, olVertModule, nullptr);
+						SPLog("Warning: Failed to create outline fragment shader module");
+					} else {
+						VkPipelineShaderStageCreateInfo olStages[2]{};
+						olStages[0].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+						olStages[0].stage = VK_SHADER_STAGE_VERTEX_BIT;
+						olStages[0].module = olVertModule;
+						olStages[0].pName = "main";
+						olStages[1].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+						olStages[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+						olStages[1].module = olFragModule;
+						olStages[1].pName = "main";
+
+						VkPipelineRasterizationStateCreateInfo olRasterizer{};
+						olRasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+						olRasterizer.depthClampEnable = VK_FALSE;
+						olRasterizer.rasterizerDiscardEnable = VK_FALSE;
+						olRasterizer.polygonMode = VK_POLYGON_MODE_LINE;
+						olRasterizer.lineWidth = 1.0f;
+						olRasterizer.cullMode = VK_CULL_MODE_FRONT_BIT;
+						olRasterizer.frontFace = VK_FRONT_FACE_CLOCKWISE;
+						olRasterizer.depthBiasEnable = VK_TRUE;
+						olRasterizer.depthBiasConstantFactor = 1.0f;
+						olRasterizer.depthBiasSlopeFactor = 1.0f;
+						olRasterizer.depthBiasClamp = 0.0f;
+
+						VkGraphicsPipelineCreateInfo olPipelineInfo{};
+						olPipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+						olPipelineInfo.stageCount = 2;
+						olPipelineInfo.pStages = olStages;
+						olPipelineInfo.pVertexInputState = &vertexInputInfo;
+						olPipelineInfo.pInputAssemblyState = &inputAssembly;
+						olPipelineInfo.pViewportState = &viewportState;
+						olPipelineInfo.pRasterizationState = &olRasterizer;
+						olPipelineInfo.pMultisampleState = &multisampling;
+						olPipelineInfo.pDepthStencilState = &depthStencil;
+						olPipelineInfo.pColorBlendState = &colorBlending;
+						olPipelineInfo.pDynamicState = &dynamicState;
+						olPipelineInfo.layout = pipelineLayout;
+						olPipelineInfo.renderPass = renderPass;
+						olPipelineInfo.subpass = 0;
+
+						result = vkCreateGraphicsPipelines(vkDevice, renderer.GetPipelineCache(), 1, &olPipelineInfo, nullptr, &outlinesPipeline);
+
+						vkDestroyShaderModule(vkDevice, olVertModule, nullptr);
+						vkDestroyShaderModule(vkDevice, olFragModule, nullptr);
+
+						if (result != VK_SUCCESS) {
+							SPLog("Warning: Failed to create outline pipeline (error code: %d)", result);
+							outlinesPipeline = VK_NULL_HANDLE;
+						} else {
+							SPLog("Map outline pipeline created successfully");
+						}
+					}
+				}
+			}
 
 			// --- Create dynamic light pipeline ---
 			{

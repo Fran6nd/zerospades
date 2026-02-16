@@ -51,6 +51,7 @@
 SPADES_SETTING(r_fogShadow);
 SPADES_SETTING(r_water);
 SPADES_SETTING(r_softParticles);
+SPADES_SETTING(r_outlines);
 
 namespace spades {
 	namespace draw {
@@ -1456,6 +1457,16 @@ namespace spades {
 				}
 				if (modelRenderer) {
 					modelRenderer->RenderDynamicLightPass(commandBuffer, lightPtrs);
+				}
+			}
+
+			// Render outlines (wireframe back-faces with depth bias)
+			if ((int)r_outlines) {
+				if (mapRenderer) {
+					mapRenderer->RenderOutlinePass(commandBuffer);
+				}
+				if (modelRenderer) {
+					modelRenderer->RenderOutlinePass(commandBuffer);
 				}
 			}
 
