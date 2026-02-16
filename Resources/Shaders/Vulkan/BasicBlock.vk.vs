@@ -43,6 +43,7 @@ layout(location = 4) in vec3 fixedPositionAttribute;
 layout(location = 0) out vec2 ambientOcclusionCoord;
 layout(location = 1) out vec4 color;
 layout(location = 2) out vec3 fogDensity;
+layout(location = 3) out vec3 normalVarying;
 
 // Shadow/fog functions (simplified for now)
 vec4 ComputeFogDensity(float poweredLength) {
@@ -72,6 +73,8 @@ void main() {
 	vec2 horzRelativePos = vertexPos.xy - ubo.viewOriginVector.xy;
 	float horzDistance = dot(horzRelativePos, horzRelativePos);
 	fogDensity = ComputeFogDensity(horzDistance).xyz;
+
+	normalVarying = normalAttribute;
 
 	vec3 fixedWorldPosition = ubo.chunkPosition + fixedPositionAttribute * 0.5;
 	PrepareShadowForMap(vertexPos.xyz, fixedWorldPosition, normalAttribute);

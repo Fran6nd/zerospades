@@ -24,6 +24,7 @@
 layout(location = 0) in vec2 ambientOcclusionCoord;
 layout(location = 1) in vec4 color;
 layout(location = 2) in vec3 fogDensity;
+layout(location = 3) in vec3 normalVarying;
 
 // Uniform buffer for fog color
 layout(binding = 0) uniform UniformBufferObject {
@@ -48,24 +49,20 @@ layout(binding = 2) uniform sampler2D ambientOcclusionTexture;
 // Output
 layout(location = 0) out vec4 fragColor;
 
-// Shadow/lighting functions (simplified for now)
-vec3 EvaluateSunLight() {
-	// TODO: Implement proper shadow evaluation
-	return vec3(0.6); // Stub: assume full sunlight
-}
-
-vec3 EvaluateAmbientLight(float detailAmbientOcclusion) {
-	// TODO: Implement proper radiosity evaluation
-	return vec3(0.4) * detailAmbientOcclusion; // Stub: simple ambient
-}
-
 void main() {
 	// color is linear
 	fragColor = vec4(color.xyz, 1.0);
 
+	vec3 normal = normalize(normalVarying);
 	float ao = texture(ambientOcclusionTexture, ambientOcclusionCoord).x;
-	vec3 diffuseShading = EvaluateAmbientLight(ao);
-	diffuseShading += vec3(color.w) * EvaluateSunLight();
+
+	// Ambient light with normal-dependent darkening (matches OpenGL radiosity)
+	float amb = ao * (0.8 - normal.z * 0.2);
+	vec3 diffuseShading = vec3(0.4) * amb;
+
+	// Sunlight with basic lambert
+	float lambert = max(dot(normal, ubo.sunLightDirection), 0.0);
+	diffuseShading += vec3(0.6) * lambert;
 
 	// apply diffuse shading
 	fragColor.xyz *= diffuseShading;
