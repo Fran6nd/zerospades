@@ -653,33 +653,25 @@ namespace spades {
 		                                                  std::vector<client::ModelRenderParam> params) {
 			SPADES_MARK_FUNCTION();
 
-			// Outline pass renders model edges/silhouettes for selection highlights
-
 			if (numIndices == 0 || !vertexBuffer || !indexBuffer)
 				return;
 
 			if (params.empty())
 				return;
 
-			// Note: Full outline implementation requires:
-			// - Outline-specific pipeline (expanded geometry or edge detection)
-			// - Outline color uniform
-			// - Stencil or depth testing for edge detection
-			// For now, using standard pipeline as placeholder
-
 			VkRenderPass renderPass = renderer.GetOffscreenRenderPass();
-			if (sharedPipeline.pipeline == VK_NULL_HANDLE || sharedPipeline.renderPass != renderPass) {
+			if (sharedPipeline.outlinesPipeline == VK_NULL_HANDLE || sharedPipeline.renderPass != renderPass) {
 				CreatePipeline(renderPass);
 			}
 
-			vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, sharedPipeline.pipeline);
+			if (sharedPipeline.outlinesPipeline == VK_NULL_HANDLE)
+				return;
 
-			// Bind vertex buffer
+			vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, sharedPipeline.outlinesPipeline);
+
 			VkBuffer vb = vertexBuffer->GetBuffer();
 			VkDeviceSize offsets[] = {0};
 			vkCmdBindVertexBuffers(commandBuffer, 0, 1, &vb, offsets);
-
-			// Bind index buffer
 			vkCmdBindIndexBuffer(commandBuffer, indexBuffer->GetBuffer(), 0, VK_INDEX_TYPE_UINT32);
 
 			const Matrix4& projectionViewMatrix = renderer.GetProjectionViewMatrix();
@@ -691,7 +683,6 @@ namespace spades {
 			for (const auto& param : params) {
 				Matrix4 mvpMatrix = projectionViewMatrix * param.matrix;
 
-				// Compute fog density from model's world position
 				Vector4 modelWorldPos4 = param.matrix * MakeVector4(origin.x, origin.y, origin.z, 1.0f);
 				float dx = modelWorldPos4.x - eye.x;
 				float dy = modelWorldPos4.y - eye.y;
@@ -699,37 +690,25 @@ namespace spades {
 				float fogDensity = std::min(horzDistSq / (fogDist * fogDist), 1.0f);
 
 				struct {
-					Matrix4 projectionViewMatrix;
+					Matrix4 projectionViewModelMatrix;
 					Matrix4 modelMatrix;
 					Vector3 modelOrigin;
-					float fogDensity;
+					float fogDensityVal;
 					Vector3 customColor;
 					float _pad;
 					Vector3 fogColor;
-					float _pad2;
-					Matrix4 viewMatrix;
-					Vector3 viewOrigin;
 				} pushConstants;
 
-				pushConstants.projectionViewMatrix = mvpMatrix;
+				pushConstants.projectionViewModelMatrix = mvpMatrix;
 				pushConstants.modelMatrix = param.matrix;
 				pushConstants.modelOrigin = origin;
-				pushConstants.fogDensity = fogDensity;
+				pushConstants.fogDensityVal = fogDensity;
 				pushConstants.customColor = param.customColor;
 				pushConstants._pad = 0.0f;
 				pushConstants.fogColor = fogCol;
 
-				uint32_t pcSize = 172;
-				VkShaderStageFlags pcStages = VK_SHADER_STAGE_VERTEX_BIT;
-				if (sharedPipeline.physicalLighting) {
-					pushConstants._pad2 = 0.0f;
-					pushConstants.viewMatrix = renderer.GetViewMatrix();
-					pushConstants.viewOrigin = renderer.GetSceneDef().viewOrigin;
-					pcSize = sizeof(pushConstants);
-					pcStages = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
-				}
-				vkCmdPushConstants(commandBuffer, sharedPipeline.pipelineLayout, pcStages,
-				                   0, pcSize, &pushConstants);
+				vkCmdPushConstants(commandBuffer, sharedPipeline.pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT,
+				                   0, 172, &pushConstants);
 
 				vkCmdDrawIndexed(commandBuffer, numIndices, 1, 0, 0, 0);
 			}
@@ -1098,6 +1077,96 @@ namespace spades {
 					sharedPipeline.dlightPipeline = VK_NULL_HANDLE;
 				} else {
 					SPLog("Created shared model dynamic light pipeline");
+				}
+			}
+
+			// --- Create outline pipeline ---
+			{
+				std::vector<uint32_t> olVertCode = LoadSPIRVFile("Shaders/Vulkan/ModelOutline.vert.spv");
+				std::vector<uint32_t> olFragCode = LoadSPIRVFile("Shaders/Vulkan/Outline.frag.spv");
+
+				VkShaderModuleCreateInfo olVertInfo{};
+				olVertInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+				olVertInfo.codeSize = olVertCode.size() * sizeof(uint32_t);
+				olVertInfo.pCode = olVertCode.data();
+				VkShaderModule olVertModule;
+				result = vkCreateShaderModule(vkDevice, &olVertInfo, nullptr, &olVertModule);
+				if (result != VK_SUCCESS) {
+					SPLog("Warning: Failed to create model outline vertex shader module");
+				} else {
+					VkShaderModuleCreateInfo olFragInfo{};
+					olFragInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+					olFragInfo.codeSize = olFragCode.size() * sizeof(uint32_t);
+					olFragInfo.pCode = olFragCode.data();
+					VkShaderModule olFragModule;
+					result = vkCreateShaderModule(vkDevice, &olFragInfo, nullptr, &olFragModule);
+					if (result != VK_SUCCESS) {
+						vkDestroyShaderModule(vkDevice, olVertModule, nullptr);
+						SPLog("Warning: Failed to create model outline fragment shader module");
+					} else {
+						VkPipelineShaderStageCreateInfo olStages[2]{};
+						olStages[0].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+						olStages[0].stage = VK_SHADER_STAGE_VERTEX_BIT;
+						olStages[0].module = olVertModule;
+						olStages[0].pName = "main";
+						olStages[1].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+						olStages[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+						olStages[1].module = olFragModule;
+						olStages[1].pName = "main";
+
+						VkPipelineRasterizationStateCreateInfo olRasterizer{};
+						olRasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+						olRasterizer.depthClampEnable = VK_FALSE;
+						olRasterizer.rasterizerDiscardEnable = VK_FALSE;
+						olRasterizer.polygonMode = VK_POLYGON_MODE_LINE;
+						olRasterizer.lineWidth = 1.0f;
+						olRasterizer.cullMode = VK_CULL_MODE_FRONT_BIT;
+						olRasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+						olRasterizer.depthBiasEnable = VK_TRUE;
+						olRasterizer.depthBiasConstantFactor = 1.0f;
+						olRasterizer.depthBiasSlopeFactor = 1.0f;
+						olRasterizer.depthBiasClamp = 0.0f;
+
+						// No blending for outlines
+						VkPipelineColorBlendAttachmentState olBlend{};
+						olBlend.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
+						                         VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+						olBlend.blendEnable = VK_FALSE;
+
+						VkPipelineColorBlendStateCreateInfo olColorBlending{};
+						olColorBlending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+						olColorBlending.logicOpEnable = VK_FALSE;
+						olColorBlending.attachmentCount = 1;
+						olColorBlending.pAttachments = &olBlend;
+
+						VkGraphicsPipelineCreateInfo olPipelineInfo{};
+						olPipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+						olPipelineInfo.stageCount = 2;
+						olPipelineInfo.pStages = olStages;
+						olPipelineInfo.pVertexInputState = &vertexInputInfo;
+						olPipelineInfo.pInputAssemblyState = &inputAssembly;
+						olPipelineInfo.pViewportState = &viewportState;
+						olPipelineInfo.pRasterizationState = &olRasterizer;
+						olPipelineInfo.pMultisampleState = &multisampling;
+						olPipelineInfo.pDepthStencilState = &depthStencil;
+						olPipelineInfo.pColorBlendState = &olColorBlending;
+						olPipelineInfo.pDynamicState = &dynamicState;
+						olPipelineInfo.layout = sharedPipeline.pipelineLayout;
+						olPipelineInfo.renderPass = renderPass;
+						olPipelineInfo.subpass = 0;
+
+						result = vkCreateGraphicsPipelines(vkDevice, renderer.GetPipelineCache(), 1, &olPipelineInfo, nullptr, &sharedPipeline.outlinesPipeline);
+
+						vkDestroyShaderModule(vkDevice, olVertModule, nullptr);
+						vkDestroyShaderModule(vkDevice, olFragModule, nullptr);
+
+						if (result != VK_SUCCESS) {
+							SPLog("Warning: Failed to create model outline pipeline (error code: %d)", result);
+							sharedPipeline.outlinesPipeline = VK_NULL_HANDLE;
+						} else {
+							SPLog("Created shared model outline pipeline");
+						}
+					}
 				}
 			}
 		}
