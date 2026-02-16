@@ -622,15 +622,51 @@ namespace spades {
 			if (indices.empty() || !vertexBuffer || !indexBuffer)
 				return;
 
-			// Bind vertex buffer
+			const auto& eye = renderer.renderer.GetSceneDef().viewOrigin;
+			Vector3 diff = eye - centerPos;
+			float sx = 0.0F, sy = 0.0F;
+
+			if (diff.x > 256.0F)
+				sx += 512.0F;
+			if (diff.y > 256.0F)
+				sy += 512.0F;
+			if (diff.x < -256.0F)
+				sx -= 512.0F;
+			if (diff.y < -256.0F)
+				sy -= 512.0F;
+
+			Vector3 fogCol = renderer.renderer.GetFogColor();
+			fogCol *= fogCol; // linearize
+
+			struct {
+				Matrix4 projectionViewMatrix;
+				Vector3 modelOrigin;
+				float fogDistance;
+				Vector3 viewOrigin;
+				float _pad;
+				Vector3 fogColor;
+			} pushConstants;
+
+			pushConstants.projectionViewMatrix = renderer.renderer.GetProjectionViewMatrix();
+			pushConstants.modelOrigin = MakeVector3(
+				(float)(chunkX << SizeBits) + sx,
+				(float)(chunkY << SizeBits) + sy,
+				(float)(chunkZ << SizeBits)
+			);
+			pushConstants.fogDistance = renderer.renderer.GetFogDistance();
+			pushConstants.viewOrigin = eye;
+			pushConstants._pad = 0.0f;
+			pushConstants.fogColor = fogCol;
+
+			vkCmdPushConstants(commandBuffer, renderer.pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT,
+			                   0, sizeof(pushConstants), &pushConstants);
+
 			VkBuffer vb = vertexBuffer->GetBuffer();
 			VkDeviceSize offsets[] = {0};
 			vkCmdBindVertexBuffers(commandBuffer, 0, 1, &vb, offsets);
 
-			// Bind index buffer
 			vkCmdBindIndexBuffer(commandBuffer, indexBuffer->GetBuffer(), 0, VK_INDEX_TYPE_UINT16);
 
-			// Draw
 			vkCmdDrawIndexed(commandBuffer, (uint32_t)indices.size(), 1, 0, 0, 0);
 		}
 
