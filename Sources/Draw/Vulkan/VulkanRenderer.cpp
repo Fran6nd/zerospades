@@ -50,6 +50,7 @@
 
 SPADES_SETTING(r_fogShadow);
 SPADES_SETTING(r_water);
+SPADES_SETTING(r_softParticles);
 
 namespace spades {
 	namespace draw {
@@ -1458,21 +1459,19 @@ namespace spades {
 				}
 			}
 
-			// Render sprites
-			if (spriteRenderer) {
-				spriteRenderer->Render(commandBuffer, imageIndex);
-			}
-			if (longSpriteRenderer) {
-				longSpriteRenderer->Render(commandBuffer, imageIndex);
+			bool useSoftParticles = spriteRenderer && spriteRenderer->IsSoftParticles();
+
+			// Render sprites (non-soft mode: inside offscreen pass with hardware depth test)
+			if (!useSoftParticles) {
+				if (spriteRenderer) {
+					spriteRenderer->Render(commandBuffer, imageIndex);
+				}
+				if (longSpriteRenderer) {
+					longSpriteRenderer->Render(commandBuffer, imageIndex);
+				}
 			}
 
 			// Clear for next frame
-			if (spriteRenderer) {
-				spriteRenderer->Clear();
-			}
-			if (longSpriteRenderer) {
-				longSpriteRenderer->Clear();
-			}
 			if (modelRenderer) {
 				modelRenderer->Clear();
 			}
@@ -1482,45 +1481,136 @@ namespace spades {
 			// End offscreen render pass (scene without water is now complete)
 			vkCmdEndRenderPass(commandBuffer);
 
-			// Transition offscreen color and depth images to shader read-only for water sampling
 			Handle<VulkanImage> offscreenColor = framebufferManager->GetColorImage();
 			Handle<VulkanImage> offscreenDepth = framebufferManager->GetDepthImage();
 
-			VkImageMemoryBarrier barriers[2]{};
-			// Color image transition
-			barriers[0].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-			barriers[0].oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-			barriers[0].newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-			barriers[0].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-			barriers[0].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-			barriers[0].image = offscreenColor->GetImage();
-			barriers[0].subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-			barriers[0].subresourceRange.baseMipLevel = 0;
-			barriers[0].subresourceRange.levelCount = 1;
-			barriers[0].subresourceRange.baseArrayLayer = 0;
-			barriers[0].subresourceRange.layerCount = 1;
-			barriers[0].srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-			barriers[0].dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+			if (useSoftParticles) {
+				// Soft particles: transition depth to shader-readable, render sprites
+				// in a color-only pass sampling the depth texture
 
-			// Depth image transition
-			barriers[1].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-			barriers[1].oldLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-			barriers[1].newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-			barriers[1].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-			barriers[1].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-			barriers[1].image = offscreenDepth->GetImage();
-			barriers[1].subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
-			barriers[1].subresourceRange.baseMipLevel = 0;
-			barriers[1].subresourceRange.levelCount = 1;
-			barriers[1].subresourceRange.baseArrayLayer = 0;
-			barriers[1].subresourceRange.layerCount = 1;
-			barriers[1].srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-			barriers[1].dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+				// Transition depth to SHADER_READ_ONLY for sampling
+				VkImageMemoryBarrier depthBarrier{};
+				depthBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+				depthBarrier.oldLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+				depthBarrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+				depthBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+				depthBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+				depthBarrier.image = offscreenDepth->GetImage();
+				depthBarrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+				depthBarrier.subresourceRange.baseMipLevel = 0;
+				depthBarrier.subresourceRange.levelCount = 1;
+				depthBarrier.subresourceRange.baseArrayLayer = 0;
+				depthBarrier.subresourceRange.layerCount = 1;
+				depthBarrier.srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+				depthBarrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
 
-			vkCmdPipelineBarrier(commandBuffer,
-				VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
-				VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-				0, 0, nullptr, 0, nullptr, 2, barriers);
+				vkCmdPipelineBarrier(commandBuffer,
+					VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
+					VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+					0, 0, nullptr, 0, nullptr, 1, &depthBarrier);
+
+				// Begin sprite render pass (color-only, preserves existing content)
+				VkRenderPassBeginInfo spriteRenderPassInfo{};
+				spriteRenderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+				spriteRenderPassInfo.renderPass = framebufferManager->GetSpriteRenderPass();
+				spriteRenderPassInfo.framebuffer = framebufferManager->GetSpriteFramebuffer();
+				spriteRenderPassInfo.renderArea.offset = {0, 0};
+				spriteRenderPassInfo.renderArea.extent = {static_cast<uint32_t>(renderWidth), static_cast<uint32_t>(renderHeight)};
+				spriteRenderPassInfo.clearValueCount = 0;
+				spriteRenderPassInfo.pClearValues = nullptr;
+
+				vkCmdBeginRenderPass(commandBuffer, &spriteRenderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+
+				// Set viewport and scissor
+				VkViewport spriteViewport{};
+				spriteViewport.x = 0.0f;
+				spriteViewport.y = static_cast<float>(renderHeight);
+				spriteViewport.width = static_cast<float>(renderWidth);
+				spriteViewport.height = -static_cast<float>(renderHeight);
+				spriteViewport.minDepth = 0.0f;
+				spriteViewport.maxDepth = 1.0f;
+				vkCmdSetViewport(commandBuffer, 0, 1, &spriteViewport);
+
+				VkRect2D spriteScissor{};
+				spriteScissor.offset = {0, 0};
+				spriteScissor.extent = {static_cast<uint32_t>(renderWidth), static_cast<uint32_t>(renderHeight)};
+				vkCmdSetScissor(commandBuffer, 0, 1, &spriteScissor);
+
+				// Render soft sprites
+				if (spriteRenderer) {
+					spriteRenderer->Render(commandBuffer, imageIndex);
+				}
+				if (longSpriteRenderer) {
+					longSpriteRenderer->Render(commandBuffer, imageIndex);
+				}
+
+				vkCmdEndRenderPass(commandBuffer);
+
+				// Transition color to SHADER_READ_ONLY for water/post-processing
+				// (depth is already in SHADER_READ_ONLY)
+				VkImageMemoryBarrier colorBarrier{};
+				colorBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+				colorBarrier.oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+				colorBarrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+				colorBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+				colorBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+				colorBarrier.image = offscreenColor->GetImage();
+				colorBarrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+				colorBarrier.subresourceRange.baseMipLevel = 0;
+				colorBarrier.subresourceRange.levelCount = 1;
+				colorBarrier.subresourceRange.baseArrayLayer = 0;
+				colorBarrier.subresourceRange.layerCount = 1;
+				colorBarrier.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+				colorBarrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+
+				vkCmdPipelineBarrier(commandBuffer,
+					VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+					VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+					0, 0, nullptr, 0, nullptr, 1, &colorBarrier);
+			} else {
+				// Non-soft: transition both color and depth to shader read-only
+				VkImageMemoryBarrier barriers[2]{};
+				barriers[0].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+				barriers[0].oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+				barriers[0].newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+				barriers[0].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+				barriers[0].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+				barriers[0].image = offscreenColor->GetImage();
+				barriers[0].subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+				barriers[0].subresourceRange.baseMipLevel = 0;
+				barriers[0].subresourceRange.levelCount = 1;
+				barriers[0].subresourceRange.baseArrayLayer = 0;
+				barriers[0].subresourceRange.layerCount = 1;
+				barriers[0].srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+				barriers[0].dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+
+				barriers[1].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+				barriers[1].oldLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+				barriers[1].newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+				barriers[1].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+				barriers[1].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+				barriers[1].image = offscreenDepth->GetImage();
+				barriers[1].subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+				barriers[1].subresourceRange.baseMipLevel = 0;
+				barriers[1].subresourceRange.levelCount = 1;
+				barriers[1].subresourceRange.baseArrayLayer = 0;
+				barriers[1].subresourceRange.layerCount = 1;
+				barriers[1].srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+				barriers[1].dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+
+				vkCmdPipelineBarrier(commandBuffer,
+					VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
+					VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+					0, 0, nullptr, 0, nullptr, 2, barriers);
+			}
+
+			// Clear sprites after rendering (whether soft or not)
+			if (spriteRenderer) {
+				spriteRenderer->Clear();
+			}
+			if (longSpriteRenderer) {
+				longSpriteRenderer->Clear();
+			}
 
 			// Copy scene to mirror images for water refraction when no real mirror pass
 			if ((int)r_water > 0 && waterRenderer && framebufferManager->GetMirrorColorImage() && (int)r_water < 2) {
@@ -1586,15 +1676,25 @@ namespace spades {
 				vkCmdEndRenderPass(commandBuffer);
 
 				// Transition back to SHADER_READ_ONLY for next steps
-				barriers[0].oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-				barriers[0].newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-				barriers[0].srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-				barriers[0].dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+				VkImageMemoryBarrier waterColorBarrier{};
+				waterColorBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+				waterColorBarrier.oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+				waterColorBarrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+				waterColorBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+				waterColorBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+				waterColorBarrier.image = offscreenColor->GetImage();
+				waterColorBarrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+				waterColorBarrier.subresourceRange.baseMipLevel = 0;
+				waterColorBarrier.subresourceRange.levelCount = 1;
+				waterColorBarrier.subresourceRange.baseArrayLayer = 0;
+				waterColorBarrier.subresourceRange.layerCount = 1;
+				waterColorBarrier.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+				waterColorBarrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
 
 				vkCmdPipelineBarrier(commandBuffer,
 					VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
 					VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-					0, 0, nullptr, 0, nullptr, 1, &barriers[0]);
+					0, 0, nullptr, 0, nullptr, 1, &waterColorBarrier);
 			}
 
 			// Transition offscreen color image for transfer source
