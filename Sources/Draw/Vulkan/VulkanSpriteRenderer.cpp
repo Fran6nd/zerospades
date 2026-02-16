@@ -23,14 +23,18 @@
 #include "VulkanImage.h"
 #include "VulkanBuffer.h"
 #include "VulkanShader.h"
+#include "VulkanFramebufferManager.h"
 #include <Gui/SDLVulkanDevice.h>
 #include <Core/Debug.h>
 #include <Core/Exception.h>
 #include <Core/FileManager.h>
 #include <Core/IStream.h>
+#include <Core/Settings.h>
 #include <algorithm>
 #include <cstring>
 #include <fstream>
+
+SPADES_SETTING(r_softParticles);
 
 namespace spades {
 	namespace draw {
@@ -38,9 +42,12 @@ namespace spades {
 		    : renderer(r),
 		      device(static_cast<gui::SDLVulkanDevice*>(r.GetDevice().Unmanage())),
 		      lastImage(nullptr),
+		      softParticles((int)r_softParticles != 0),
 		      pipeline(VK_NULL_HANDLE),
 		      pipelineLayout(VK_NULL_HANDLE),
-		      descriptorSetLayout(VK_NULL_HANDLE) {
+		      descriptorSetLayout(VK_NULL_HANDLE),
+		      depthDescriptorSetLayout(VK_NULL_HANDLE),
+		      depthDescriptorSet(VK_NULL_HANDLE) {
 			SPADES_MARK_FUNCTION();
 
 			const auto& swapchainImageViews = device->GetSwapchainImageViews();
@@ -76,6 +83,9 @@ namespace spades {
 			if (descriptorSetLayout != VK_NULL_HANDLE) {
 				vkDestroyDescriptorSetLayout(vkDevice, descriptorSetLayout, nullptr);
 			}
+			if (depthDescriptorSetLayout != VK_NULL_HANDLE) {
+				vkDestroyDescriptorSetLayout(vkDevice, depthDescriptorSetLayout, nullptr);
+			}
 		}
 
 		void VulkanSpriteRenderer::CreatePipeline() {
@@ -97,11 +107,18 @@ namespace spades {
 				return code;
 			};
 
-			std::vector<uint32_t> vertCode = LoadSPIRVFile("Shaders/Vulkan/Sprite.vert.spv");
-			std::vector<uint32_t> fragCode = LoadSPIRVFile("Shaders/Vulkan/Sprite.frag.spv");
+			const char* vertFile = softParticles ? "Shaders/Vulkan/SoftSprite.vert.spv"
+			                                     : "Shaders/Vulkan/Sprite.vert.spv";
+			const char* fragFile = softParticles ? "Shaders/Vulkan/SoftSprite.frag.spv"
+			                                     : "Shaders/Vulkan/Sprite.frag.spv";
+			const char* vertName = softParticles ? "SoftSprite.vert" : "Sprite.vert";
+			const char* fragName = softParticles ? "SoftSprite.frag" : "Sprite.frag";
 
-			Handle<VulkanShader> vertShader(new VulkanShader(device, VulkanShader::VertexShader, "Sprite.vert"), false);
-			Handle<VulkanShader> fragShader(new VulkanShader(device, VulkanShader::FragmentShader, "Sprite.frag"), false);
+			std::vector<uint32_t> vertCode = LoadSPIRVFile(vertFile);
+			std::vector<uint32_t> fragCode = LoadSPIRVFile(fragFile);
+
+			Handle<VulkanShader> vertShader(new VulkanShader(device, VulkanShader::VertexShader, vertName), false);
+			Handle<VulkanShader> fragShader(new VulkanShader(device, VulkanShader::FragmentShader, fragName), false);
 
 			vertShader->LoadSPIRV(vertCode);
 			fragShader->LoadSPIRV(fragCode);
@@ -182,9 +199,15 @@ namespace spades {
 
 			VkPipelineDepthStencilStateCreateInfo depthStencil{};
 			depthStencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
-			depthStencil.depthTestEnable = VK_TRUE;
-			depthStencil.depthWriteEnable = VK_FALSE;
-			depthStencil.depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
+			if (softParticles) {
+				// No depth attachment in sprite render pass; depth test done in shader
+				depthStencil.depthTestEnable = VK_FALSE;
+				depthStencil.depthWriteEnable = VK_FALSE;
+			} else {
+				depthStencil.depthTestEnable = VK_TRUE;
+				depthStencil.depthWriteEnable = VK_FALSE;
+				depthStencil.depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
+			}
 			depthStencil.depthBoundsTestEnable = VK_FALSE;
 			depthStencil.stencilTestEnable = VK_FALSE;
 
@@ -215,6 +238,7 @@ namespace spades {
 			dynamicState.dynamicStateCount = 2;
 			dynamicState.pDynamicStates = dynamicStates;
 
+			// Set 0: sprite texture (per batch)
 			VkDescriptorSetLayoutBinding samplerLayoutBinding{};
 			samplerLayoutBinding.binding = 0;
 			samplerLayoutBinding.descriptorCount = 1;
@@ -232,21 +256,63 @@ namespace spades {
 				SPRaise("Failed to create descriptor set layout (error code: %d)", result);
 			}
 
+			VkDescriptorSetLayout setLayouts[2];
+			uint32_t setLayoutCount = 1;
+			setLayouts[0] = descriptorSetLayout;
+
+			if (softParticles) {
+				// Set 1: depth texture (per frame)
+				VkDescriptorSetLayoutBinding depthBinding{};
+				depthBinding.binding = 0;
+				depthBinding.descriptorCount = 1;
+				depthBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+				depthBinding.pImmutableSamplers = nullptr;
+				depthBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+
+				VkDescriptorSetLayoutCreateInfo depthLayoutInfo{};
+				depthLayoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+				depthLayoutInfo.bindingCount = 1;
+				depthLayoutInfo.pBindings = &depthBinding;
+
+				result = vkCreateDescriptorSetLayout(vkDevice, &depthLayoutInfo, nullptr, &depthDescriptorSetLayout);
+				if (result != VK_SUCCESS) {
+					SPRaise("Failed to create depth descriptor set layout (error code: %d)", result);
+				}
+
+				setLayouts[1] = depthDescriptorSetLayout;
+				setLayoutCount = 2;
+			}
+
 			VkPushConstantRange pushConstantRange{};
 			pushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
 			pushConstantRange.offset = 0;
-			pushConstantRange.size = sizeof(Matrix4) * 2 + sizeof(Vector3) * 4 + sizeof(float);
+			if (softParticles) {
+				// mat4 + 5*vec3(padded) + float + vec2 = 64 + 80 + 4 + 8 = 156
+				// Actually: mat4(64) + 5*(vec3+float)(80) + float(4) + vec2(8) = 152 + 4 = but let's count:
+				// mat4=64, rightVector+pad=16, upVector+pad=16, frontVector+pad=16,
+				// viewOriginVector+pad=16, fogColor+fogDistance=16, zNearFar=8 = 152
+				pushConstantRange.size = 152;
+			} else {
+				pushConstantRange.size = sizeof(Matrix4) * 2 + sizeof(Vector3) * 4 + sizeof(float);
+			}
 
 			VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
 			pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-			pipelineLayoutInfo.setLayoutCount = 1;
-			pipelineLayoutInfo.pSetLayouts = &descriptorSetLayout;
+			pipelineLayoutInfo.setLayoutCount = setLayoutCount;
+			pipelineLayoutInfo.pSetLayouts = setLayouts;
 			pipelineLayoutInfo.pushConstantRangeCount = 1;
 			pipelineLayoutInfo.pPushConstantRanges = &pushConstantRange;
 
 			result = vkCreatePipelineLayout(vkDevice, &pipelineLayoutInfo, nullptr, &pipelineLayout);
 			if (result != VK_SUCCESS) {
 				SPRaise("Failed to create pipeline layout (error code: %d)", result);
+			}
+
+			VkRenderPass renderPassToUse;
+			if (softParticles) {
+				renderPassToUse = renderer.GetFramebufferManager()->GetSpriteRenderPass();
+			} else {
+				renderPassToUse = renderer.GetOffscreenRenderPass();
 			}
 
 			VkGraphicsPipelineCreateInfo pipelineInfo{};
@@ -262,7 +328,7 @@ namespace spades {
 			pipelineInfo.pColorBlendState = &colorBlending;
 			pipelineInfo.pDynamicState = &dynamicState;
 			pipelineInfo.layout = pipelineLayout;
-			pipelineInfo.renderPass = renderer.GetOffscreenRenderPass(); // Use offscreen render pass for 3D rendering
+			pipelineInfo.renderPass = renderPassToUse;
 			pipelineInfo.subpass = 0;
 
 			result = vkCreateGraphicsPipelines(vkDevice, renderer.GetPipelineCache(), 1, &pipelineInfo, nullptr, &pipeline);
@@ -278,14 +344,14 @@ namespace spades {
 
 			VkDescriptorPoolSize poolSize{};
 			poolSize.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-			poolSize.descriptorCount = 1000; // CRITICAL FIX: Increase for many players
+			poolSize.descriptorCount = 1000;
 
 			VkDescriptorPoolCreateInfo poolInfo{};
 			poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
 			poolInfo.poolSizeCount = 1;
 			poolInfo.pPoolSizes = &poolSize;
-			poolInfo.maxSets = 1000; // Increased from 100
-			poolInfo.flags = 0; // Reset entire pool each frame
+			poolInfo.maxSets = 1000;
+			poolInfo.flags = 0;
 
 			for (size_t i = 0; i < perFrameDescriptorPools.size(); i++) {
 				VkResult result = vkCreateDescriptorPool(vkDevice, &poolInfo, nullptr, &perFrameDescriptorPools[i]);
@@ -355,6 +421,7 @@ namespace spades {
 
 			vkCmdBindIndexBuffer(commandBuffer, indexBuffer->GetBuffer(), 0, VK_INDEX_TYPE_UINT32);
 
+			// Allocate and bind sprite texture descriptor (set 0)
 			VkDescriptorSetAllocateInfo allocInfo{};
 			allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
 			allocInfo.descriptorPool = perFrameDescriptorPools[frameIndex];
@@ -399,18 +466,11 @@ namespace spades {
 			vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout,
 			                        0, 1, &descriptorSet, 0, nullptr);
 
-			struct PushConstants {
-				Matrix4 projectionViewMatrix;
-				Matrix4 viewMatrix;
-				Vector3 rightVector;
-				float padding1;
-				Vector3 upVector;
-				float padding2;
-				Vector3 viewOriginVector;
-				float padding3;
-				Vector3 fogColor;
-				float fogDistance;
-			} pushConstants;
+			// Bind depth descriptor (set 1) for soft particles
+			if (softParticles && depthDescriptorSet != VK_NULL_HANDLE) {
+				vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout,
+				                        1, 1, &depthDescriptorSet, 0, nullptr);
+			}
 
 			const Matrix4& projViewMatrix = renderer.GetProjectionViewMatrix();
 			Vector3 fogCol = renderer.GetFogColor();
@@ -418,17 +478,66 @@ namespace spades {
 			float fogDist = renderer.GetFogDistance();
 			const client::SceneDefinition& sceneDef = renderer.GetSceneDef();
 
-			pushConstants.projectionViewMatrix = projViewMatrix;
-			pushConstants.viewMatrix = Matrix4::Identity();
-			pushConstants.rightVector = sceneDef.viewAxis[0];
-			pushConstants.upVector = sceneDef.viewAxis[1];
-			pushConstants.viewOriginVector = sceneDef.viewOrigin;
-			pushConstants.fogColor = fogCol;
-			pushConstants.fogDistance = fogDist;
+			if (softParticles) {
+				struct SoftPushConstants {
+					Matrix4 projectionViewMatrix;
+					Vector3 rightVector;
+					float pad1;
+					Vector3 upVector;
+					float pad2;
+					Vector3 frontVector;
+					float pad3;
+					Vector3 viewOriginVector;
+					float pad4;
+					Vector3 fogColor;
+					float fogDistance;
+					float zNear;
+					float zFar;
+				} pushConstants;
 
-			vkCmdPushConstants(commandBuffer, pipelineLayout,
-			                   VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
-			                   0, sizeof(pushConstants), &pushConstants);
+				pushConstants.projectionViewMatrix = projViewMatrix;
+				pushConstants.rightVector = sceneDef.viewAxis[0];
+				pushConstants.pad1 = 0.0f;
+				pushConstants.upVector = sceneDef.viewAxis[1];
+				pushConstants.pad2 = 0.0f;
+				pushConstants.frontVector = sceneDef.viewAxis[2];
+				pushConstants.pad3 = 0.0f;
+				pushConstants.viewOriginVector = sceneDef.viewOrigin;
+				pushConstants.pad4 = 0.0f;
+				pushConstants.fogColor = fogCol;
+				pushConstants.fogDistance = fogDist;
+				pushConstants.zNear = sceneDef.zNear;
+				pushConstants.zFar = sceneDef.zFar;
+
+				vkCmdPushConstants(commandBuffer, pipelineLayout,
+				                   VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+				                   0, sizeof(pushConstants), &pushConstants);
+			} else {
+				struct PushConstants {
+					Matrix4 projectionViewMatrix;
+					Matrix4 viewMatrix;
+					Vector3 rightVector;
+					float padding1;
+					Vector3 upVector;
+					float padding2;
+					Vector3 viewOriginVector;
+					float padding3;
+					Vector3 fogColor;
+					float fogDistance;
+				} pushConstants;
+
+				pushConstants.projectionViewMatrix = projViewMatrix;
+				pushConstants.viewMatrix = Matrix4::Identity();
+				pushConstants.rightVector = sceneDef.viewAxis[0];
+				pushConstants.upVector = sceneDef.viewAxis[1];
+				pushConstants.viewOriginVector = sceneDef.viewOrigin;
+				pushConstants.fogColor = fogCol;
+				pushConstants.fogDistance = fogDist;
+
+				vkCmdPushConstants(commandBuffer, pipelineLayout,
+				                   VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+				                   0, sizeof(pushConstants), &pushConstants);
+			}
 
 			vkCmdDrawIndexed(commandBuffer, (uint32_t)indices.size(), 1, 0, 0, 0);
 
@@ -458,6 +567,38 @@ namespace spades {
 
 			// Reset descriptor pool for this frame to free all descriptor sets
 			vkResetDescriptorPool(vkDevice, perFrameDescriptorPools[frameIndex], 0);
+
+			// Allocate depth descriptor set for soft particles
+			if (softParticles && depthDescriptorSetLayout != VK_NULL_HANDLE) {
+				VkDescriptorSetAllocateInfo depthAllocInfo{};
+				depthAllocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+				depthAllocInfo.descriptorPool = perFrameDescriptorPools[frameIndex];
+				depthAllocInfo.descriptorSetCount = 1;
+				depthAllocInfo.pSetLayouts = &depthDescriptorSetLayout;
+
+				VkResult result = vkAllocateDescriptorSets(vkDevice, &depthAllocInfo, &depthDescriptorSet);
+				if (result != VK_SUCCESS) {
+					SPLog("Failed to allocate depth descriptor set (error code: %d)", result);
+					depthDescriptorSet = VK_NULL_HANDLE;
+				} else {
+					Handle<VulkanImage> depthImage = renderer.GetFramebufferManager()->GetDepthImage();
+					VkDescriptorImageInfo depthImageInfo{};
+					depthImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+					depthImageInfo.imageView = depthImage->GetImageView();
+					depthImageInfo.sampler = depthImage->GetSampler();
+
+					VkWriteDescriptorSet depthWrite{};
+					depthWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+					depthWrite.dstSet = depthDescriptorSet;
+					depthWrite.dstBinding = 0;
+					depthWrite.dstArrayElement = 0;
+					depthWrite.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+					depthWrite.descriptorCount = 1;
+					depthWrite.pImageInfo = &depthImageInfo;
+
+					vkUpdateDescriptorSets(vkDevice, 1, &depthWrite, 0, nullptr);
+				}
+			}
 
 			// Sort sprites by image to minimize batch breaks and descriptor set allocations
 			std::sort(sprites.begin(), sprites.end(),
