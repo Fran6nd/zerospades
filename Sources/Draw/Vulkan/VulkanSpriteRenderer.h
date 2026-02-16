@@ -68,13 +68,18 @@ namespace spades {
 			std::vector<Vertex> vertices;
 			std::vector<uint32_t> indices;
 
+			bool softParticles;
+
 			VkPipeline pipeline;
 			VkPipelineLayout pipelineLayout;
 			VkDescriptorSetLayout descriptorSetLayout;
+			VkDescriptorSetLayout depthDescriptorSetLayout;
 
 			std::vector<VkDescriptorPool> perFrameDescriptorPools;
 			std::vector<std::vector<Handle<VulkanBuffer>>> perFrameBuffers;
 			std::vector<std::vector<VulkanImage*>> perFrameImages;
+
+			VkDescriptorSet depthDescriptorSet;
 
 			void CreatePipeline();
 			void CreateDescriptorSet();
@@ -87,6 +92,8 @@ namespace spades {
 			void Add(VulkanImage *img, Vector3 center, float rad, float ang, Vector4 color);
 			void Clear();
 			void Render(VkCommandBuffer commandBuffer, uint32_t frameIndex);
+
+			bool IsSoftParticles() const { return softParticles; }
 		};
 	} // namespace draw
 } // namespace spades
