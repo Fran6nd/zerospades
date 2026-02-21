@@ -1,2 +1,2 @@
-Shaders/Vulkan/Water3.vert.spv
-Shaders/Vulkan/Water3.frag.spv
+Shaders/Vulkan/Water3.vk.vs.spv
+Shaders/Vulkan/Water3.vk.fs.spv
