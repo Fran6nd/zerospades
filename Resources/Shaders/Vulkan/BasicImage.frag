@@ -28,7 +28,8 @@ layout(location = 1) in vec2 texCoord;
 layout(location = 0) out vec4 fragColor;
 
 void main() {
-	vec4 col = texture(mainTexture, texCoord);
+	vec2 flippedTexCoord = vec2(texCoord.x, 1.0 - texCoord.y);
+	vec4 col = texture(mainTexture, flippedTexCoord);
 	col.xyz *= col.w;
 	col *= color;
 	fragColor = col;
