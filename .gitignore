@@ -138,3 +138,6 @@ vcpkg/
 
 # Demo recordings
 *.dem
+
+# Compiled SPIR-V shaders (built from source by glslangValidator)
+*.spv
