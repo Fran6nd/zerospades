@@ -135,3 +135,6 @@ OpenSpades.rc
 
 # vcpkg build artifacts
 vcpkg/
+
+# Compiled SPIR-V shaders (built from source by glslangValidator)
+*.spv
