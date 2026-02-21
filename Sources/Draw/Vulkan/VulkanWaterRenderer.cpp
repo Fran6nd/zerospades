@@ -917,7 +917,6 @@ namespace spades {
 		// Binding 7: mirrorDepthTexture (for depth-aware reflections) - dynamic, only for r_water >= 3
 		if ((int)r_water >= 2) {
 			Handle<VulkanImage> mirrorColorImage = fbManager->GetMirrorColorImage();
-			SPLog("mirrorColorImage = %p", mirrorColorImage.GetPointerOrNull());
 			if (mirrorColorImage) {
 				imageInfos.push_back({});
 				imageInfos.back().imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
@@ -933,14 +932,12 @@ namespace spades {
 				mirrorColorWrite.descriptorCount = 1;
 				mirrorColorWrite.pImageInfo = &imageInfos.back();
 				descriptorWrites.push_back(mirrorColorWrite);
-				SPLog("Bound mirrorColorImage to binding 6");
 			} else {
 				SPLog("WARNING: mirrorColorImage is null, skipping binding 6");
 			}
 
 			if ((int)r_water >= 3) {
 				Handle<VulkanImage> mirrorDepthImage = fbManager->GetMirrorDepthImage();
-				SPLog("mirrorDepthImage = %p", mirrorDepthImage.GetPointerOrNull());
 				if (mirrorDepthImage) {
 					imageInfos.push_back({});
 					imageInfos.back().imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
@@ -956,7 +953,6 @@ namespace spades {
 					mirrorDepthWrite.descriptorCount = 1;
 					mirrorDepthWrite.pImageInfo = &imageInfos.back();
 					descriptorWrites.push_back(mirrorDepthWrite);
-					SPLog("Bound mirrorDepthImage to binding 7");
 				} else {
 					SPLog("WARNING: mirrorDepthImage is null, skipping binding 7");
 				}
