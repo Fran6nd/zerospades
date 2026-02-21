@@ -45,7 +45,6 @@ if(OPENSPADES_RESOURCES)
 		${CMAKE_CURRENT_SOURCE_DIR}/Shaders/*.vs
 		${CMAKE_CURRENT_SOURCE_DIR}/Shaders/*.vert
 		${CMAKE_CURRENT_SOURCE_DIR}/Shaders/*.frag
-		${CMAKE_CURRENT_SOURCE_DIR}/Shaders/*.spv
 		${CMAKE_CURRENT_SOURCE_DIR}/Shaders/*.vk.vs
 		${CMAKE_CURRENT_SOURCE_DIR}/Shaders/*.vk.fs
 		${CMAKE_CURRENT_SOURCE_DIR}/Shaders/*.vk.program)
