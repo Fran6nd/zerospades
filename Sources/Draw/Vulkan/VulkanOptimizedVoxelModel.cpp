@@ -452,6 +452,8 @@ namespace spades {
 
 			// Render each model instance
 			for (const auto& param : params) {
+				if (param.depthHack || !param.castShadow || param.ghost)
+					continue;
 				vkCmdDrawIndexed(commandBuffer, numIndices, 1, 0, 0, 0);
 			}
 		}
@@ -499,8 +501,15 @@ namespace spades {
 			fogCol *= fogCol; // linearize
 			float fogDist = renderer.GetFogDistance();
 
+			bool mirror = renderer.IsRenderingMirror();
+			int rw = renderer.GetRenderWidth();
+			int rh = renderer.GetRenderHeight();
+
 			// Draw each instance
 			for (const auto& param : params) {
+				if (mirror && param.depthHack)
+					continue;
+
 				// Compute final MVP matrix
 				Matrix4 mvpMatrix = projectionViewMatrix * param.matrix;
 
@@ -544,7 +553,17 @@ namespace spades {
 				vkCmdPushConstants(commandBuffer, sharedPipeline.pipelineLayout, pcStages,
 				                   0, pcSize, &pushConstants);
 
+				if (param.depthHack) {
+					VkViewport vp{0.0f, (float)rh, (float)rw, -(float)rh, 0.0f, 0.1f};
+					vkCmdSetViewport(commandBuffer, 0, 1, &vp);
+				}
+
 				vkCmdDrawIndexed(commandBuffer, numIndices, 1, 0, 0, 0);
+
+				if (param.depthHack) {
+					VkViewport vp{0.0f, (float)rh, (float)rw, -(float)rh, 0.0f, 1.0f};
+					vkCmdSetViewport(commandBuffer, 0, 1, &vp);
+				}
 			}
 		}
 
@@ -580,6 +599,9 @@ namespace spades {
 			const Matrix4& projectionViewMatrix = renderer.GetProjectionViewMatrix();
 			const auto& eye = renderer.GetSceneDef().viewOrigin;
 			float fogDist = renderer.GetFogDistance();
+			bool mirror = renderer.IsRenderingMirror();
+			int rw = renderer.GetRenderWidth();
+			int rh = renderer.GetRenderHeight();
 
 			for (void* lightPtr : lights) {
 				const client::DynamicLightParam* light =
@@ -603,6 +625,11 @@ namespace spades {
 				}
 
 				for (const auto& param : params) {
+					if (mirror && param.depthHack)
+						continue;
+					if (param.ghost)
+						continue;
+
 					Matrix4 mvpMatrix = projectionViewMatrix * param.matrix;
 
 					// Compute fog density from model's world position
@@ -640,11 +667,21 @@ namespace spades {
 					pushConstants.lightLinearDirection = linearDir;
 					pushConstants.lightLinearLength = linearLength;
 
+					if (param.depthHack) {
+						VkViewport vp{0.0f, (float)rh, (float)rw, -(float)rh, 0.0f, 0.1f};
+						vkCmdSetViewport(commandBuffer, 0, 1, &vp);
+					}
+
 					vkCmdPushConstants(commandBuffer, sharedPipeline.dlightPipelineLayout,
 					                   VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
 					                   0, sizeof(pushConstants), &pushConstants);
 
 					vkCmdDrawIndexed(commandBuffer, numIndices, 1, 0, 0, 0);
+
+					if (param.depthHack) {
+						VkViewport vp{0.0f, (float)rh, (float)rw, -(float)rh, 0.0f, 1.0f};
+						vkCmdSetViewport(commandBuffer, 0, 1, &vp);
+					}
 				}
 			}
 		}
@@ -679,8 +716,16 @@ namespace spades {
 			Vector3 fogCol = renderer.GetFogColor();
 			fogCol *= fogCol; // linearize
 			float fogDist = renderer.GetFogDistance();
+			bool mirror = renderer.IsRenderingMirror();
+			int rw = renderer.GetRenderWidth();
+			int rh = renderer.GetRenderHeight();
 
 			for (const auto& param : params) {
+				if (mirror && param.depthHack)
+					continue;
+				if (param.ghost)
+					continue;
+
 				Matrix4 mvpMatrix = projectionViewMatrix * param.matrix;
 
 				Vector4 modelWorldPos4 = param.matrix * MakeVector4(origin.x, origin.y, origin.z, 1.0f);
@@ -710,7 +755,17 @@ namespace spades {
 				vkCmdPushConstants(commandBuffer, sharedPipeline.pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT,
 				                   0, 172, &pushConstants);
 
+				if (param.depthHack) {
+					VkViewport vp{0.0f, (float)rh, (float)rw, -(float)rh, 0.0f, 0.1f};
+					vkCmdSetViewport(commandBuffer, 0, 1, &vp);
+				}
+
 				vkCmdDrawIndexed(commandBuffer, numIndices, 1, 0, 0, 0);
+
+				if (param.depthHack) {
+					VkViewport vp{0.0f, (float)rh, (float)rw, -(float)rh, 0.0f, 1.0f};
+					vkCmdSetViewport(commandBuffer, 0, 1, &vp);
+				}
 			}
 		}
 
