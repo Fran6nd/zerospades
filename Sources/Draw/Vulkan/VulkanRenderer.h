@@ -206,6 +206,8 @@ namespace spades {
 			VulkanImage* GetDepthImageWrapper() { return depthImageWrapper.GetPointerOrNull(); }
 			VkImageView GetDepthImageView() const { return depthImageView; }
 			bool IsRenderingMirror() const { return renderingMirror; }
+		int GetRenderWidth() const { return renderWidth; }
+		int GetRenderHeight() const { return renderHeight; }
 
 			void StartScene(const client::SceneDefinition& def) override;
 
