@@ -246,21 +246,29 @@ namespace spades {
 			vkUpdateDescriptorSets(device->GetDevice(), static_cast<uint32_t>(descriptorWrites.size()),
 			                      descriptorWrites.data(), 0, nullptr);
 
-			VkFramebufferCreateInfo framebufferInfo{};
-			framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-			framebufferInfo.renderPass = renderPass;
-			framebufferInfo.attachmentCount = 1;
-			VkImageView attachments[] = {output->GetImageView()};
-			framebufferInfo.pAttachments = attachments;
-			framebufferInfo.width = output->GetWidth();
-			framebufferInfo.height = output->GetHeight();
-			framebufferInfo.layers = 1;
+			if (output->GetWidth() != cachedFbWidth || output->GetHeight() != cachedFbHeight) {
+				vkDeviceWaitIdle(device->GetDevice());
+				if (framebuffer != VK_NULL_HANDLE) {
+					vkDestroyFramebuffer(device->GetDevice(), framebuffer, nullptr);
+					framebuffer = VK_NULL_HANDLE;
+				}
 
-			if (framebuffer != VK_NULL_HANDLE) {
-				vkDestroyFramebuffer(device->GetDevice(), framebuffer, nullptr);
-			}
-			if (vkCreateFramebuffer(device->GetDevice(), &framebufferInfo, nullptr, &framebuffer) != VK_SUCCESS) {
-				SPRaise("Failed to create fog filter framebuffer");
+				VkFramebufferCreateInfo framebufferInfo{};
+				framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+				framebufferInfo.renderPass = renderPass;
+				framebufferInfo.attachmentCount = 1;
+				VkImageView attachments[] = {output->GetImageView()};
+				framebufferInfo.pAttachments = attachments;
+				framebufferInfo.width = output->GetWidth();
+				framebufferInfo.height = output->GetHeight();
+				framebufferInfo.layers = 1;
+
+				if (vkCreateFramebuffer(device->GetDevice(), &framebufferInfo, nullptr, &framebuffer) != VK_SUCCESS) {
+					SPRaise("Failed to create fog filter framebuffer");
+				}
+
+				cachedFbWidth = output->GetWidth();
+				cachedFbHeight = output->GetHeight();
 			}
 
 			VkRenderPassBeginInfo renderPassInfo{};

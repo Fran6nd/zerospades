@@ -90,6 +90,15 @@ namespace spades {
 				descriptorPool = VK_NULL_HANDLE;
 			}
 
+			if (blurFramebuffer != VK_NULL_HANDLE || framebuffer != VK_NULL_HANDLE) {
+				vkDeviceWaitIdle(device->GetDevice());
+			}
+
+			if (blurFramebuffer != VK_NULL_HANDLE) {
+				vkDestroyFramebuffer(device->GetDevice(), blurFramebuffer, nullptr);
+				blurFramebuffer = VK_NULL_HANDLE;
+			}
+
 			if (framebuffer != VK_NULL_HANDLE) {
 				vkDestroyFramebuffer(device->GetDevice(), framebuffer, nullptr);
 				framebuffer = VK_NULL_HANDLE;
@@ -263,36 +272,43 @@ namespace spades {
 				}
 			}
 
-			// Create blurred input for sharpening (horizontal gaussian blur)
-			Handle<VulkanImage> blurredInput;
-			VkFramebuffer blurFramebuffer = VK_NULL_HANDLE;
-
+			// Blur image and framebuffer, cached by input dimensions
 			if (sharpeningFinalGainValue > 0.0f) {
-				// Create temporary image for blurred result
-				blurredInput = Handle<VulkanImage>::New(
-					device,
-					input->GetWidth(),
-					input->GetHeight(),
-					VK_FORMAT_R8G8B8A8_UNORM,
-					VK_IMAGE_TILING_OPTIMAL,
-					VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-					VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
-				);
-				blurredInput->CreateSampler(VK_FILTER_LINEAR, VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, false);
+				if (input->GetWidth() != cachedBlurWidth || input->GetHeight() != cachedBlurHeight) {
+					vkDeviceWaitIdle(device->GetDevice());
+					if (blurFramebuffer != VK_NULL_HANDLE) {
+						vkDestroyFramebuffer(device->GetDevice(), blurFramebuffer, nullptr);
+						blurFramebuffer = VK_NULL_HANDLE;
+					}
+					cachedBlurImage.reset();
 
-				// Create framebuffer for blur pass
-				VkFramebufferCreateInfo blurFbInfo{};
-				blurFbInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-				blurFbInfo.renderPass = gaussRenderPass;
-				blurFbInfo.attachmentCount = 1;
-				VkImageView blurAttachments[] = {blurredInput->GetImageView()};
-				blurFbInfo.pAttachments = blurAttachments;
-				blurFbInfo.width = input->GetWidth();
-				blurFbInfo.height = input->GetHeight();
-				blurFbInfo.layers = 1;
+					cachedBlurImage = Handle<VulkanImage>::New(
+						device,
+						input->GetWidth(),
+						input->GetHeight(),
+						VK_FORMAT_R8G8B8A8_UNORM,
+						VK_IMAGE_TILING_OPTIMAL,
+						VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+						VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
+					);
+					cachedBlurImage->CreateSampler(VK_FILTER_LINEAR, VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, false);
 
-				if (vkCreateFramebuffer(device->GetDevice(), &blurFbInfo, nullptr, &blurFramebuffer) != VK_SUCCESS) {
-					SPRaise("Failed to create blur framebuffer");
+					VkFramebufferCreateInfo blurFbInfo{};
+					blurFbInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+					blurFbInfo.renderPass = gaussRenderPass;
+					blurFbInfo.attachmentCount = 1;
+					VkImageView blurAttachments[] = {cachedBlurImage->GetImageView()};
+					blurFbInfo.pAttachments = blurAttachments;
+					blurFbInfo.width = input->GetWidth();
+					blurFbInfo.height = input->GetHeight();
+					blurFbInfo.layers = 1;
+
+					if (vkCreateFramebuffer(device->GetDevice(), &blurFbInfo, nullptr, &blurFramebuffer) != VK_SUCCESS) {
+						SPRaise("Failed to create blur framebuffer");
+					}
+
+					cachedBlurWidth = input->GetWidth();
+					cachedBlurHeight = input->GetHeight();
 				}
 
 				// Setup gaussian blur uniforms
@@ -319,7 +335,6 @@ namespace spades {
 
 				VkDescriptorSet gaussDescriptorSet;
 				if (vkAllocateDescriptorSets(device->GetDevice(), &gaussAllocInfo, &gaussDescriptorSet) != VK_SUCCESS) {
-					vkDestroyFramebuffer(device->GetDevice(), blurFramebuffer, nullptr);
 					SPLog("Warning: Failed to allocate gauss descriptor set");
 					return;
 				}
@@ -426,9 +441,6 @@ namespace spades {
 
 			VkDescriptorSet descriptorSet;
 			if (vkAllocateDescriptorSets(device->GetDevice(), &allocInfo, &descriptorSet) != VK_SUCCESS) {
-				if (blurFramebuffer != VK_NULL_HANDLE) {
-					vkDestroyFramebuffer(device->GetDevice(), blurFramebuffer, nullptr);
-				}
 				SPLog("Warning: Failed to allocate color correction descriptor set");
 				return;
 			}
@@ -441,9 +453,9 @@ namespace spades {
 
 			VkDescriptorImageInfo blurredImageInfo{};
 			blurredImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-			if (blurredInput) {
-				blurredImageInfo.imageView = blurredInput->GetImageView();
-				blurredImageInfo.sampler = blurredInput->GetSampler();
+			if (cachedBlurImage) {
+				blurredImageInfo.imageView = cachedBlurImage->GetImageView();
+				blurredImageInfo.sampler = cachedBlurImage->GetSampler();
 			} else {
 				blurredImageInfo.imageView = input->GetImageView();
 				blurredImageInfo.sampler = input->GetSampler();
@@ -481,25 +493,30 @@ namespace spades {
 
 			vkUpdateDescriptorSets(device->GetDevice(), 3, descriptorWrites, 0, nullptr);
 
-			// Create output framebuffer
-			VkFramebufferCreateInfo framebufferInfo{};
-			framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-			framebufferInfo.renderPass = renderPass;
-			framebufferInfo.attachmentCount = 1;
-			VkImageView attachments[] = {output->GetImageView()};
-			framebufferInfo.pAttachments = attachments;
-			framebufferInfo.width = output->GetWidth();
-			framebufferInfo.height = output->GetHeight();
-			framebufferInfo.layers = 1;
-
-			if (framebuffer != VK_NULL_HANDLE) {
-				vkDestroyFramebuffer(device->GetDevice(), framebuffer, nullptr);
-			}
-			if (vkCreateFramebuffer(device->GetDevice(), &framebufferInfo, nullptr, &framebuffer) != VK_SUCCESS) {
-				if (blurFramebuffer != VK_NULL_HANDLE) {
-					vkDestroyFramebuffer(device->GetDevice(), blurFramebuffer, nullptr);
+			// Output framebuffer, cached by output dimensions
+			if (output->GetWidth() != cachedOutputWidth || output->GetHeight() != cachedOutputHeight) {
+				vkDeviceWaitIdle(device->GetDevice());
+				if (framebuffer != VK_NULL_HANDLE) {
+					vkDestroyFramebuffer(device->GetDevice(), framebuffer, nullptr);
+					framebuffer = VK_NULL_HANDLE;
 				}
-				SPRaise("Failed to create color correction filter framebuffer");
+
+				VkFramebufferCreateInfo framebufferInfo{};
+				framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+				framebufferInfo.renderPass = renderPass;
+				framebufferInfo.attachmentCount = 1;
+				VkImageView attachments[] = {output->GetImageView()};
+				framebufferInfo.pAttachments = attachments;
+				framebufferInfo.width = output->GetWidth();
+				framebufferInfo.height = output->GetHeight();
+				framebufferInfo.layers = 1;
+
+				if (vkCreateFramebuffer(device->GetDevice(), &framebufferInfo, nullptr, &framebuffer) != VK_SUCCESS) {
+					SPRaise("Failed to create color correction filter framebuffer");
+				}
+
+				cachedOutputWidth = output->GetWidth();
+				cachedOutputHeight = output->GetHeight();
 			}
 
 			// Execute color correction pass
@@ -540,12 +557,7 @@ namespace spades {
 
 			vkCmdEndRenderPass(commandBuffer);
 
-			// Cleanup
 			vkFreeDescriptorSets(device->GetDevice(), descriptorPool, 1, &descriptorSet);
-
-			if (blurFramebuffer != VK_NULL_HANDLE) {
-				vkDestroyFramebuffer(device->GetDevice(), blurFramebuffer, nullptr);
-			}
 		}
 	}
 }
