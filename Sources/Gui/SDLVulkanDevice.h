@@ -68,6 +68,8 @@ namespace spades {
 
 			// VMA allocator
 			VmaAllocator allocator;
+			bool dedicatedAllocEnabled;
+			bool bindMemory2Enabled;
 
 			// Debug messenger (only in debug mode)
 #ifndef NDEBUG

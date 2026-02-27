@@ -75,7 +75,9 @@ namespace spades {
 		  swapchain(VK_NULL_HANDLE),
 		  commandPool(VK_NULL_HANDLE),
 		  currentFrame(0),
-		  allocator(VK_NULL_HANDLE)
+		  allocator(VK_NULL_HANDLE),
+		  dedicatedAllocEnabled(false),
+		  bindMemory2Enabled(false)
 #ifndef NDEBUG
 		  , debugMessenger(VK_NULL_HANDLE)
 #endif  // NDEBUG
@@ -433,6 +435,38 @@ namespace spades {
 			extensions.push_back("VK_KHR_portability_subset");
 #endif
 
+			// Probe and enable optional extensions needed by VMA.
+			// VK_KHR_dedicated_allocation requires VK_KHR_get_memory_requirements2.
+			{
+				uint32_t extCount = 0;
+				vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &extCount, nullptr);
+				std::vector<VkExtensionProperties> availExts(extCount);
+				if (extCount > 0)
+					vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &extCount, availExts.data());
+
+				bool hasGetMemReq2 = false;
+				bool hasDedicatedAlloc = false;
+				bool hasBindMemory2 = false;
+				for (const auto& ext : availExts) {
+					if (strcmp(ext.extensionName, VK_KHR_GET_MEMORY_REQUIREMENTS_2_EXTENSION_NAME) == 0)
+						hasGetMemReq2 = true;
+					if (strcmp(ext.extensionName, VK_KHR_DEDICATED_ALLOCATION_EXTENSION_NAME) == 0)
+						hasDedicatedAlloc = true;
+					if (strcmp(ext.extensionName, VK_KHR_BIND_MEMORY_2_EXTENSION_NAME) == 0)
+						hasBindMemory2 = true;
+				}
+
+				if (hasGetMemReq2 && hasDedicatedAlloc) {
+					extensions.push_back(VK_KHR_GET_MEMORY_REQUIREMENTS_2_EXTENSION_NAME);
+					extensions.push_back(VK_KHR_DEDICATED_ALLOCATION_EXTENSION_NAME);
+					dedicatedAllocEnabled = true;
+				}
+				if (hasBindMemory2) {
+					extensions.push_back(VK_KHR_BIND_MEMORY_2_EXTENSION_NAME);
+					bindMemory2Enabled = true;
+				}
+			}
+
 			createInfo.enabledExtensionCount = static_cast<uint32_t>(extensions.size());
 			createInfo.ppEnabledExtensionNames = extensions.data();
 
@@ -461,24 +495,10 @@ namespace spades {
 			vkFuncs.vkGetInstanceProcAddr = vkGetInstanceProcAddr;
 			vkFuncs.vkGetDeviceProcAddr   = vkGetDeviceProcAddr;
 
-			// Check for optional extensions that VMA can exploit for better allocation.
-			uint32_t devExtCount = 0;
-			vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &devExtCount, nullptr);
-			std::vector<VkExtensionProperties> devExts(devExtCount);
-			if (devExtCount > 0) {
-				vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &devExtCount, devExts.data());
-			}
-			bool hasDedicatedAlloc = false, hasBindMemory2 = false;
-			for (const auto& ext : devExts) {
-				if (strcmp(ext.extensionName, VK_KHR_DEDICATED_ALLOCATION_EXTENSION_NAME) == 0)
-					hasDedicatedAlloc = true;
-				if (strcmp(ext.extensionName, VK_KHR_BIND_MEMORY_2_EXTENSION_NAME) == 0)
-					hasBindMemory2 = true;
-			}
-
+			// Use the extension enablement flags recorded by CreateLogicalDevice.
 			VmaAllocatorCreateFlags allocatorFlags = 0;
-			if (hasDedicatedAlloc) allocatorFlags |= VMA_ALLOCATOR_CREATE_KHR_DEDICATED_ALLOCATION_BIT;
-			if (hasBindMemory2)    allocatorFlags |= VMA_ALLOCATOR_CREATE_KHR_BIND_MEMORY2_BIT;
+			if (dedicatedAllocEnabled) allocatorFlags |= VMA_ALLOCATOR_CREATE_KHR_DEDICATED_ALLOCATION_BIT;
+			if (bindMemory2Enabled)    allocatorFlags |= VMA_ALLOCATOR_CREATE_KHR_BIND_MEMORY2_BIT;
 
 			VmaAllocatorCreateInfo allocatorInfo = {};
 			allocatorInfo.flags            = allocatorFlags;
