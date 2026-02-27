@@ -36,6 +36,12 @@ namespace spades {
 			Handle<VulkanBuffer> quadIndexBuffer;
 			VkDescriptorPool descriptorPool;
 			VkFramebuffer framebuffer;
+			Handle<VulkanImage> cachedBlurImage;
+			VkFramebuffer blurFramebuffer = VK_NULL_HANDLE;
+			uint32_t cachedBlurWidth = 0;
+			uint32_t cachedBlurHeight = 0;
+			uint32_t cachedOutputWidth = 0;
+			uint32_t cachedOutputHeight = 0;
 
 			// Gaussian blur pipeline for sharpening
 			VkPipeline gaussPipeline;
