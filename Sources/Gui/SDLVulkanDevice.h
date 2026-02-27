@@ -28,6 +28,7 @@
 #include <vulkan/vulkan.h>
 #include <Imports/SDL.h>
 #include <Core/RefCountedObject.h>
+#include <Draw/Vulkan/vk_mem_alloc.h>
 
 namespace spades {
 	namespace gui {
@@ -65,6 +66,9 @@ namespace spades {
 			std::vector<VkFence> imagesInFlight;
 			uint32_t currentFrame;
 
+			// VMA allocator
+			VmaAllocator allocator;
+
 			// Debug messenger (only in debug mode)
 #ifndef NDEBUG
 			VkDebugUtilsMessengerEXT debugMessenger;
@@ -76,6 +80,7 @@ namespace spades {
 			void CreateSurface();
 			void PickPhysicalDevice();
 			void CreateLogicalDevice();
+			void CreateAllocator();
 			void CreateSwapchain();
 			void CreateImageViews();
 			void CreateCommandPool();
@@ -94,6 +99,7 @@ namespace spades {
 			VkInstance GetInstance() const { return instance; }
 			VkDevice GetDevice() const { return device; }
 			VkPhysicalDevice GetPhysicalDevice() const { return physicalDevice; }
+			VmaAllocator GetAllocator() const { return allocator; }
 			VkQueue GetGraphicsQueue() const { return graphicsQueue; }
 			VkQueue GetPresentQueue() const { return presentQueue; }
 			VkSwapchainKHR GetSwapchain() const { return swapchain; }
