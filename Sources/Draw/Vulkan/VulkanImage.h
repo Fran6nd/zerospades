@@ -21,6 +21,7 @@
 #pragma once
 
 #include <vulkan/vulkan.h>
+#include <Draw/Vulkan/vk_mem_alloc.h>
 #include <Core/RefCountedObject.h>
 
 namespace spades {
@@ -33,7 +34,7 @@ namespace spades {
 		class VulkanImage : public RefCountedObject {
 			Handle<gui::SDLVulkanDevice> device;
 			VkImage image;
-			VkDeviceMemory memory;
+			VmaAllocation allocation;
 			VkImageView imageView;
 			VkSampler sampler;
 
@@ -45,8 +46,6 @@ namespace spades {
 			VkImageLayout currentLayout;
 
 			bool ownsImage; // If false, image is owned externally (e.g., swapchain)
-
-			uint32_t FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties);
 
 		protected:
 			~VulkanImage();

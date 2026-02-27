@@ -28,6 +28,7 @@
 #include <algorithm>
 #include <set>
 #include <cstring>
+#include <vector>
 #include <SDL2/SDL_vulkan.h>
 
 namespace spades {
@@ -73,10 +74,11 @@ namespace spades {
 		  presentQueue(VK_NULL_HANDLE),
 		  swapchain(VK_NULL_HANDLE),
 		  commandPool(VK_NULL_HANDLE),
-		  currentFrame(0)
+		  currentFrame(0),
+		  allocator(VK_NULL_HANDLE)
 #ifndef NDEBUG
 		  , debugMessenger(VK_NULL_HANDLE)
-#endif
+#endif  // NDEBUG
 		{
 			SPADES_MARK_FUNCTION();
 
@@ -89,6 +91,7 @@ namespace spades {
 				CreateSurface();
 				PickPhysicalDevice();
 				CreateLogicalDevice();
+				CreateAllocator();
 				CreateSwapchain();
 				CreateImageViews();
 				CreateCommandPool();
@@ -124,6 +127,11 @@ namespace spades {
 					vkDestroyCommandPool(device, commandPool, nullptr);
 
 				CleanupSwapchain();
+
+				if (allocator != VK_NULL_HANDLE) {
+					vmaDestroyAllocator(allocator);
+					allocator = VK_NULL_HANDLE;
+				}
 
 				vkDestroyDevice(device, nullptr);
 			}
@@ -444,6 +452,47 @@ namespace spades {
 			vkGetDeviceQueue(device, presentQueueFamily, 0, &presentQueue);
 
 			SPLog("Vulkan logical device created");
+		}
+
+		void SDLVulkanDevice::CreateAllocator() {
+			SPADES_MARK_FUNCTION();
+
+			VmaVulkanFunctions vkFuncs = {};
+			vkFuncs.vkGetInstanceProcAddr = vkGetInstanceProcAddr;
+			vkFuncs.vkGetDeviceProcAddr   = vkGetDeviceProcAddr;
+
+			// Check for optional extensions that VMA can exploit for better allocation.
+			uint32_t devExtCount = 0;
+			vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &devExtCount, nullptr);
+			std::vector<VkExtensionProperties> devExts(devExtCount);
+			if (devExtCount > 0) {
+				vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &devExtCount, devExts.data());
+			}
+			bool hasDedicatedAlloc = false, hasBindMemory2 = false;
+			for (const auto& ext : devExts) {
+				if (strcmp(ext.extensionName, VK_KHR_DEDICATED_ALLOCATION_EXTENSION_NAME) == 0)
+					hasDedicatedAlloc = true;
+				if (strcmp(ext.extensionName, VK_KHR_BIND_MEMORY_2_EXTENSION_NAME) == 0)
+					hasBindMemory2 = true;
+			}
+
+			VmaAllocatorCreateFlags allocatorFlags = 0;
+			if (hasDedicatedAlloc) allocatorFlags |= VMA_ALLOCATOR_CREATE_KHR_DEDICATED_ALLOCATION_BIT;
+			if (hasBindMemory2)    allocatorFlags |= VMA_ALLOCATOR_CREATE_KHR_BIND_MEMORY2_BIT;
+
+			VmaAllocatorCreateInfo allocatorInfo = {};
+			allocatorInfo.flags            = allocatorFlags;
+			allocatorInfo.physicalDevice   = physicalDevice;
+			allocatorInfo.device           = device;
+			allocatorInfo.instance         = instance;
+			allocatorInfo.vulkanApiVersion = VK_API_VERSION_1_0;
+			allocatorInfo.pVulkanFunctions = &vkFuncs;
+
+			VkResult result = vmaCreateAllocator(&allocatorInfo, &allocator);
+			if (result != VK_SUCCESS) {
+				SPRaise("Failed to create VMA allocator (error code: %d)", result);
+			}
+			SPLog("VMA allocator created (flags: 0x%x)", allocatorFlags);
 		}
 
 		void SDLVulkanDevice::CreateSwapchain() {
