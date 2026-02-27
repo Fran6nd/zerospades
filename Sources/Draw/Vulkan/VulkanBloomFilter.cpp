@@ -416,8 +416,22 @@ namespace spades {
 				framebufferInfo.height = levelHeight;
 				framebufferInfo.layers = 1;
 
-				if (vkCreateFramebuffer(device->GetDevice(), &framebufferInfo, nullptr, &level.framebuffer) != VK_SUCCESS) {
+				if (vkCreateFramebuffer(device->GetDevice(), &framebufferInfo, nullptr, &level.downsampleFramebuffer) != VK_SUCCESS) {
 					SPRaise("Failed to create bloom level framebuffer");
+				}
+
+				VkFramebufferCreateInfo compositeFbInfo = {};
+				compositeFbInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+				compositeFbInfo.renderPass = compositeRenderPass;
+				compositeFbInfo.attachmentCount = 1;
+				compositeFbInfo.pAttachments = attachments;
+				compositeFbInfo.width = levelWidth;
+				compositeFbInfo.height = levelHeight;
+				compositeFbInfo.layers = 1;
+
+				level.compositeFramebuffer = VK_NULL_HANDLE;
+				if (vkCreateFramebuffer(device->GetDevice(), &compositeFbInfo, nullptr, &level.compositeFramebuffer) != VK_SUCCESS) {
+					SPRaise("Failed to create bloom composite framebuffer");
 				}
 
 				levels.push_back(level);
@@ -427,11 +441,19 @@ namespace spades {
 		void VulkanBloomFilter::DestroyLevels() {
 			vkDeviceWaitIdle(device->GetDevice());
 			for (auto& level : levels) {
-				if (level.framebuffer != VK_NULL_HANDLE) {
-					vkDestroyFramebuffer(device->GetDevice(), level.framebuffer, nullptr);
+				if (level.downsampleFramebuffer != VK_NULL_HANDLE) {
+					vkDestroyFramebuffer(device->GetDevice(), level.downsampleFramebuffer, nullptr);
+				}
+				if (level.compositeFramebuffer != VK_NULL_HANDLE) {
+					vkDestroyFramebuffer(device->GetDevice(), level.compositeFramebuffer, nullptr);
 				}
 			}
 			levels.clear();
+			if (outputFramebuffer != VK_NULL_HANDLE) {
+				vkDestroyFramebuffer(device->GetDevice(), outputFramebuffer, nullptr);
+				outputFramebuffer = VK_NULL_HANDLE;
+				cachedOutputImage = nullptr;
+			}
 		}
 
 		void VulkanBloomFilter::Filter(VkCommandBuffer commandBuffer, VulkanImage* input, VulkanImage* output) {
@@ -551,7 +573,7 @@ namespace spades {
 				VkRenderPassBeginInfo renderPassInfo = {};
 				renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
 				renderPassInfo.renderPass = downsampleRenderPass;
-				renderPassInfo.framebuffer = newLevel.framebuffer;
+				renderPassInfo.framebuffer = newLevel.downsampleFramebuffer;
 				renderPassInfo.renderArea.offset = { 0, 0 };
 				renderPassInfo.renderArea.extent = { (uint32_t)newW, (uint32_t)newH };
 
@@ -615,21 +637,6 @@ namespace spades {
 					VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
 					0, 0, nullptr, 0, nullptr, 1, &barrier);
 
-				// Need a different framebuffer for composite (render pass that loads)
-				VkFramebuffer compositeFramebuffer;
-				VkImageView attachments[] = { targLevel.image->GetImageView() };
-				VkFramebufferCreateInfo framebufferInfo = {};
-				framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-				framebufferInfo.renderPass = compositeRenderPass;
-				framebufferInfo.attachmentCount = 1;
-				framebufferInfo.pAttachments = attachments;
-				framebufferInfo.width = targLevel.width;
-				framebufferInfo.height = targLevel.height;
-				framebufferInfo.layers = 1;
-
-				if (vkCreateFramebuffer(device->GetDevice(), &framebufferInfo, nullptr, &compositeFramebuffer) != VK_SUCCESS) {
-					SPRaise("Failed to create composite framebuffer");
-				}
 
 				// Update uniforms (color with alpha)
 				DownsampleUniforms uniforms;
@@ -692,7 +699,7 @@ namespace spades {
 				VkRenderPassBeginInfo renderPassInfo = {};
 				renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
 				renderPassInfo.renderPass = compositeRenderPass;
-				renderPassInfo.framebuffer = compositeFramebuffer;
+				renderPassInfo.framebuffer = targLevel.compositeFramebuffer;
 				renderPassInfo.renderArea.offset = { 0, 0 };
 				renderPassInfo.renderArea.extent = { (uint32_t)targLevel.width, (uint32_t)targLevel.height };
 
@@ -724,7 +731,6 @@ namespace spades {
 				vkCmdEndRenderPass(commandBuffer);
 
 				vkFreeDescriptorSets(device->GetDevice(), descriptorPool, 1, &descriptorSet);
-				vkDestroyFramebuffer(device->GetDevice(), compositeFramebuffer, nullptr);
 			}
 
 			// --- Step 3: Final composite (gamma mix original + bloom) ---
@@ -750,20 +756,25 @@ namespace spades {
 				VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
 				0, 0, nullptr, 0, nullptr, 1, &barrier);
 
-			// Create output framebuffer
-			VkFramebuffer outputFramebuffer;
-			VkImageView outputAttachments[] = { output->GetImageView() };
-			VkFramebufferCreateInfo outputFbInfo = {};
-			outputFbInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-			outputFbInfo.renderPass = renderPass;
-			outputFbInfo.attachmentCount = 1;
-			outputFbInfo.pAttachments = outputAttachments;
-			outputFbInfo.width = output->GetWidth();
-			outputFbInfo.height = output->GetHeight();
-			outputFbInfo.layers = 1;
-
-			if (vkCreateFramebuffer(device->GetDevice(), &outputFbInfo, nullptr, &outputFramebuffer) != VK_SUCCESS) {
-				SPRaise("Failed to create output framebuffer");
+			// Rebuild the cached output framebuffer only when the output image changes.
+			if (output != cachedOutputImage) {
+				if (outputFramebuffer != VK_NULL_HANDLE) {
+					vkDeviceWaitIdle(device->GetDevice());
+					vkDestroyFramebuffer(device->GetDevice(), outputFramebuffer, nullptr);
+				}
+				VkImageView outputAttachments[] = { output->GetImageView() };
+				VkFramebufferCreateInfo outputFbInfo = {};
+				outputFbInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+				outputFbInfo.renderPass = renderPass;
+				outputFbInfo.attachmentCount = 1;
+				outputFbInfo.pAttachments = outputAttachments;
+				outputFbInfo.width = output->GetWidth();
+				outputFbInfo.height = output->GetHeight();
+				outputFbInfo.layers = 1;
+				if (vkCreateFramebuffer(device->GetDevice(), &outputFbInfo, nullptr, &outputFramebuffer) != VK_SUCCESS) {
+					SPRaise("Failed to create bloom output framebuffer");
+				}
+				cachedOutputImage = output;
 			}
 
 			// Update composite uniforms (gamma mix: 0.8 original, 0.2 bloom)
@@ -872,7 +883,6 @@ namespace spades {
 			vkCmdEndRenderPass(commandBuffer);
 
 			vkFreeDescriptorSets(device->GetDevice(), descriptorPool, 1, &finalDescriptorSet);
-			vkDestroyFramebuffer(device->GetDevice(), outputFramebuffer, nullptr);
 		}
 	}
 }
