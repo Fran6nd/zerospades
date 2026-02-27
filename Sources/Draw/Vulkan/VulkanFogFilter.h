@@ -33,6 +33,8 @@ namespace spades {
 			Handle<VulkanBuffer> quadIndexBuffer;
 			VkDescriptorPool descriptorPool;
 			VkFramebuffer framebuffer;
+			uint32_t cachedFbWidth = 0;
+			uint32_t cachedFbHeight = 0;
 
 			void CreatePipeline() override;
 			void CreateRenderPass() override;
