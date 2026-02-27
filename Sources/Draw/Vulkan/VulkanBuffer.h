@@ -21,6 +21,7 @@
 #pragma once
 
 #include <vulkan/vulkan.h>
+#include <Draw/Vulkan/vk_mem_alloc.h>
 #include <Core/RefCountedObject.h>
 
 namespace spades {
@@ -33,14 +34,12 @@ namespace spades {
 		class VulkanBuffer : public RefCountedObject {
 			Handle<gui::SDLVulkanDevice> device;
 			VkBuffer buffer;
-			VkDeviceMemory memory;
+			VmaAllocation allocation;
 			VkDeviceSize size;
 			VkBufferUsageFlags usage;
 			VkMemoryPropertyFlags properties;
 
 			void* mappedData;
-
-			uint32_t FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags props);
 
 		protected:
 			~VulkanBuffer();
@@ -50,7 +49,6 @@ namespace spades {
 			             VkBufferUsageFlags usage, VkMemoryPropertyFlags properties);
 
 			VkBuffer GetBuffer() const { return buffer; }
-			VkDeviceMemory GetMemory() const { return memory; }
 			VkDeviceSize GetSize() const { return size; }
 
 			// Map/unmap for host-visible buffers

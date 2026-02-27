@@ -31,15 +31,13 @@ namespace spades {
 		                           VkBufferUsageFlags bufferUsage, VkMemoryPropertyFlags memProperties)
 		: device(std::move(dev)),
 		  buffer(VK_NULL_HANDLE),
-		  memory(VK_NULL_HANDLE),
+		  allocation(VK_NULL_HANDLE),
 		  size(bufferSize),
 		  usage(bufferUsage),
 		  properties(memProperties),
 		  mappedData(nullptr) {
 
 			SPADES_MARK_FUNCTION();
-
-			VkDevice vkDevice = device->GetDevice();
 
 			// Create buffer
 			VkBufferCreateInfo bufferInfo{};
@@ -48,60 +46,31 @@ namespace spades {
 			bufferInfo.usage = usage;
 			bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-			VkResult result = vkCreateBuffer(vkDevice, &bufferInfo, nullptr, &buffer);
+			VmaAllocationCreateInfo vmaAllocInfo = {};
+			vmaAllocInfo.requiredFlags = memProperties;
+			if (memProperties & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) {
+				vmaAllocInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
+			}
+
+			VkResult result = vmaCreateBuffer(device->GetAllocator(), &bufferInfo, &vmaAllocInfo,
+			                                  &buffer, &allocation, nullptr);
 			if (result != VK_SUCCESS) {
 				SPRaise("Failed to create Vulkan buffer (error code: %d)", result);
 			}
-
-			// Allocate memory
-			VkMemoryRequirements memRequirements;
-			vkGetBufferMemoryRequirements(vkDevice, buffer, &memRequirements);
-
-			VkMemoryAllocateInfo allocInfo{};
-			allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-			allocInfo.allocationSize = memRequirements.size;
-			allocInfo.memoryTypeIndex = FindMemoryType(memRequirements.memoryTypeBits, properties);
-
-			result = vkAllocateMemory(vkDevice, &allocInfo, nullptr, &memory);
-			if (result != VK_SUCCESS) {
-				vkDestroyBuffer(vkDevice, buffer, nullptr);
-				SPRaise("Failed to allocate Vulkan buffer memory (error code: %d)", result);
-			}
-
-			// Bind buffer memory
-			vkBindBufferMemory(vkDevice, buffer, memory, 0);
 		}
 
 		VulkanBuffer::~VulkanBuffer() {
 			SPADES_MARK_FUNCTION();
-
-			VkDevice vkDevice = device->GetDevice();
 
 			if (mappedData) {
 				Unmap();
 			}
 
 			if (buffer != VK_NULL_HANDLE) {
-				vkDestroyBuffer(vkDevice, buffer, nullptr);
+				vmaDestroyBuffer(device->GetAllocator(), buffer, allocation);
+				buffer = VK_NULL_HANDLE;
+				allocation = VK_NULL_HANDLE;
 			}
-
-			if (memory != VK_NULL_HANDLE) {
-				vkFreeMemory(vkDevice, memory, nullptr);
-			}
-		}
-
-		uint32_t VulkanBuffer::FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags props) {
-			VkPhysicalDeviceMemoryProperties memProperties;
-			vkGetPhysicalDeviceMemoryProperties(device->GetPhysicalDevice(), &memProperties);
-
-			for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++) {
-				if ((typeFilter & (1 << i)) &&
-				    (memProperties.memoryTypes[i].propertyFlags & props) == props) {
-					return i;
-				}
-			}
-
-			SPRaise("Failed to find suitable memory type");
 		}
 
 		void* VulkanBuffer::Map() {
@@ -109,7 +78,7 @@ namespace spades {
 				return mappedData;
 			}
 
-			VkResult result = vkMapMemory(device->GetDevice(), memory, 0, size, 0, &mappedData);
+			VkResult result = vmaMapMemory(device->GetAllocator(), allocation, &mappedData);
 			if (result != VK_SUCCESS) {
 				SPRaise("Failed to map buffer memory (error code: %d)", result);
 			}
@@ -119,7 +88,7 @@ namespace spades {
 
 		void VulkanBuffer::Unmap() {
 			if (mappedData) {
-				vkUnmapMemory(device->GetDevice(), memory);
+				vmaUnmapMemory(device->GetAllocator(), allocation);
 				mappedData = nullptr;
 			}
 		}
@@ -134,12 +103,7 @@ namespace spades {
 
 			// Flush memory if not coherent to make writes visible to GPU
 			if (!(properties & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)) {
-				VkMappedMemoryRange range{};
-				range.sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
-				range.memory = memory;
-				range.offset = offset;
-				range.size = dataSize;
-				vkFlushMappedMemoryRanges(device->GetDevice(), 1, &range);
+				vmaFlushAllocation(device->GetAllocator(), allocation, offset, dataSize);
 			}
 
 			Unmap();
