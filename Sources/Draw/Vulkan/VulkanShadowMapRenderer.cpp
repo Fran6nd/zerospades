@@ -500,9 +500,9 @@ namespace spades {
 
 				// Update uniform buffer with light space matrix
 				void* data;
-				vkMapMemory(device->GetDevice(), uniformBuffers[i]->GetMemory(), 0, sizeof(Matrix4), 0, &data);
+				data = uniformBuffers[i]->Map();
 				memcpy(data, &matrix, sizeof(Matrix4));
-				vkUnmapMemory(device->GetDevice(), uniformBuffers[i]->GetMemory());
+				uniformBuffers[i]->Unmap();
 
 				// Begin render pass for this slice
 				VkRenderPassBeginInfo renderPassInfo{};

@@ -31,7 +31,7 @@ namespace spades {
 		                         VkMemoryPropertyFlags properties)
 		: device(std::move(dev)),
 		  image(VK_NULL_HANDLE),
-		  memory(VK_NULL_HANDLE),
+		  allocation(VK_NULL_HANDLE),
 		  imageView(VK_NULL_HANDLE),
 		  sampler(VK_NULL_HANDLE),
 		  width(w),
@@ -43,8 +43,6 @@ namespace spades {
 		  ownsImage(true) {
 
 			SPADES_MARK_FUNCTION();
-
-			VkDevice vkDevice = device->GetDevice();
 
 			// Create image
 			VkImageCreateInfo imageInfo{};
@@ -62,35 +60,19 @@ namespace spades {
 			imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
 			imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-			VkResult result = vkCreateImage(vkDevice, &imageInfo, nullptr, &image);
+			// Use dedicated allocation for images to avoid MoltenVK's MTLHeap-based
+			// allocation path, which triggers placement heap assertions on Intel GPUs
+			// that don't support this Metal feature. VMA handles the dedicated
+			// VkMemoryDedicatedAllocateInfo pNext chain automatically when this flag is set.
+			VmaAllocationCreateInfo vmaAllocInfo = {};
+			vmaAllocInfo.requiredFlags = properties;
+			vmaAllocInfo.flags = VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT;
+
+			VkResult result = vmaCreateImage(device->GetAllocator(), &imageInfo, &vmaAllocInfo,
+			                                 &image, &allocation, nullptr);
 			if (result != VK_SUCCESS) {
 				SPRaise("Failed to create Vulkan image (error code: %d)", result);
 			}
-
-			// Allocate memory using dedicated allocation.
-			// Always use dedicated allocation for images to avoid MoltenVK's
-			// MTLHeap-based allocation path, which triggers placement heap assertions
-			// on Intel GPUs that don't support this Metal feature.
-			VkMemoryRequirements memRequirements;
-			vkGetImageMemoryRequirements(vkDevice, image, &memRequirements);
-
-			VkMemoryDedicatedAllocateInfo dedicatedAllocInfo{};
-			dedicatedAllocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO;
-			dedicatedAllocInfo.image = image;
-
-			VkMemoryAllocateInfo allocInfo{};
-			allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-			allocInfo.allocationSize = memRequirements.size;
-			allocInfo.memoryTypeIndex = FindMemoryType(memRequirements.memoryTypeBits, properties);
-			allocInfo.pNext = &dedicatedAllocInfo;
-
-			result = vkAllocateMemory(vkDevice, &allocInfo, nullptr, &memory);
-			if (result != VK_SUCCESS) {
-				vkDestroyImage(vkDevice, image, nullptr);
-				SPRaise("Failed to allocate Vulkan image memory (error code: %d)", result);
-			}
-
-			vkBindImageMemory(vkDevice, image, memory, 0);
 
 			// Create image view
 			CreateImageView();
@@ -102,7 +84,7 @@ namespace spades {
 		                         VkMemoryPropertyFlags properties)
 		: device(std::move(dev)),
 		  image(VK_NULL_HANDLE),
-		  memory(VK_NULL_HANDLE),
+		  allocation(VK_NULL_HANDLE),
 		  imageView(VK_NULL_HANDLE),
 		  sampler(VK_NULL_HANDLE),
 		  width(w),
@@ -114,8 +96,6 @@ namespace spades {
 		  ownsImage(true) {
 
 			SPADES_MARK_FUNCTION();
-
-			VkDevice vkDevice = device->GetDevice();
 
 			// Create 2D array image
 			VkImageCreateInfo imageInfo{};
@@ -133,32 +113,16 @@ namespace spades {
 			imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
 			imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-			VkResult result = vkCreateImage(vkDevice, &imageInfo, nullptr, &image);
+			// Dedicated allocation for images (see first constructor for rationale)
+			VmaAllocationCreateInfo vmaAllocInfo = {};
+			vmaAllocInfo.requiredFlags = properties;
+			vmaAllocInfo.flags = VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT;
+
+			VkResult result = vmaCreateImage(device->GetAllocator(), &imageInfo, &vmaAllocInfo,
+			                                 &image, &allocation, nullptr);
 			if (result != VK_SUCCESS) {
 				SPRaise("Failed to create Vulkan array image (error code: %d)", result);
 			}
-
-			// Allocate memory (always dedicated, see first constructor for rationale)
-			VkMemoryRequirements memRequirements;
-			vkGetImageMemoryRequirements(vkDevice, image, &memRequirements);
-
-			VkMemoryDedicatedAllocateInfo dedicatedAllocInfo{};
-			dedicatedAllocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO;
-			dedicatedAllocInfo.image = image;
-
-			VkMemoryAllocateInfo allocInfo{};
-			allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-			allocInfo.allocationSize = memRequirements.size;
-			allocInfo.memoryTypeIndex = FindMemoryType(memRequirements.memoryTypeBits, properties);
-			allocInfo.pNext = &dedicatedAllocInfo;
-
-			result = vkAllocateMemory(vkDevice, &allocInfo, nullptr, &memory);
-			if (result != VK_SUCCESS) {
-				vkDestroyImage(vkDevice, image, nullptr);
-				SPRaise("Failed to allocate Vulkan image memory (error code: %d)", result);
-			}
-
-			vkBindImageMemory(vkDevice, image, memory, 0);
 
 			// Create image view
 			CreateImageView();
@@ -168,7 +132,7 @@ namespace spades {
 		                         uint32_t w, uint32_t h, VkFormat fmt)
 		: device(std::move(dev)),
 		  image(existingImage),
-		  memory(VK_NULL_HANDLE),
+		  allocation(VK_NULL_HANDLE),
 		  imageView(VK_NULL_HANDLE),
 		  sampler(VK_NULL_HANDLE),
 		  width(w),
@@ -198,29 +162,11 @@ namespace spades {
 				vkDestroyImageView(vkDevice, imageView, nullptr);
 			}
 
-			if (ownsImage) {
-				if (image != VK_NULL_HANDLE) {
-					vkDestroyImage(vkDevice, image, nullptr);
-				}
-
-				if (memory != VK_NULL_HANDLE) {
-					vkFreeMemory(vkDevice, memory, nullptr);
-				}
+			if (ownsImage && image != VK_NULL_HANDLE) {
+				vmaDestroyImage(device->GetAllocator(), image, allocation);
+				image = VK_NULL_HANDLE;
+				allocation = VK_NULL_HANDLE;
 			}
-		}
-
-		uint32_t VulkanImage::FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) {
-			VkPhysicalDeviceMemoryProperties memProperties;
-			vkGetPhysicalDeviceMemoryProperties(device->GetPhysicalDevice(), &memProperties);
-
-			for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++) {
-				if ((typeFilter & (1 << i)) &&
-				    (memProperties.memoryTypes[i].propertyFlags & properties) == properties) {
-					return i;
-				}
-			}
-
-			SPRaise("Failed to find suitable memory type");
 		}
 
 		void VulkanImage::CreateImageView(VkImageAspectFlags aspectFlags) {
