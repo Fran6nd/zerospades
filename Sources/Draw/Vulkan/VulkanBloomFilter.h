@@ -67,9 +67,14 @@ namespace spades {
 			struct BloomLevel {
 				int width, height;
 				Handle<VulkanImage> image;
-				VkFramebuffer framebuffer;
+				VkFramebuffer downsampleFramebuffer;
+				VkFramebuffer compositeFramebuffer;
 			};
 			std::vector<BloomLevel> levels;
+
+			// Cached output framebuffer - recreated only when the output image changes.
+			VkFramebuffer outputFramebuffer;
+			VulkanImage* cachedOutputImage;
 
 			void CreatePipeline() override;
 			void CreateRenderPass() override;
