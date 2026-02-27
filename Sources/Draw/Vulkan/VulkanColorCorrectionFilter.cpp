@@ -280,7 +280,7 @@ namespace spades {
 						vkDestroyFramebuffer(device->GetDevice(), blurFramebuffer, nullptr);
 						blurFramebuffer = VK_NULL_HANDLE;
 					}
-					cachedBlurImage.reset();
+					cachedBlurImage.Set(nullptr, false);
 
 					cachedBlurImage = Handle<VulkanImage>::New(
 						device,
