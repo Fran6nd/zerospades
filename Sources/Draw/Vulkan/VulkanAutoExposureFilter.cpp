@@ -153,17 +153,17 @@ namespace spades {
 				VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
 			void* data;
-			vkMapMemory(device->GetDevice(), quadVertexBuffer->GetMemory(), 0, sizeof(vertices), 0, &data);
+			data = quadVertexBuffer->Map();
 			memcpy(data, vertices, sizeof(vertices));
-			vkUnmapMemory(device->GetDevice(), quadVertexBuffer->GetMemory());
+			quadVertexBuffer->Unmap();
 
 			quadIndexBuffer = new VulkanBuffer(device, sizeof(indices),
 				VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
 				VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
-			vkMapMemory(device->GetDevice(), quadIndexBuffer->GetMemory(), 0, sizeof(indices), 0, &data);
+			data = quadIndexBuffer->Map();
 			memcpy(data, indices, sizeof(indices));
-			vkUnmapMemory(device->GetDevice(), quadIndexBuffer->GetMemory());
+			quadIndexBuffer->Unmap();
 
 			computeGainUniformBuffer = new VulkanBuffer(device, sizeof(ComputeGainUniforms),
 				VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
@@ -700,9 +700,9 @@ namespace spades {
 			uniforms._pad0 = 0.0f;
 
 			void* data;
-			vkMapMemory(device->GetDevice(), computeGainUniformBuffer->GetMemory(), 0, sizeof(uniforms), 0, &data);
+			data = computeGainUniformBuffer->Map();
 			memcpy(data, &uniforms, sizeof(uniforms));
-			vkUnmapMemory(device->GetDevice(), computeGainUniformBuffer->GetMemory());
+			computeGainUniformBuffer->Unmap();
 
 			VkDescriptorSetAllocateInfo allocInfo = {};
 			allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
