@@ -1112,6 +1112,7 @@ namespace spades {
 				currentImageIndex = device->AcquireNextImage(&imageAvailableSemaphore, &renderFinishedSemaphore);
 				if (currentImageIndex == UINT32_MAX) {
 					SPLog("[VulkanRenderer::Flip] Failed to acquire swapchain image");
+					if (temporaryImagePool) { temporaryImagePool->ReleaseAll(); }
 					return;
 				}
 
