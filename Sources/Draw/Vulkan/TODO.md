@@ -22,7 +22,7 @@
 
 - [x] Implement ghost / transparent model pass. `VulkanModelRenderer::Prerender()` exists but is never called. `RenderSunlightPass` is always called with `ghostPass=false`. Required: depth-only prepass with `Prerender(true)`, then color pass with `DepthFunc(Equal)` and alpha blending with `ghostPass=true`, matching `GLRenderer.cpp:697` and `GLRenderer.cpp:884`.
 
-- [ ] Draw debug lines. `AddDebugLine()` pushes to `debugLines` but `RecordCommandBuffer` clears the vector at line 1490 without rendering. Implement the equivalent of `GLRenderer::RenderDebugLines()`.
+- [x] Draw debug lines. `AddDebugLine()` pushes to `debugLines` but `RecordCommandBuffer` clears the vector at line 1490 without rendering. Implement the equivalent of `GLRenderer::RenderDebugLines()`.
 
 ## Medium
 

@@ -92,7 +92,9 @@ namespace spades {
 		skyPipeline(VK_NULL_HANDLE),
 		skyPipelineLayout(VK_NULL_HANDLE),
 		multiplyColorPipeline(VK_NULL_HANDLE),
-		multiplyColorPipelineLayout(VK_NULL_HANDLE) {
+		multiplyColorPipelineLayout(VK_NULL_HANDLE),
+		debugLinePipeline(VK_NULL_HANDLE),
+		debugLinePipelineLayout(VK_NULL_HANDLE) {
 		renderWidth = device->ScreenWidth();
 		renderHeight = device->ScreenHeight();
 
@@ -114,6 +116,7 @@ namespace spades {
 				CreateCommandBuffers();
 			CreateSkyPipeline();
 			CreateMultiplyColorPipeline();
+			CreateDebugLinePipeline();
 
 				mapRenderer = nullptr;
 				modelRenderer = new VulkanModelRenderer(*this);
@@ -505,6 +508,7 @@ namespace spades {
 
 			DestroySkyPipeline();
 		DestroyMultiplyColorPipeline();
+		DestroyDebugLinePipeline();
 
 			if (renderPass != VK_NULL_HANDLE && vkDevice != VK_NULL_HANDLE) {
 				vkDestroyRenderPass(vkDevice, renderPass, nullptr);
@@ -1490,6 +1494,7 @@ namespace spades {
 			if (modelRenderer) {
 				modelRenderer->Clear();
 			}
+			RenderDebugLines(commandBuffer);
 			debugLines.clear();
 			lights.clear();
 
@@ -2298,6 +2303,224 @@ namespace spades {
 			vkCmdBindIndexBuffer(commandBuffer, skyIndexBuffer->GetBuffer(), 0, VK_INDEX_TYPE_UINT16);
 
 			vkCmdDrawIndexed(commandBuffer, 6, 1, 0, 0, 0);
+		}
+
+		void VulkanRenderer::CreateDebugLinePipeline() {
+			VkDevice vkDevice = device->GetDevice();
+
+			// Load shaders
+			auto LoadSPV = [&](const char* path) -> std::vector<uint32_t> {
+				std::unique_ptr<IStream> s = FileManager::OpenForReading(path);
+				if (!s) SPRaise("Failed to open shader: %s", path);
+				size_t size = s->GetLength();
+				std::vector<uint32_t> code(size / 4);
+				s->Read(code.data(), size);
+				return code;
+			};
+
+			auto vertCode = LoadSPV("Shaders/Vulkan/DebugLine.vert.spv");
+			auto fragCode = LoadSPV("Shaders/Vulkan/DebugLine.frag.spv");
+
+			VkShaderModuleCreateInfo vertInfo{};
+			vertInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+			vertInfo.codeSize = vertCode.size() * sizeof(uint32_t);
+			vertInfo.pCode = vertCode.data();
+			VkShaderModule vertModule;
+			if (vkCreateShaderModule(vkDevice, &vertInfo, nullptr, &vertModule) != VK_SUCCESS) {
+				SPLog("Warning: Failed to create debug line vertex shader module");
+				return;
+			}
+
+			VkShaderModuleCreateInfo fragInfo{};
+			fragInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+			fragInfo.codeSize = fragCode.size() * sizeof(uint32_t);
+			fragInfo.pCode = fragCode.data();
+			VkShaderModule fragModule;
+			if (vkCreateShaderModule(vkDevice, &fragInfo, nullptr, &fragModule) != VK_SUCCESS) {
+				vkDestroyShaderModule(vkDevice, vertModule, nullptr);
+				SPLog("Warning: Failed to create debug line fragment shader module");
+				return;
+			}
+
+			VkPipelineShaderStageCreateInfo stages[2]{};
+			stages[0].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+			stages[0].stage = VK_SHADER_STAGE_VERTEX_BIT;
+			stages[0].module = vertModule;
+			stages[0].pName = "main";
+			stages[1].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+			stages[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+			stages[1].module = fragModule;
+			stages[1].pName = "main";
+
+			// Vertex input: vec3 position (loc 0), vec4 color (loc 1)
+			VkVertexInputBindingDescription binding{};
+			binding.binding = 0;
+			binding.stride = sizeof(float) * 7; // vec3 + vec4
+			binding.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+
+			VkVertexInputAttributeDescription attrs[2]{};
+			attrs[0].binding = 0;
+			attrs[0].location = 0;
+			attrs[0].format = VK_FORMAT_R32G32B32_SFLOAT;
+			attrs[0].offset = 0;
+			attrs[1].binding = 0;
+			attrs[1].location = 1;
+			attrs[1].format = VK_FORMAT_R32G32B32A32_SFLOAT;
+			attrs[1].offset = sizeof(float) * 3;
+
+			VkPipelineVertexInputStateCreateInfo vertexInput{};
+			vertexInput.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+			vertexInput.vertexBindingDescriptionCount = 1;
+			vertexInput.pVertexBindingDescriptions = &binding;
+			vertexInput.vertexAttributeDescriptionCount = 2;
+			vertexInput.pVertexAttributeDescriptions = attrs;
+
+			VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
+			inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+			inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
+			inputAssembly.primitiveRestartEnable = VK_FALSE;
+
+			VkPipelineViewportStateCreateInfo viewportState{};
+			viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+			viewportState.viewportCount = 1;
+			viewportState.scissorCount = 1;
+
+			VkPipelineRasterizationStateCreateInfo rasterizer{};
+			rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+			rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
+			rasterizer.lineWidth = 1.0f;
+			rasterizer.cullMode = VK_CULL_MODE_NONE;
+			rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+
+			VkPipelineMultisampleStateCreateInfo multisampling{};
+			multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+			multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+
+			VkPipelineDepthStencilStateCreateInfo depthStencil{};
+			depthStencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+			depthStencil.depthTestEnable = VK_FALSE;
+			depthStencil.depthWriteEnable = VK_FALSE;
+			depthStencil.stencilTestEnable = VK_FALSE;
+
+			VkPipelineColorBlendAttachmentState blendAttachment{};
+			blendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
+			                                 VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+			blendAttachment.blendEnable = VK_TRUE;
+			blendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+			blendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+			blendAttachment.colorBlendOp = VK_BLEND_OP_ADD;
+			blendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+			blendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+			blendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;
+
+			VkPipelineColorBlendStateCreateInfo colorBlending{};
+			colorBlending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+			colorBlending.attachmentCount = 1;
+			colorBlending.pAttachments = &blendAttachment;
+
+			VkDynamicState dynamicStates[] = {VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR};
+			VkPipelineDynamicStateCreateInfo dynamicState{};
+			dynamicState.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+			dynamicState.dynamicStateCount = 2;
+			dynamicState.pDynamicStates = dynamicStates;
+
+			VkPushConstantRange pcRange{};
+			pcRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+			pcRange.offset = 0;
+			pcRange.size = sizeof(float) * 16; // mat4
+
+			VkPipelineLayoutCreateInfo layoutInfo{};
+			layoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+			layoutInfo.pushConstantRangeCount = 1;
+			layoutInfo.pPushConstantRanges = &pcRange;
+
+			if (vkCreatePipelineLayout(vkDevice, &layoutInfo, nullptr, &debugLinePipelineLayout) != VK_SUCCESS) {
+				vkDestroyShaderModule(vkDevice, vertModule, nullptr);
+				vkDestroyShaderModule(vkDevice, fragModule, nullptr);
+				SPLog("Warning: Failed to create debug line pipeline layout");
+				return;
+			}
+
+			VkGraphicsPipelineCreateInfo pipelineInfo{};
+			pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+			pipelineInfo.stageCount = 2;
+			pipelineInfo.pStages = stages;
+			pipelineInfo.pVertexInputState = &vertexInput;
+			pipelineInfo.pInputAssemblyState = &inputAssembly;
+			pipelineInfo.pViewportState = &viewportState;
+			pipelineInfo.pRasterizationState = &rasterizer;
+			pipelineInfo.pMultisampleState = &multisampling;
+			pipelineInfo.pDepthStencilState = &depthStencil;
+			pipelineInfo.pColorBlendState = &colorBlending;
+			pipelineInfo.pDynamicState = &dynamicState;
+			pipelineInfo.layout = debugLinePipelineLayout;
+			pipelineInfo.renderPass = GetOffscreenRenderPass();
+			pipelineInfo.subpass = 0;
+
+			VkResult result = vkCreateGraphicsPipelines(vkDevice, GetPipelineCache(), 1, &pipelineInfo, nullptr, &debugLinePipeline);
+
+			vkDestroyShaderModule(vkDevice, vertModule, nullptr);
+			vkDestroyShaderModule(vkDevice, fragModule, nullptr);
+
+			if (result != VK_SUCCESS) {
+				SPLog("Warning: Failed to create debug line pipeline (error code: %d)", result);
+				debugLinePipeline = VK_NULL_HANDLE;
+			} else {
+				SPLog("Debug line pipeline created successfully");
+			}
+		}
+
+		void VulkanRenderer::DestroyDebugLinePipeline() {
+			VkDevice vkDevice = device->GetDevice();
+			if (debugLinePipeline != VK_NULL_HANDLE && vkDevice != VK_NULL_HANDLE) {
+				vkDestroyPipeline(vkDevice, debugLinePipeline, nullptr);
+				debugLinePipeline = VK_NULL_HANDLE;
+			}
+			if (debugLinePipelineLayout != VK_NULL_HANDLE && vkDevice != VK_NULL_HANDLE) {
+				vkDestroyPipelineLayout(vkDevice, debugLinePipelineLayout, nullptr);
+				debugLinePipelineLayout = VK_NULL_HANDLE;
+			}
+		}
+
+		void VulkanRenderer::RenderDebugLines(VkCommandBuffer commandBuffer) {
+			if (debugLines.empty() || debugLinePipeline == VK_NULL_HANDLE)
+				return;
+
+			// Build flat vertex buffer: 2 vertices per line, each vertex = vec3 pos + vec4 color
+			struct LineVertex { float x, y, z, r, g, b, a; };
+			std::vector<LineVertex> vertices;
+			vertices.reserve(debugLines.size() * 2);
+			for (const auto& line : debugLines) {
+				vertices.push_back({line.v1.x, line.v1.y, line.v1.z, line.color.x, line.color.y, line.color.z, line.color.w});
+				vertices.push_back({line.v2.x, line.v2.y, line.v2.z, line.color.x, line.color.y, line.color.z, line.color.w});
+			}
+
+			Handle<VulkanBuffer> vertexBuffer(new VulkanBuffer(
+				device,
+				vertices.size() * sizeof(LineVertex),
+				VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+				VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
+			));
+			vertexBuffer->UpdateData(vertices.data(), vertices.size() * sizeof(LineVertex));
+
+			vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, debugLinePipeline);
+
+			VkViewport viewport{0.0f, (float)renderHeight, (float)renderWidth, -(float)renderHeight, 0.0f, 1.0f};
+			vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
+			VkRect2D scissor{{0, 0}, {static_cast<uint32_t>(renderWidth), static_cast<uint32_t>(renderHeight)}};
+			vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
+
+			const Matrix4& mvp = GetProjectionViewMatrix();
+			vkCmdPushConstants(commandBuffer, debugLinePipelineLayout, VK_SHADER_STAGE_VERTEX_BIT,
+			                   0, sizeof(float) * 16, &mvp);
+
+			VkBuffer vb = vertexBuffer->GetBuffer();
+			VkDeviceSize offset = 0;
+			vkCmdBindVertexBuffers(commandBuffer, 0, 1, &vb, &offset);
+
+			vkCmdDraw(commandBuffer, static_cast<uint32_t>(vertices.size()), 1, 0, 0);
+
+			QueueBufferForDeletion(vertexBuffer);
 		}
 
 	} // namespace draw
