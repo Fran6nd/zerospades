@@ -203,9 +203,8 @@ namespace spades {
 			if ((int)r_water > 0 && z >= 63)
 				return false;
 
-			// FIXME: variable map size
-			x &= 511;
-			y &= 511;
+			x = ((x % map->Width()) + map->Width()) % map->Width();
+			y = ((y % map->Height()) + map->Height()) % map->Height();
 
 			return map->IsSolid(x, y, z);
 		}
@@ -339,15 +338,14 @@ namespace spades {
 		float VulkanMapChunk::DistanceFromEye(const Vector3& eye) {
 			Vector3 diff = eye - centerPos;
 
-			// FIXME: variable map size
-			if (diff.x < -256.0F)
-				diff.x += 512.0F;
-			if (diff.y < -256.0F)
-				diff.y += 512.0F;
-			if (diff.x > 256.0F)
-				diff.x -= 512.0F;
-			if (diff.y > 256.0F)
-				diff.y -= 512.0F;
+			{
+				const float mw = (float)map->Width();
+				const float mh = (float)map->Height();
+				if (diff.x < -(mw * 0.5F)) diff.x += mw;
+				if (diff.y < -(mh * 0.5F)) diff.y += mh;
+				if (diff.x >  (mw * 0.5F)) diff.x -= mw;
+				if (diff.y >  (mh * 0.5F)) diff.y -= mh;
+			}
 
 			float dist = std::max(fabsf(diff.x), fabsf(diff.y));
 			return std::max(dist - ((float)Size * 0.5F), 0.0F);
@@ -369,15 +367,14 @@ namespace spades {
 			Vector3 diff = eye - centerPos;
 			float sx = 0.0F, sy = 0.0F;
 
-			// FIXME: variable map size
-			if (diff.x > 256.0F)
-				sx += 512.0F;
-			if (diff.y > 256.0F)
-				sy += 512.0F;
-			if (diff.x < -256.0F)
-				sx -= 512.0F;
-			if (diff.y < -256.0F)
-				sy -= 512.0F;
+			{
+				const float mw = (float)map->Width();
+				const float mh = (float)map->Height();
+				if (diff.x >  (mw * 0.5F)) sx += mw;
+				if (diff.y >  (mh * 0.5F)) sy += mh;
+				if (diff.x < -(mw * 0.5F)) sx -= mw;
+				if (diff.y < -(mh * 0.5F)) sy -= mh;
+			}
 
 			// Set up push constants (MVP matrix + model origin + fog data)
 			Vector3 fogCol = renderer.renderer.GetFogColor();
@@ -483,15 +480,14 @@ namespace spades {
 			Vector3 diff = eye - centerPos;
 			float sx = 0.0F, sy = 0.0F;
 
-			// FIXME: variable map size
-			if (diff.x > 256.0F)
-				sx += 512.0F;
-			if (diff.y > 256.0F)
-				sy += 512.0F;
-			if (diff.x < -256.0F)
-				sx -= 512.0F;
-			if (diff.y < -256.0F)
-				sy -= 512.0F;
+			{
+				const float mw = (float)map->Width();
+				const float mh = (float)map->Height();
+				if (diff.x >  (mw * 0.5F)) sx += mw;
+				if (diff.y >  (mh * 0.5F)) sy += mh;
+				if (diff.x < -(mw * 0.5F)) sx -= mw;
+				if (diff.y < -(mh * 0.5F)) sy -= mh;
+			}
 
 			// Push model origin for this chunk
 			Vector3 modelOrigin = MakeVector3(
