@@ -16,14 +16,6 @@
   - Bicubic Resample (`r_scaleFilter`)
   - The blit path at `VulkanRenderer.cpp:1754–1769` must route through this chain before copying to the swapchain.
 
-## High
-
-- [x] Implement `MultiplyScreenColor` with a dedicated multiplicative-blend pipeline (`VK_BLEND_FACTOR_ZERO` / `VK_BLEND_FACTOR_SRC_COLOR`). Fullscreen triangle from `gl_VertexIndex`, no vertex buffer. Rendered before UI in the swapchain render pass.
-
-- [x] Implement ghost / transparent model pass. `VulkanModelRenderer::Prerender()` exists but is never called. `RenderSunlightPass` is always called with `ghostPass=false`. Required: depth-only prepass with `Prerender(true)`, then color pass with `DepthFunc(Equal)` and alpha blending with `ghostPass=true`, matching `GLRenderer.cpp:697` and `GLRenderer.cpp:884`.
-
-- [x] Draw debug lines. `AddDebugLine()` pushes to `debugLines` but `RecordCommandBuffer` clears the vector at line 1490 without rendering. Implement the equivalent of `GLRenderer::RenderDebugLines()`.
-
 ## Medium
 
 - [ ] Handle swapchain resize. `SDLVulkanDevice::RecreateSwapchain()` is declared but never called. On window resize, `VK_ERROR_OUT_OF_DATE_KHR` from `vkQueuePresentKHR` is silently unhandled. The GL renderer calls `UpdateRenderSize()` every `Flip()`.
