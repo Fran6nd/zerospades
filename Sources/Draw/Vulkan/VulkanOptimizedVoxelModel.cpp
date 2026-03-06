@@ -71,6 +71,14 @@ namespace spades {
 				vkDestroyPipeline(vkDevice, sharedPipeline.outlinesPipeline, nullptr);
 				sharedPipeline.outlinesPipeline = VK_NULL_HANDLE;
 			}
+			if (sharedPipeline.ghostDepthPipeline != VK_NULL_HANDLE) {
+				vkDestroyPipeline(vkDevice, sharedPipeline.ghostDepthPipeline, nullptr);
+				sharedPipeline.ghostDepthPipeline = VK_NULL_HANDLE;
+			}
+			if (sharedPipeline.ghostColorPipeline != VK_NULL_HANDLE) {
+				vkDestroyPipeline(vkDevice, sharedPipeline.ghostColorPipeline, nullptr);
+				sharedPipeline.ghostColorPipeline = VK_NULL_HANDLE;
+			}
 			if (sharedPipeline.pipelineLayout != VK_NULL_HANDLE) {
 				vkDestroyPipelineLayout(vkDevice, sharedPipeline.pipelineLayout, nullptr);
 				sharedPipeline.pipelineLayout = VK_NULL_HANDLE;
@@ -180,6 +188,14 @@ namespace spades {
 				if (sharedPipeline.outlinesPipeline != VK_NULL_HANDLE) {
 					vkDestroyPipeline(vkDevice, sharedPipeline.outlinesPipeline, nullptr);
 					sharedPipeline.outlinesPipeline = VK_NULL_HANDLE;
+				}
+				if (sharedPipeline.ghostDepthPipeline != VK_NULL_HANDLE) {
+					vkDestroyPipeline(vkDevice, sharedPipeline.ghostDepthPipeline, nullptr);
+					sharedPipeline.ghostDepthPipeline = VK_NULL_HANDLE;
+				}
+				if (sharedPipeline.ghostColorPipeline != VK_NULL_HANDLE) {
+					vkDestroyPipeline(vkDevice, sharedPipeline.ghostColorPipeline, nullptr);
+					sharedPipeline.ghostColorPipeline = VK_NULL_HANDLE;
 				}
 				if (sharedPipeline.pipelineLayout != VK_NULL_HANDLE) {
 					vkDestroyPipelineLayout(vkDevice, sharedPipeline.pipelineLayout, nullptr);
@@ -362,14 +378,28 @@ namespace spades {
 			if (params.empty())
 				return;
 
-			// Use the same rendering as sunlight pass but with depth-only pipeline
-			// For now, reuse the standard pipeline (full implementation needs depth-only pipeline)
 			VkRenderPass renderPass = renderer.GetOffscreenRenderPass();
 			if (sharedPipeline.pipeline == VK_NULL_HANDLE || sharedPipeline.renderPass != renderPass) {
 				CreatePipeline(renderPass);
 			}
 
-			vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, sharedPipeline.pipeline);
+			// Select pipeline: ghost depth prepass or opaque depth prepass
+			VkPipeline activePipeline = ghostPass ? sharedPipeline.ghostDepthPipeline : sharedPipeline.pipeline;
+			if (activePipeline == VK_NULL_HANDLE)
+				return;
+
+			vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, activePipeline);
+
+			// Bind shadow map descriptor set
+			VulkanMapRenderer* mapRendererPrerender = renderer.GetMapRenderer();
+			if (mapRendererPrerender) {
+				VkDescriptorSet shadowDs = mapRendererPrerender->GetShadowDescriptorSet();
+				if (shadowDs != VK_NULL_HANDLE) {
+					vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+					                        sharedPipeline.pipelineLayout, 0, 1,
+					                        &shadowDs, 0, nullptr);
+				}
+			}
 
 			// Bind vertex buffer
 			VkBuffer vb = vertexBuffer->GetBuffer();
@@ -386,6 +416,9 @@ namespace spades {
 			float fogDist = renderer.GetFogDistance();
 
 			for (const auto& param : params) {
+				if (ghostPass != param.ghost)
+					continue;
+
 				Matrix4 mvpMatrix = projectionViewMatrix * param.matrix;
 
 				// Compute fog density from model's world position
@@ -472,8 +505,13 @@ namespace spades {
 				CreatePipeline(renderPass);
 			}
 
+			// Select pipeline: ghost color pass or opaque pass
+			VkPipeline activePipeline = ghostPass ? sharedPipeline.ghostColorPipeline : sharedPipeline.pipeline;
+			if (activePipeline == VK_NULL_HANDLE)
+				return;
+
 			// Bind pipeline
-			vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, sharedPipeline.pipeline);
+			vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, activePipeline);
 
 			// Bind shadow map descriptor set from map renderer
 			VulkanMapRenderer* mapRenderer = renderer.GetMapRenderer();
@@ -508,6 +546,8 @@ namespace spades {
 			// Draw each instance
 			for (const auto& param : params) {
 				if (mirror && param.depthHack)
+					continue;
+				if (ghostPass != param.ghost)
 					continue;
 
 				// Compute final MVP matrix
@@ -1220,6 +1260,195 @@ namespace spades {
 							sharedPipeline.outlinesPipeline = VK_NULL_HANDLE;
 						} else {
 							SPLog("Created shared model outline pipeline");
+						}
+					}
+				}
+			}
+
+			// --- Create ghost depth pipeline (depth prepass for transparent models) ---
+			{
+				std::vector<uint32_t> gdVertCode, gdFragCode;
+				if (sharedPipeline.physicalLighting) {
+					gdVertCode = LoadSPIRVFile("Shaders/Vulkan/BasicModelVertexColorPhys.vert.spv");
+					gdFragCode = LoadSPIRVFile("Shaders/Vulkan/BasicModelVertexColorPhys.frag.spv");
+				} else {
+					gdVertCode = LoadSPIRVFile("Shaders/Vulkan/BasicModelVertexColor.vert.spv");
+					gdFragCode = LoadSPIRVFile("Shaders/Vulkan/BasicModelVertexColor.frag.spv");
+				}
+
+				VkShaderModuleCreateInfo gdVertInfo{};
+				gdVertInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+				gdVertInfo.codeSize = gdVertCode.size() * sizeof(uint32_t);
+				gdVertInfo.pCode = gdVertCode.data();
+				VkShaderModule gdVertModule;
+				result = vkCreateShaderModule(vkDevice, &gdVertInfo, nullptr, &gdVertModule);
+				if (result != VK_SUCCESS) {
+					SPLog("Warning: Failed to create ghost depth vertex shader module");
+				} else {
+					VkShaderModuleCreateInfo gdFragInfo{};
+					gdFragInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+					gdFragInfo.codeSize = gdFragCode.size() * sizeof(uint32_t);
+					gdFragInfo.pCode = gdFragCode.data();
+					VkShaderModule gdFragModule;
+					result = vkCreateShaderModule(vkDevice, &gdFragInfo, nullptr, &gdFragModule);
+					if (result != VK_SUCCESS) {
+						vkDestroyShaderModule(vkDevice, gdVertModule, nullptr);
+						SPLog("Warning: Failed to create ghost depth fragment shader module");
+					} else {
+						VkPipelineShaderStageCreateInfo gdStages[2]{};
+						gdStages[0].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+						gdStages[0].stage = VK_SHADER_STAGE_VERTEX_BIT;
+						gdStages[0].module = gdVertModule;
+						gdStages[0].pName = "main";
+						gdStages[1].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+						gdStages[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+						gdStages[1].module = gdFragModule;
+						gdStages[1].pName = "main";
+
+						// Depth: write depth, compare LESS
+						VkPipelineDepthStencilStateCreateInfo gdDepth{};
+						gdDepth.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+						gdDepth.depthTestEnable = VK_TRUE;
+						gdDepth.depthWriteEnable = VK_TRUE;
+						gdDepth.depthCompareOp = VK_COMPARE_OP_LESS;
+						gdDepth.depthBoundsTestEnable = VK_FALSE;
+						gdDepth.stencilTestEnable = VK_FALSE;
+
+						// No color output (depth prepass only)
+						VkPipelineColorBlendAttachmentState gdBlend{};
+						gdBlend.colorWriteMask = 0;
+						gdBlend.blendEnable = VK_FALSE;
+
+						VkPipelineColorBlendStateCreateInfo gdColorBlending{};
+						gdColorBlending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+						gdColorBlending.logicOpEnable = VK_FALSE;
+						gdColorBlending.attachmentCount = 1;
+						gdColorBlending.pAttachments = &gdBlend;
+
+						VkGraphicsPipelineCreateInfo gdPipelineInfo{};
+						gdPipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+						gdPipelineInfo.stageCount = 2;
+						gdPipelineInfo.pStages = gdStages;
+						gdPipelineInfo.pVertexInputState = &vertexInputInfo;
+						gdPipelineInfo.pInputAssemblyState = &inputAssembly;
+						gdPipelineInfo.pViewportState = &viewportState;
+						gdPipelineInfo.pRasterizationState = &rasterizer;
+						gdPipelineInfo.pMultisampleState = &multisampling;
+						gdPipelineInfo.pDepthStencilState = &gdDepth;
+						gdPipelineInfo.pColorBlendState = &gdColorBlending;
+						gdPipelineInfo.pDynamicState = &dynamicState;
+						gdPipelineInfo.layout = sharedPipeline.pipelineLayout;
+						gdPipelineInfo.renderPass = renderPass;
+						gdPipelineInfo.subpass = 0;
+
+						result = vkCreateGraphicsPipelines(vkDevice, renderer.GetPipelineCache(), 1, &gdPipelineInfo, nullptr, &sharedPipeline.ghostDepthPipeline);
+
+						vkDestroyShaderModule(vkDevice, gdVertModule, nullptr);
+						vkDestroyShaderModule(vkDevice, gdFragModule, nullptr);
+
+						if (result != VK_SUCCESS) {
+							SPLog("Warning: Failed to create ghost depth pipeline (error code: %d)", result);
+							sharedPipeline.ghostDepthPipeline = VK_NULL_HANDLE;
+						} else {
+							SPLog("Created shared model ghost depth pipeline");
+						}
+					}
+				}
+			}
+
+			// --- Create ghost color pipeline (semi-transparent with EQUAL depth test) ---
+			{
+				std::vector<uint32_t> gcVertCode, gcFragCode;
+				if (sharedPipeline.physicalLighting) {
+					gcVertCode = LoadSPIRVFile("Shaders/Vulkan/BasicModelVertexColorPhys.vert.spv");
+					gcFragCode = LoadSPIRVFile("Shaders/Vulkan/BasicModelVertexColorPhysGhost.frag.spv");
+				} else {
+					gcVertCode = LoadSPIRVFile("Shaders/Vulkan/BasicModelVertexColor.vert.spv");
+					gcFragCode = LoadSPIRVFile("Shaders/Vulkan/BasicModelVertexColorGhost.frag.spv");
+				}
+
+				VkShaderModuleCreateInfo gcVertInfo{};
+				gcVertInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+				gcVertInfo.codeSize = gcVertCode.size() * sizeof(uint32_t);
+				gcVertInfo.pCode = gcVertCode.data();
+				VkShaderModule gcVertModule;
+				result = vkCreateShaderModule(vkDevice, &gcVertInfo, nullptr, &gcVertModule);
+				if (result != VK_SUCCESS) {
+					SPLog("Warning: Failed to create ghost color vertex shader module");
+				} else {
+					VkShaderModuleCreateInfo gcFragInfo{};
+					gcFragInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+					gcFragInfo.codeSize = gcFragCode.size() * sizeof(uint32_t);
+					gcFragInfo.pCode = gcFragCode.data();
+					VkShaderModule gcFragModule;
+					result = vkCreateShaderModule(vkDevice, &gcFragInfo, nullptr, &gcFragModule);
+					if (result != VK_SUCCESS) {
+						vkDestroyShaderModule(vkDevice, gcVertModule, nullptr);
+						SPLog("Warning: Failed to create ghost color fragment shader module");
+					} else {
+						VkPipelineShaderStageCreateInfo gcStages[2]{};
+						gcStages[0].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+						gcStages[0].stage = VK_SHADER_STAGE_VERTEX_BIT;
+						gcStages[0].module = gcVertModule;
+						gcStages[0].pName = "main";
+						gcStages[1].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+						gcStages[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+						gcStages[1].module = gcFragModule;
+						gcStages[1].pName = "main";
+
+						// Depth: test EQUAL, no depth write (reads depth written by ghost depth prepass)
+						VkPipelineDepthStencilStateCreateInfo gcDepth{};
+						gcDepth.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+						gcDepth.depthTestEnable = VK_TRUE;
+						gcDepth.depthWriteEnable = VK_FALSE;
+						gcDepth.depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
+						gcDepth.depthBoundsTestEnable = VK_FALSE;
+						gcDepth.stencilTestEnable = VK_FALSE;
+
+						// Alpha blending: SRC_ALPHA / ONE_MINUS_SRC_ALPHA
+						VkPipelineColorBlendAttachmentState gcBlend{};
+						gcBlend.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
+						                         VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+						gcBlend.blendEnable = VK_TRUE;
+						gcBlend.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+						gcBlend.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+						gcBlend.colorBlendOp = VK_BLEND_OP_ADD;
+						gcBlend.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+						gcBlend.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+						gcBlend.alphaBlendOp = VK_BLEND_OP_ADD;
+
+						VkPipelineColorBlendStateCreateInfo gcColorBlending{};
+						gcColorBlending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+						gcColorBlending.logicOpEnable = VK_FALSE;
+						gcColorBlending.attachmentCount = 1;
+						gcColorBlending.pAttachments = &gcBlend;
+
+						VkGraphicsPipelineCreateInfo gcPipelineInfo{};
+						gcPipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+						gcPipelineInfo.stageCount = 2;
+						gcPipelineInfo.pStages = gcStages;
+						gcPipelineInfo.pVertexInputState = &vertexInputInfo;
+						gcPipelineInfo.pInputAssemblyState = &inputAssembly;
+						gcPipelineInfo.pViewportState = &viewportState;
+						gcPipelineInfo.pRasterizationState = &rasterizer;
+						gcPipelineInfo.pMultisampleState = &multisampling;
+						gcPipelineInfo.pDepthStencilState = &gcDepth;
+						gcPipelineInfo.pColorBlendState = &gcColorBlending;
+						gcPipelineInfo.pDynamicState = &dynamicState;
+						gcPipelineInfo.layout = sharedPipeline.pipelineLayout;
+						gcPipelineInfo.renderPass = renderPass;
+						gcPipelineInfo.subpass = 0;
+
+						result = vkCreateGraphicsPipelines(vkDevice, renderer.GetPipelineCache(), 1, &gcPipelineInfo, nullptr, &sharedPipeline.ghostColorPipeline);
+
+						vkDestroyShaderModule(vkDevice, gcVertModule, nullptr);
+						vkDestroyShaderModule(vkDevice, gcFragModule, nullptr);
+
+						if (result != VK_SUCCESS) {
+							SPLog("Warning: Failed to create ghost color pipeline (error code: %d)", result);
+							sharedPipeline.ghostColorPipeline = VK_NULL_HANDLE;
+						} else {
+							SPLog("Created shared model ghost color pipeline");
 						}
 					}
 				}

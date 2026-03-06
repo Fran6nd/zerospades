@@ -58,6 +58,8 @@ namespace spades {
 				VkPipeline dlightPipeline;
 				VkPipeline shadowMapPipeline;
 				VkPipeline outlinesPipeline;
+				VkPipeline ghostDepthPipeline;
+				VkPipeline ghostColorPipeline;
 				VkPipelineLayout pipelineLayout;
 				VkPipelineLayout dlightPipelineLayout;
 				VkDescriptorSetLayout descriptorSetLayout;
@@ -65,7 +67,9 @@ namespace spades {
 
 				PipelineCache() : renderPass(VK_NULL_HANDLE), pipeline(VK_NULL_HANDLE),
 				                  dlightPipeline(VK_NULL_HANDLE), shadowMapPipeline(VK_NULL_HANDLE),
-				                  outlinesPipeline(VK_NULL_HANDLE), pipelineLayout(VK_NULL_HANDLE),
+				                  outlinesPipeline(VK_NULL_HANDLE),
+				                  ghostDepthPipeline(VK_NULL_HANDLE), ghostColorPipeline(VK_NULL_HANDLE),
+				                  pipelineLayout(VK_NULL_HANDLE),
 				                  dlightPipelineLayout(VK_NULL_HANDLE),
 				                  descriptorSetLayout(VK_NULL_HANDLE),
 				                  physicalLighting(false) {}

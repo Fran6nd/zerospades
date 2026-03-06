@@ -1,0 +1,54 @@
+/*
+ Copyright (c) 2013 yvt
+
+ This file is part of OpenSpades.
+
+ OpenSpades is free software: you can redistribute it and/or modify
+ it under the terms of the GNU General Public License as published by
+ the Free Software Foundation, either version 3 of the License, or
+ (at your option) any later version.
+
+ OpenSpades is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ GNU General Public License for more details.
+
+ You should have received a copy of the GNU General Public License
+ along with OpenSpades.  If not, see <http://www.gnu.org/licenses/>.
+
+ */
+
+#version 450
+
+// Ghost (semi-transparent) variant of BasicModelVertexColor.frag.
+// Identical lighting, but outputs alpha = 0.5 for SRC_ALPHA blending.
+
+layout(set = 0, binding = 0) uniform sampler2D mapShadowTexture;
+
+layout(location = 0) in vec4 color;           // xyz = vertexColor, w = sun lambert
+layout(location = 1) in vec3 ambientLight;
+layout(location = 2) in vec3 customColor;
+layout(location = 3) in vec3 shadowCoord;
+layout(location = 4) in vec3 fogDensity;
+layout(location = 5) in vec3 inFogColor;
+
+layout(location = 0) out vec4 fragColor;
+
+void main() {
+	float shadowVal = texture(mapShadowTexture, shadowCoord.xy).w;
+	float shadow = (shadowVal < shadowCoord.z - 0.0001) ? 0.0 : 1.0;
+
+	vec3 vertexColor = color.xyz;
+
+	if (dot(vertexColor, vec3(1.0)) < 0.0001) {
+		vertexColor = customColor;
+	}
+
+	vertexColor *= vertexColor;
+
+	float sunLambert = color.w;
+	vec3 sun = vec3(0.6) * sunLambert * shadow;
+	fragColor = vec4(vertexColor * (ambientLight + sun), 0.5);
+
+	fragColor.xyz = mix(fragColor.xyz, inFogColor, fogDensity);
+}
