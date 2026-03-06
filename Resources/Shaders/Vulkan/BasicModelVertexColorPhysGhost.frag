@@ -111,7 +111,7 @@ void main() {
 
 	vertexColor *= vertexColor;
 
-	fragColor = vec4(vertexColor, 0.5);
+	fragColor = vec4(vertexColor, pushConstants._pad);
 	vec3 diffuseShading = ambientLight;
 	float shadowing = shadow * 0.6;
 

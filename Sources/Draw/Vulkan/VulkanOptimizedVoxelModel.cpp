@@ -446,17 +446,19 @@ namespace spades {
 				pushConstants.modelOrigin = origin;
 				pushConstants.fogDensity = fogDensity;
 				pushConstants.customColor = param.customColor;
-				pushConstants._pad = 0.0f;
+				// Ghost depth prepass writes full color; set opacity=1.0 (blend is OFF)
+				pushConstants._pad = ghostPass ? 1.0f : 0.0f;
 				pushConstants.fogColor = fogCol;
 
 				uint32_t pcSize = 172;
-				VkShaderStageFlags pcStages = VK_SHADER_STAGE_VERTEX_BIT;
+				VkShaderStageFlags pcStages = (ghostPass || sharedPipeline.physicalLighting)
+					? (VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT)
+					: VK_SHADER_STAGE_VERTEX_BIT;
 				if (sharedPipeline.physicalLighting) {
 					pushConstants._pad2 = 0.0f;
 					pushConstants.viewMatrix = renderer.GetViewMatrix();
 					pushConstants.viewOrigin = renderer.GetSceneDef().viewOrigin;
 					pcSize = sizeof(pushConstants);
-					pcStages = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
 				}
 				vkCmdPushConstants(commandBuffer, sharedPipeline.pipelineLayout, pcStages,
 				                   0, pcSize, &pushConstants);
@@ -578,17 +580,19 @@ namespace spades {
 				pushConstants.modelOrigin = origin;
 				pushConstants.fogDensity = fogDensity;
 				pushConstants.customColor = param.customColor;
-				pushConstants._pad = 0.0f;
+				// Pass param.opacity as alpha for ghost models
+				pushConstants._pad = ghostPass ? param.opacity : 0.0f;
 				pushConstants.fogColor = fogCol;
 
 				uint32_t pcSize = 172;
-				VkShaderStageFlags pcStages = VK_SHADER_STAGE_VERTEX_BIT;
+				VkShaderStageFlags pcStages = (ghostPass || sharedPipeline.physicalLighting)
+					? (VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT)
+					: VK_SHADER_STAGE_VERTEX_BIT;
 				if (sharedPipeline.physicalLighting) {
 					pushConstants._pad2 = 0.0f;
 					pushConstants.viewMatrix = renderer.GetViewMatrix();
 					pushConstants.viewOrigin = renderer.GetSceneDef().viewOrigin;
 					pcSize = sizeof(pushConstants);
-					pcStages = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
 				}
 				vkCmdPushConstants(commandBuffer, sharedPipeline.pipelineLayout, pcStages,
 				                   0, pcSize, &pushConstants);
@@ -1015,7 +1019,7 @@ namespace spades {
 				pushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
 				pushConstantRange.size = 252;
 			} else {
-				pushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+				pushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
 				pushConstantRange.size = 172;
 			}
 
@@ -1314,9 +1318,10 @@ namespace spades {
 						gdDepth.depthBoundsTestEnable = VK_FALSE;
 						gdDepth.stencilTestEnable = VK_FALSE;
 
-						// No color output (depth prepass only)
+						// Write color (matches GL ghost prepass which renders full color + depth)
 						VkPipelineColorBlendAttachmentState gdBlend{};
-						gdBlend.colorWriteMask = 0;
+						gdBlend.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
+						                         VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
 						gdBlend.blendEnable = VK_FALSE;
 
 						VkPipelineColorBlendStateCreateInfo gdColorBlending{};
@@ -1401,7 +1406,7 @@ namespace spades {
 						gcDepth.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
 						gcDepth.depthTestEnable = VK_TRUE;
 						gcDepth.depthWriteEnable = VK_FALSE;
-						gcDepth.depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
+						gcDepth.depthCompareOp = VK_COMPARE_OP_EQUAL;
 						gcDepth.depthBoundsTestEnable = VK_FALSE;
 						gcDepth.stencilTestEnable = VK_FALSE;
 

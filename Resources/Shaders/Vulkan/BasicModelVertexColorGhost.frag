@@ -21,7 +21,17 @@
 #version 450
 
 // Ghost (semi-transparent) variant of BasicModelVertexColor.frag.
-// Identical lighting, but outputs alpha = 0.5 for SRC_ALPHA blending.
+// Identical lighting, but outputs alpha = pushConstants._pad (param.opacity).
+
+layout(push_constant) uniform PushConstants {
+	mat4 projectionViewMatrix;
+	mat4 modelMatrix;
+	vec3 modelOrigin;
+	float fogDensity;
+	vec3 customColor;
+	float _pad; // opacity
+	vec3 fogColor;
+} pushConstants;
 
 layout(set = 0, binding = 0) uniform sampler2D mapShadowTexture;
 
@@ -48,7 +58,7 @@ void main() {
 
 	float sunLambert = color.w;
 	vec3 sun = vec3(0.6) * sunLambert * shadow;
-	fragColor = vec4(vertexColor * (ambientLight + sun), 0.5);
+	fragColor = vec4(vertexColor * (ambientLight + sun), pushConstants._pad);
 
 	fragColor.xyz = mix(fragColor.xyz, inFogColor, fogDensity);
 }
