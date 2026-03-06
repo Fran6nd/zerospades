@@ -1468,7 +1468,13 @@ namespace spades {
 				}
 			}
 
-			bool useSoftParticles = spriteRenderer && spriteRenderer->IsSoftParticles();
+			// Ghost model pass: depth prepass then semi-transparent color pass
+		if (modelRenderer) {
+			modelRenderer->Prerender(commandBuffer, true);
+			modelRenderer->RenderSunlightPass(commandBuffer, true);
+		}
+
+		bool useSoftParticles = spriteRenderer && spriteRenderer->IsSoftParticles();
 
 			// Render sprites (non-soft mode: inside offscreen pass with hardware depth test)
 			if (!useSoftParticles) {
