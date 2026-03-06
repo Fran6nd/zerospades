@@ -110,6 +110,7 @@ namespace spades {
 			// Create framebuffer manager for offscreen rendering
 			framebufferManager = new VulkanFramebufferManager(device, renderWidth, renderHeight);
 
+			depthFormat = FindDepthFormat();
 			CreateRenderPass();  // Must create render pass before framebuffers
 			CreateDepthResources();  // Create depth buffer for 3D rendering
 			CreateFramebuffers();
@@ -261,7 +262,7 @@ namespace spades {
 
 			// Depth attachment
 			VkAttachmentDescription depthAttachment{};
-			depthAttachment.format = VK_FORMAT_D32_SFLOAT;
+			depthAttachment.format = depthFormat;
 			depthAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
 			depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 			depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
@@ -310,7 +311,24 @@ namespace spades {
 
 		}
 
-		uint32_t VulkanRenderer::FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) {
+		VkFormat VulkanRenderer::FindDepthFormat() {
+		static const VkFormat candidates[] = {
+			VK_FORMAT_D32_SFLOAT,
+			VK_FORMAT_D24_UNORM_S8_UINT,
+			VK_FORMAT_D16_UNORM,
+		};
+
+		VkPhysicalDevice physDevice = device->GetPhysicalDevice();
+		for (VkFormat fmt : candidates) {
+			VkFormatProperties props;
+			vkGetPhysicalDeviceFormatProperties(physDevice, fmt, &props);
+			if (props.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT)
+				return fmt;
+		}
+		SPRaise("Failed to find a supported depth format");
+	}
+
+	uint32_t VulkanRenderer::FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) {
 			VkPhysicalDeviceMemoryProperties memProperties;
 			vkGetPhysicalDeviceMemoryProperties(device->GetPhysicalDevice(), &memProperties);
 
@@ -353,7 +371,6 @@ namespace spades {
 			SPADES_MARK_FUNCTION();
 
 			VkExtent2D swapchainExtent = device->GetSwapchainExtent();
-			VkFormat depthFormat = VK_FORMAT_D32_SFLOAT;
 
 			// Create depth image with transient attachment flag
 			// This allows GPUs to potentially avoid allocating memory for depth data

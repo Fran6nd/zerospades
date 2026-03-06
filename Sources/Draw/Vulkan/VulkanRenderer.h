@@ -85,6 +85,7 @@ namespace spades {
 			std::vector<VkFramebuffer> swapchainFramebuffers;
 
 			// Depth buffer
+			VkFormat depthFormat;
 			VkImage depthImage;
 			VkDeviceMemory depthImageMemory;
 			VkImageView depthImageView;
@@ -162,6 +163,7 @@ namespace spades {
 			void CreateCommandBuffers();
 			void CleanupVulkanResources();
 
+			VkFormat FindDepthFormat();
 			uint32_t FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties);
 			uint32_t FindMemoryTypeWithFallback(uint32_t typeFilter,
 			                                    VkMemoryPropertyFlags preferred,
