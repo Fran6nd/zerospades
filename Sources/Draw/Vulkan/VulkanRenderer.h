@@ -180,6 +180,13 @@ namespace spades {
 			void DestroyMultiplyColorPipeline();
 			void RenderMultiplyColors(VkCommandBuffer commandBuffer);
 
+			// Debug line rendering
+			VkPipeline debugLinePipeline;
+			VkPipelineLayout debugLinePipelineLayout;
+			void CreateDebugLinePipeline();
+			void DestroyDebugLinePipeline();
+			void RenderDebugLines(VkCommandBuffer commandBuffer);
+
 			// Deferred deletion queue management
 			void ProcessDeferredDeletions();
 
