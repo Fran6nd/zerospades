@@ -18,7 +18,7 @@
 
 ## High
 
-- [ ] Implement `MultiplyScreenColor` with a dedicated multiplicative-blend pipeline (`VK_BLEND_FACTOR_ZERO` / `VK_BLEND_FACTOR_SRC_COLOR`). Currently a no-op at `VulkanRenderer.cpp:907–918`. The GL renderer uses `BlendFunc(Zero, SrcColor)` for hit flash and underwater tint.
+- [x] Implement `MultiplyScreenColor` with a dedicated multiplicative-blend pipeline (`VK_BLEND_FACTOR_ZERO` / `VK_BLEND_FACTOR_SRC_COLOR`). Fullscreen triangle from `gl_VertexIndex`, no vertex buffer. Rendered before UI in the swapchain render pass.
 
 - [ ] Implement ghost / transparent model pass. `VulkanModelRenderer::Prerender()` exists but is never called. `RenderSunlightPass` is always called with `ghostPass=false`. Required: depth-only prepass with `Prerender(true)`, then color pass with `DepthFunc(Equal)` and alpha blending with `ghostPass=true`, matching `GLRenderer.cpp:697` and `GLRenderer.cpp:884`.
 

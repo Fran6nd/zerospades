@@ -140,6 +140,11 @@ namespace spades {
 			Handle<VulkanBuffer> skyVertexBuffer;
 			Handle<VulkanBuffer> skyIndexBuffer;
 
+			// MultiplyScreenColor pipeline (fullscreen multiplicative tint)
+			VkPipeline multiplyColorPipeline;
+			VkPipelineLayout multiplyColorPipelineLayout;
+			std::vector<Vector3> pendingMultiplyColors;
+
 			int renderWidth;
 			int renderHeight;
 
@@ -169,6 +174,11 @@ namespace spades {
 			void CreateSkyPipeline();
 			void DestroySkyPipeline();
 			void RenderSky(VkCommandBuffer commandBuffer);
+
+			// MultiplyScreenColor rendering
+			void CreateMultiplyColorPipeline();
+			void DestroyMultiplyColorPipeline();
+			void RenderMultiplyColors(VkCommandBuffer commandBuffer);
 
 			// Deferred deletion queue management
 			void ProcessDeferredDeletions();

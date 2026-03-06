@@ -90,7 +90,9 @@ namespace spades {
 		programManager(nullptr),
 		imageManager(nullptr),
 		skyPipeline(VK_NULL_HANDLE),
-		skyPipelineLayout(VK_NULL_HANDLE) {
+		skyPipelineLayout(VK_NULL_HANDLE),
+		multiplyColorPipeline(VK_NULL_HANDLE),
+		multiplyColorPipelineLayout(VK_NULL_HANDLE) {
 		renderWidth = device->ScreenWidth();
 		renderHeight = device->ScreenHeight();
 
@@ -111,6 +113,7 @@ namespace spades {
 			CreateFramebuffers();
 				CreateCommandBuffers();
 			CreateSkyPipeline();
+			CreateMultiplyColorPipeline();
 
 				mapRenderer = nullptr;
 				modelRenderer = new VulkanModelRenderer(*this);
@@ -501,6 +504,7 @@ namespace spades {
 			}
 
 			DestroySkyPipeline();
+		DestroyMultiplyColorPipeline();
 
 			if (renderPass != VK_NULL_HANDLE && vkDevice != VK_NULL_HANDLE) {
 				vkDestroyRenderPass(vkDevice, renderPass, nullptr);
@@ -907,14 +911,7 @@ namespace spades {
 		void VulkanRenderer::MultiplyScreenColor(Vector3 color) {
 			SPADES_MARK_FUNCTION();
 			EnsureSceneNotStarted();
-
-			// TODO: Implement proper multiplicative blending (ZERO, SRC_COLOR) for screen color multiplication
-			// The current image renderer uses alpha blending (ONE, ONE_MINUS_SRC_ALPHA) which causes
-			// a bright flash instead of the intended color tint when getting hit.
-			// For now, we skip this effect to avoid the flashbang issue.
-
-			// Disabled until proper multiplicative blending is implemented
-			(void)color; // Suppress unused parameter warning
+			pendingMultiplyColors.push_back(color);
 		}
 
 		void VulkanRenderer::SetColor(Vector4 color) {
@@ -1803,6 +1800,9 @@ namespace spades {
 
 		vkCmdBeginRenderPass(commandBuffer, &swapchainRenderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 
+		// Render fullscreen multiply-color tints (hit flash, underwater tint, etc.)
+		RenderMultiplyColors(commandBuffer);
+
 		// Flush image renderer to record 2D drawing commands (UI)
 		if (imageRenderer) {
 			imageRenderer->Flush(commandBuffer, imageIndex);
@@ -2041,6 +2041,197 @@ namespace spades {
 
 			skyVertexBuffer.Set(nullptr, false);
 			skyIndexBuffer.Set(nullptr, false);
+		}
+
+		void VulkanRenderer::CreateMultiplyColorPipeline() {
+			SPADES_MARK_FUNCTION();
+
+			VkDevice vkDevice = device->GetDevice();
+
+			// Load shaders
+			auto LoadSPIRVFile = [](const char* filename) -> std::vector<uint32_t> {
+				std::unique_ptr<IStream> stream = FileManager::OpenForReading(filename);
+				if (!stream) {
+					SPRaise("Failed to open shader file: %s", filename);
+				}
+				size_t size = stream->GetLength();
+				std::vector<uint32_t> code(size / 4);
+				stream->Read(code.data(), size);
+				return code;
+			};
+
+			std::vector<uint32_t> vertCode = LoadSPIRVFile("Shaders/Vulkan/MultiplyColor.vert.spv");
+			std::vector<uint32_t> fragCode = LoadSPIRVFile("Shaders/Vulkan/MultiplyColor.frag.spv");
+
+			VkShaderModuleCreateInfo vertInfo{};
+			vertInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+			vertInfo.codeSize = vertCode.size() * sizeof(uint32_t);
+			vertInfo.pCode = vertCode.data();
+			VkShaderModule vertModule;
+			if (vkCreateShaderModule(vkDevice, &vertInfo, nullptr, &vertModule) != VK_SUCCESS) {
+				SPRaise("Failed to create MultiplyColor vertex shader module");
+			}
+
+			VkShaderModuleCreateInfo fragInfo{};
+			fragInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+			fragInfo.codeSize = fragCode.size() * sizeof(uint32_t);
+			fragInfo.pCode = fragCode.data();
+			VkShaderModule fragModule;
+			if (vkCreateShaderModule(vkDevice, &fragInfo, nullptr, &fragModule) != VK_SUCCESS) {
+				vkDestroyShaderModule(vkDevice, vertModule, nullptr);
+				SPRaise("Failed to create MultiplyColor fragment shader module");
+			}
+
+			VkPipelineShaderStageCreateInfo stages[2]{};
+			stages[0].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+			stages[0].stage = VK_SHADER_STAGE_VERTEX_BIT;
+			stages[0].module = vertModule;
+			stages[0].pName = "main";
+			stages[1].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+			stages[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+			stages[1].module = fragModule;
+			stages[1].pName = "main";
+
+			// No vertex input — fullscreen triangle generated from gl_VertexIndex
+			VkPipelineVertexInputStateCreateInfo vertexInput{};
+			vertexInput.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+
+			VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
+			inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+			inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+
+			VkPipelineViewportStateCreateInfo viewportState{};
+			viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+			viewportState.viewportCount = 1;
+			viewportState.scissorCount = 1;
+
+			VkPipelineRasterizationStateCreateInfo rasterizer{};
+			rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+			rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
+			rasterizer.lineWidth = 1.0f;
+			rasterizer.cullMode = VK_CULL_MODE_NONE;
+			rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+
+			VkPipelineMultisampleStateCreateInfo multisampling{};
+			multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+			multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+
+			// No depth test — this is a 2D post-process over the swapchain image
+			VkPipelineDepthStencilStateCreateInfo depthStencil{};
+			depthStencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+			depthStencil.depthTestEnable = VK_FALSE;
+			depthStencil.depthWriteEnable = VK_FALSE;
+
+			// Multiplicative blend: dst = dst * src_color  (ZERO, SRC_COLOR)
+			VkPipelineColorBlendAttachmentState blendAttachment{};
+			blendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
+			                                VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+			blendAttachment.blendEnable = VK_TRUE;
+			blendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_ZERO;
+			blendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_SRC_COLOR;
+			blendAttachment.colorBlendOp = VK_BLEND_OP_ADD;
+			blendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+			blendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+			blendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;
+
+			VkPipelineColorBlendStateCreateInfo colorBlending{};
+			colorBlending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+			colorBlending.attachmentCount = 1;
+			colorBlending.pAttachments = &blendAttachment;
+
+			VkDynamicState dynamicStates[] = {VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR};
+			VkPipelineDynamicStateCreateInfo dynamicState{};
+			dynamicState.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+			dynamicState.dynamicStateCount = 2;
+			dynamicState.pDynamicStates = dynamicStates;
+
+			// Push constant: vec3 color (fragment stage)
+			VkPushConstantRange pushConstantRange{};
+			pushConstantRange.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+			pushConstantRange.offset = 0;
+			pushConstantRange.size = sizeof(float) * 3;
+
+			VkPipelineLayoutCreateInfo layoutInfo{};
+			layoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+			layoutInfo.pushConstantRangeCount = 1;
+			layoutInfo.pPushConstantRanges = &pushConstantRange;
+
+			VkResult result = vkCreatePipelineLayout(vkDevice, &layoutInfo, nullptr, &multiplyColorPipelineLayout);
+			if (result != VK_SUCCESS) {
+				vkDestroyShaderModule(vkDevice, vertModule, nullptr);
+				vkDestroyShaderModule(vkDevice, fragModule, nullptr);
+				SPRaise("Failed to create MultiplyColor pipeline layout (error: %d)", result);
+			}
+
+			VkGraphicsPipelineCreateInfo pipelineInfo{};
+			pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+			pipelineInfo.stageCount = 2;
+			pipelineInfo.pStages = stages;
+			pipelineInfo.pVertexInputState = &vertexInput;
+			pipelineInfo.pInputAssemblyState = &inputAssembly;
+			pipelineInfo.pViewportState = &viewportState;
+			pipelineInfo.pRasterizationState = &rasterizer;
+			pipelineInfo.pMultisampleState = &multisampling;
+			pipelineInfo.pDepthStencilState = &depthStencil;
+			pipelineInfo.pColorBlendState = &colorBlending;
+			pipelineInfo.pDynamicState = &dynamicState;
+			pipelineInfo.layout = multiplyColorPipelineLayout;
+			pipelineInfo.renderPass = renderPass;
+			pipelineInfo.subpass = 0;
+
+			result = vkCreateGraphicsPipelines(vkDevice, GetPipelineCache(), 1, &pipelineInfo, nullptr, &multiplyColorPipeline);
+
+			vkDestroyShaderModule(vkDevice, vertModule, nullptr);
+			vkDestroyShaderModule(vkDevice, fragModule, nullptr);
+
+			if (result != VK_SUCCESS) {
+				SPRaise("Failed to create MultiplyColor pipeline (error: %d)", result);
+			}
+		}
+
+		void VulkanRenderer::DestroyMultiplyColorPipeline() {
+			VkDevice vkDevice = device->GetDevice();
+			if (multiplyColorPipeline != VK_NULL_HANDLE && vkDevice != VK_NULL_HANDLE) {
+				vkDestroyPipeline(vkDevice, multiplyColorPipeline, nullptr);
+				multiplyColorPipeline = VK_NULL_HANDLE;
+			}
+			if (multiplyColorPipelineLayout != VK_NULL_HANDLE && vkDevice != VK_NULL_HANDLE) {
+				vkDestroyPipelineLayout(vkDevice, multiplyColorPipelineLayout, nullptr);
+				multiplyColorPipelineLayout = VK_NULL_HANDLE;
+			}
+		}
+
+		void VulkanRenderer::RenderMultiplyColors(VkCommandBuffer commandBuffer) {
+			if (pendingMultiplyColors.empty() || multiplyColorPipeline == VK_NULL_HANDLE) {
+				pendingMultiplyColors.clear();
+				return;
+			}
+
+			vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, multiplyColorPipeline);
+
+			VkExtent2D extent = device->GetSwapchainExtent();
+			VkViewport viewport{};
+			viewport.x = 0.0f;
+			viewport.y = 0.0f;
+			viewport.width = static_cast<float>(extent.width);
+			viewport.height = static_cast<float>(extent.height);
+			viewport.minDepth = 0.0f;
+			viewport.maxDepth = 1.0f;
+			vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
+
+			VkRect2D scissor{};
+			scissor.offset = {0, 0};
+			scissor.extent = extent;
+			vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
+
+			for (const Vector3& color : pendingMultiplyColors) {
+				float pushConstants[3] = {color.x, color.y, color.z};
+				vkCmdPushConstants(commandBuffer, multiplyColorPipelineLayout,
+				                   VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(pushConstants), pushConstants);
+				vkCmdDraw(commandBuffer, 3, 1, 0, 0);
+			}
+
+			pendingMultiplyColors.clear();
 		}
 
 		void VulkanRenderer::RenderSky(VkCommandBuffer commandBuffer) {
