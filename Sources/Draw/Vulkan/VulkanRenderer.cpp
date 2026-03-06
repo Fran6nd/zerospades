@@ -969,15 +969,6 @@ namespace spades {
 		                                const AABB2& inRect) {
 			SPADES_MARK_FUNCTION();
 
-			static int drawCallCount = 0;
-			if (drawCallCount < 5) {
-				SPLog("DrawImage #%d: image=%p, outTL=(%.1f,%.1f), outTR=(%.1f,%.1f), outBL=(%.1f,%.1f), inRect=(%.1f,%.1f,%.1f,%.1f)",
-					drawCallCount, image.get_pointer(), outTopLeft.x, outTopLeft.y, outTopRight.x, outTopRight.y,
-					outBottomLeft.x, outBottomLeft.y, inRect.GetMinX(), inRect.GetMinY(),
-					inRect.GetMaxX(), inRect.GetMaxY());
-				drawCallCount++;
-			}
-
 			EnsureSceneNotStarted();
 
 			// d = a + (b - a) + (c - a)
@@ -1024,13 +1015,6 @@ namespace spades {
 				col.x *= col.w;
 				col.y *= col.w;
 				col.z *= col.w;
-			}
-
-			static int addCallCount = 0;
-			if (addCallCount < 3 && img != whiteImage.GetPointerOrNull()) {
-				SPLog("DrawImage: Adding vertices for non-white image %p, color=(%.2f,%.2f,%.2f,%.2f)",
-					img, col.x, col.y, col.z, col.w);
-				addCallCount++;
 			}
 
 			imageRenderer->Add(outTopLeft.x, outTopLeft.y, outTopRight.x, outTopRight.y,
