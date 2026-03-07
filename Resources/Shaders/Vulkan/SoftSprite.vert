@@ -81,8 +81,10 @@ void main() {
 	// Sprite texture coord
 	texCoord.xy = spritePosAttribute.xy * 0.5 + 0.5;
 
-	// Depth texture coord (screen space)
-	texCoord.zw = vec2(0.5) + (gl_Position.xy / gl_Position.w) * 0.5;
+	// Depth texture coord (screen space).
+	// The Y-flip viewport maps NDC_y → framebuffer_y inversely, so UV_y = 0.5 - NDC_y * 0.5.
+	vec2 ndc = gl_Position.xy / gl_Position.w;
+	texCoord.zw = vec2(0.5 + ndc.x * 0.5, 0.5 - ndc.y * 0.5);
 
 	// Fog
 	vec2 horzRelativePos = pos.xy - pc.viewOriginVector.xy;
