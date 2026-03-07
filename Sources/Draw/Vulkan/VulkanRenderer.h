@@ -126,19 +126,19 @@ namespace spades {
 			bool duringSceneRendering;
 			bool renderingMirror;
 
-			VulkanMapRenderer* mapRenderer;
-			VulkanModelRenderer* modelRenderer;
-			VulkanSpriteRenderer* spriteRenderer;
-			VulkanLongSpriteRenderer* longSpriteRenderer;
-			VulkanImageRenderer* imageRenderer;
-			VulkanWaterRenderer* waterRenderer;
-			VulkanFlatMapRenderer* flatMapRenderer;
-			VulkanShadowMapRenderer* shadowMapRenderer;
-			VulkanMapShadowRenderer* mapShadowRenderer;
-			VulkanFramebufferManager* framebufferManager;
+			std::unique_ptr<VulkanMapRenderer> mapRenderer;
+			std::unique_ptr<VulkanModelRenderer> modelRenderer;
+			std::unique_ptr<VulkanSpriteRenderer> spriteRenderer;
+			std::unique_ptr<VulkanLongSpriteRenderer> longSpriteRenderer;
+			std::unique_ptr<VulkanImageRenderer> imageRenderer;
+			std::unique_ptr<VulkanWaterRenderer> waterRenderer;
+			std::unique_ptr<VulkanFlatMapRenderer> flatMapRenderer;
+			std::unique_ptr<VulkanShadowMapRenderer> shadowMapRenderer;
+			std::unique_ptr<VulkanMapShadowRenderer> mapShadowRenderer;
+			std::unique_ptr<VulkanFramebufferManager> framebufferManager;
 			Handle<VulkanProgramManager> programManager;
 			Handle<VulkanModelManager> modelManager;
-			VulkanImageManager* imageManager;
+			std::unique_ptr<VulkanImageManager> imageManager;
 			Handle<VulkanPipelineCache> pipelineCache;
 			Handle<VulkanTemporaryImagePool> temporaryImagePool;
 
@@ -282,13 +282,13 @@ namespace spades {
 			void GameMapChanged(int x, int y, int z, client::GameMap*) override;
 
 			// Vulkan-specific methods
-			VulkanMapRenderer* GetMapRenderer() { return mapRenderer; }
-			VulkanModelRenderer* GetModelRenderer() { return modelRenderer; }
-			VulkanSpriteRenderer* GetSpriteRenderer() { return spriteRenderer; }
-			VulkanWaterRenderer* GetWaterRenderer() { return waterRenderer; }
-			VulkanShadowMapRenderer* GetShadowMapRenderer() { return shadowMapRenderer; }
-			VulkanMapShadowRenderer* GetMapShadowRenderer() { return mapShadowRenderer; }
-			VulkanFramebufferManager* GetFramebufferManager() { return framebufferManager; }
+			VulkanMapRenderer* GetMapRenderer() { return mapRenderer.get(); }
+			VulkanModelRenderer* GetModelRenderer() { return modelRenderer.get(); }
+			VulkanSpriteRenderer* GetSpriteRenderer() { return spriteRenderer.get(); }
+			VulkanWaterRenderer* GetWaterRenderer() { return waterRenderer.get(); }
+			VulkanShadowMapRenderer* GetShadowMapRenderer() { return shadowMapRenderer.get(); }
+			VulkanMapShadowRenderer* GetMapShadowRenderer() { return mapShadowRenderer.get(); }
+			VulkanFramebufferManager* GetFramebufferManager() { return framebufferManager.get(); }
 			VkPipelineCache GetPipelineCache() const;
 
 		// Program registration API
