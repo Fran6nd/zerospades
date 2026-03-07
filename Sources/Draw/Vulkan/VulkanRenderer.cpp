@@ -556,7 +556,62 @@ namespace spades {
 			projectionViewMatrix = projectionMatrix * viewMatrix;
 		}
 
-		void VulkanRenderer::EnsureInitialized() {
+		void VulkanRenderer::BuildFrustrum() {
+			// near/far planes
+			frustrum[0] = Plane3::PlaneWithPointOnPlane(sceneDef.viewOrigin, sceneDef.viewAxis[2]);
+			frustrum[1] = frustrum[0].Flipped();
+			frustrum[0].w -= sceneDef.zNear;
+			frustrum[1].w += sceneDef.zFar;
+
+			// side planes
+			float cx = cosf(sceneDef.fovX * 0.5F);
+			float sx = sinf(sceneDef.fovX * 0.5F);
+			float cy = cosf(sceneDef.fovY * 0.5F);
+			float sy = sinf(sceneDef.fovY * 0.5F);
+
+			frustrum[2] = Plane3::PlaneWithPointOnPlane(
+			  sceneDef.viewOrigin, sceneDef.viewAxis[2] * sx - sceneDef.viewAxis[0] * cx);
+			frustrum[3] = Plane3::PlaneWithPointOnPlane(
+			  sceneDef.viewOrigin, sceneDef.viewAxis[2] * sx + sceneDef.viewAxis[0] * cx);
+			frustrum[4] = Plane3::PlaneWithPointOnPlane(
+			  sceneDef.viewOrigin, sceneDef.viewAxis[2] * sy - sceneDef.viewAxis[1] * cy);
+			frustrum[5] = Plane3::PlaneWithPointOnPlane(
+			  sceneDef.viewOrigin, sceneDef.viewAxis[2] * sy + sceneDef.viewAxis[1] * cy);
+		}
+
+		bool VulkanRenderer::BoxFrustrumCull(const AABB3& box) {
+			if (renderingMirror) {
+				AABB3 bx = box;
+				std::swap(bx.min.z, bx.max.z);
+				bx.min.z = 63.0F * 2.0F - bx.min.z;
+				bx.max.z = 63.0F * 2.0F - bx.max.z;
+				return PlaneCullTest(frustrum[0], bx) && PlaneCullTest(frustrum[1], bx) &&
+				       PlaneCullTest(frustrum[2], bx) && PlaneCullTest(frustrum[3], bx) &&
+				       PlaneCullTest(frustrum[4], bx) && PlaneCullTest(frustrum[5], bx);
+			}
+			return PlaneCullTest(frustrum[0], box) && PlaneCullTest(frustrum[1], box) &&
+			       PlaneCullTest(frustrum[2], box) && PlaneCullTest(frustrum[3], box) &&
+			       PlaneCullTest(frustrum[4], box) && PlaneCullTest(frustrum[5], box);
+		}
+
+		bool VulkanRenderer::SphereFrustrumCull(const Vector3& center, float radius) {
+			if (renderingMirror) {
+				Vector3 vx = center;
+				vx.z = 63.0F * 2.0F - vx.z;
+				for (int i = 0; i < 6; i++) {
+					if (frustrum[i].GetDistanceTo(vx) < -radius)
+						return false;
+				}
+				return true;
+			}
+			for (int i = 0; i < 6; i++) {
+				if (frustrum[i].GetDistanceTo(center) < -radius)
+					return false;
+			}
+			return true;
+		}
+
+				void VulkanRenderer::EnsureInitialized() {
 			if (!inited) {
 				SPRaise("Renderer not initialized");
 			}
@@ -793,6 +848,7 @@ namespace spades {
 
 			BuildProjectionMatrix();
 			BuildView();
+			BuildFrustrum();
 
 			// Wait for the previous frame that used this semaphore slot to finish
 			currentFrameSlot = device->GetCurrentFrame();

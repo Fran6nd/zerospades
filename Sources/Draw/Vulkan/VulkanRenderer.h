@@ -115,6 +115,8 @@ namespace spades {
 			Matrix4 viewMatrix;
 			Matrix4 projectionViewMatrix;
 
+			Plane3 frustrum[6];
+
 			Vector4 drawColorAlphaPremultiplied;
 			bool legacyColorPremultiply;
 
@@ -158,6 +160,7 @@ namespace spades {
 
 			void BuildProjectionMatrix();
 			void BuildView();
+			void BuildFrustrum();
 
 			void EnsureInitialized();
 			void EnsureSceneStarted();
@@ -205,6 +208,9 @@ namespace spades {
 
 		public:
 			VulkanRenderer(Handle<gui::SDLVulkanDevice> device);
+
+			bool BoxFrustrumCull(const AABB3& box);
+			bool SphereFrustrumCull(const Vector3& center, float radius);
 
 			// IRenderer implementation
 			void Init() override;

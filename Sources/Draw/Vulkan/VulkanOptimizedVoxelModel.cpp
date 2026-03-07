@@ -552,6 +552,14 @@ namespace spades {
 				if (ghostPass != param.ghost)
 					continue;
 
+				// Frustum cull
+				{
+					const auto& modelOrigin = param.matrix.GetOrigin();
+					float rad = radius * param.matrix.GetAxis(0).GetLength();
+					if (!renderer.SphereFrustrumCull(modelOrigin, rad))
+						continue;
+				}
+
 				// Compute final MVP matrix
 				Matrix4 mvpMatrix = projectionViewMatrix * param.matrix;
 
@@ -769,6 +777,14 @@ namespace spades {
 					continue;
 				if (param.ghost)
 					continue;
+
+				// Frustum cull
+				{
+					const auto& modelOrigin = param.matrix.GetOrigin();
+					float rad = radius * param.matrix.GetAxis(0).GetLength();
+					if (!renderer.SphereFrustrumCull(modelOrigin, rad))
+						continue;
+				}
 
 				Matrix4 mvpMatrix = projectionViewMatrix * param.matrix;
 
