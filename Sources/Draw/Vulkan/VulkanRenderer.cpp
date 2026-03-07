@@ -1576,7 +1576,7 @@ namespace spades {
 			RenderSky(commandBuffer);
 
 			// Render map
-			if (mapRenderer) {
+			if (!sceneDef.skipWorld && mapRenderer) {
 				mapRenderer->RenderSunlightPass(commandBuffer);
 			}
 
