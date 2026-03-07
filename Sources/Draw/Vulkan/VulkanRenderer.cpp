@@ -719,11 +719,15 @@ namespace spades {
 
 				vkEndCommandBuffer(commandBuffer);
 
-				// Defer submission: push into the pending upload batch
-				PendingUpload upload;
-				upload.commandBuffer = commandBuffer;
-				upload.stagingBuffer = stagingBuffer;
-				pendingUploads.push_back(std::move(upload));
+				// Submit immediately so any subsequent Update() calls via IImage::Update()
+				// don't race against a deferred blank upload (which would overwrite glyph data)
+				VkSubmitInfo uploadSubmit{};
+				uploadSubmit.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+				uploadSubmit.commandBufferCount = 1;
+				uploadSubmit.pCommandBuffers = &commandBuffer;
+				vkQueueSubmit(device->GetGraphicsQueue(), 1, &uploadSubmit, VK_NULL_HANDLE);
+				vkQueueWaitIdle(device->GetGraphicsQueue());
+				vkFreeCommandBuffers(device->GetDevice(), device->GetCommandPool(), 1, &commandBuffer);
 
 				// Create sampler for the image
 				vkImage->CreateSampler();
