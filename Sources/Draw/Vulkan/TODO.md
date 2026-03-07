@@ -42,6 +42,21 @@ Suggested minimum viable order: 1 → 2 → 7 → 8, then 3–6, then 9.
 - [ ] **[PP-9] Investigate and wire Gamma Correction, Camera Blur (`r_cameraBlur`), Bicubic Resample (`r_scaleFilter`)** — no dedicated filter classes found for these three. For each: if a shader exists but no class, write the class following `VulkanPostProcessFilter` pattern; if nothing exists, stub a passthrough and file a sub-TODO. Bicubic resample applies only when render resolution ≠ swapchain resolution and must be the final step before the blit.
   - Files: search `Sources/Draw/Vulkan/` for `VulkanGamma*`, `VulkanCameraBlur*`, `VulkanBicubic*`; `VulkanRenderer.cpp`
 
+## Bugs
+
+- [ ] **[BUG-1] First character of GUI text is invisible** — root cause identified. `Resources/Shaders/Vulkan/BasicImage.frag` flips the V coordinate with `1.0 - texCoord.y`. The first glyph placed in a font atlas (result.y=0) gets texCoord.v=0.0 → flipped to 1.0. With `VK_SAMPLER_ADDRESS_MODE_REPEAT`, v=1.0 wraps back to v=0 which is the empty top row of the GPU atlas, making the glyph invisible. All subsequent glyphs (result.y>0) produce v<1.0 after flip and are visible. Introduced by commit `371ab0a4 "Fix Vulkan UI rendering by restoring texture Y-flip in BasicImage.frag"`.
+  - **Fix options**: (a) change sampler address mode to `VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE` for font atlas images so v=1.0 clamps instead of wrapping — but must verify the flip is still needed for non-font images; (b) remove the flip in the fragment shader and audit whether `VulkanImageWrapper::Update()` and `VulkanRenderer::CreateImage()` Y-flips produce correct UVs without it; (c) offset atlas placement so result.y is never 0 (least preferred, treats the symptom).
+  - **Needs further investigation before fixing**: confirm whether the fragment shader flip is still required for non-font images (e.g. scene sprites, HUD elements) or whether all callers of `BasicImage.frag` have already adjusted their UV generation for Vulkan's Y-axis.
+  - Files: `Resources/Shaders/Vulkan/BasicImage.frag` (line 31), `Sources/Draw/Vulkan/VulkanImage.h` (sampler creation), `Sources/Draw/Vulkan/VulkanImageWrapper.cpp` (glyph upload Y-flip), `Sources/Draw/Vulkan/VulkanImageRenderer.cpp` (viewport negative-height Y-flip)
+
+- [ ] **[BUG-2] Bullet tracers rendered on top of weapon model** — render order in `RecordCommandBuffer()` is: models → long sprites/tracers (line 1562), which is correct. Depth test is `VK_COMPARE_OP_LESS_OR_EQUAL` with depth write disabled for tracers (`VulkanLongSpriteRenderer.cpp`). Despite this, tracers appear over the weapon.
+  - **Needs investigation**: (a) verify that weapon model geometry writes depth (`depthWriteEnable=VK_TRUE`) — check `VulkanModelRenderer` pipeline state; (b) check whether the weapon is rendered in the same subpass/render pass as tracers or in a different one, which would cause the depth buffer to not be shared; (c) check whether any pipeline barrier or attachment transition clears or invalidates depth between model and tracer passes.
+  - Files: `Sources/Draw/Vulkan/VulkanRenderer.cpp` (RecordCommandBuffer render order), `Sources/Draw/Vulkan/VulkanLongSpriteRenderer.cpp` (depth state), `Sources/Draw/Vulkan/VulkanModelRenderer.cpp` (depth state for weapon models)
+
+- [ ] **[BUG-3] Player self-shadow missing when looking at ground** — not yet investigated.
+  - **Needs investigation**: how shadow maps are generated; whether the local player model is excluded from the shadow caster pass (as in some engines where the first-person model is a special case); which shader samples the shadow map and whether there is a self-shadowing bias issue.
+  - Files: `Sources/Draw/Vulkan/VulkanRenderer.cpp` (shadow pass), `Sources/Draw/Vulkan/VulkanModelRenderer.cpp` (shadow casting)
+
 ## Medium
 
 - [ ] Handle swapchain resize. `SDLVulkanDevice::RecreateSwapchain()` is declared but never called. On window resize, `VK_ERROR_OUT_OF_DATE_KHR` from `vkQueuePresentKHR` is silently unhandled. The GL renderer calls `UpdateRenderSize()` every `Flip()`.
