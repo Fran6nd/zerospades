@@ -1602,7 +1602,7 @@ namespace spades {
 
 			// Render outlines (wireframe back-faces with depth bias)
 			if ((int)r_outlines) {
-				if (mapRenderer) {
+				if (!sceneDef.skipWorld && mapRenderer) {
 					mapRenderer->RenderOutlinePass(commandBuffer);
 				}
 				if (modelRenderer) {
