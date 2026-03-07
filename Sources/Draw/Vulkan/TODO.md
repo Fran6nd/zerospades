@@ -44,15 +44,12 @@ Suggested minimum viable order: 1 → 2 → 7 → 8, then 3–6, then 9.
 
 ## Bugs
 
-- [x] **[BUG-1] First character of GUI text is invisible** — two fixes: (1) `VulkanImage::CreateSampler()` default changed to `CLAMP_TO_EDGE` so UV=1.0 does not wrap to empty row 0; (2) `VulkanRenderer::CreateImage()` now submits the initial blank upload immediately — the deferred flush was running after `IImage::Update()` glyph writes and overwriting them with blank pixels.
-
 - [ ] **[BUG-3] Player self-shadow missing when looking at ground** — not yet investigated.
   - **Needs investigation**: how shadow maps are generated; whether the local player model is excluded from the shadow caster pass (as in some engines where the first-person model is a special case); which shader samples the shadow map and whether there is a self-shadowing bias issue.
   - Files: `Sources/Draw/Vulkan/VulkanRenderer.cpp` (shadow pass), `Sources/Draw/Vulkan/VulkanModelRenderer.cpp` (shadow casting)
+  All player shadow in fact are missing.
 
 ## Medium
-
-- [ ] Handle swapchain resize. `SDLVulkanDevice::RecreateSwapchain()` is declared but never called. On window resize, `VK_ERROR_OUT_OF_DATE_KHR` from `vkQueuePresentKHR` is silently unhandled. The GL renderer calls `UpdateRenderSize()` every `Flip()`.
 
 - [ ] Implement `ReadBitmap()`. Currently returns a null handle (`VulkanRenderer.cpp:1156–1167`). Requires a staging buffer, `vkCmdCopyImageToBuffer`, and a synchronous map/read sequence.
 

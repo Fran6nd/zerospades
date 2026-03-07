@@ -71,7 +71,10 @@ namespace spades {
 			bool dedicatedAllocEnabled;
 			bool bindMemory2Enabled;
 
-			// Debug messenger (only in debug mode)
+			// Swapchain generation counter, incremented on every successful recreation
+		uint32_t swapchainGeneration{0};
+
+		// Debug messenger (only in debug mode)
 #ifndef NDEBUG
 			VkDebugUtilsMessengerEXT debugMessenger;
 #endif
@@ -127,6 +130,11 @@ namespace spades {
 
 			// Swapchain recreation (for window resize)
 			void RecreateSwapchain();
+
+			// Returns a monotonically increasing counter, bumped on each swapchain recreation.
+			// Callers can compare against a cached value to detect when dependent resources
+			// (framebuffers, depth image) need to be rebuilt.
+			uint32_t GetSwapchainGeneration() const { return swapchainGeneration; }
 		};
 
 	} // namespace gui

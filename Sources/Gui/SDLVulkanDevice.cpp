@@ -751,6 +751,7 @@ namespace spades {
 			CreateSwapchain();
 			CreateImageViews();
 
+			swapchainGeneration++;
 			SPLog("Swapchain recreated (%dx%d)", w, h);
 		}
 

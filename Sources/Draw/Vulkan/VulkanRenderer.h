@@ -122,6 +122,7 @@ namespace spades {
 
 			unsigned int lastTime;
 			std::uint32_t frameNumber = 0;
+			uint32_t lastSwapchainGeneration{0};
 
 			bool duringSceneRendering;
 			bool renderingMirror;
@@ -172,6 +173,7 @@ namespace spades {
 			void CreateFramebuffers();
 			void CreateCommandBuffers();
 			void CleanupVulkanResources();
+			void RecreateSwapchainDependencies();
 
 			VkFormat FindDepthFormat();
 			uint32_t FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties);
