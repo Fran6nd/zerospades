@@ -49,10 +49,6 @@ Suggested minimum viable order: 1 → 2 → 7 → 8, then 3–6, then 9.
   - **Needs further investigation before fixing**: confirm whether the fragment shader flip is still required for non-font images (e.g. scene sprites, HUD elements) or whether all callers of `BasicImage.frag` have already adjusted their UV generation for Vulkan's Y-axis.
   - Files: `Resources/Shaders/Vulkan/BasicImage.frag` (line 31), `Sources/Draw/Vulkan/VulkanImage.h` (sampler creation), `Sources/Draw/Vulkan/VulkanImageWrapper.cpp` (glyph upload Y-flip), `Sources/Draw/Vulkan/VulkanImageRenderer.cpp` (viewport negative-height Y-flip)
 
-- [x] **[BUG-2] Bullet tracers rendered on top of weapon model** — render order in `RecordCommandBuffer()` is: models → long sprites/tracers (line 1562), which is correct. Depth test is `VK_COMPARE_OP_LESS_OR_EQUAL` with depth write disabled for tracers (`VulkanLongSpriteRenderer.cpp`). Despite this, tracers appear over the weapon.
-  - **Needs investigation**: (a) verify that weapon model geometry writes depth (`depthWriteEnable=VK_TRUE`) — check `VulkanModelRenderer` pipeline state; (b) check whether the weapon is rendered in the same subpass/render pass as tracers or in a different one, which would cause the depth buffer to not be shared; (c) check whether any pipeline barrier or attachment transition clears or invalidates depth between model and tracer passes.
-  - Files: `Sources/Draw/Vulkan/VulkanRenderer.cpp` (RecordCommandBuffer render order), `Sources/Draw/Vulkan/VulkanLongSpriteRenderer.cpp` (depth state), `Sources/Draw/Vulkan/VulkanModelRenderer.cpp` (depth state for weapon models)
-
 - [ ] **[BUG-3] Player self-shadow missing when looking at ground** — not yet investigated.
   - **Needs investigation**: how shadow maps are generated; whether the local player model is excluded from the shadow caster pass (as in some engines where the first-person model is a special case); which shader samples the shadow map and whether there is a self-shadowing bias issue.
   - Files: `Sources/Draw/Vulkan/VulkanRenderer.cpp` (shadow pass), `Sources/Draw/Vulkan/VulkanModelRenderer.cpp` (shadow casting)
