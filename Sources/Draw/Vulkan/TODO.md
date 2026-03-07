@@ -2,7 +2,7 @@
 
 ## Post-processing Infrastructure (sequential, complete in order)
 
-- [ ] **[PP-A] Instantiate filter members in `VulkanRenderer`** — add one `std::unique_ptr<VulkanXxxFilter>` per filter to `VulkanRenderer.h`; construct each (passing `*this`) at the end of `VulkanRenderer::Init()`, same pattern as `mapRenderer`/`modelRenderer`. Filters to add: `VulkanAutoExposureFilter`, `VulkanBloomFilter`, `VulkanFXAAFilter`, `VulkanColorCorrectionFilter`, `VulkanDepthOfFieldFilter`, `VulkanFogFilter`, `VulkanTemporalAAFilter`, `VulkanLensFlareFilter`, `VulkanSSAOFilter`. No rendering logic yet.
+- [x] **[PP-A] Instantiate filter members in `VulkanRenderer`** — add one `std::unique_ptr<VulkanXxxFilter>` per filter to `VulkanRenderer.h`; construct each (passing `*this`) at the end of `VulkanRenderer::Init()`, same pattern as `mapRenderer`/`modelRenderer`. Filters to add: `VulkanAutoExposureFilter`, `VulkanBloomFilter`, `VulkanFXAAFilter`, `VulkanColorCorrectionFilter`, `VulkanDepthOfFieldFilter`, `VulkanFogFilter`, `VulkanTemporalAAFilter`, `VulkanLensFlareFilter`, `VulkanSSAOFilter`. No rendering logic yet.
   - Files: [VulkanRenderer.h](VulkanRenderer.h), [VulkanRenderer.cpp](VulkanRenderer.cpp)
 
 - [ ] **[PP-B] Replace direct blit with ping-pong post-process infrastructure** — in `RecordCommandBuffer()` (~line 2046), instead of blitting `offscreenColor` directly to the swapchain: allocate a second temp image via `temporaryImagePool`; introduce a `currentInput`/`currentOutput` pointer pair initialized to `offscreenColor`/tempImage; swap after each filter call; final blit uses `currentInput`. No filters called yet — pure plumbing.

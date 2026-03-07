@@ -28,6 +28,15 @@
 #include "VulkanFlatMapRenderer.h"
 #include "VulkanShadowMapRenderer.h"
 #include "VulkanMapShadowRenderer.h"
+#include "VulkanAutoExposureFilter.h"
+#include "VulkanBloomFilter.h"
+#include "VulkanFXAAFilter.h"
+#include "VulkanColorCorrectionFilter.h"
+#include "VulkanDepthOfFieldFilter.h"
+#include "VulkanFogFilter.h"
+#include "VulkanTemporalAAFilter.h"
+#include "VulkanLensFlareFilter.h"
+#include "VulkanSSAOFilter.h"
 #include "VulkanFramebufferManager.h"
 #include "VulkanImageWrapper.h"
 #include "VulkanImageManager.h"
@@ -148,6 +157,17 @@ namespace spades {
 			VulkanOptimizedVoxelModel::PreloadShaders(*this);
 			VulkanWaterRenderer::PreloadShaders(*this);
 
+			// Post-process filters
+			autoExposureFilter = stmp::make_unique<VulkanAutoExposureFilter>(*this);
+			bloomFilter = stmp::make_unique<VulkanBloomFilter>(*this);
+			fxaaFilter = stmp::make_unique<VulkanFXAAFilter>(*this);
+			colorCorrectionFilter = stmp::make_unique<VulkanColorCorrectionFilter>(*this);
+			depthOfFieldFilter = stmp::make_unique<VulkanDepthOfFieldFilter>(*this);
+			fogFilter = stmp::make_unique<VulkanFogFilter>(*this);
+			temporalAAFilter = stmp::make_unique<VulkanTemporalAAFilter>(*this);
+			lensFlareFilter = stmp::make_unique<VulkanLensFlareFilter>(*this);
+			ssaoFilter = stmp::make_unique<VulkanSSAOFilter>(*this);
+
 			inited = true;
 			lastSwapchainGeneration = device->GetSwapchainGeneration();
 			vkDeviceWaitIdle(device->GetDevice());
@@ -175,6 +195,15 @@ namespace spades {
 			// Invalidate shared pipeline caches before cleaning up
 			VulkanOptimizedVoxelModel::InvalidateSharedPipeline(device.GetPointerOrNull());
 
+			ssaoFilter.reset();
+			lensFlareFilter.reset();
+			temporalAAFilter.reset();
+			fogFilter.reset();
+			depthOfFieldFilter.reset();
+			colorCorrectionFilter.reset();
+			fxaaFilter.reset();
+			bloomFilter.reset();
+			autoExposureFilter.reset();
 			imageRenderer.reset();
 			spriteRenderer.reset();
 			longSpriteRenderer.reset();
