@@ -1592,7 +1592,7 @@ namespace spades {
 				for (auto& l : lights) {
 					lightPtrs.push_back(&l);
 				}
-				if (mapRenderer) {
+				if (!sceneDef.skipWorld && mapRenderer) {
 					mapRenderer->RenderDynamicLightPass(commandBuffer, lightPtrs);
 				}
 				if (modelRenderer) {
