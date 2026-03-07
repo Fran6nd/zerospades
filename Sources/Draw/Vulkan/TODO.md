@@ -28,16 +28,16 @@
 
 ## Low / Cleanup
 
-- [ ] Remove debug log counters from production path. `VulkanRenderer.cpp:971–1033` has static `drawCallCount` / `addCallCount` locals that log the first few `DrawImage` calls. Remove them.
+- [x] Remove debug log counters from production path. `VulkanRenderer.cpp:971–1033` has static `drawCallCount` / `addCallCount` locals that log the first few `DrawImage` calls. Remove them.
 
-- [ ] Fix hardcoded depth format. `VK_FORMAT_D32_SFLOAT` is hardcoded in `CreateDepthResources()` and `CreateRenderPass()` without calling `vkGetPhysicalDeviceFormatProperties`. Add fallbacks: `VK_FORMAT_D24_UNORM_S8_UINT`, `VK_FORMAT_D16_UNORM`.
+- [x] Fix hardcoded depth format. `VK_FORMAT_D32_SFLOAT` is hardcoded in `CreateDepthResources()` and `CreateRenderPass()` without calling `vkGetPhysicalDeviceFormatProperties`. Add fallbacks: `VK_FORMAT_D24_UNORM_S8_UINT`, `VK_FORMAT_D16_UNORM`.
 
-- [ ] Fix hardcoded map chunk size. Three instances in `VulkanMapChunk.cpp:206,342,372` use `511` / `512` instead of `map->Width()` / `map->Height()`.
+- [x] Fix hardcoded map chunk size. Three instances in `VulkanMapChunk.cpp:206,342,372` use `511` / `512` instead of `map->Width()` / `map->Height()`.
 
-- [ ] Batch texture uploads. `CreateImage()` at `VulkanRenderer.cpp:659` calls `vkQueueWaitIdle()` after every upload. Replace with batched uploads or timeline semaphores / async transfer queue.
+- [x] Batch texture uploads. `CreateImage()` at `VulkanRenderer.cpp:659` calls `vkQueueWaitIdle()` after every upload. Replace with batched uploads or timeline semaphores / async transfer queue.
 
-- [ ] Re-enable water occlusion early-exit. The fast path in `VulkanWaterRenderer.cpp:846` is commented out. Uncomment and validate.
+- [x] Re-enable water occlusion early-exit. The fast path in `VulkanWaterRenderer.cpp:846` is commented out. Uncomment and validate.
 
-- [ ] Add frustum culling at the renderer level. The GL renderer exposes `BoxFrustrumCull()` and `SphereFrustrumCull()`. The Vulkan renderer has no equivalent; chunk and sprite sub-renderers may submit draw calls for out-of-frustum geometry.
+- [x] Add frustum culling at the renderer level. The GL renderer exposes `BoxFrustrumCull()` and `SphereFrustrumCull()`. The Vulkan renderer has no equivalent; chunk and sprite sub-renderers may submit draw calls for out-of-frustum geometry.
 
-- [ ] Normalize ownership model. Some subsystems use `Handle<>` ref-counting (`programManager`, `pipelineCache`, `temporaryImagePool`), others use raw `new`/`delete` (`mapRenderer`, `modelRenderer`, `waterRenderer`). Unify to reduce lifetime ambiguity and leak risk on early-exit paths.
+- [x] Normalize ownership model. Some subsystems use `Handle<>` ref-counting (`programManager`, `pipelineCache`, `temporaryImagePool`), others use raw `new`/`delete` (`mapRenderer`, `modelRenderer`, `waterRenderer`). Unify to reduce lifetime ambiguity and leak risk on early-exit paths.
