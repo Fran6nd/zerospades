@@ -675,16 +675,11 @@ namespace spades {
 
 				vkEndCommandBuffer(commandBuffer);
 
-				// Submit and wait
-				VkSubmitInfo submitInfo{};
-				submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-				submitInfo.commandBufferCount = 1;
-				submitInfo.pCommandBuffers = &commandBuffer;
-
-				vkQueueSubmit(device->GetGraphicsQueue(), 1, &submitInfo, VK_NULL_HANDLE);
-				vkQueueWaitIdle(device->GetGraphicsQueue());
-
-				vkFreeCommandBuffers(device->GetDevice(), device->GetCommandPool(), 1, &commandBuffer);
+				// Defer submission: push into the pending upload batch
+				PendingUpload upload;
+				upload.commandBuffer = commandBuffer;
+				upload.stagingBuffer = stagingBuffer;
+				pendingUploads.push_back(std::move(upload));
 
 				// Create sampler for the image
 				vkImage->CreateSampler();
@@ -1210,7 +1205,44 @@ namespace spades {
 			}
 		}
 
-		VkRenderPass VulkanRenderer::GetOffscreenRenderPass() const {
+		void VulkanRenderer::FlushPendingUploads() {
+			if (pendingUploads.empty())
+				return;
+
+			// Collect all command buffers
+			std::vector<VkCommandBuffer> cmdBufs;
+			cmdBufs.reserve(pendingUploads.size());
+			for (auto& u : pendingUploads)
+				cmdBufs.push_back(u.commandBuffer);
+
+			// Submit all uploads in a single batch
+			VkSubmitInfo submitInfo{};
+			submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+			submitInfo.commandBufferCount = (uint32_t)cmdBufs.size();
+			submitInfo.pCommandBuffers = cmdBufs.data();
+
+			VkFenceCreateInfo fenceInfo{};
+			fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+			VkFence fence;
+			vkCreateFence(device->GetDevice(), &fenceInfo, nullptr, &fence);
+
+			vkQueueSubmit(device->GetGraphicsQueue(), 1, &submitInfo, fence);
+			vkWaitForFences(device->GetDevice(), 1, &fence, VK_TRUE, UINT64_MAX);
+			vkDestroyFence(device->GetDevice(), fence, nullptr);
+
+			vkFreeCommandBuffers(device->GetDevice(), device->GetCommandPool(),
+			                     (uint32_t)cmdBufs.size(), cmdBufs.data());
+
+			// Queue staging buffers for deferred deletion (GPU is done, but keep
+			// them alive for MAX_FRAMES_IN_FLIGHT frames to be safe with
+			// descriptor sets that may still reference layout metadata).
+			for (auto& u : pendingUploads)
+				QueueBufferForDeletion(u.stagingBuffer);
+
+			pendingUploads.clear();
+		}
+
+				VkRenderPass VulkanRenderer::GetOffscreenRenderPass() const {
 		return framebufferManager ? framebufferManager->GetRenderPass() : renderPass;
 	}
 
@@ -1229,6 +1261,9 @@ namespace spades {
 
 		void VulkanRenderer::RecordCommandBuffer(uint32_t imageIndex) {
 			SPADES_MARK_FUNCTION();
+
+			// Flush any pending texture uploads before recording render commands
+			FlushPendingUploads();
 
 			// Process deferred deletions at the start of each frame
 			ProcessDeferredDeletions();
