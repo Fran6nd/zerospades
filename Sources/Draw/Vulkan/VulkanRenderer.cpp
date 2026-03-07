@@ -108,7 +108,7 @@ namespace spades {
 			InitializeVulkanResources();  // Create semaphores for synchronization
 
 			// Create framebuffer manager for offscreen rendering
-			framebufferManager = new VulkanFramebufferManager(device, renderWidth, renderHeight);
+			framebufferManager = stmp::make_unique<VulkanFramebufferManager>(device, renderWidth, renderHeight);
 
 			depthFormat = FindDepthFormat();
 			CreateRenderPass();  // Must create render pass before framebuffers
@@ -120,12 +120,12 @@ namespace spades {
 			CreateDebugLinePipeline();
 
 				mapRenderer = nullptr;
-				modelRenderer = new VulkanModelRenderer(*this);
-				spriteRenderer = new VulkanSpriteRenderer(*this);
-				longSpriteRenderer = new VulkanLongSpriteRenderer(*this);
-				imageRenderer = new VulkanImageRenderer(*this);
-			imageManager = new VulkanImageManager(*this, device);
-			waterRenderer = new VulkanWaterRenderer(*this, map);
+				modelRenderer = stmp::make_unique<VulkanModelRenderer>(*this);
+				spriteRenderer = stmp::make_unique<VulkanSpriteRenderer>(*this);
+				longSpriteRenderer = stmp::make_unique<VulkanLongSpriteRenderer>(*this);
+				imageRenderer = stmp::make_unique<VulkanImageRenderer>(*this);
+			imageManager = stmp::make_unique<VulkanImageManager>(*this, device);
+			waterRenderer = stmp::make_unique<VulkanWaterRenderer>(*this, map);
 
 			// Create a 1x1 white image for solid color rendering
 			{
@@ -174,28 +174,17 @@ namespace spades {
 			// Invalidate shared pipeline caches before cleaning up
 			VulkanOptimizedVoxelModel::InvalidateSharedPipeline(device.GetPointerOrNull());
 
-			delete imageRenderer;
-			imageRenderer = nullptr;
-			delete spriteRenderer;
-			spriteRenderer = nullptr;
-			delete longSpriteRenderer;
-			longSpriteRenderer = nullptr;
-			delete modelRenderer;
-			modelRenderer = nullptr;
-			delete imageManager;
-			imageManager = nullptr;
-			delete mapRenderer;
-			mapRenderer = nullptr;
-			delete flatMapRenderer;
-			flatMapRenderer = nullptr;
-			delete waterRenderer;
-			waterRenderer = nullptr;
-			delete shadowMapRenderer;
-			shadowMapRenderer = nullptr;
-			delete mapShadowRenderer;
-			mapShadowRenderer = nullptr;
-			delete framebufferManager;
-			framebufferManager = nullptr;
+			imageRenderer.reset();
+			spriteRenderer.reset();
+			longSpriteRenderer.reset();
+			modelRenderer.reset();
+			imageManager.reset();
+			mapRenderer.reset();
+			flatMapRenderer.reset();
+			waterRenderer.reset();
+			shadowMapRenderer.reset();
+			mapShadowRenderer.reset();
+			framebufferManager.reset();
 			programManager = nullptr;
 
 			if (temporaryImagePool) {
@@ -777,43 +766,35 @@ namespace spades {
 
 			// Initialize map shadow renderer (heightmap shadow) BEFORE map renderer
 			if (map) {
-				delete mapShadowRenderer;
-				mapShadowRenderer = new VulkanMapShadowRenderer(*this, map);
+				mapShadowRenderer = stmp::make_unique<VulkanMapShadowRenderer>(*this, map);
 			} else {
-				delete mapShadowRenderer;
-				mapShadowRenderer = nullptr;
+				mapShadowRenderer.reset();
 			}
 
 			// Initialize map renderer
 			if (map) {
-				delete mapRenderer;
-				mapRenderer = new VulkanMapRenderer(map, *this);
+				mapRenderer = stmp::make_unique<VulkanMapRenderer>(map, *this);
 				mapRenderer->CreatePipelines(framebufferManager->GetRenderPass()); // Use offscreen render pass for 3D rendering
 				// Link shadow texture to map renderer
 				if (mapShadowRenderer) {
 					mapRenderer->UpdateShadowDescriptor(mapShadowRenderer->GetShadowImage());
 				}
 			} else {
-				delete mapRenderer;
-				mapRenderer = nullptr;
+				mapRenderer.reset();
 			}
 
 			// Initialize shadow map renderer (cascaded depth maps for fog)
 			if (map) {
-				delete shadowMapRenderer;
-				shadowMapRenderer = new VulkanShadowMapRenderer(*this);
+				shadowMapRenderer = stmp::make_unique<VulkanShadowMapRenderer>(*this);
 			} else {
-				delete shadowMapRenderer;
-				shadowMapRenderer = nullptr;
+				shadowMapRenderer.reset();
 			}
 
 			// Initialize flat map renderer (minimap)
 			if (map) {
-				delete flatMapRenderer;
-				flatMapRenderer = new VulkanFlatMapRenderer(*this, *map);
+				flatMapRenderer = stmp::make_unique<VulkanFlatMapRenderer>(*this, *map);
 			} else {
-				delete flatMapRenderer;
-				flatMapRenderer = nullptr;
+				flatMapRenderer.reset();
 			}
 
 			// Notify water renderer about map change
