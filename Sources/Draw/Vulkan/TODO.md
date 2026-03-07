@@ -51,7 +51,7 @@ Suggested minimum viable order: 1 → 2 → 7 → 8, then 3–6, then 9.
 
 ## Medium
 
-- [ ] Implement `ReadBitmap()`. Currently returns a null handle (`VulkanRenderer.cpp:1156–1167`). Requires a staging buffer, `vkCmdCopyImageToBuffer`, and a synchronous map/read sequence.
+- [x] Implement `ReadBitmap()`. Currently returns a null handle (`VulkanRenderer.cpp:1156–1167`). Requires a staging buffer, `vkCmdCopyImageToBuffer`, and a synchronous map/read sequence.
 
 - [x] Honor `sceneDef.skipWorld`. The Vulkan `RecordCommandBuffer` at lines 1440–1462 always renders the map. Add the `if (!sceneDef.skipWorld && mapRenderer)` guard present in the GL renderer, used for main menu and loading screens.
 
