@@ -69,6 +69,12 @@ namespace spades {
 				uint32_t frameIndex; // Frame when this buffer was marked for deletion
 			};
 
+			// Pending texture upload (staged, not yet submitted)
+			struct PendingUpload {
+				VkCommandBuffer commandBuffer;
+				Handle<VulkanBuffer> stagingBuffer;
+			};
+
 			Handle<gui::SDLVulkanDevice> device;
 			client::GameMap* map;
 			bool inited;
@@ -100,6 +106,7 @@ namespace spades {
 
 			// Deferred deletion queue for buffers that may still be in use by GPU
 			std::vector<DeferredDeletion> deferredDeletions;
+			std::vector<PendingUpload> pendingUploads;
 
 			float fogDistance;
 			Vector3 fogColor;
@@ -191,6 +198,7 @@ namespace spades {
 
 			// Deferred deletion queue management
 			void ProcessDeferredDeletions();
+			void FlushPendingUploads();
 
 		protected:
 			~VulkanRenderer();
