@@ -1255,14 +1255,161 @@ namespace spades {
 		Handle<Bitmap> VulkanRenderer::ReadBitmap() {
 			SPADES_MARK_FUNCTION();
 
-			// For now, return an empty bitmap
-			// Full implementation requires:
-			// 1. Create a staging buffer
-			// 2. Copy the swapchain image to the staging buffer
-			// 3. Map the staging buffer and read the data
-			// 4. Convert the data to Bitmap format
-			// 5. Clean up the staging buffer
-			return Handle<Bitmap>();
+			if (!framebufferManager || !sceneUsedInThisFrame)
+				return Handle<Bitmap>();
+
+			Handle<VulkanImage> srcImage = framebufferManager->GetColorImage();
+			if (!srcImage)
+				return Handle<Bitmap>();
+
+			// Block until the frame submission is complete so the image is safe to read.
+			vkWaitForFences(device->GetDevice(), 1, &inFlightFences[currentFrameSlot],
+			                VK_TRUE, UINT64_MAX);
+
+			VkFormat fmt = framebufferManager->GetMainColorFormat();
+
+			// Bytes per texel for the offscreen color format.
+			uint32_t bytesPerPixel;
+			switch (fmt) {
+				case VK_FORMAT_R16G16B16A16_SFLOAT: bytesPerPixel = 8; break;
+				default:                             bytesPerPixel = 4; break;
+			}
+
+			VkDeviceSize imageSize = (VkDeviceSize)renderWidth * renderHeight * bytesPerPixel;
+
+			// Create host-visible staging buffer for the copy destination.
+			Handle<VulkanBuffer> stagingBuffer(
+			    new VulkanBuffer(device, imageSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+			                    VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+			                        VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
+			    false);
+
+			// One-shot command buffer: transition → copy → transition back.
+			VkCommandBufferAllocateInfo allocInfo{};
+			allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+			allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+			allocInfo.commandPool = device->GetCommandPool();
+			allocInfo.commandBufferCount = 1;
+
+			VkCommandBuffer cmd;
+			vkAllocateCommandBuffers(device->GetDevice(), &allocInfo, &cmd);
+
+			VkCommandBufferBeginInfo beginInfo{};
+			beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+			beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+			vkBeginCommandBuffer(cmd, &beginInfo);
+
+			// Offscreen image is in SHADER_READ_ONLY_OPTIMAL at end of frame.
+			VkImageMemoryBarrier barrier{};
+			barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+			barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+			barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+			barrier.image = srcImage->GetImage();
+			barrier.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
+
+			barrier.oldLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+			barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+			barrier.srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
+			barrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+			vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+			                     VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr,
+			                     1, &barrier);
+
+			VkBufferImageCopy region{};
+			region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+			region.imageSubresource.layerCount = 1;
+			region.imageExtent = {(uint32_t)renderWidth, (uint32_t)renderHeight, 1};
+			vkCmdCopyImageToBuffer(cmd, srcImage->GetImage(),
+			                       VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+			                       stagingBuffer->GetBuffer(), 1, &region);
+
+			barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+			barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+			barrier.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+			barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+			vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_TRANSFER_BIT,
+			                     VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, nullptr, 0,
+			                     nullptr, 1, &barrier);
+
+			vkEndCommandBuffer(cmd);
+
+			VkSubmitInfo submitInfo{};
+			submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+			submitInfo.commandBufferCount = 1;
+			submitInfo.pCommandBuffers = &cmd;
+			vkQueueSubmit(device->GetGraphicsQueue(), 1, &submitInfo, VK_NULL_HANDLE);
+			vkQueueWaitIdle(device->GetGraphicsQueue());
+			vkFreeCommandBuffers(device->GetDevice(), device->GetCommandPool(), 1, &cmd);
+
+			// Map and convert to Bitmap (always RGBA8 output).
+			const void* raw = stagingBuffer->Map();
+
+			Handle<Bitmap> bmp(new Bitmap(renderWidth, renderHeight), false);
+			uint32_t* pixels = bmp->GetPixels();
+			const int count = renderWidth * renderHeight;
+
+			switch (fmt) {
+				case VK_FORMAT_R8G8B8A8_UNORM:
+				case VK_FORMAT_R8G8B8A8_SRGB:
+					std::memcpy(pixels, raw, (size_t)count * 4);
+					break;
+
+				case VK_FORMAT_R16G16B16A16_SFLOAT: {
+					// Half-float → uint8 with clamping.
+					const uint16_t* src = reinterpret_cast<const uint16_t*>(raw);
+					// Standard half→float via IEEE 754 bit manipulation (bias offset 127-15=112).
+					auto halfToU8 = [](uint16_t h) -> uint8_t {
+						uint32_t s = (h >> 15) & 1;
+						uint32_t e = (h >> 10) & 0x1f;
+						uint32_t m = h & 0x3ff;
+						uint32_t bits;
+						if (e == 0) {
+							bits = (s << 31) | (m << 13); // ±0 or denorm (clamps to ~0)
+						} else if (e == 31) {
+							bits = (s << 31) | 0x7f800000u | (m << 13); // inf/NaN
+						} else {
+							bits = (s << 31) | ((e + 112) << 23) | (m << 13);
+						}
+						float f;
+						std::memcpy(&f, &bits, 4);
+						if (f < 0.0f) f = 0.0f;
+						if (f > 1.0f) f = 1.0f;
+						return static_cast<uint8_t>(f * 255.0f + 0.5f);
+					};
+					for (int i = 0; i < count; i++) {
+						uint8_t r = halfToU8(src[i * 4 + 0]);
+						uint8_t g = halfToU8(src[i * 4 + 1]);
+						uint8_t b = halfToU8(src[i * 4 + 2]);
+						uint8_t a = halfToU8(src[i * 4 + 3]);
+						pixels[i] = r | (uint32_t(g) << 8) | (uint32_t(b) << 16) |
+						            (uint32_t(a) << 24);
+					}
+					break;
+				}
+
+				case VK_FORMAT_A2B10G10R10_UNORM_PACK32: {
+					// Bits: [31:30]=A [29:20]=B [19:10]=G [9:0]=R
+					const uint32_t* src = reinterpret_cast<const uint32_t*>(raw);
+					for (int i = 0; i < count; i++) {
+						uint32_t p = src[i];
+						uint8_t r = static_cast<uint8_t>(((p >> 0) & 0x3ff) * 255 / 1023);
+						uint8_t g = static_cast<uint8_t>(((p >> 10) & 0x3ff) * 255 / 1023);
+						uint8_t b = static_cast<uint8_t>(((p >> 20) & 0x3ff) * 255 / 1023);
+						uint8_t a = static_cast<uint8_t>(((p >> 30) & 0x3) * 255 / 3);
+						pixels[i] = r | (uint32_t(g) << 8) | (uint32_t(b) << 16) |
+						            (uint32_t(a) << 24);
+					}
+					break;
+				}
+
+				default:
+					// Unknown format: return solid black rather than garbage.
+					std::memset(pixels, 0, (size_t)count * 4);
+					break;
+			}
+
+			stagingBuffer->Unmap();
+			return bmp;
 		}
 
 		float VulkanRenderer::ScreenWidth() {
