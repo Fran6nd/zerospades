@@ -1558,9 +1558,10 @@ namespace spades {
 				if (spriteRenderer) {
 					spriteRenderer->Render(commandBuffer, imageIndex);
 				}
-				if (longSpriteRenderer) {
-					longSpriteRenderer->Render(commandBuffer, imageIndex);
-				}
+			}
+			// Long sprites always use hardware depth test (pipeline requires depth attachment)
+			if (longSpriteRenderer) {
+				longSpriteRenderer->Render(commandBuffer, imageIndex);
 			}
 
 			// Clear for next frame
@@ -1632,9 +1633,6 @@ namespace spades {
 				// Render soft sprites
 				if (spriteRenderer) {
 					spriteRenderer->Render(commandBuffer, imageIndex);
-				}
-				if (longSpriteRenderer) {
-					longSpriteRenderer->Render(commandBuffer, imageIndex);
 				}
 
 				vkCmdEndRenderPass(commandBuffer);
