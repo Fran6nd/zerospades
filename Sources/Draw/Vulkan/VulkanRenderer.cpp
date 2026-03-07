@@ -2029,24 +2029,48 @@ namespace spades {
 					0, 0, nullptr, 0, nullptr, 1, &waterColorBarrier);
 			}
 
-			// Transition offscreen color image for transfer source
+			// --- Post-process ping-pong setup ---
+			// currentInput: image in SHADER_READ_ONLY_OPTIMAL, consumed by each filter.
+			// currentOutput: image filters render into; each filter's render pass transitions
+			//   it UNDEFINED → COLOR_ATTACHMENT (during) → SHADER_READ_ONLY (on vkCmdEndRenderPass).
+			// After each filter: swap(currentInput, currentOutput); no explicit barrier needed
+			//   between filters because the render pass finalLayout handles SHADER_READ_ONLY for
+			//   the new currentInput, and initialLayout=UNDEFINED accepts any layout for currentOutput.
+			VulkanImage* currentInput = offscreenColor.GetPointerOrNull();
+			Handle<VulkanImage> ppTempImage;
+			if (temporaryImagePool && framebufferManager) {
+				ppTempImage = temporaryImagePool->Acquire(
+					static_cast<uint32_t>(renderWidth),
+					static_cast<uint32_t>(renderHeight),
+					framebufferManager->GetMainColorFormat()
+				);
+			}
+			VulkanImage* currentOutput = ppTempImage.GetPointerOrNull();
+
+			// [Post-process filters — PP-1 through PP-10 — will be called here]
+			// Pattern for each filter (guarded by its cvar):
+			//   filterX->Filter(commandBuffer, currentInput, currentOutput);
+			//   std::swap(currentInput, currentOutput);
+
+			// --- Blit final post-process result to swapchain ---
+			// Transition final image (currentInput) from SHADER_READ_ONLY to TRANSFER_SRC
 			VkImageMemoryBarrier barrier1{};
 			barrier1.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
 			barrier1.oldLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 			barrier1.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
 			barrier1.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 			barrier1.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-			barrier1.image = offscreenColor->GetImage();
+			barrier1.image = currentInput->GetImage();
 			barrier1.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 			barrier1.subresourceRange.baseMipLevel = 0;
 			barrier1.subresourceRange.levelCount = 1;
 			barrier1.subresourceRange.baseArrayLayer = 0;
 			barrier1.subresourceRange.layerCount = 1;
-			barrier1.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+			barrier1.srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
 			barrier1.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
 
 			vkCmdPipelineBarrier(commandBuffer,
-				VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+				VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
 				VK_PIPELINE_STAGE_TRANSFER_BIT,
 				0, 0, nullptr, 0, nullptr, 1, &barrier1);
 
@@ -2071,7 +2095,7 @@ namespace spades {
 				VK_PIPELINE_STAGE_TRANSFER_BIT,
 				0, 0, nullptr, 0, nullptr, 1, &barrier2);
 
-			// Blit offscreen render target to swapchain
+			// Blit final post-process image to swapchain
 			VkImageBlit blitRegion{};
 			blitRegion.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 			blitRegion.srcSubresource.layerCount = 1;
@@ -2084,11 +2108,11 @@ namespace spades {
 			                            static_cast<int32_t>(device->GetSwapchainExtent().height), 1};
 
 			vkCmdBlitImage(commandBuffer,
-				offscreenColor->GetImage(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+				currentInput->GetImage(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
 				device->GetSwapchainImage(imageIndex), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
 				1, &blitRegion, VK_FILTER_LINEAR);
 
-			// Transition offscreen color back to shader read-only for next frame
+			// Transition currentInput back to SHADER_READ_ONLY for next frame
 			barrier1.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
 			barrier1.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 			barrier1.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
