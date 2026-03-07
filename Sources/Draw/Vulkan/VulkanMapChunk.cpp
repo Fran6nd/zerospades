@@ -376,6 +376,15 @@ namespace spades {
 				if (diff.y < -(mh * 0.5F)) sy -= mh;
 			}
 
+			// Frustum cull
+			{
+				AABB3 bx = aabb;
+				bx.min.x += sx; bx.max.x += sx;
+				bx.min.y += sy; bx.max.y += sy;
+				if (!renderer.renderer.BoxFrustrumCull(bx))
+					return;
+			}
+
 			// Set up push constants (MVP matrix + model origin + fog data)
 			Vector3 fogCol = renderer.renderer.GetFogColor();
 			fogCol *= fogCol; // linearize
@@ -521,14 +530,23 @@ namespace spades {
 			Vector3 diff = eye - centerPos;
 			float sx = 0.0F, sy = 0.0F;
 
-			if (diff.x > 256.0F)
-				sx += 512.0F;
-			if (diff.y > 256.0F)
-				sy += 512.0F;
-			if (diff.x < -256.0F)
-				sx -= 512.0F;
-			if (diff.y < -256.0F)
-				sy -= 512.0F;
+			{
+				const float mw = (float)map->Width();
+				const float mh = (float)map->Height();
+				if (diff.x >  (mw * 0.5F)) sx += mw;
+				if (diff.y >  (mh * 0.5F)) sy += mh;
+				if (diff.x < -(mw * 0.5F)) sx -= mw;
+				if (diff.y < -(mh * 0.5F)) sy -= mh;
+			}
+
+			// Frustum cull
+			{
+				AABB3 bx = aabb;
+				bx.min.x += sx; bx.max.x += sx;
+				bx.min.y += sy; bx.max.y += sy;
+				if (!renderer.renderer.BoxFrustrumCull(bx))
+					return;
+			}
 
 			Vector3 fogCol = renderer.renderer.GetFogColor();
 			fogCol *= fogCol; // linearize
@@ -622,14 +640,23 @@ namespace spades {
 			Vector3 diff = eye - centerPos;
 			float sx = 0.0F, sy = 0.0F;
 
-			if (diff.x > 256.0F)
-				sx += 512.0F;
-			if (diff.y > 256.0F)
-				sy += 512.0F;
-			if (diff.x < -256.0F)
-				sx -= 512.0F;
-			if (diff.y < -256.0F)
-				sy -= 512.0F;
+			{
+				const float mw = (float)map->Width();
+				const float mh = (float)map->Height();
+				if (diff.x >  (mw * 0.5F)) sx += mw;
+				if (diff.y >  (mh * 0.5F)) sy += mh;
+				if (diff.x < -(mw * 0.5F)) sx -= mw;
+				if (diff.y < -(mh * 0.5F)) sy -= mh;
+			}
+
+			// Frustum cull
+			{
+				AABB3 bx = aabb;
+				bx.min.x += sx; bx.max.x += sx;
+				bx.min.y += sy; bx.max.y += sy;
+				if (!renderer.renderer.BoxFrustrumCull(bx))
+					return;
+			}
 
 			Vector3 fogCol = renderer.renderer.GetFogColor();
 			fogCol *= fogCol; // linearize
