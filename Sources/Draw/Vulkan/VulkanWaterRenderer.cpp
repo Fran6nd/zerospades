@@ -843,11 +843,8 @@ namespace spades {
 		}
 
 		// Skip water rendering if no samples passed in previous frame
-		// TEMPORARILY DISABLED for debugging
-		// if (lastOcclusionResult == 0) {
-		// 	SPLog("Skipping water rendering: occluded (lastOcclusionResult=0)");
-		// 	return;
-		// }
+		if (lastOcclusionResult == 0)
+			return;
 
 		// Get current frame index for proper double/triple buffering
 		uint32_t frameIndex = renderer.GetCurrentFrameIndex();
