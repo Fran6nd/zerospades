@@ -163,7 +163,7 @@ namespace spades {
 			fxaaFilter = stmp::make_unique<VulkanFXAAFilter>(*this);
 			colorCorrectionFilter = stmp::make_unique<VulkanColorCorrectionFilter>(*this);
 			depthOfFieldFilter = stmp::make_unique<VulkanDepthOfFieldFilter>(*this);
-			fogFilter = stmp::make_unique<VulkanFogFilter>(*this);
+			// fogFilter deferred: VulkanFogFilter loads an OpenGL shader (PP-3 will fix this)
 			temporalAAFilter = stmp::make_unique<VulkanTemporalAAFilter>(*this);
 			lensFlareFilter = stmp::make_unique<VulkanLensFlareFilter>(*this);
 			ssaoFilter = stmp::make_unique<VulkanSSAOFilter>(*this);
