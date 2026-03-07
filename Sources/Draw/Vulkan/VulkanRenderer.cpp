@@ -149,6 +149,7 @@ namespace spades {
 			VulkanWaterRenderer::PreloadShaders(*this);
 
 			inited = true;
+			lastSwapchainGeneration = device->GetSwapchainGeneration();
 			vkDeviceWaitIdle(device->GetDevice());
 		} catch (const std::exception& ex) {
 			CleanupVulkanResources();
@@ -534,7 +535,62 @@ namespace spades {
 			inFlightFences.clear();
 		}
 
-		void VulkanRenderer::BuildProjectionMatrix() {
+		void VulkanRenderer::RecreateSwapchainDependencies() {
+		VkDevice vkDevice = device->GetDevice();
+
+		// The device is already idle (SDLVulkanDevice::RecreateSwapchain called vkDeviceWaitIdle),
+		// but wait again in case the renderer submitted work between that call and this one.
+		vkDeviceWaitIdle(vkDevice);
+
+		// Free command buffers before destroying the framebuffers they reference.
+		if (!commandBuffers.empty()) {
+			vkFreeCommandBuffers(vkDevice, device->GetCommandPool(),
+				static_cast<uint32_t>(commandBuffers.size()), commandBuffers.data());
+			commandBuffers.clear();
+		}
+
+		// Destroy swapchain framebuffers (reference stale image views).
+		for (auto fb : swapchainFramebuffers) {
+			if (fb != VK_NULL_HANDLE)
+				vkDestroyFramebuffer(vkDevice, fb, nullptr);
+		}
+		swapchainFramebuffers.clear();
+
+		// Destroy depth resources (extent-dependent).
+		depthImageWrapper = nullptr; // release Handle before destroying the underlying VkImage
+		if (depthImageView != VK_NULL_HANDLE) {
+			vkDestroyImageView(vkDevice, depthImageView, nullptr);
+			depthImageView = VK_NULL_HANDLE;
+		}
+		if (depthImage != VK_NULL_HANDLE) {
+			vkDestroyImage(vkDevice, depthImage, nullptr);
+			depthImage = VK_NULL_HANDLE;
+		}
+		if (depthImageMemory != VK_NULL_HANDLE) {
+			vkFreeMemory(vkDevice, depthImageMemory, nullptr);
+			depthImageMemory = VK_NULL_HANDLE;
+		}
+
+		// Pull new dimensions from the swapchain.
+		renderWidth = device->ScreenWidth();
+		renderHeight = device->ScreenHeight();
+
+		// Rebuild swapchain-dependent renderer resources.
+		CreateDepthResources();
+		CreateFramebuffers();
+		CreateCommandBuffers();
+
+		// Rebuild the offscreen framebuffer manager, which is sized to render dimensions.
+		// The water renderer holds references into the framebuffer manager, so reset it first.
+		waterRenderer.reset();
+		framebufferManager = stmp::make_unique<VulkanFramebufferManager>(device, renderWidth, renderHeight);
+		waterRenderer = stmp::make_unique<VulkanWaterRenderer>(*this, map);
+
+		lastSwapchainGeneration = device->GetSwapchainGeneration();
+		SPLog("Swapchain dependencies recreated (%dx%d)", renderWidth, renderHeight);
+	}
+
+	void VulkanRenderer::BuildProjectionMatrix() {
 			SPADES_MARK_FUNCTION();
 			projectionMatrix = sceneDef.ToVulkanProjectionMatrix();
 		}
@@ -1132,6 +1188,11 @@ namespace spades {
 				return;
 			}
 
+		// Rebuild swapchain-dependent resources if the swapchain was recreated since last frame
+		// (e.g. window resize triggered VK_ERROR_OUT_OF_DATE_KHR or VK_SUBOPTIMAL_KHR).
+		if (device->GetSwapchainGeneration() != lastSwapchainGeneration) {
+			RecreateSwapchainDependencies();
+		}
 
 			if (sceneUsedInThisFrame) {
 				// Present the image (already rendered in EndScene)
