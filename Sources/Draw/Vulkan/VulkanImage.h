@@ -101,7 +101,7 @@ namespace spades {
 			// Create sampler (optional, for texture sampling)
 			void CreateSampler(VkFilter magFilter = VK_FILTER_LINEAR,
 			                   VkFilter minFilter = VK_FILTER_LINEAR,
-			                   VkSamplerAddressMode addressMode = VK_SAMPLER_ADDRESS_MODE_REPEAT,
+			                   VkSamplerAddressMode addressMode = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
 			                   bool enableAnisotropy = true);
 		};
 
