@@ -38,6 +38,7 @@
 #include "VulkanProgramManager.h"
 #include "VulkanPipelineCache.h"
 #include "VulkanTemporaryImagePool.h"
+#include "VulkanAutoExposureFilter.h"
 #include <Gui/SDLVulkanDevice.h>
 #include <Client/GameMap.h>
 #include <Core/Bitmap.h>
@@ -48,6 +49,7 @@
 #include <cstring>
 #include <vector>
 
+SPADES_SETTING(r_hdr);
 SPADES_SETTING(r_fogShadow);
 SPADES_SETTING(r_water);
 SPADES_SETTING(r_softParticles);
@@ -148,7 +150,8 @@ namespace spades {
 			VulkanOptimizedVoxelModel::PreloadShaders(*this);
 			VulkanWaterRenderer::PreloadShaders(*this);
 
-			// Post-process filters: each constructed as part of its PP-N wiring task
+			// Post-process filters
+			autoExposureFilter = stmp::make_unique<VulkanAutoExposureFilter>(*this);
 
 			inited = true;
 			lastSwapchainGeneration = device->GetSwapchainGeneration();
@@ -187,6 +190,7 @@ namespace spades {
 			waterRenderer.reset();
 			shadowMapRenderer.reset();
 			mapShadowRenderer.reset();
+			autoExposureFilter.reset();
 			framebufferManager.reset();
 			programManager = nullptr;
 
@@ -985,6 +989,7 @@ namespace spades {
 				if (dt > 0.1f) dt = 0.1f; // Cap dt to avoid large jumps
 				if (dt < 0.0f) dt = 0.0f; // Handle timer wrap-around
 				if (lastTime == 0) dt = 0.0f; // No animation on the first frame
+				lastDt = dt;
 
 				// Update water simulation
 				if (waterRenderer) {
@@ -2020,10 +2025,11 @@ namespace spades {
 			}
 			VulkanImage* currentOutput = ppTempImage.GetPointerOrNull();
 
-			// [Post-process filters — PP-1 through PP-10 — will be called here]
-			// Pattern for each filter (guarded by its cvar):
-			//   filterX->Filter(commandBuffer, currentInput, currentOutput);
-			//   std::swap(currentInput, currentOutput);
+			// PP-1: Auto-exposure
+			if ((int)r_hdr && autoExposureFilter && currentInput && currentOutput) {
+				autoExposureFilter->Filter(commandBuffer, currentInput, currentOutput, lastDt);
+				std::swap(currentInput, currentOutput);
+			}
 
 			// --- Blit final post-process result to swapchain ---
 			// Transition final image (currentInput) from SHADER_READ_ONLY to TRANSFER_SRC

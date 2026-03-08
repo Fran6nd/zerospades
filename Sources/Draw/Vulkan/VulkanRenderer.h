@@ -55,6 +55,7 @@ namespace spades {
 		class VulkanImage;
 		class VulkanTemporaryImagePool;
 		class VulkanBuffer;
+		class VulkanAutoExposureFilter;
 
 		class VulkanRenderer : public client::IRenderer, public client::IGameMapListener {
 			struct DebugLine {
@@ -120,6 +121,7 @@ namespace spades {
 			bool legacyColorPremultiply;
 
 			unsigned int lastTime;
+			float lastDt{0.0f};
 			std::uint32_t frameNumber = 0;
 			uint32_t lastSwapchainGeneration{0};
 
@@ -141,6 +143,7 @@ namespace spades {
 			std::unique_ptr<VulkanImageManager> imageManager;
 			Handle<VulkanPipelineCache> pipelineCache;
 			Handle<VulkanTemporaryImagePool> temporaryImagePool;
+		std::unique_ptr<VulkanAutoExposureFilter> autoExposureFilter;
 
 			Handle<VulkanImage> whiteImage; // 1x1 white image for solid color rendering
 
