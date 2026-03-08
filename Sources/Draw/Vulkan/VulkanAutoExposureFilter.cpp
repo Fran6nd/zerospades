@@ -1,5 +1,5 @@
 /*
- Copyright (c) 2015 yvt
+ Copyright (c) 2013 yvt
 
  This file is part of OpenSpades.
 
@@ -19,18 +19,19 @@
  */
 
 #include "VulkanAutoExposureFilter.h"
-#include "VulkanRenderer.h"
+#include "VulkanFramebufferManager.h"
 #include "VulkanImage.h"
-#include "VulkanBuffer.h"
-#include "VulkanProgram.h"
+#include "VulkanRenderer.h"
 #include "VulkanRenderPassUtils.h"
-#include <Gui/SDLVulkanDevice.h>
+#include "VulkanShader.h"
+#include "VulkanTemporaryImagePool.h"
 #include <Core/Debug.h>
-#include <Core/Settings.h>
-#include <cstring>
+#include <Core/Exception.h>
+#include <Core/FileManager.h>
+#include <Core/Math.h>
+#include <Gui/SDLVulkanDevice.h>
 #include <cmath>
-#include <algorithm>
-#include <vector>
+#include <cstring>
 
 SPADES_SETTING(r_hdrAutoExposureMin);
 SPADES_SETTING(r_hdrAutoExposureMax);
@@ -39,865 +40,706 @@ SPADES_SETTING(r_hdrAutoExposureSpeed);
 namespace spades {
 	namespace draw {
 
-		struct ComputeGainUniforms {
-			float minGain;
-			float maxGain;
-			float blendRate;
-			float _pad0;
-		};
+		// ─────────────────────────────────────────────────────────────
+		//  Construction / destruction
+		// ─────────────────────────────────────────────────────────────
 
 		VulkanAutoExposureFilter::VulkanAutoExposureFilter(VulkanRenderer& r)
-			: VulkanPostProcessFilter(r),
-			  preprocessProgram(nullptr),
-			  preprocessPipeline(VK_NULL_HANDLE),
-			  preprocessLayout(VK_NULL_HANDLE),
-			  preprocessDescLayout(VK_NULL_HANDLE),
-			  downsampleProgram(nullptr),
-			  downsamplePipeline(VK_NULL_HANDLE),
-			  downsampleLayout(VK_NULL_HANDLE),
-			  downsampleDescLayout(VK_NULL_HANDLE),
-			  computeGainProgram(nullptr),
-			  computeGainPipeline(VK_NULL_HANDLE),
-			  computeGainLayout(VK_NULL_HANDLE),
-			  computeGainDescLayout(VK_NULL_HANDLE),
-			  applyProgram(nullptr),
-			  applyPipeline(VK_NULL_HANDLE),
-			  applyLayout(VK_NULL_HANDLE),
-			  applyDescLayout(VK_NULL_HANDLE),
-			  downsampleRenderPass(VK_NULL_HANDLE),
-			  exposureRenderPass(VK_NULL_HANDLE),
-			  exposureFramebuffer(VK_NULL_HANDLE),
-			  descriptorPool(VK_NULL_HANDLE) {
-			CreateQuadBuffers();
-			CreateDescriptorPool();
-			CreateRenderPass();
-			CreatePipeline();
-			CreateExposureResources();
+		    : VulkanPostProcessFilter(r),
+		      colorFormat(VK_FORMAT_UNDEFINED),
+		      exposureImage(VK_NULL_HANDLE),
+		      exposureAlloc(VK_NULL_HANDLE),
+		      exposureImageView(VK_NULL_HANDLE),
+		      exposureFramebuffer(VK_NULL_HANDLE),
+		      linearSampler(VK_NULL_HANDLE),
+		      ppRenderPass(VK_NULL_HANDLE),
+		      gainFirstRenderPass(VK_NULL_HANDLE),
+		      gainRenderPass(VK_NULL_HANDLE),
+		      singleSamplerDSL(VK_NULL_HANDLE),
+		      dualSamplerDSL(VK_NULL_HANDLE),
+		      preprocessLayout(VK_NULL_HANDLE),
+		      computeGainLayout(VK_NULL_HANDLE),
+		      applyLayout(VK_NULL_HANDLE),
+		      preprocessPipeline(VK_NULL_HANDLE),
+		      downsamplePipeline(VK_NULL_HANDLE),
+		      computeGainPipeline(VK_NULL_HANDLE),
+		      applyPipeline(VK_NULL_HANDLE),
+		      exposureInitialized(false) {
+			SPADES_MARK_FUNCTION();
+
+			for (int i = 0; i < MAX_FRAME_SLOTS; ++i)
+				perFrameDescPool[i] = VK_NULL_HANDLE;
+
+			colorFormat = r.GetFramebufferManager()->GetMainColorFormat();
+
+			InitRenderPasses();
+			InitDescriptorSetLayouts();
+			InitPipelines();
+			InitDescriptorPools();
+			InitExposureImage();
 		}
 
 		VulkanAutoExposureFilter::~VulkanAutoExposureFilter() {
-			vkDeviceWaitIdle(device->GetDevice());
-
-			if (exposureFramebuffer != VK_NULL_HANDLE) {
-				vkDestroyFramebuffer(device->GetDevice(), exposureFramebuffer, nullptr);
-			}
-
-			if (preprocessPipeline != VK_NULL_HANDLE) {
-				vkDestroyPipeline(device->GetDevice(), preprocessPipeline, nullptr);
-			}
-			if (downsamplePipeline != VK_NULL_HANDLE) {
-				vkDestroyPipeline(device->GetDevice(), downsamplePipeline, nullptr);
-			}
-			if (computeGainPipeline != VK_NULL_HANDLE) {
-				vkDestroyPipeline(device->GetDevice(), computeGainPipeline, nullptr);
-			}
-			if (applyPipeline != VK_NULL_HANDLE) {
-				vkDestroyPipeline(device->GetDevice(), applyPipeline, nullptr);
-			}
-
-			if (preprocessLayout != VK_NULL_HANDLE) {
-				vkDestroyPipelineLayout(device->GetDevice(), preprocessLayout, nullptr);
-			}
-			if (downsampleLayout != VK_NULL_HANDLE) {
-				vkDestroyPipelineLayout(device->GetDevice(), downsampleLayout, nullptr);
-			}
-			if (computeGainLayout != VK_NULL_HANDLE) {
-				vkDestroyPipelineLayout(device->GetDevice(), computeGainLayout, nullptr);
-			}
-			if (applyLayout != VK_NULL_HANDLE) {
-				vkDestroyPipelineLayout(device->GetDevice(), applyLayout, nullptr);
-			}
-
-			if (preprocessDescLayout != VK_NULL_HANDLE) {
-				vkDestroyDescriptorSetLayout(device->GetDevice(), preprocessDescLayout, nullptr);
-			}
-			if (downsampleDescLayout != VK_NULL_HANDLE) {
-				vkDestroyDescriptorSetLayout(device->GetDevice(), downsampleDescLayout, nullptr);
-			}
-			if (computeGainDescLayout != VK_NULL_HANDLE) {
-				vkDestroyDescriptorSetLayout(device->GetDevice(), computeGainDescLayout, nullptr);
-			}
-			if (applyDescLayout != VK_NULL_HANDLE) {
-				vkDestroyDescriptorSetLayout(device->GetDevice(), applyDescLayout, nullptr);
-			}
-
-			if (downsampleRenderPass != VK_NULL_HANDLE) {
-				vkDestroyRenderPass(device->GetDevice(), downsampleRenderPass, nullptr);
-			}
-			if (exposureRenderPass != VK_NULL_HANDLE) {
-				vkDestroyRenderPass(device->GetDevice(), exposureRenderPass, nullptr);
-			}
-
-			if (descriptorPool != VK_NULL_HANDLE) {
-				vkDestroyDescriptorPool(device->GetDevice(), descriptorPool, nullptr);
-			}
-
-			DestroyResources();
-		}
-
-		void VulkanAutoExposureFilter::CreateQuadBuffers() {
-			float vertices[] = {
-				0.0f, 0.0f,
-				1.0f, 0.0f,
-				1.0f, 1.0f,
-				0.0f, 1.0f
-			};
-
-			uint16_t indices[] = {
-				0, 1, 2,
-				0, 2, 3
-			};
-
-			quadVertexBuffer = new VulkanBuffer(device, sizeof(vertices),
-				VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-				VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-
-			void* data;
-			data = quadVertexBuffer->Map();
-			memcpy(data, vertices, sizeof(vertices));
-			quadVertexBuffer->Unmap();
-
-			quadIndexBuffer = new VulkanBuffer(device, sizeof(indices),
-				VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
-				VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-
-			data = quadIndexBuffer->Map();
-			memcpy(data, indices, sizeof(indices));
-			quadIndexBuffer->Unmap();
-
-			computeGainUniformBuffer = new VulkanBuffer(device, sizeof(ComputeGainUniforms),
-				VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-				VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-		}
-
-		void VulkanAutoExposureFilter::CreateDescriptorPool() {
-			VkDescriptorPoolSize poolSizes[] = {
-				{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 32 },
-				{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 8 }
-			};
-
-			VkDescriptorPoolCreateInfo poolInfo = {};
-			poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-			poolInfo.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
-			poolInfo.maxSets = 32;
-			poolInfo.poolSizeCount = 2;
-			poolInfo.pPoolSizes = poolSizes;
-
-			if (vkCreateDescriptorPool(device->GetDevice(), &poolInfo, nullptr, &descriptorPool) != VK_SUCCESS) {
-				SPRaise("Failed to create auto exposure descriptor pool");
-			}
-		}
-
-		void VulkanAutoExposureFilter::CreateRenderPass() {
-			// Downsample render pass
-			downsampleRenderPass = CreateSimpleColorRenderPass(
-				device->GetDevice(),
-				VK_FORMAT_R16G16B16A16_SFLOAT
-			);
-
-			// Exposure render pass (with blending for temporal smoothing)
-			exposureRenderPass = CreateSimpleColorRenderPass(
-				device->GetDevice(),
-				VK_FORMAT_R16G16B16A16_SFLOAT,
-				VK_ATTACHMENT_LOAD_OP_LOAD,
-				VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-				VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
-			);
-
-			// Main render pass (for apply step)
-			renderPass = CreateSimpleColorRenderPass(
-				device->GetDevice(),
-				VK_FORMAT_R8G8B8A8_UNORM
-			);
-		}
-
-		void VulkanAutoExposureFilter::CreateExposureResources() {
-			exposureImage = new VulkanImage(device, 1, 1, VK_FORMAT_R16G16B16A16_SFLOAT,
-				VK_IMAGE_TILING_OPTIMAL,
-				VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-				VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-			exposureImage->CreateSampler(VK_FILTER_LINEAR, VK_FILTER_LINEAR,
-				VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, false);
-
-			// Initialize exposure image layout
-			VkCommandBufferAllocateInfo allocInfo = {};
-			allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-			allocInfo.commandPool = device->GetCommandPool();
-			allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-			allocInfo.commandBufferCount = 1;
-
-			VkCommandBuffer commandBuffer;
-			vkAllocateCommandBuffers(device->GetDevice(), &allocInfo, &commandBuffer);
-
-			VkCommandBufferBeginInfo beginInfo = {};
-			beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-			beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-			vkBeginCommandBuffer(commandBuffer, &beginInfo);
-
-			VkImageMemoryBarrier barrier = {};
-			barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-			barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-			barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-			barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-			barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-			barrier.image = exposureImage->GetImage();
-			barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-			barrier.subresourceRange.baseMipLevel = 0;
-			barrier.subresourceRange.levelCount = 1;
-			barrier.subresourceRange.baseArrayLayer = 0;
-			barrier.subresourceRange.layerCount = 1;
-			barrier.srcAccessMask = 0;
-			barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-
-			vkCmdPipelineBarrier(commandBuffer,
-				VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-				0, 0, nullptr, 0, nullptr, 1, &barrier);
-
-			vkEndCommandBuffer(commandBuffer);
-
-			VkSubmitInfo submitInfo = {};
-			submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-			submitInfo.commandBufferCount = 1;
-			submitInfo.pCommandBuffers = &commandBuffer;
-
-			vkQueueSubmit(device->GetGraphicsQueue(), 1, &submitInfo, VK_NULL_HANDLE);
-			vkQueueWaitIdle(device->GetGraphicsQueue());
-
-			vkFreeCommandBuffers(device->GetDevice(), device->GetCommandPool(), 1, &commandBuffer);
-
-			VkImageView attachments[] = { exposureImage->GetImageView() };
-			VkFramebufferCreateInfo framebufferInfo = {};
-			framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-			framebufferInfo.renderPass = exposureRenderPass;
-			framebufferInfo.attachmentCount = 1;
-			framebufferInfo.pAttachments = attachments;
-			framebufferInfo.width = 1;
-			framebufferInfo.height = 1;
-			framebufferInfo.layers = 1;
-
-			if (vkCreateFramebuffer(device->GetDevice(), &framebufferInfo, nullptr, &exposureFramebuffer) != VK_SUCCESS) {
-				SPRaise("Failed to create exposure framebuffer");
-			}
-		}
-
-		void VulkanAutoExposureFilter::CreatePipeline() {
-			// Load shader programs
-			preprocessProgram = renderer.RegisterProgram("Shaders/Vulkan/PostFilters/AutoExposurePreprocess.vk.program");
-			downsampleProgram = renderer.RegisterProgram("Shaders/Vulkan/PostFilters/Downsample.vk.program");
-			computeGainProgram = renderer.RegisterProgram("Shaders/Vulkan/PostFilters/AutoExposure.vk.program");
-			applyProgram = renderer.RegisterProgram("Shaders/Vulkan/PostFilters/AutoExposureApply.vk.program");
-
-			// Common vertex input state
-			VkVertexInputBindingDescription bindingDescription = {};
-			bindingDescription.binding = 0;
-			bindingDescription.stride = sizeof(float) * 2;
-			bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-
-			VkVertexInputAttributeDescription attributeDescription = {};
-			attributeDescription.binding = 0;
-			attributeDescription.location = 0;
-			attributeDescription.format = VK_FORMAT_R32G32_SFLOAT;
-			attributeDescription.offset = 0;
-
-			VkPipelineVertexInputStateCreateInfo vertexInputInfo = {};
-			vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-			vertexInputInfo.vertexBindingDescriptionCount = 1;
-			vertexInputInfo.pVertexBindingDescriptions = &bindingDescription;
-			vertexInputInfo.vertexAttributeDescriptionCount = 1;
-			vertexInputInfo.pVertexAttributeDescriptions = &attributeDescription;
-
-			VkPipelineInputAssemblyStateCreateInfo inputAssembly = {};
-			inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-			inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-			inputAssembly.primitiveRestartEnable = VK_FALSE;
-
-			VkPipelineViewportStateCreateInfo viewportState = {};
-			viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
-			viewportState.viewportCount = 1;
-			viewportState.scissorCount = 1;
-
-			VkPipelineRasterizationStateCreateInfo rasterizer = {};
-			rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
-			rasterizer.depthClampEnable = VK_FALSE;
-			rasterizer.rasterizerDiscardEnable = VK_FALSE;
-			rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
-			rasterizer.lineWidth = 1.0f;
-			rasterizer.cullMode = VK_CULL_MODE_NONE;
-			rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
-			rasterizer.depthBiasEnable = VK_FALSE;
-
-			VkPipelineMultisampleStateCreateInfo multisampling = {};
-			multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
-			multisampling.sampleShadingEnable = VK_FALSE;
-			multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
-
-			VkPipelineDepthStencilStateCreateInfo depthStencil = {};
-			depthStencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
-			depthStencil.depthTestEnable = VK_FALSE;
-			depthStencil.depthWriteEnable = VK_FALSE;
-
-			VkDynamicState dynamicStates[] = { VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR };
-			VkPipelineDynamicStateCreateInfo dynamicState = {};
-			dynamicState.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
-			dynamicState.dynamicStateCount = 2;
-			dynamicState.pDynamicStates = dynamicStates;
-
-			// Preprocess pipeline
-			{
-				preprocessDescLayout = preprocessProgram->GetDescriptorSetLayout();
-
-				VkPipelineLayoutCreateInfo pipelineLayoutInfo = {};
-				pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-				pipelineLayoutInfo.setLayoutCount = 1;
-				pipelineLayoutInfo.pSetLayouts = &preprocessDescLayout;
-
-				if (vkCreatePipelineLayout(device->GetDevice(), &pipelineLayoutInfo, nullptr, &preprocessLayout) != VK_SUCCESS) {
-					SPRaise("Failed to create preprocess pipeline layout");
-				}
-
-				VkPipelineColorBlendAttachmentState colorBlendAttachment = {};
-				colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
-					VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-				colorBlendAttachment.blendEnable = VK_FALSE;
-
-				VkPipelineColorBlendStateCreateInfo colorBlending = {};
-				colorBlending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-				colorBlending.logicOpEnable = VK_FALSE;
-				colorBlending.attachmentCount = 1;
-				colorBlending.pAttachments = &colorBlendAttachment;
-
-				auto shaderStages = preprocessProgram->GetShaderStages();
-
-				VkGraphicsPipelineCreateInfo pipelineInfo = {};
-				pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-				pipelineInfo.stageCount = static_cast<uint32_t>(shaderStages.size());
-				pipelineInfo.pStages = shaderStages.data();
-				pipelineInfo.pVertexInputState = &vertexInputInfo;
-				pipelineInfo.pInputAssemblyState = &inputAssembly;
-				pipelineInfo.pViewportState = &viewportState;
-				pipelineInfo.pRasterizationState = &rasterizer;
-				pipelineInfo.pMultisampleState = &multisampling;
-				pipelineInfo.pDepthStencilState = &depthStencil;
-				pipelineInfo.pColorBlendState = &colorBlending;
-				pipelineInfo.pDynamicState = &dynamicState;
-				pipelineInfo.layout = preprocessLayout;
-				pipelineInfo.renderPass = downsampleRenderPass;
-				pipelineInfo.subpass = 0;
-
-				if (vkCreateGraphicsPipelines(device->GetDevice(), renderer.GetPipelineCache(), 1, &pipelineInfo, nullptr, &preprocessPipeline) != VK_SUCCESS) {
-					SPRaise("Failed to create preprocess pipeline");
-				}
-			}
-
-			// Downsample pipeline
-			{
-				downsampleDescLayout = downsampleProgram->GetDescriptorSetLayout();
-
-				VkPipelineLayoutCreateInfo pipelineLayoutInfo = {};
-				pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-				pipelineLayoutInfo.setLayoutCount = 1;
-				pipelineLayoutInfo.pSetLayouts = &downsampleDescLayout;
-
-				if (vkCreatePipelineLayout(device->GetDevice(), &pipelineLayoutInfo, nullptr, &downsampleLayout) != VK_SUCCESS) {
-					SPRaise("Failed to create downsample pipeline layout");
-				}
-
-				VkPipelineColorBlendAttachmentState colorBlendAttachment = {};
-				colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
-					VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-				colorBlendAttachment.blendEnable = VK_FALSE;
-
-				VkPipelineColorBlendStateCreateInfo colorBlending = {};
-				colorBlending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-				colorBlending.logicOpEnable = VK_FALSE;
-				colorBlending.attachmentCount = 1;
-				colorBlending.pAttachments = &colorBlendAttachment;
-
-				auto shaderStages = downsampleProgram->GetShaderStages();
-
-				VkGraphicsPipelineCreateInfo pipelineInfo = {};
-				pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-				pipelineInfo.stageCount = static_cast<uint32_t>(shaderStages.size());
-				pipelineInfo.pStages = shaderStages.data();
-				pipelineInfo.pVertexInputState = &vertexInputInfo;
-				pipelineInfo.pInputAssemblyState = &inputAssembly;
-				pipelineInfo.pViewportState = &viewportState;
-				pipelineInfo.pRasterizationState = &rasterizer;
-				pipelineInfo.pMultisampleState = &multisampling;
-				pipelineInfo.pDepthStencilState = &depthStencil;
-				pipelineInfo.pColorBlendState = &colorBlending;
-				pipelineInfo.pDynamicState = &dynamicState;
-				pipelineInfo.layout = downsampleLayout;
-				pipelineInfo.renderPass = downsampleRenderPass;
-				pipelineInfo.subpass = 0;
-
-				if (vkCreateGraphicsPipelines(device->GetDevice(), renderer.GetPipelineCache(), 1, &pipelineInfo, nullptr, &downsamplePipeline) != VK_SUCCESS) {
-					SPRaise("Failed to create downsample pipeline");
-				}
-			}
-
-			// Compute gain pipeline (with blending)
-			{
-				computeGainDescLayout = computeGainProgram->GetDescriptorSetLayout();
-
-				VkPipelineLayoutCreateInfo pipelineLayoutInfo = {};
-				pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-				pipelineLayoutInfo.setLayoutCount = 1;
-				pipelineLayoutInfo.pSetLayouts = &computeGainDescLayout;
-
-				if (vkCreatePipelineLayout(device->GetDevice(), &pipelineLayoutInfo, nullptr, &computeGainLayout) != VK_SUCCESS) {
-					SPRaise("Failed to create compute gain pipeline layout");
-				}
-
-				VkPipelineColorBlendAttachmentState colorBlendAttachment = {};
-				colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
-					VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-				colorBlendAttachment.blendEnable = VK_TRUE;
-				colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
-				colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
-				colorBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD;
-				colorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
-				colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
-				colorBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;
-
-				VkPipelineColorBlendStateCreateInfo colorBlending = {};
-				colorBlending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-				colorBlending.logicOpEnable = VK_FALSE;
-				colorBlending.attachmentCount = 1;
-				colorBlending.pAttachments = &colorBlendAttachment;
-
-				auto shaderStages = computeGainProgram->GetShaderStages();
-
-				VkGraphicsPipelineCreateInfo pipelineInfo = {};
-				pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-				pipelineInfo.stageCount = static_cast<uint32_t>(shaderStages.size());
-				pipelineInfo.pStages = shaderStages.data();
-				pipelineInfo.pVertexInputState = &vertexInputInfo;
-				pipelineInfo.pInputAssemblyState = &inputAssembly;
-				pipelineInfo.pViewportState = &viewportState;
-				pipelineInfo.pRasterizationState = &rasterizer;
-				pipelineInfo.pMultisampleState = &multisampling;
-				pipelineInfo.pDepthStencilState = &depthStencil;
-				pipelineInfo.pColorBlendState = &colorBlending;
-				pipelineInfo.pDynamicState = &dynamicState;
-				pipelineInfo.layout = computeGainLayout;
-				pipelineInfo.renderPass = exposureRenderPass;
-				pipelineInfo.subpass = 0;
-
-				if (vkCreateGraphicsPipelines(device->GetDevice(), renderer.GetPipelineCache(), 1, &pipelineInfo, nullptr, &computeGainPipeline) != VK_SUCCESS) {
-					SPRaise("Failed to create compute gain pipeline");
-				}
-			}
-
-			// Apply pipeline
-			{
-				applyDescLayout = applyProgram->GetDescriptorSetLayout();
-
-				VkPipelineLayoutCreateInfo pipelineLayoutInfo = {};
-				pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-				pipelineLayoutInfo.setLayoutCount = 1;
-				pipelineLayoutInfo.pSetLayouts = &applyDescLayout;
-
-				if (vkCreatePipelineLayout(device->GetDevice(), &pipelineLayoutInfo, nullptr, &applyLayout) != VK_SUCCESS) {
-					SPRaise("Failed to create apply pipeline layout");
-				}
-
-				VkPipelineColorBlendAttachmentState colorBlendAttachment = {};
-				colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
-					VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-				colorBlendAttachment.blendEnable = VK_FALSE;
-
-				VkPipelineColorBlendStateCreateInfo colorBlending = {};
-				colorBlending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-				colorBlending.logicOpEnable = VK_FALSE;
-				colorBlending.attachmentCount = 1;
-				colorBlending.pAttachments = &colorBlendAttachment;
-
-				auto shaderStages = applyProgram->GetShaderStages();
-
-				VkGraphicsPipelineCreateInfo pipelineInfo = {};
-				pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-				pipelineInfo.stageCount = static_cast<uint32_t>(shaderStages.size());
-				pipelineInfo.pStages = shaderStages.data();
-				pipelineInfo.pVertexInputState = &vertexInputInfo;
-				pipelineInfo.pInputAssemblyState = &inputAssembly;
-				pipelineInfo.pViewportState = &viewportState;
-				pipelineInfo.pRasterizationState = &rasterizer;
-				pipelineInfo.pMultisampleState = &multisampling;
-				pipelineInfo.pDepthStencilState = &depthStencil;
-				pipelineInfo.pColorBlendState = &colorBlending;
-				pipelineInfo.pDynamicState = &dynamicState;
-				pipelineInfo.layout = applyLayout;
-				pipelineInfo.renderPass = renderPass;
-				pipelineInfo.subpass = 0;
-
-				if (vkCreateGraphicsPipelines(device->GetDevice(), renderer.GetPipelineCache(), 1, &pipelineInfo, nullptr, &applyPipeline) != VK_SUCCESS) {
-					SPRaise("Failed to create apply pipeline");
-				}
-			}
-
-			SPLog("VulkanAutoExposureFilter pipelines created");
-		}
-
-		Handle<VulkanImage> VulkanAutoExposureFilter::DownsampleToLuminance(VkCommandBuffer commandBuffer,
-			VulkanImage* input, int width, int height) {
-
-			std::vector<Handle<VulkanImage>> levels;
-			std::vector<VkFramebuffer> framebuffers;
-			VulkanImage* currentInput = input;
-			int currentWidth = width;
-			int currentHeight = height;
-			bool firstLevel = true;
-
-			while (currentWidth > 1 || currentHeight > 1) {
-				int newWidth = (currentWidth + 1) / 2;
-				int newHeight = (currentHeight + 1) / 2;
-
-				Handle<VulkanImage> newLevel = new VulkanImage(device, newWidth, newHeight,
-					VK_FORMAT_R16G16B16A16_SFLOAT,
-					VK_IMAGE_TILING_OPTIMAL,
-					VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-					VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-				newLevel->CreateSampler(VK_FILTER_LINEAR, VK_FILTER_LINEAR,
-					VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, false);
-
-				VkImageView attachments[] = { newLevel->GetImageView() };
-				VkFramebufferCreateInfo framebufferInfo = {};
-				framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-				framebufferInfo.renderPass = downsampleRenderPass;
-				framebufferInfo.attachmentCount = 1;
-				framebufferInfo.pAttachments = attachments;
-				framebufferInfo.width = newWidth;
-				framebufferInfo.height = newHeight;
-				framebufferInfo.layers = 1;
-
-				VkFramebuffer framebuffer;
-				if (vkCreateFramebuffer(device->GetDevice(), &framebufferInfo, nullptr, &framebuffer) != VK_SUCCESS) {
-					SPRaise("Failed to create downsample framebuffer");
-				}
-				framebuffers.push_back(framebuffer);
-
-				// Transition input if not first level
-				if (!firstLevel) {
-					VkImageMemoryBarrier barrier = {};
-					barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-					barrier.oldLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-					barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-					barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-					barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-					barrier.image = currentInput->GetImage();
-					barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-					barrier.subresourceRange.baseMipLevel = 0;
-					barrier.subresourceRange.levelCount = 1;
-					barrier.subresourceRange.baseArrayLayer = 0;
-					barrier.subresourceRange.layerCount = 1;
-					barrier.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-					barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-
-					vkCmdPipelineBarrier(commandBuffer,
-						VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-						0, 0, nullptr, 0, nullptr, 1, &barrier);
-				}
-
-				VkDescriptorSetAllocateInfo allocInfo = {};
-				allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-				allocInfo.descriptorPool = descriptorPool;
-				allocInfo.descriptorSetCount = 1;
-				allocInfo.pSetLayouts = firstLevel ? &preprocessDescLayout : &downsampleDescLayout;
-
-				VkDescriptorSet descriptorSet;
-				if (vkAllocateDescriptorSets(device->GetDevice(), &allocInfo, &descriptorSet) != VK_SUCCESS) {
-					SPRaise("Failed to allocate downsample descriptor set");
-				}
-
-				VkDescriptorImageInfo imageInfo = {};
-				imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-				imageInfo.imageView = currentInput->GetImageView();
-				imageInfo.sampler = currentInput->GetSampler();
-
-				VkWriteDescriptorSet descriptorWrite = {};
-				descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-				descriptorWrite.dstSet = descriptorSet;
-				descriptorWrite.dstBinding = 0;
-				descriptorWrite.dstArrayElement = 0;
-				descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-				descriptorWrite.descriptorCount = 1;
-				descriptorWrite.pImageInfo = &imageInfo;
-
-				vkUpdateDescriptorSets(device->GetDevice(), 1, &descriptorWrite, 0, nullptr);
-
-				VkRenderPassBeginInfo renderPassInfo = {};
-				renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-				renderPassInfo.renderPass = downsampleRenderPass;
-				renderPassInfo.framebuffer = framebuffer;
-				renderPassInfo.renderArea.offset = {0, 0};
-				renderPassInfo.renderArea.extent = {(uint32_t)newWidth, (uint32_t)newHeight};
-
-				vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
-
-				VkViewport viewport = {};
-				viewport.x = 0.0f;
-				viewport.y = 0.0f;
-				viewport.width = (float)newWidth;
-				viewport.height = (float)newHeight;
-				viewport.minDepth = 0.0f;
-				viewport.maxDepth = 1.0f;
-				vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
-
-				VkRect2D scissor = {};
-				scissor.offset = {0, 0};
-				scissor.extent = {(uint32_t)newWidth, (uint32_t)newHeight};
-				vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
-
-				vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-					firstLevel ? preprocessPipeline : downsamplePipeline);
-				vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-					firstLevel ? preprocessLayout : downsampleLayout, 0, 1, &descriptorSet, 0, nullptr);
-
-				VkBuffer vertexBuffers[] = { quadVertexBuffer->GetBuffer() };
-				VkDeviceSize offsets[] = { 0 };
-				vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
-				vkCmdBindIndexBuffer(commandBuffer, quadIndexBuffer->GetBuffer(), 0, VK_INDEX_TYPE_UINT16);
-				vkCmdDrawIndexed(commandBuffer, 6, 1, 0, 0, 0);
-
-				vkCmdEndRenderPass(commandBuffer);
-
-				vkFreeDescriptorSets(device->GetDevice(), descriptorPool, 1, &descriptorSet);
-
-				levels.push_back(newLevel);
-				currentInput = newLevel.GetPointerOrNull();
-				currentWidth = newWidth;
-				currentHeight = newHeight;
-				firstLevel = false;
-			}
-
-			// Wait for GPU and destroy temporary framebuffers
-			vkQueueWaitIdle(device->GetGraphicsQueue());
-			for (VkFramebuffer fb : framebuffers) {
-				vkDestroyFramebuffer(device->GetDevice(), fb, nullptr);
-			}
-
-			return levels.empty() ? nullptr : levels.back();
-		}
-
-		void VulkanAutoExposureFilter::ComputeGain(VkCommandBuffer commandBuffer,
-			VulkanImage* luminanceImage, float dt) {
-
-			float minExposure = (float)r_hdrAutoExposureMin;
-			float maxExposure = (float)r_hdrAutoExposureMax;
-
-			minExposure = std::min(std::max(minExposure, -10.0f), 10.0f);
-			maxExposure = std::min(std::max(maxExposure, minExposure), 10.0f);
-
-			float speed = (float)r_hdrAutoExposureSpeed;
-			if (speed < 0.0f) speed = 0.0f;
-			float rate = 1.0f - std::pow(0.01f, dt * speed);
-
-			ComputeGainUniforms uniforms;
-			uniforms.minGain = std::pow(2.0f, minExposure);
-			uniforms.maxGain = std::pow(2.0f, maxExposure);
-			uniforms.blendRate = rate;
-			uniforms._pad0 = 0.0f;
-
-			void* data;
-			data = computeGainUniformBuffer->Map();
-			memcpy(data, &uniforms, sizeof(uniforms));
-			computeGainUniformBuffer->Unmap();
-
-			VkDescriptorSetAllocateInfo allocInfo = {};
-			allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-			allocInfo.descriptorPool = descriptorPool;
-			allocInfo.descriptorSetCount = 1;
-			allocInfo.pSetLayouts = &computeGainDescLayout;
-
-			VkDescriptorSet descriptorSet;
-			if (vkAllocateDescriptorSets(device->GetDevice(), &allocInfo, &descriptorSet) != VK_SUCCESS) {
-				SPRaise("Failed to allocate compute gain descriptor set");
-			}
-
-			VkDescriptorBufferInfo bufferInfo = {};
-			bufferInfo.buffer = computeGainUniformBuffer->GetBuffer();
-			bufferInfo.offset = 0;
-			bufferInfo.range = sizeof(ComputeGainUniforms);
-
-			VkDescriptorImageInfo imageInfo = {};
-			imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-			imageInfo.imageView = luminanceImage->GetImageView();
-			imageInfo.sampler = luminanceImage->GetSampler();
-
-			VkWriteDescriptorSet descriptorWrites[2] = {};
-			descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-			descriptorWrites[0].dstSet = descriptorSet;
-			descriptorWrites[0].dstBinding = 0;
-			descriptorWrites[0].dstArrayElement = 0;
-			descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-			descriptorWrites[0].descriptorCount = 1;
-			descriptorWrites[0].pBufferInfo = &bufferInfo;
-
-			descriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-			descriptorWrites[1].dstSet = descriptorSet;
-			descriptorWrites[1].dstBinding = 1;
-			descriptorWrites[1].dstArrayElement = 0;
-			descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-			descriptorWrites[1].descriptorCount = 1;
-			descriptorWrites[1].pImageInfo = &imageInfo;
-
-			vkUpdateDescriptorSets(device->GetDevice(), 2, descriptorWrites, 0, nullptr);
-
-			VkRenderPassBeginInfo renderPassInfo = {};
-			renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-			renderPassInfo.renderPass = exposureRenderPass;
-			renderPassInfo.framebuffer = exposureFramebuffer;
-			renderPassInfo.renderArea.offset = {0, 0};
-			renderPassInfo.renderArea.extent = {1, 1};
-
-			vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
-
-			VkViewport viewport = {};
-			viewport.x = 0.0f;
-			viewport.y = 0.0f;
-			viewport.width = 1.0f;
-			viewport.height = 1.0f;
-			viewport.minDepth = 0.0f;
-			viewport.maxDepth = 1.0f;
-			vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
-
-			VkRect2D scissor = {};
-			scissor.offset = {0, 0};
-			scissor.extent = {1, 1};
-			vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
-
-			vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, computeGainPipeline);
-			vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-				computeGainLayout, 0, 1, &descriptorSet, 0, nullptr);
-
-			VkBuffer vertexBuffers[] = { quadVertexBuffer->GetBuffer() };
-			VkDeviceSize offsets[] = { 0 };
-			vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
-			vkCmdBindIndexBuffer(commandBuffer, quadIndexBuffer->GetBuffer(), 0, VK_INDEX_TYPE_UINT16);
-			vkCmdDrawIndexed(commandBuffer, 6, 1, 0, 0, 0);
-
-			vkCmdEndRenderPass(commandBuffer);
-
-			vkFreeDescriptorSets(device->GetDevice(), descriptorPool, 1, &descriptorSet);
-		}
-
-		void VulkanAutoExposureFilter::Filter(VkCommandBuffer commandBuffer, VulkanImage* input, VulkanImage* output) {
-			Filter(commandBuffer, input, output, 1.0f / 60.0f);
-		}
-
-		void VulkanAutoExposureFilter::Filter(VkCommandBuffer commandBuffer, VulkanImage* input, VulkanImage* output, float dt) {
 			SPADES_MARK_FUNCTION();
 
-			int width = (int)renderer.ScreenWidth();
-			int height = (int)renderer.ScreenHeight();
+			VkDevice dev = device->GetDevice();
 
-			// Step 1: Downsample input to 1x1 luminance
-			Handle<VulkanImage> luminanceImage = DownsampleToLuminance(commandBuffer, input, width, height);
-
-			if (!luminanceImage) {
-				return;
+			for (int i = 0; i < MAX_FRAME_SLOTS; ++i) {
+				for (VkFramebuffer fb : perFrameFramebuffers[i])
+					vkDestroyFramebuffer(dev, fb, nullptr);
+				if (perFrameDescPool[i] != VK_NULL_HANDLE)
+					vkDestroyDescriptorPool(dev, perFrameDescPool[i], nullptr);
 			}
 
-			// Step 2: Compute gain and update exposure texture
-			ComputeGain(commandBuffer, luminanceImage.GetPointerOrNull(), dt);
+			if (exposureFramebuffer != VK_NULL_HANDLE)
+				vkDestroyFramebuffer(dev, exposureFramebuffer, nullptr);
+			if (exposureImageView != VK_NULL_HANDLE)
+				vkDestroyImageView(dev, exposureImageView, nullptr);
+			if (exposureImage != VK_NULL_HANDLE)
+				vmaDestroyImage(device->GetAllocator(), exposureImage, exposureAlloc);
 
-			// Step 3: Apply exposure to output
-			VkImageView attachments[] = { output->GetImageView() };
-			VkFramebufferCreateInfo framebufferInfo = {};
-			framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-			framebufferInfo.renderPass = renderPass;
-			framebufferInfo.attachmentCount = 1;
-			framebufferInfo.pAttachments = attachments;
-			framebufferInfo.width = width;
-			framebufferInfo.height = height;
-			framebufferInfo.layers = 1;
+			if (linearSampler != VK_NULL_HANDLE)
+				vkDestroySampler(dev, linearSampler, nullptr);
 
-			VkFramebuffer outputFramebuffer;
-			if (vkCreateFramebuffer(device->GetDevice(), &framebufferInfo, nullptr, &outputFramebuffer) != VK_SUCCESS) {
-				SPRaise("Failed to create apply framebuffer");
-			}
+			if (preprocessPipeline  != VK_NULL_HANDLE) vkDestroyPipeline(dev, preprocessPipeline,  nullptr);
+			if (downsamplePipeline  != VK_NULL_HANDLE) vkDestroyPipeline(dev, downsamplePipeline,  nullptr);
+			if (computeGainPipeline != VK_NULL_HANDLE) vkDestroyPipeline(dev, computeGainPipeline, nullptr);
+			if (applyPipeline       != VK_NULL_HANDLE) vkDestroyPipeline(dev, applyPipeline,       nullptr);
 
-			VkDescriptorSetAllocateInfo allocInfo = {};
-			allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-			allocInfo.descriptorPool = descriptorPool;
-			allocInfo.descriptorSetCount = 1;
-			allocInfo.pSetLayouts = &applyDescLayout;
+			if (preprocessLayout   != VK_NULL_HANDLE) vkDestroyPipelineLayout(dev, preprocessLayout,   nullptr);
+			if (computeGainLayout  != VK_NULL_HANDLE) vkDestroyPipelineLayout(dev, computeGainLayout,  nullptr);
+			if (applyLayout        != VK_NULL_HANDLE) vkDestroyPipelineLayout(dev, applyLayout,        nullptr);
 
-			VkDescriptorSet descriptorSet;
-			if (vkAllocateDescriptorSets(device->GetDevice(), &allocInfo, &descriptorSet) != VK_SUCCESS) {
-				SPRaise("Failed to allocate apply descriptor set");
-			}
+			if (singleSamplerDSL != VK_NULL_HANDLE) vkDestroyDescriptorSetLayout(dev, singleSamplerDSL, nullptr);
+			if (dualSamplerDSL   != VK_NULL_HANDLE) vkDestroyDescriptorSetLayout(dev, dualSamplerDSL,   nullptr);
 
-			VkDescriptorImageInfo inputImageInfo = {};
-			inputImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-			inputImageInfo.imageView = input->GetImageView();
-			inputImageInfo.sampler = input->GetSampler();
-
-			VkDescriptorImageInfo exposureImageInfo = {};
-			exposureImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-			exposureImageInfo.imageView = exposureImage->GetImageView();
-			exposureImageInfo.sampler = exposureImage->GetSampler();
-
-			VkWriteDescriptorSet descriptorWrites[2] = {};
-			descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-			descriptorWrites[0].dstSet = descriptorSet;
-			descriptorWrites[0].dstBinding = 0;
-			descriptorWrites[0].dstArrayElement = 0;
-			descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-			descriptorWrites[0].descriptorCount = 1;
-			descriptorWrites[0].pImageInfo = &inputImageInfo;
-
-			descriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-			descriptorWrites[1].dstSet = descriptorSet;
-			descriptorWrites[1].dstBinding = 1;
-			descriptorWrites[1].dstArrayElement = 0;
-			descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-			descriptorWrites[1].descriptorCount = 1;
-			descriptorWrites[1].pImageInfo = &exposureImageInfo;
-
-			vkUpdateDescriptorSets(device->GetDevice(), 2, descriptorWrites, 0, nullptr);
-
-			VkRenderPassBeginInfo renderPassInfo = {};
-			renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-			renderPassInfo.renderPass = renderPass;
-			renderPassInfo.framebuffer = outputFramebuffer;
-			renderPassInfo.renderArea.offset = {0, 0};
-			renderPassInfo.renderArea.extent = {(uint32_t)width, (uint32_t)height};
-
-			vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
-
-			VkViewport viewport = {};
-			viewport.x = 0.0f;
-			viewport.y = 0.0f;
-			viewport.width = (float)width;
-			viewport.height = (float)height;
-			viewport.minDepth = 0.0f;
-			viewport.maxDepth = 1.0f;
-			vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
-
-			VkRect2D scissor = {};
-			scissor.offset = {0, 0};
-			scissor.extent = {(uint32_t)width, (uint32_t)height};
-			vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
-
-			vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, applyPipeline);
-			vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-				applyLayout, 0, 1, &descriptorSet, 0, nullptr);
-
-			VkBuffer vertexBuffers[] = { quadVertexBuffer->GetBuffer() };
-			VkDeviceSize offsets[] = { 0 };
-			vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
-			vkCmdBindIndexBuffer(commandBuffer, quadIndexBuffer->GetBuffer(), 0, VK_INDEX_TYPE_UINT16);
-			vkCmdDrawIndexed(commandBuffer, 6, 1, 0, 0, 0);
-
-			vkCmdEndRenderPass(commandBuffer);
-
-			// Wait for GPU and destroy temporary framebuffer
-			vkQueueWaitIdle(device->GetGraphicsQueue());
-			vkDestroyFramebuffer(device->GetDevice(), outputFramebuffer, nullptr);
-
-			vkFreeDescriptorSets(device->GetDevice(), descriptorPool, 1, &descriptorSet);
+			if (gainRenderPass      != VK_NULL_HANDLE) vkDestroyRenderPass(dev, gainRenderPass,      nullptr);
+			if (gainFirstRenderPass != VK_NULL_HANDLE) vkDestroyRenderPass(dev, gainFirstRenderPass, nullptr);
+			if (ppRenderPass        != VK_NULL_HANDLE) vkDestroyRenderPass(dev, ppRenderPass,        nullptr);
 		}
-	}
-}
+
+		// ─────────────────────────────────────────────────────────────
+		//  Initialisation
+		// ─────────────────────────────────────────────────────────────
+
+		void VulkanAutoExposureFilter::InitRenderPasses() {
+			VkDevice dev = device->GetDevice();
+
+			// Dependency: wait for colour-attachment writes before fragment sampling.
+			VkSubpassDependency dep{};
+			dep.srcSubpass    = VK_SUBPASS_EXTERNAL;
+			dep.dstSubpass    = 0;
+			dep.srcStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+			dep.dstStageMask  = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+			dep.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+			dep.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+
+			// ppRenderPass: preprocess, downsample, apply — DONT_CARE, UNDEFINED → SHADER_READ_ONLY.
+			ppRenderPass = CreateSimpleColorRenderPass(
+			    dev, colorFormat,
+			    VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+			    VK_IMAGE_LAYOUT_UNDEFINED,
+			    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+			    &dep);
+
+			// gainFirstRenderPass: first frame only — CLEAR (value supplied at begin),
+			// UNDEFINED → SHADER_READ_ONLY.
+			gainFirstRenderPass = CreateSimpleColorRenderPass(
+			    dev, colorFormat,
+			    VK_ATTACHMENT_LOAD_OP_CLEAR,
+			    VK_IMAGE_LAYOUT_UNDEFINED,
+			    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+			    &dep);
+
+			// gainRenderPass: subsequent frames — LOAD, COLOR_ATTACHMENT → SHADER_READ_ONLY.
+			// Two dependencies: one incoming (wait for prior writes), one outgoing
+			// (signal fragment-shader readers before the apply pass).
+			{
+				VkSubpassDependency deps[2];
+				deps[0] = dep;
+				deps[1].srcSubpass      = 0;
+				deps[1].dstSubpass      = VK_SUBPASS_EXTERNAL;
+				deps[1].srcStageMask    = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+				deps[1].dstStageMask    = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+				deps[1].srcAccessMask   = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+				deps[1].dstAccessMask   = VK_ACCESS_SHADER_READ_BIT;
+				deps[1].dependencyFlags = 0;
+
+				VkAttachmentDescription att{};
+				att.format         = colorFormat;
+				att.samples        = VK_SAMPLE_COUNT_1_BIT;
+				att.loadOp         = VK_ATTACHMENT_LOAD_OP_LOAD;
+				att.storeOp        = VK_ATTACHMENT_STORE_OP_STORE;
+				att.stencilLoadOp  = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+				att.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+				att.initialLayout  = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+				att.finalLayout    = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+				VkAttachmentReference ref{0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL};
+
+				VkSubpassDescription subpass{};
+				subpass.pipelineBindPoint    = VK_PIPELINE_BIND_POINT_GRAPHICS;
+				subpass.colorAttachmentCount = 1;
+				subpass.pColorAttachments    = &ref;
+
+				VkRenderPassCreateInfo rpInfo{};
+				rpInfo.sType           = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+				rpInfo.attachmentCount = 1;
+				rpInfo.pAttachments    = &att;
+				rpInfo.subpassCount    = 1;
+				rpInfo.pSubpasses      = &subpass;
+				rpInfo.dependencyCount = 2;
+				rpInfo.pDependencies   = deps;
+
+				if (vkCreateRenderPass(dev, &rpInfo, nullptr, &gainRenderPass) != VK_SUCCESS)
+					SPRaise("Failed to create gain render pass");
+			}
+		}
+
+		void VulkanAutoExposureFilter::InitDescriptorSetLayouts() {
+			VkDevice dev = device->GetDevice();
+
+			auto MakeDSL = [&](uint32_t bindingCount) {
+				VkDescriptorSetLayoutBinding bindings[2]{};
+				for (uint32_t i = 0; i < bindingCount; ++i) {
+					bindings[i].binding         = i;
+					bindings[i].descriptorCount = 1;
+					bindings[i].descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+					bindings[i].stageFlags      = VK_SHADER_STAGE_FRAGMENT_BIT;
+				}
+				VkDescriptorSetLayoutCreateInfo info{};
+				info.sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+				info.bindingCount = bindingCount;
+				info.pBindings    = bindings;
+				VkDescriptorSetLayout dsl;
+				if (vkCreateDescriptorSetLayout(dev, &info, nullptr, &dsl) != VK_SUCCESS)
+					SPRaise("Failed to create descriptor set layout");
+				return dsl;
+			};
+
+			singleSamplerDSL = MakeDSL(1);
+			dualSamplerDSL   = MakeDSL(2);
+		}
+
+		VkShaderModule VulkanAutoExposureFilter::LoadSPIRV(const char* path,
+		                                                    VkShaderStageFlagBits /*stage*/) {
+			std::string data = FileManager::ReadAllBytes(path);
+			std::vector<uint32_t> code(data.size() / sizeof(uint32_t));
+			std::memcpy(code.data(), data.data(), data.size());
+
+			VkShaderModuleCreateInfo info{};
+			info.sType    = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+			info.codeSize = data.size();
+			info.pCode    = code.data();
+
+			VkShaderModule mod;
+			if (vkCreateShaderModule(device->GetDevice(), &info, nullptr, &mod) != VK_SUCCESS)
+				SPRaise("Failed to create shader module: %s", path);
+			return mod;
+		}
+
+		void VulkanAutoExposureFilter::InitPipelines() {
+			VkDevice dev     = device->GetDevice();
+			VkPipelineCache  cache = renderer.GetPipelineCache();
+
+			VkShaderModule vs          = LoadSPIRV("Shaders/Vulkan/PostFilters/PassThrough.vk.vs.spv",          VK_SHADER_STAGE_VERTEX_BIT);
+			VkShaderModule preprocessFS = LoadSPIRV("Shaders/Vulkan/PostFilters/AutoExposurePreprocess.vk.fs.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
+			VkShaderModule passthroughFS= LoadSPIRV("Shaders/Vulkan/PostFilters/PassThrough.vk.fs.spv",            VK_SHADER_STAGE_FRAGMENT_BIT);
+			VkShaderModule gainFS       = LoadSPIRV("Shaders/Vulkan/PostFilters/AutoExposure.vk.fs.spv",           VK_SHADER_STAGE_FRAGMENT_BIT);
+			VkShaderModule applyFS      = LoadSPIRV("Shaders/Vulkan/PostFilters/AutoExposureApply.vk.fs.spv",      VK_SHADER_STAGE_FRAGMENT_BIT);
+
+			// No vertex buffer; vertices are generated in the vertex shader.
+			VkPipelineVertexInputStateCreateInfo vertexInput{};
+			vertexInput.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+
+			VkPipelineInputAssemblyStateCreateInfo ia{};
+			ia.sType    = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+			ia.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+
+			VkPipelineViewportStateCreateInfo vp{};
+			vp.sType         = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+			vp.viewportCount = 1;
+			vp.scissorCount  = 1;
+
+			VkPipelineRasterizationStateCreateInfo rs{};
+			rs.sType       = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+			rs.polygonMode = VK_POLYGON_MODE_FILL;
+			rs.cullMode    = VK_CULL_MODE_NONE;
+			rs.lineWidth   = 1.0f;
+
+			VkPipelineMultisampleStateCreateInfo ms{};
+			ms.sType                = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+			ms.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+
+			VkPipelineDepthStencilStateCreateInfo ds{};
+			ds.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+
+			VkDynamicState dynArr[] = {VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR};
+			VkPipelineDynamicStateCreateInfo dyn{};
+			dyn.sType             = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+			dyn.dynamicStateCount = 2;
+			dyn.pDynamicStates    = dynArr;
+
+			// Pipeline layouts.
+			{
+				VkPipelineLayoutCreateInfo li{};
+				li.sType          = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+				li.setLayoutCount = 1;
+				li.pSetLayouts    = &singleSamplerDSL;
+				if (vkCreatePipelineLayout(dev, &li, nullptr, &preprocessLayout) != VK_SUCCESS)
+					SPRaise("Failed to create preprocess pipeline layout");
+			}
+			{
+				VkPushConstantRange pcr{VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(float) * 3};
+				VkPipelineLayoutCreateInfo li{};
+				li.sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+				li.setLayoutCount         = 1;
+				li.pSetLayouts            = &singleSamplerDSL;
+				li.pushConstantRangeCount = 1;
+				li.pPushConstantRanges    = &pcr;
+				if (vkCreatePipelineLayout(dev, &li, nullptr, &computeGainLayout) != VK_SUCCESS)
+					SPRaise("Failed to create compute-gain pipeline layout");
+			}
+			{
+				VkPipelineLayoutCreateInfo li{};
+				li.sType          = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+				li.setLayoutCount = 1;
+				li.pSetLayouts    = &dualSamplerDSL;
+				if (vkCreatePipelineLayout(dev, &li, nullptr, &applyLayout) != VK_SUCCESS)
+					SPRaise("Failed to create apply pipeline layout");
+			}
+
+			// Helper: build one colour blend attachment.
+			auto MakeBlendAtt = [](bool blend,
+			                       VkBlendFactor srcC = VK_BLEND_FACTOR_ONE,
+			                       VkBlendFactor dstC = VK_BLEND_FACTOR_ZERO,
+			                       VkBlendFactor srcA = VK_BLEND_FACTOR_ONE,
+			                       VkBlendFactor dstA = VK_BLEND_FACTOR_ZERO) {
+				VkPipelineColorBlendAttachmentState a{};
+				a.colorWriteMask      = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
+				                        VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+				a.blendEnable         = blend ? VK_TRUE : VK_FALSE;
+				a.srcColorBlendFactor = srcC;
+				a.dstColorBlendFactor = dstC;
+				a.colorBlendOp        = VK_BLEND_OP_ADD;
+				a.srcAlphaBlendFactor = srcA;
+				a.dstAlphaBlendFactor = dstA;
+				a.alphaBlendOp        = VK_BLEND_OP_ADD;
+				return a;
+			};
+
+			// Helper: build one graphics pipeline.
+			auto MakePipeline = [&](VkShaderModule fsModule, VkPipelineLayout layout,
+			                         VkRenderPass rp,
+			                         VkPipelineColorBlendAttachmentState blendAtt) {
+				VkPipelineShaderStageCreateInfo stages[2]{};
+				stages[0] = {VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO, nullptr, 0,
+				              VK_SHADER_STAGE_VERTEX_BIT, vs, "main", nullptr};
+				stages[1] = {VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO, nullptr, 0,
+				              VK_SHADER_STAGE_FRAGMENT_BIT, fsModule, "main", nullptr};
+
+				VkPipelineColorBlendStateCreateInfo blend{};
+				blend.sType           = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+				blend.attachmentCount = 1;
+				blend.pAttachments    = &blendAtt;
+
+				VkGraphicsPipelineCreateInfo pi{};
+				pi.sType               = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+				pi.stageCount          = 2;
+				pi.pStages             = stages;
+				pi.pVertexInputState   = &vertexInput;
+				pi.pInputAssemblyState = &ia;
+				pi.pViewportState      = &vp;
+				pi.pRasterizationState = &rs;
+				pi.pMultisampleState   = &ms;
+				pi.pDepthStencilState  = &ds;
+				pi.pColorBlendState    = &blend;
+				pi.pDynamicState       = &dyn;
+				pi.layout              = layout;
+				pi.renderPass          = rp;
+				pi.subpass             = 0;
+
+				VkPipeline p;
+				if (vkCreateGraphicsPipelines(dev, cache, 1, &pi, nullptr, &p) != VK_SUCCESS)
+					SPRaise("Failed to create graphics pipeline");
+				return p;
+			};
+
+			auto noBlend = MakeBlendAtt(false);
+			auto srcAlpha = MakeBlendAtt(true,
+			    VK_BLEND_FACTOR_SRC_ALPHA, VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+			    VK_BLEND_FACTOR_ONE,       VK_BLEND_FACTOR_ZERO);
+
+			preprocessPipeline  = MakePipeline(preprocessFS,  preprocessLayout,  ppRenderPass,        noBlend);
+			downsamplePipeline  = MakePipeline(passthroughFS, preprocessLayout,  ppRenderPass,        noBlend);
+			// computeGainPipeline is compatible with both gainFirstRenderPass and gainRenderPass
+			// (same format and sample count); build against gainFirstRenderPass.
+			computeGainPipeline = MakePipeline(gainFS,        computeGainLayout, gainFirstRenderPass, srcAlpha);
+			applyPipeline       = MakePipeline(applyFS,       applyLayout,       ppRenderPass,        noBlend);
+
+			vkDestroyShaderModule(dev, vs,           nullptr);
+			vkDestroyShaderModule(dev, preprocessFS, nullptr);
+			vkDestroyShaderModule(dev, passthroughFS,nullptr);
+			vkDestroyShaderModule(dev, gainFS,       nullptr);
+			vkDestroyShaderModule(dev, applyFS,      nullptr);
+		}
+
+		void VulkanAutoExposureFilter::InitDescriptorPools() {
+			VkDevice dev = device->GetDevice();
+
+			// Each frame slot needs enough sets for the full downsample chain
+			// (~14 levels for 1920×1080) plus the apply pass.
+			VkDescriptorPoolSize size{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 64};
+			VkDescriptorPoolCreateInfo info{};
+			info.sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+			info.poolSizeCount = 1;
+			info.pPoolSizes    = &size;
+			info.maxSets       = 32;
+
+			for (int i = 0; i < MAX_FRAME_SLOTS; ++i) {
+				if (vkCreateDescriptorPool(dev, &info, nullptr, &perFrameDescPool[i]) != VK_SUCCESS)
+					SPRaise("Failed to create descriptor pool");
+			}
+		}
+
+		void VulkanAutoExposureFilter::InitExposureImage() {
+			VkDevice dev     = device->GetDevice();
+			VmaAllocator vma = device->GetAllocator();
+
+			VkImageCreateInfo imgInfo{};
+			imgInfo.sType         = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+			imgInfo.imageType     = VK_IMAGE_TYPE_2D;
+			imgInfo.format        = colorFormat;
+			imgInfo.extent        = {1, 1, 1};
+			imgInfo.mipLevels     = 1;
+			imgInfo.arrayLayers   = 1;
+			imgInfo.samples       = VK_SAMPLE_COUNT_1_BIT;
+			imgInfo.tiling        = VK_IMAGE_TILING_OPTIMAL;
+			imgInfo.usage         = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+			imgInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+
+			VmaAllocationCreateInfo allocInfo{};
+			allocInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+
+			if (vmaCreateImage(vma, &imgInfo, &allocInfo,
+			                   &exposureImage, &exposureAlloc, nullptr) != VK_SUCCESS)
+				SPRaise("Failed to allocate exposure accumulator image");
+
+			VkImageViewCreateInfo viewInfo{};
+			viewInfo.sType            = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+			viewInfo.image            = exposureImage;
+			viewInfo.viewType         = VK_IMAGE_VIEW_TYPE_2D;
+			viewInfo.format           = colorFormat;
+			viewInfo.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
+
+			if (vkCreateImageView(dev, &viewInfo, nullptr, &exposureImageView) != VK_SUCCESS)
+				SPRaise("Failed to create exposure image view");
+
+			VkSamplerCreateInfo samplerInfo{};
+			samplerInfo.sType                   = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+			samplerInfo.magFilter               = VK_FILTER_LINEAR;
+			samplerInfo.minFilter               = VK_FILTER_LINEAR;
+			samplerInfo.addressModeU            = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+			samplerInfo.addressModeV            = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+			samplerInfo.addressModeW            = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+			samplerInfo.anisotropyEnable        = VK_FALSE;
+			samplerInfo.maxAnisotropy           = 1.0f;
+			samplerInfo.borderColor             = VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK;
+			samplerInfo.unnormalizedCoordinates = VK_FALSE;
+			samplerInfo.compareEnable           = VK_FALSE;
+			samplerInfo.mipmapMode              = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+
+			if (vkCreateSampler(dev, &samplerInfo, nullptr, &linearSampler) != VK_SUCCESS)
+				SPRaise("Failed to create post-process sampler");
+
+			// The framebuffer is compatible with both gain render passes because
+			// they share the same format and sample count.
+			VkFramebufferCreateInfo fbInfo{};
+			fbInfo.sType           = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+			fbInfo.renderPass      = gainFirstRenderPass;
+			fbInfo.attachmentCount = 1;
+			fbInfo.pAttachments    = &exposureImageView;
+			fbInfo.width           = 1;
+			fbInfo.height          = 1;
+			fbInfo.layers          = 1;
+
+			if (vkCreateFramebuffer(dev, &fbInfo, nullptr, &exposureFramebuffer) != VK_SUCCESS)
+				SPRaise("Failed to create exposure framebuffer");
+		}
+
+		// ─────────────────────────────────────────────────────────────
+		//  Per-frame helpers
+		// ─────────────────────────────────────────────────────────────
+
+		VkFramebuffer VulkanAutoExposureFilter::MakeFramebuffer(VkRenderPass rp,
+		                                                         VulkanImage* image,
+		                                                         int frameSlot) {
+			VkImageView view = image->GetImageView();
+			VkFramebufferCreateInfo fbInfo{};
+			fbInfo.sType           = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+			fbInfo.renderPass      = rp;
+			fbInfo.attachmentCount = 1;
+			fbInfo.pAttachments    = &view;
+			fbInfo.width           = image->GetWidth();
+			fbInfo.height          = image->GetHeight();
+			fbInfo.layers          = 1;
+
+			VkFramebuffer fb;
+			if (vkCreateFramebuffer(device->GetDevice(), &fbInfo, nullptr, &fb) != VK_SUCCESS)
+				SPRaise("Failed to create post-process framebuffer");
+			perFrameFramebuffers[frameSlot].push_back(fb);
+			return fb;
+		}
+
+		VkDescriptorSet VulkanAutoExposureFilter::BindTexture(int frameSlot,
+		                                                       VkDescriptorSetLayout dsl,
+		                                                       VkImageView view) {
+			VkDescriptorSetAllocateInfo ai{};
+			ai.sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+			ai.descriptorPool     = perFrameDescPool[frameSlot];
+			ai.descriptorSetCount = 1;
+			ai.pSetLayouts        = &dsl;
+			VkDescriptorSet set;
+			if (vkAllocateDescriptorSets(device->GetDevice(), &ai, &set) != VK_SUCCESS)
+				SPRaise("Failed to allocate descriptor set");
+
+			VkDescriptorImageInfo img{linearSampler, view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
+			VkWriteDescriptorSet  w{};
+			w.sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+			w.dstSet          = set;
+			w.dstBinding      = 0;
+			w.descriptorCount = 1;
+			w.descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+			w.pImageInfo      = &img;
+			vkUpdateDescriptorSets(device->GetDevice(), 1, &w, 0, nullptr);
+			return set;
+		}
+
+		VkDescriptorSet VulkanAutoExposureFilter::BindTextures(int frameSlot,
+		                                                        VkDescriptorSetLayout dsl,
+		                                                        VkImageView view0,
+		                                                        VkImageView view1) {
+			VkDescriptorSetAllocateInfo ai{};
+			ai.sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+			ai.descriptorPool     = perFrameDescPool[frameSlot];
+			ai.descriptorSetCount = 1;
+			ai.pSetLayouts        = &dsl;
+			VkDescriptorSet set;
+			if (vkAllocateDescriptorSets(device->GetDevice(), &ai, &set) != VK_SUCCESS)
+				SPRaise("Failed to allocate descriptor set");
+
+			VkDescriptorImageInfo imgs[2]{
+			    {linearSampler, view0, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL},
+			    {linearSampler, view1, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL},
+			};
+			VkWriteDescriptorSet writes[2]{};
+			for (int i = 0; i < 2; ++i) {
+				writes[i].sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+				writes[i].dstSet          = set;
+				writes[i].dstBinding      = static_cast<uint32_t>(i);
+				writes[i].descriptorCount = 1;
+				writes[i].descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+				writes[i].pImageInfo      = &imgs[i];
+			}
+			vkUpdateDescriptorSets(device->GetDevice(), 2, writes, 0, nullptr);
+			return set;
+		}
+
+		void VulkanAutoExposureFilter::DrawFullscreen(VkCommandBuffer cmd,
+		                                               VkRenderPass rp,
+		                                               VkFramebuffer fb,
+		                                               uint32_t width, uint32_t height,
+		                                               VkPipeline pipeline,
+		                                               VkPipelineLayout layout,
+		                                               VkDescriptorSet ds) {
+			VkClearValue cv{};
+			cv.color = {{0.0f, 0.0f, 0.0f, 0.0f}};
+
+			VkRenderPassBeginInfo rpBegin{};
+			rpBegin.sType             = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+			rpBegin.renderPass        = rp;
+			rpBegin.framebuffer       = fb;
+			rpBegin.renderArea.extent = {width, height};
+			rpBegin.clearValueCount   = 1;
+			rpBegin.pClearValues      = &cv;
+
+			vkCmdBeginRenderPass(cmd, &rpBegin, VK_SUBPASS_CONTENTS_INLINE);
+
+			VkViewport viewport{0.0f, 0.0f, (float)width, (float)height, 0.0f, 1.0f};
+			VkRect2D   scissor{{0, 0}, {width, height}};
+			vkCmdSetViewport(cmd, 0, 1, &viewport);
+			vkCmdSetScissor(cmd, 0, 1, &scissor);
+
+			vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
+			vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
+			                        layout, 0, 1, &ds, 0, nullptr);
+			vkCmdDraw(cmd, 3, 1, 0, 0);
+
+			vkCmdEndRenderPass(cmd);
+		}
+
+		// ─────────────────────────────────────────────────────────────
+		//  Filter()
+		// ─────────────────────────────────────────────────────────────
+
+		void VulkanAutoExposureFilter::Filter(VkCommandBuffer cmd,
+		                                       VulkanImage* input,
+		                                       VulkanImage* output,
+		                                       float dt) {
+			SPADES_MARK_FUNCTION();
+
+			int frameSlot = static_cast<int>(renderer.GetCurrentFrameIndex());
+
+			// Reclaim per-frame resources from the previous use of this slot.
+			{
+				VkDevice dev = device->GetDevice();
+				for (VkFramebuffer fb : perFrameFramebuffers[frameSlot])
+					vkDestroyFramebuffer(dev, fb, nullptr);
+				perFrameFramebuffers[frameSlot].clear();
+				vkResetDescriptorPool(dev, perFrameDescPool[frameSlot], 0);
+			}
+
+			// ── 1. Downsample + preprocess ────────────────────────────────
+			// First level: brightness extraction.  Subsequent levels: passthrough
+			// (bilinear average via linear filtering on the smaller target).
+
+			std::vector<Handle<VulkanImage>> tempImages;
+			VulkanTemporaryImagePool* pool = renderer.GetTemporaryImagePool();
+
+			VkImageView srcView = input->GetImageView();
+			uint32_t    w       = static_cast<uint32_t>(renderer.GetRenderWidth());
+			uint32_t    h       = static_cast<uint32_t>(renderer.GetRenderHeight());
+			bool        first   = true;
+
+			while (w > 1 || h > 1) {
+				uint32_t nw = (w + 1) / 2;
+				uint32_t nh = (h + 1) / 2;
+
+				Handle<VulkanImage> dst = pool->Acquire(nw, nh, colorFormat);
+				VkFramebuffer fb = MakeFramebuffer(ppRenderPass, dst.GetPointerOrNull(), frameSlot);
+				VkDescriptorSet ds = BindTexture(frameSlot, singleSamplerDSL, srcView);
+
+				DrawFullscreen(cmd, ppRenderPass, fb, nw, nh,
+				               first ? preprocessPipeline : downsamplePipeline,
+				               preprocessLayout, ds);
+
+				srcView = dst->GetImageView();
+				tempImages.push_back(dst);
+				w = nw;  h = nh;  first = false;
+			}
+
+			// ── 2. Compute-gain pass ──────────────────────────────────────
+			// Blend the 1×1 brightness into the persistent exposure accumulator
+			// using temporal smoothing.  The blend rate is carried in alpha.
+
+			float minExp = std::min(std::max((float)r_hdrAutoExposureMin, -10.0f), 10.0f);
+			float maxExp = std::min(std::max((float)r_hdrAutoExposureMax, minExp),  10.0f);
+			float speed  = std::max((float)r_hdrAutoExposureSpeed, 0.0f);
+			float rate   = 1.0f - std::pow(0.01f, dt * speed);
+
+			struct GainParams { float minGain, maxGain, rate; } gainPC{
+			    std::pow(2.0f, minExp),
+			    std::pow(2.0f, maxExp),
+			    rate
+			};
+
+			VkDescriptorSet gainDS = BindTexture(frameSlot, singleSamplerDSL, srcView);
+
+			if (!exposureInitialized) {
+				// First frame: use gainFirstRenderPass (CLEAR to white, UNDEFINED initial).
+				// Clear value (1,1,1,1) initialises the accumulator to unity gain,
+				// matching the GL renderer's constructor clear.
+				VkClearValue cv{};
+				cv.color = {{1.0f, 1.0f, 1.0f, 1.0f}};
+
+				VkRenderPassBeginInfo rpBegin{};
+				rpBegin.sType             = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+				rpBegin.renderPass        = gainFirstRenderPass;
+				rpBegin.framebuffer       = exposureFramebuffer;
+				rpBegin.renderArea.extent = {1, 1};
+				rpBegin.clearValueCount   = 1;
+				rpBegin.pClearValues      = &cv;
+
+				vkCmdBeginRenderPass(cmd, &rpBegin, VK_SUBPASS_CONTENTS_INLINE);
+
+				VkViewport vp{0, 0, 1, 1, 0, 1};
+				VkRect2D   sc{{0, 0}, {1, 1}};
+				vkCmdSetViewport(cmd, 0, 1, &vp);
+				vkCmdSetScissor(cmd, 0, 1, &sc);
+				vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, computeGainPipeline);
+				vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
+				                        computeGainLayout, 0, 1, &gainDS, 0, nullptr);
+				vkCmdPushConstants(cmd, computeGainLayout,
+				                   VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(gainPC), &gainPC);
+				vkCmdDraw(cmd, 3, 1, 0, 0);
+				vkCmdEndRenderPass(cmd);
+
+				exposureInitialized = true;
+			} else {
+				// Subsequent frames: transition SHADER_READ_ONLY → COLOR_ATTACHMENT,
+				// then use gainRenderPass (LOAD) so blending accumulates the gain.
+				VkImageMemoryBarrier bar{};
+				bar.sType               = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+				bar.oldLayout           = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+				bar.newLayout           = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+				bar.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+				bar.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+				bar.image               = exposureImage;
+				bar.subresourceRange    = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
+				bar.srcAccessMask       = VK_ACCESS_SHADER_READ_BIT;
+				bar.dstAccessMask       = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT |
+				                          VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+				vkCmdPipelineBarrier(cmd,
+				    VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+				    VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+				    0, 0, nullptr, 0, nullptr, 1, &bar);
+
+				VkClearValue cv{};
+				cv.color = {{0.0f, 0.0f, 0.0f, 0.0f}}; // unused (LOAD op)
+
+				VkRenderPassBeginInfo rpBegin{};
+				rpBegin.sType             = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+				rpBegin.renderPass        = gainRenderPass;
+				rpBegin.framebuffer       = exposureFramebuffer;
+				rpBegin.renderArea.extent = {1, 1};
+				rpBegin.clearValueCount   = 1;
+				rpBegin.pClearValues      = &cv;
+
+				vkCmdBeginRenderPass(cmd, &rpBegin, VK_SUBPASS_CONTENTS_INLINE);
+
+				VkViewport vp{0, 0, 1, 1, 0, 1};
+				VkRect2D   sc{{0, 0}, {1, 1}};
+				vkCmdSetViewport(cmd, 0, 1, &vp);
+				vkCmdSetScissor(cmd, 0, 1, &sc);
+				vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, computeGainPipeline);
+				vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
+				                        computeGainLayout, 0, 1, &gainDS, 0, nullptr);
+				vkCmdPushConstants(cmd, computeGainLayout,
+				                   VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(gainPC), &gainPC);
+				vkCmdDraw(cmd, 3, 1, 0, 0);
+				vkCmdEndRenderPass(cmd);
+			}
+
+			// After gainRenderPass the exposure image is in SHADER_READ_ONLY_OPTIMAL.
+
+			// ── 3. Apply pass ─────────────────────────────────────────────
+			// Multiply the scene colour by the accumulated gain.
+
+			uint32_t rw = static_cast<uint32_t>(renderer.GetRenderWidth());
+			uint32_t rh = static_cast<uint32_t>(renderer.GetRenderHeight());
+
+			VkFramebuffer applyFB = MakeFramebuffer(ppRenderPass, output, frameSlot);
+			VkDescriptorSet applyDS = BindTextures(frameSlot, dualSamplerDSL,
+			                                       input->GetImageView(),
+			                                       exposureImageView);
+
+			DrawFullscreen(cmd, ppRenderPass, applyFB, rw, rh,
+			               applyPipeline, applyLayout, applyDS);
+
+			// Return temporary downsample images to the pool.
+			for (auto& img : tempImages)
+				pool->Return(img.GetPointerOrNull());
+		}
+
+	} // namespace draw
+} // namespace spades

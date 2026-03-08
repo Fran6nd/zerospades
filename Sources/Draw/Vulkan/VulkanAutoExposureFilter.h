@@ -1,5 +1,5 @@
 /*
- Copyright (c) 2015 yvt
+ Copyright (c) 2013 yvt
 
  This file is part of OpenSpades.
 
@@ -20,70 +20,126 @@
 
 #pragma once
 
+#include <vector>
+#include <vulkan/vulkan.h>
+#include <Draw/Vulkan/vk_mem_alloc.h>
 #include "VulkanPostProcessFilter.h"
 
 namespace spades {
 	namespace draw {
-		class VulkanBuffer;
-		class VulkanProgram;
+
+		// Auto-exposure filter.
+		//
+		// Algorithm (mirrors GLAutoExposureFilter):
+		//   1. Preprocess pass  — extract peak brightness from the scene image.
+		//   2. Downsample loop  — halve resolution iteratively down to 1×1.
+		//   3. Compute-gain pass — blend the 1×1 brightness into a persistent
+		//      exposure accumulator using temporal smoothing (SRC_ALPHA blend).
+		//   4. Apply pass       — multiply the scene by the accumulated gain.
+		//
+		// Call Filter(cmd, input, output, dt).  input must be in
+		// SHADER_READ_ONLY_OPTIMAL; output ends up in SHADER_READ_ONLY_OPTIMAL.
 
 		class VulkanAutoExposureFilter : public VulkanPostProcessFilter {
-		private:
-			// Preprocess pipeline (convert to brightness)
-			Handle<VulkanProgram> preprocessProgram;
-			VkPipeline preprocessPipeline;
-			VkPipelineLayout preprocessLayout;
-			VkDescriptorSetLayout preprocessDescLayout;
 
-			// Downsample pipeline
-			Handle<VulkanProgram> downsampleProgram;
-			VkPipeline downsamplePipeline;
-			VkPipelineLayout downsampleLayout;
-			VkDescriptorSetLayout downsampleDescLayout;
+			// Colour format used for all intermediate and persistent images.
+			VkFormat colorFormat;
 
-			// Compute gain pipeline
-			Handle<VulkanProgram> computeGainProgram;
-			VkPipeline computeGainPipeline;
-			VkPipelineLayout computeGainLayout;
-			VkDescriptorSetLayout computeGainDescLayout;
+			// ---------- Persistent 1×1 exposure accumulator ----------
+			VkImage        exposureImage;
+			VmaAllocation  exposureAlloc;
+			VkImageView    exposureImageView;
+			VkFramebuffer  exposureFramebuffer;
 
-			// Apply exposure pipeline
-			Handle<VulkanProgram> applyProgram;
-			VkPipeline applyPipeline;
-			VkPipelineLayout applyLayout;
-			VkDescriptorSetLayout applyDescLayout;
+			// Sampler used for all texture reads in this filter.
+			VkSampler linearSampler;
 
-			// Render passes
-			VkRenderPass downsampleRenderPass;
-			VkRenderPass exposureRenderPass;
+			// ---------- Render passes ----------
+			// ppRenderPass: DONT_CARE load, UNDEFINED→SHADER_READ_ONLY.
+			//   Used for preprocess, downsample, and apply passes.
+			VkRenderPass ppRenderPass;
 
-			// Exposure storage (1x1 texture)
-			Handle<VulkanImage> exposureImage;
-			VkFramebuffer exposureFramebuffer;
+			// gainFirstRenderPass: CLEAR load (clears to 0), UNDEFINED→SHADER_READ_ONLY.
+			//   Used only on the very first frame to initialise the accumulator.
+			VkRenderPass gainFirstRenderPass;
 
-			// Descriptor pool
-			VkDescriptorPool descriptorPool;
+			// gainRenderPass: LOAD load, COLOR_ATTACHMENT→SHADER_READ_ONLY.
+			//   Used every subsequent frame; blending accumulates the new gain.
+			VkRenderPass gainRenderPass;
 
-			// Buffers
-			Handle<VulkanBuffer> quadVertexBuffer;
-			Handle<VulkanBuffer> quadIndexBuffer;
-			Handle<VulkanBuffer> computeGainUniformBuffer;
+			// ---------- Descriptor set layouts ----------
+			VkDescriptorSetLayout singleSamplerDSL; // binding 0: combined sampler
+			VkDescriptorSetLayout dualSamplerDSL;   // binding 0+1: two combined samplers
 
-			void CreatePipeline() override;
-			void CreateRenderPass() override;
-			void CreateQuadBuffers();
-			void CreateDescriptorPool();
-			void CreateExposureResources();
+			// ---------- Pipeline layouts ----------
+			VkPipelineLayout preprocessLayout;   // singleSamplerDSL, no push constants
+			VkPipelineLayout computeGainLayout;  // singleSamplerDSL + push constants
+			VkPipelineLayout applyLayout;        // dualSamplerDSL, no push constants
 
-			Handle<VulkanImage> DownsampleToLuminance(VkCommandBuffer commandBuffer, VulkanImage* input, int width, int height);
-			void ComputeGain(VkCommandBuffer commandBuffer, VulkanImage* luminanceImage, float dt);
+			// ---------- Pipelines ----------
+			VkPipeline preprocessPipeline;  // brightness extraction
+			VkPipeline downsamplePipeline;  // passthrough (bilinear downsample)
+			VkPipeline computeGainPipeline; // gain with SRC_ALPHA blend
+			VkPipeline applyPipeline;       // multiply scene by gain
+
+			// ---------- Per-frame-slot resources ----------
+			// Descriptor sets and dynamic framebuffers are created each frame and
+			// must not be freed until the GPU has finished with them.  We keep two
+			// slots (matching maxFramesInFlight=2) and recycle them on next use.
+			static constexpr int MAX_FRAME_SLOTS = 2;
+			VkDescriptorPool perFrameDescPool[MAX_FRAME_SLOTS];
+			std::vector<VkFramebuffer> perFrameFramebuffers[MAX_FRAME_SLOTS];
+
+			// Whether the exposure accumulator has been initialised.
+			bool exposureInitialized;
+
+			// ---------- Helpers ----------
+			void InitRenderPasses();
+			void InitDescriptorSetLayouts();
+			void InitPipelines();
+			void InitDescriptorPools();
+			void InitExposureImage();
+
+			VkShaderModule LoadSPIRV(const char* path, VkShaderStageFlagBits stage);
+
+			// Creates a framebuffer for `image` in `renderPass` and registers it
+			// for deferred destruction in the given frame slot.
+			VkFramebuffer MakeFramebuffer(VkRenderPass rp, VulkanImage* image,
+			                              int frameSlot);
+
+			// Allocates a descriptor set from the per-frame pool and writes a
+			// single combined-image-sampler at binding 0.
+			VkDescriptorSet BindTexture(int frameSlot, VkDescriptorSetLayout dsl,
+			                            VkImageView view);
+
+			// Allocates a descriptor set with two combined-image-samplers.
+			VkDescriptorSet BindTextures(int frameSlot, VkDescriptorSetLayout dsl,
+			                             VkImageView view0, VkImageView view1);
+
+			// Records a single fullscreen draw into `fb` using `pipeline`.
+			void DrawFullscreen(VkCommandBuffer cmd, VkRenderPass rp,
+			                    VkFramebuffer fb, uint32_t width, uint32_t height,
+			                    VkPipeline pipeline, VkPipelineLayout layout,
+			                    VkDescriptorSet ds);
+
+			// Pure-virtual stubs — this filter manages its own pipelines.
+			void CreatePipeline() override {}
+			void CreateRenderPass() override {}
 
 		public:
-			VulkanAutoExposureFilter(VulkanRenderer&);
+			VulkanAutoExposureFilter(VulkanRenderer& renderer);
 			~VulkanAutoExposureFilter();
 
-			void Filter(VkCommandBuffer commandBuffer, VulkanImage* input, VulkanImage* output) override;
-			void Filter(VkCommandBuffer commandBuffer, VulkanImage* input, VulkanImage* output, float dt);
+			// VulkanPostProcessFilter interface (unused externally; use the dt overload).
+			void Filter(VkCommandBuffer cmd,
+			            VulkanImage* input, VulkanImage* output) override {
+				Filter(cmd, input, output, 0.016f);
+			}
+
+			// Main entry point called by the post-process chain.
+			void Filter(VkCommandBuffer cmd,
+			            VulkanImage* input, VulkanImage* output, float dt);
 		};
-	}
-}
+
+	} // namespace draw
+} // namespace spades
