@@ -51,7 +51,7 @@ Base class to follow: [VulkanPostProcessFilter.h](VulkanPostProcessFilter.h), [V
 
 ### PP-4: Depth of Field (`r_depthOfField`)
 
-- [ ] **[PP-4a] Write DoF Vulkan shaders** — port `OpenGL/PostFilters/DoFCoCGen.fs`, `DoFBlur.fs`/`DoFBlur2.fs`, `DoFMix.fs` to Vulkan GLSL; create `Shaders/Vulkan/PostFilters/DoFCoCGen.vk.*`, `DoFBlur.vk.*`, `DoFMix.vk.*`; compile to SPIR-V.
+- [x] **[PP-4a] Write DoF Vulkan shaders** — port `OpenGL/PostFilters/DoFCoCGen.fs`, `DoFBlur.fs`/`DoFBlur2.fs`, `DoFMix.fs` to Vulkan GLSL; create `Shaders/Vulkan/PostFilters/DoFCoCGen.vk.*`, `DoFBlur.vk.*`, `DoFMix.vk.*`; compile to SPIR-V.
   - Reference: `Resources/Shaders/OpenGL/PostFilters/DoFCoCGen.*`, `DoFBlur.*`, `DoFMix.*`
 
 - [ ] **[PP-4b] Implement `VulkanDepthOfFieldFilter` and wire** — write `VulkanDepthOfFieldFilter.h/.cpp` following `GLDepthOfFieldFilter`; add member; call after fog, before color correction: `depthOfFieldFilter->Filter(cmd, input, output, blurDepthRange, vignetteBlur, globalBlur, nearBlur, farBlur)` — params from `sceneDef` or cvars. Swap.
@@ -141,6 +141,36 @@ Base class to follow: [VulkanPostProcessFilter.h](VulkanPostProcessFilter.h), [V
 ---
 
 ## Bug Fixes
+
+- [ ] **[BUG-2] UI appears too small at higher resolutions**
+
+  **Symptom**: When the window/display resolution is increased, all 2D UI elements (HUD, menus, crosshair) render much smaller than expected. The 3D world renders correctly (fills the screen) because it is composited via a scaled blit, but the 2D pass is not correctly adapted to the new resolution.
+
+  **Preliminary investigation**:
+
+  The 2D UI pipeline and the 3D scene pipeline are separated:
+  - 3D scene → offscreen framebuffer (`framebufferManager`) at `renderWidth × renderHeight` → final blit scales it to fill the swapchain image (`device->GetSwapchainExtent()`). The blit always fills the full swapchain, so 3D looks correct regardless of resolution.
+  - 2D UI → swapchain render pass (`renderPass` / `swapchainFramebuffers`) at `device->GetSwapchainExtent()`. `VulkanImageRenderer::Flush()` sets a dynamic viewport of `renderer.ScreenWidth() × renderer.ScreenHeight()`.
+
+  **Root cause A — stale `invScreenSizeFactored` in `VulkanImageRenderer`** (primary):
+  `VulkanImageRenderer` computes its NDC transform factors once in its constructor (`VulkanImageRenderer.cpp:40-41`):
+  ```cpp
+  invScreenWidthFactored(2.0f / r.ScreenWidth()),
+  invScreenHeightFactored(-2.0f / r.ScreenHeight()),
+  ```
+  These are pushed verbatim to the vertex shader as push constants on every `Flush()` call (`VulkanImageRenderer.cpp:577-578`). They are **never updated** after construction. When the swapchain is recreated at a new resolution (`RecreateSwapchainDependencies()`, `VulkanRenderer.cpp:~588`), `renderWidth`/`renderHeight` are updated but `imageRenderer` is **not** recreated. The stale factors then transform UI vertex positions as if the screen were still the old (smaller) size, so all UI elements shrink to the top-left corner of the larger framebuffer.
+  **Fix**: compute the factors dynamically inside `Flush()` from `renderer.ScreenWidth()`/`renderer.ScreenHeight()` rather than caching them in the constructor.
+
+  **Root cause B — potential HiDPI mismatch** (secondary, device-dependent):
+  `VulkanRenderer::ScreenWidth()` returns `renderWidth` which is assigned from `device->ScreenWidth()` (SDL logical pixel size). The swapchain framebuffers are created from `device->GetSwapchainExtent()` (physical pixel size). On HiDPI/Retina displays these can be a 2× multiple. The dynamic viewport set in `VulkanImageRenderer::Flush()` uses `renderer.ScreenWidth()` (logical) but the render pass framebuffer is `GetSwapchainExtent()` (physical), so the UI is confined to a sub-region of the screen. The OpenGL renderer avoids this because GL abstracts HiDPI at the SDL level and `device->ScreenWidth()` always matches the GL drawable size.
+  **Fix**: use `device->GetSwapchainExtent().width/.height` as the authoritative UI surface dimensions, both for the dynamic viewport in `Flush()` and for computing `invScreenSizeFactored`. Expose a `SwapchainWidth()`/`SwapchainHeight()` accessor on `VulkanRenderer` (or inline `device->GetSwapchainExtent()` in `VulkanImageRenderer`).
+
+  **Reference**:
+  - `VulkanImageRenderer.cpp` lines 37–44 (constructor), lines 495–507 (viewport setup in Flush), lines 575–583 (push constants in Flush)
+  - `VulkanRenderer.cpp` `RecreateSwapchainDependencies()` ~line 586 — note `imageRenderer` is absent from the rebuild list
+  - `VulkanRenderer.cpp` `ScreenWidth()`/`ScreenHeight()` ~line 1430 — returns `renderWidth`, not swapchain extent
+  - `GLRenderer.cpp` `ScreenWidth()`/`ScreenHeight()` ~line 345 — returns `device->ScreenWidth()` (always current physical screen size, independent of render scale)
+  - Files: [VulkanImageRenderer.cpp](VulkanImageRenderer.cpp), [VulkanImageRenderer.h](VulkanImageRenderer.h), [VulkanRenderer.cpp](VulkanRenderer.cpp)
 
 - [ ] **[BUG-1] All player shadows missing** — not yet investigated. Suspected causes: player (and all) models may be excluded from the shadow caster pass, or shadow map sampling is broken in the map/model shaders. Investigate whether models are submitted to `VulkanShadowMapRenderer`, and check for self-shadow bias or missing shadow texture bindings.
   - Files: [VulkanRenderer.cpp](VulkanRenderer.cpp) (shadow pass), [VulkanModelRenderer.cpp](VulkanModelRenderer.cpp), [VulkanShadowMapRenderer.cpp](VulkanShadowMapRenderer.cpp) (if exists)
