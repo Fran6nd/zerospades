@@ -18,20 +18,19 @@
 
  */
 
-// This shader applies exposure gain to the scene.
+// Multiplies the scene colour by the exposure gain stored in the
+// persistent 1×1 accumulator, writing the result to the output image.
 
 #version 450
 
-layout(set = 0, binding = 0) uniform sampler2D mainTexture;
-layout(set = 0, binding = 1) uniform sampler2D exposureTexture;
+layout(binding = 0) uniform sampler2D sceneTexture;
+layout(binding = 1) uniform sampler2D gainTexture;
 
-layout(location = 0) in vec2 texCoord;
-
-layout(location = 0) out vec4 fragColor;
+layout(location = 0) in  vec2 texCoord;
+layout(location = 0) out vec4 outColor;
 
 void main() {
-    vec4 color = texture(mainTexture, texCoord);
-    float gain = texture(exposureTexture, vec2(0.5, 0.5)).x;
-
-    fragColor = vec4(color.rgb * gain, color.a);
+	vec3 color = texture(sceneTexture, texCoord).rgb;
+	float gain = texture(gainTexture, vec2(0.5, 0.5)).r;
+	outColor = vec4(color * gain, 1.0);
 }

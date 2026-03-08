@@ -18,34 +18,32 @@
 
  */
 
+// First-level downsample pass: converts linear-RGB scene colour to a
+// brightness estimate suitable for progressive halving to a 1×1 image.
+
 #version 450
 
-layout(set = 0, binding = 0) uniform sampler2D mainTexture;
+layout(binding = 0) uniform sampler2D mainTexture;
 
-layout(location = 0) in vec2 texCoord;
-
-layout(location = 0) out vec4 fragColor;
+layout(location = 0) in  vec2 texCoord;
+layout(location = 0) out vec4 outColor;
 
 void main() {
-    // linear RGB
-    vec3 color = texture(mainTexture, texCoord).xyz;
+	vec3 color = texture(mainTexture, texCoord).rgb;
 
-    // desaturate - use max component as brightness
-    float brightness = max(max(color.x, color.y), color.z);
+	// Desaturate to peak brightness.
+	float brightness = max(max(color.r, color.g), color.b);
 
-    // remove NaN and Infinity
-    if (!(brightness >= 0.0 && brightness <= 16.0))
-        brightness = 0.05;
+	// Remove NaN and out-of-range values.
+	if (!(brightness >= 0.0 && brightness <= 16.0))
+		brightness = 0.05;
 
-    // lower bound
-    brightness = max(0.05, brightness);
+	// Clamp to a safe working range.
+	brightness = clamp(brightness, 0.05, 1.3);
 
-    // upper bound
-    brightness = min(1.3, brightness);
+	// Raise to 4th power to suppress overbright highlights in the average.
+	brightness *= brightness;
+	brightness *= brightness;
 
-    // raise to the n-th power to reduce overbright
-    brightness *= brightness;
-    brightness *= brightness;
-
-    fragColor = vec4(brightness, brightness, brightness, 1.0);
+	outColor = vec4(brightness, brightness, brightness, 1.0);
 }

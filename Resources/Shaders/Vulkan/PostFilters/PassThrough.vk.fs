@@ -20,22 +20,11 @@
 
 #version 450
 
-layout(location = 0) in vec2 positionAttribute;
+layout(binding = 0) uniform sampler2D mainTexture;
 
-layout(set = 0, binding = 0) uniform Uniforms {
-    vec3 mix1;
-    float _pad0;
-    vec3 mix2;
-    float _pad1;
-};
-
-layout(location = 0) out vec2 texCoord;
+layout(location = 0) in  vec2 texCoord;
+layout(location = 0) out vec4 outColor;
 
 void main() {
-    vec2 pos = positionAttribute;
-    vec2 scrPos = pos * 2.0 - 1.0;
-
-    gl_Position = vec4(scrPos, 0.5, 1.0);
-
-    texCoord = pos;
+	outColor = texture(mainTexture, texCoord);
 }

@@ -1,5 +1,5 @@
 /*
- Copyright (c) 2016 yvt
+ Copyright (c) 2013 yvt
 
  This file is part of OpenSpades.
 
@@ -20,23 +20,14 @@
 
 #version 450
 
-layout(location = 0) in vec2 positionAttribute;
-
-layout(set = 0, binding = 0) uniform Uniforms {
-    vec2 zNearFar;
-    vec2 pixelShift;
-    vec2 fieldOfView;
-    vec2 sampleOffsetScale;
-    vec4 texCoordRange;
-};
+// Fullscreen triangle vertex shader shared by all post-process filters.
+// Vertices are generated from gl_VertexIndex; no vertex buffer is needed.
+// Draw with vkCmdDraw(cmd, 3, 1, 0, 0).
 
 layout(location = 0) out vec2 texCoord;
 
 void main() {
-    vec2 pos = positionAttribute;
-    vec2 scrPos = pos * 2.0 - 1.0;
-
-    gl_Position = vec4(scrPos, 0.5, 1.0);
-
-    texCoord = pos * texCoordRange.zw + texCoordRange.xy;
+	vec2 uv = vec2((gl_VertexIndex << 1) & 2, gl_VertexIndex & 2);
+	texCoord    = uv;
+	gl_Position = vec4(uv * 2.0 - 1.0, 0.0, 1.0);
 }

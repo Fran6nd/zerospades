@@ -18,33 +18,33 @@
 
  */
 
-// This shader computes the gain of the auto exposure.
+// Reads the 1×1 scene-brightness image and outputs the corresponding
+// exposure gain.  Rendered into the persistent 1×1 exposure accumulator
+// with SRC_ALPHA / ONE_MINUS_SRC_ALPHA blending so that alpha carries
+// the temporal adaptation rate.
 
 #version 450
 
-layout(set = 0, binding = 0) uniform Uniforms {
-    float minGain;
-    float maxGain;
-    float blendRate;
-    float _pad0;
-};
+layout(binding = 0) uniform sampler2D mainTexture;
 
-layout(set = 0, binding = 1) uniform sampler2D mainTexture;
+layout(push_constant) uniform Params {
+	float minGain;
+	float maxGain;
+	float rate;
+} params;
 
-layout(location = 0) in vec2 texCoord;
-
-layout(location = 0) out vec4 fragColor;
+layout(location = 0) in  vec2 texCoord;
+layout(location = 0) out vec4 outColor;
 
 void main() {
-    float brightness = texture(mainTexture, vec2(0.5, 0.5)).x;
+	float brightness = texture(mainTexture, vec2(0.5, 0.5)).r;
 
-    // reverse "raise to the n-th power"
-    brightness = sqrt(brightness);
-    brightness = sqrt(brightness);
+	// Reverse the 4th-power applied during preprocessing.
+	brightness = sqrt(brightness);
+	brightness = sqrt(brightness);
 
-    // compute gain
-    float gain = clamp(0.6 / brightness, minGain, maxGain);
+	float gain = clamp(0.6 / brightness, params.minGain, params.maxGain);
 
-    fragColor.xyz = vec3(gain);
-    fragColor.w = blendRate;
+	// Alpha carries the temporal blend weight; blend mode handles accumulation.
+	outColor = vec4(gain, gain, gain, params.rate);
 }
