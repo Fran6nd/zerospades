@@ -39,6 +39,7 @@
 #include "VulkanPipelineCache.h"
 #include "VulkanTemporaryImagePool.h"
 #include "VulkanAutoExposureFilter.h"
+#include "VulkanBloomFilter.h"
 #include <Gui/SDLVulkanDevice.h>
 #include <Client/GameMap.h>
 #include <Core/Bitmap.h>
@@ -50,6 +51,7 @@
 #include <vector>
 
 SPADES_SETTING(r_hdr);
+SPADES_SETTING(r_bloom);
 SPADES_SETTING(r_fogShadow);
 SPADES_SETTING(r_water);
 SPADES_SETTING(r_softParticles);
@@ -152,6 +154,7 @@ namespace spades {
 
 			// Post-process filters
 			autoExposureFilter = stmp::make_unique<VulkanAutoExposureFilter>(*this);
+			bloomFilter = stmp::make_unique<VulkanBloomFilter>(*this);
 
 			inited = true;
 			lastSwapchainGeneration = device->GetSwapchainGeneration();
@@ -190,6 +193,7 @@ namespace spades {
 			waterRenderer.reset();
 			shadowMapRenderer.reset();
 			mapShadowRenderer.reset();
+			bloomFilter.reset();
 			autoExposureFilter.reset();
 			framebufferManager.reset();
 			programManager = nullptr;
@@ -2028,6 +2032,12 @@ namespace spades {
 			// PP-1: Auto-exposure
 			if ((int)r_hdr && autoExposureFilter && currentInput && currentOutput) {
 				autoExposureFilter->Filter(commandBuffer, currentInput, currentOutput, lastDt);
+				std::swap(currentInput, currentOutput);
+			}
+
+			// PP-2: Bloom
+			if ((int)r_bloom && bloomFilter && currentInput && currentOutput) {
+				bloomFilter->Filter(commandBuffer, currentInput, currentOutput);
 				std::swap(currentInput, currentOutput);
 			}
 
