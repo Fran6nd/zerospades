@@ -57,6 +57,7 @@ namespace spades {
 		class VulkanBuffer;
 		class VulkanAutoExposureFilter;
 		class VulkanBloomFilter;
+		class VulkanFogFilter;
 
 		class VulkanRenderer : public client::IRenderer, public client::IGameMapListener {
 			struct DebugLine {
@@ -146,6 +147,7 @@ namespace spades {
 			Handle<VulkanTemporaryImagePool> temporaryImagePool;
 		std::unique_ptr<VulkanAutoExposureFilter> autoExposureFilter;
 		std::unique_ptr<VulkanBloomFilter> bloomFilter;
+		std::unique_ptr<VulkanFogFilter> fogFilter;
 
 			Handle<VulkanImage> whiteImage; // 1x1 white image for solid color rendering
 
