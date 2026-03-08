@@ -18,10 +18,10 @@ Base class to follow: [VulkanPostProcessFilter.h](VulkanPostProcessFilter.h), [V
 
 ### PP-1: Auto Exposure (`r_hdr`)
 
-- [ ] **[PP-1a] Write AutoExposure Vulkan shaders** — port `OpenGL/PostFilters/AutoExposure.fs`, `AutoExposurePreprocess.fs` to Vulkan GLSL; create `Shaders/Vulkan/PostFilters/AutoExposure.vk.*`, `AutoExposurePreprocess.vk.*`, `AutoExposureApply.vk.*`; compile to SPIR-V.
+- [x] **[PP-1a] Write AutoExposure Vulkan shaders** — port `OpenGL/PostFilters/AutoExposure.fs`, `AutoExposurePreprocess.fs` to Vulkan GLSL; create `Shaders/Vulkan/PostFilters/AutoExposure.vk.*`, `AutoExposurePreprocess.vk.*`, `AutoExposureApply.vk.*`; compile to SPIR-V.
   - Reference: `Resources/Shaders/OpenGL/PostFilters/AutoExposure.*`, `AutoExposurePreprocess.*`
 
-- [ ] **[PP-1b] Implement `VulkanAutoExposureFilter` and wire** — write `VulkanAutoExposureFilter.h/.cpp` following `GLAutoExposureFilter` logic; add `std::unique_ptr<VulkanAutoExposureFilter> autoExposureFilter` member + forward decl to `VulkanRenderer.h`; construct and `.reset()` in `VulkanRenderer.cpp`; call `autoExposureFilter->Filter(cmd, currentInput, currentOutput, dt)` early in `RecordCommandBuffer` post chain (after water pass). Swap.
+- [x] **[PP-1b] Implement `VulkanAutoExposureFilter` and wire** — write `VulkanAutoExposureFilter.h/.cpp` following `GLAutoExposureFilter` logic; add `std::unique_ptr<VulkanAutoExposureFilter> autoExposureFilter` member + forward decl to `VulkanRenderer.h`; construct and `.reset()` in `VulkanRenderer.cpp`; call `autoExposureFilter->Filter(cmd, currentInput, currentOutput, dt)` early in `RecordCommandBuffer` post chain (after water pass). Swap.
   - Reference: [Sources/Draw/OpenGL/GLAutoExposureFilter.h](../OpenGL/GLAutoExposureFilter.h), [GLAutoExposureFilter.cpp](../OpenGL/GLAutoExposureFilter.cpp)
   - Files: [VulkanRenderer.h](VulkanRenderer.h), [VulkanRenderer.cpp](VulkanRenderer.cpp)
 
