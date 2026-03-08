@@ -142,7 +142,7 @@ Base class to follow: [VulkanPostProcessFilter.h](VulkanPostProcessFilter.h), [V
 
 ## Bug Fixes
 
-- [ ] **[BUG-2] UI appears too small at higher resolutions**
+- [x] **[BUG-2] UI appears too small at higher resolutions**
 
   **Symptom**: When the window/display resolution is increased, all 2D UI elements (HUD, menus, crosshair) render much smaller than expected. The 3D world renders correctly (fills the screen) because it is composited via a scaled blit, but the 2D pass is not correctly adapted to the new resolution.
 
