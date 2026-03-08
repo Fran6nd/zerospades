@@ -40,10 +40,10 @@ Base class to follow: [VulkanPostProcessFilter.h](VulkanPostProcessFilter.h), [V
 
 ### PP-3: Fog (`r_fogShadow`)
 
-- [ ] **[PP-3a] Write Fog Vulkan shaders** — port `OpenGL/PostFilters/Fog.fs`/`Fog.vs` and `Fog2.fs`/`Fog2.vs` to Vulkan GLSL; create `Shaders/Vulkan/PostFilters/Fog.vk.*`, `Fog2.vk.*`; compile to SPIR-V. Depth buffer binding must match whatever descriptor slot the filter uses.
+- [x] **[PP-3a] Write Fog Vulkan shaders** — port `OpenGL/PostFilters/Fog.fs`/`Fog.vs` and `Fog2.fs`/`Fog2.vs` to Vulkan GLSL; create `Shaders/Vulkan/PostFilters/Fog.vk.*`, `Fog2.vk.*`; compile to SPIR-V. Depth buffer binding must match whatever descriptor slot the filter uses.
   - Reference: `Resources/Shaders/OpenGL/PostFilters/Fog.*`, `Fog2.*`
 
-- [ ] **[PP-3b] Implement `VulkanFogFilter` and wire** — write `VulkanFogFilter.h/.cpp` following `GLFogFilter` / `GLFogFilter2`; add member to `VulkanRenderer`; call early in post chain (before tone mapping). Swap.
+- [x] **[PP-3b] Implement `VulkanFogFilter` and wire** — write `VulkanFogFilter.h/.cpp` following `GLFogFilter` / `GLFogFilter2`; add member to `VulkanRenderer`; call early in post chain (before tone mapping). Swap.
   - Reference: [Sources/Draw/OpenGL/GLFogFilter.h](../OpenGL/GLFogFilter.h), [GLFogFilter.cpp](../OpenGL/GLFogFilter.cpp), [GLFogFilter2.cpp](../OpenGL/GLFogFilter2.cpp)
   - Files: [VulkanRenderer.h](VulkanRenderer.h), [VulkanRenderer.cpp](VulkanRenderer.cpp)
 
