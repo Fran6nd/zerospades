@@ -489,21 +489,25 @@ namespace spades {
 		// Bind pipeline once (all batches use the same pipeline)
 		vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
 
-		// Set viewport and scissor (required for rendering)
-		// Use negative height to flip Y-axis to match OpenGL coordinate system
-		// (Vulkan Y-axis points down by default, OpenGL Y-axis points up)
+		// Use the actual swapchain extent as the authoritative UI surface size.
+		// renderer.ScreenWidth()/ScreenHeight() may be stale after a swapchain resize
+		// and may differ from the physical pixel size on HiDPI displays.
+		VkExtent2D uiExtent = device->GetSwapchainExtent();
+		float invUIWidth  =  2.0f / static_cast<float>(uiExtent.width);
+		float invUIHeight = -2.0f / static_cast<float>(uiExtent.height);
+
 		VkViewport viewport{};
 		viewport.x = 0.0f;
-		viewport.y = static_cast<float>(renderer.ScreenHeight());
-		viewport.width = static_cast<float>(renderer.ScreenWidth());
-		viewport.height = -static_cast<float>(renderer.ScreenHeight());
+		viewport.y = static_cast<float>(uiExtent.height);
+		viewport.width = static_cast<float>(uiExtent.width);
+		viewport.height = -static_cast<float>(uiExtent.height);
 		viewport.minDepth = 0.0f;
 		viewport.maxDepth = 1.0f;
 		vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
 
 		VkRect2D scissor{};
 		scissor.offset = {0, 0};
-		scissor.extent = {static_cast<uint32_t>(renderer.ScreenWidth()), static_cast<uint32_t>(renderer.ScreenHeight())};
+		scissor.extent = uiExtent;
 		vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
 		// Bind the consolidated buffers once
@@ -574,8 +578,8 @@ namespace spades {
 
 			// Push constants for screen size and texture size
 			float pushConstants[4];
-			pushConstants[0] = invScreenWidthFactored;
-			pushConstants[1] = invScreenHeightFactored;
+			pushConstants[0] = invUIWidth;
+			pushConstants[1] = invUIHeight;
 			pushConstants[2] = 1.0f / static_cast<float>(info.image->GetWidth());
 			pushConstants[3] = 1.0f / static_cast<float>(info.image->GetHeight());
 
