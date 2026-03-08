@@ -54,16 +54,6 @@ namespace spades {
 		class VulkanShader;
 		class VulkanImage;
 		class VulkanTemporaryImagePool;
-		class VulkanAutoExposureFilter;
-		class VulkanBloomFilter;
-		class VulkanFXAAFilter;
-		class VulkanColorCorrectionFilter;
-		class VulkanDepthOfFieldFilter;
-		class VulkanFogFilter;
-		class VulkanTemporalAAFilter;
-		class VulkanLensFlareFilter;
-		class VulkanSSAOFilter;
-
 		class VulkanBuffer;
 
 		class VulkanRenderer : public client::IRenderer, public client::IGameMapListener {
@@ -146,15 +136,6 @@ namespace spades {
 			std::unique_ptr<VulkanShadowMapRenderer> shadowMapRenderer;
 			std::unique_ptr<VulkanMapShadowRenderer> mapShadowRenderer;
 			std::unique_ptr<VulkanFramebufferManager> framebufferManager;
-			std::unique_ptr<VulkanAutoExposureFilter> autoExposureFilter;
-			std::unique_ptr<VulkanBloomFilter> bloomFilter;
-			std::unique_ptr<VulkanFXAAFilter> fxaaFilter;
-			std::unique_ptr<VulkanColorCorrectionFilter> colorCorrectionFilter;
-			std::unique_ptr<VulkanDepthOfFieldFilter> depthOfFieldFilter;
-			std::unique_ptr<VulkanFogFilter> fogFilter;
-			std::unique_ptr<VulkanTemporalAAFilter> temporalAAFilter;
-			std::unique_ptr<VulkanLensFlareFilter> lensFlareFilter;
-			std::unique_ptr<VulkanSSAOFilter> ssaoFilter;
 			Handle<VulkanProgramManager> programManager;
 			Handle<VulkanModelManager> modelManager;
 			std::unique_ptr<VulkanImageManager> imageManager;
