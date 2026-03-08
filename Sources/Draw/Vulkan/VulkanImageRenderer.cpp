@@ -37,8 +37,6 @@ namespace spades {
 		    : renderer(r),
 		      device(static_cast<gui::SDLVulkanDevice*>(r.GetDevice().Unmanage())),
 		      image(nullptr),
-		      invScreenWidthFactored(2.0f / r.ScreenWidth()),
-		      invScreenHeightFactored(-2.0f / r.ScreenHeight()),
 		      pipeline(VK_NULL_HANDLE),
 		      pipelineLayout(VK_NULL_HANDLE),
 		      descriptorSetLayout(VK_NULL_HANDLE) {
