@@ -40,6 +40,7 @@
 #include "VulkanTemporaryImagePool.h"
 #include "VulkanAutoExposureFilter.h"
 #include "VulkanBloomFilter.h"
+#include "VulkanFogFilter.h"
 #include <Gui/SDLVulkanDevice.h>
 #include <Client/GameMap.h>
 #include <Core/Bitmap.h>
@@ -155,6 +156,8 @@ namespace spades {
 			// Post-process filters
 			autoExposureFilter = stmp::make_unique<VulkanAutoExposureFilter>(*this);
 			bloomFilter = stmp::make_unique<VulkanBloomFilter>(*this);
+			if (mapShadowRenderer)
+				fogFilter = stmp::make_unique<VulkanFogFilter>(*this);
 
 			inited = true;
 			lastSwapchainGeneration = device->GetSwapchainGeneration();
@@ -193,6 +196,7 @@ namespace spades {
 			waterRenderer.reset();
 			shadowMapRenderer.reset();
 			mapShadowRenderer.reset();
+			fogFilter.reset();
 			bloomFilter.reset();
 			autoExposureFilter.reset();
 			framebufferManager.reset();
@@ -1989,26 +1993,40 @@ namespace spades {
 				waterRenderer->RenderSunlightPass(commandBuffer);
 				vkCmdEndRenderPass(commandBuffer);
 
-				// Transition back to SHADER_READ_ONLY for next steps
-				VkImageMemoryBarrier waterColorBarrier{};
-				waterColorBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-				waterColorBarrier.oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-				waterColorBarrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-				waterColorBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-				waterColorBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-				waterColorBarrier.image = offscreenColor->GetImage();
-				waterColorBarrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-				waterColorBarrier.subresourceRange.baseMipLevel = 0;
-				waterColorBarrier.subresourceRange.levelCount = 1;
-				waterColorBarrier.subresourceRange.baseArrayLayer = 0;
-				waterColorBarrier.subresourceRange.layerCount = 1;
-				waterColorBarrier.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-				waterColorBarrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+				// Transition color and depth back to SHADER_READ_ONLY for the post-process chain.
+				VkImageMemoryBarrier waterPostBarriers[2]{};
+				waterPostBarriers[0].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+				waterPostBarriers[0].oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+				waterPostBarriers[0].newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+				waterPostBarriers[0].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+				waterPostBarriers[0].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+				waterPostBarriers[0].image = offscreenColor->GetImage();
+				waterPostBarriers[0].subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+				waterPostBarriers[0].subresourceRange.baseMipLevel = 0;
+				waterPostBarriers[0].subresourceRange.levelCount = 1;
+				waterPostBarriers[0].subresourceRange.baseArrayLayer = 0;
+				waterPostBarriers[0].subresourceRange.layerCount = 1;
+				waterPostBarriers[0].srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+				waterPostBarriers[0].dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+
+				waterPostBarriers[1].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+				waterPostBarriers[1].oldLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+				waterPostBarriers[1].newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+				waterPostBarriers[1].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+				waterPostBarriers[1].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+				waterPostBarriers[1].image = offscreenDepth->GetImage();
+				waterPostBarriers[1].subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+				waterPostBarriers[1].subresourceRange.baseMipLevel = 0;
+				waterPostBarriers[1].subresourceRange.levelCount = 1;
+				waterPostBarriers[1].subresourceRange.baseArrayLayer = 0;
+				waterPostBarriers[1].subresourceRange.layerCount = 1;
+				waterPostBarriers[1].srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+				waterPostBarriers[1].dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
 
 				vkCmdPipelineBarrier(commandBuffer,
-					VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+					VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
 					VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-					0, 0, nullptr, 0, nullptr, 1, &waterColorBarrier);
+					0, 0, nullptr, 0, nullptr, 2, waterPostBarriers);
 			}
 
 			// --- Post-process ping-pong setup ---
@@ -2038,6 +2056,12 @@ namespace spades {
 			// PP-2: Bloom
 			if ((int)r_bloom && bloomFilter && currentInput && currentOutput) {
 				bloomFilter->Filter(commandBuffer, currentInput, currentOutput);
+				std::swap(currentInput, currentOutput);
+			}
+
+			// PP-3: Fog shadow
+			if ((int)r_fogShadow && fogFilter && mapShadowRenderer && currentInput && currentOutput) {
+				fogFilter->Filter(commandBuffer, currentInput, currentOutput);
 				std::swap(currentInput, currentOutput);
 			}
 
