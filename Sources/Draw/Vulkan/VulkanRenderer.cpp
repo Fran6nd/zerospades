@@ -28,15 +28,6 @@
 #include "VulkanFlatMapRenderer.h"
 #include "VulkanShadowMapRenderer.h"
 #include "VulkanMapShadowRenderer.h"
-#include "VulkanAutoExposureFilter.h"
-#include "VulkanBloomFilter.h"
-#include "VulkanFXAAFilter.h"
-#include "VulkanColorCorrectionFilter.h"
-#include "VulkanDepthOfFieldFilter.h"
-#include "VulkanFogFilter.h"
-#include "VulkanTemporalAAFilter.h"
-#include "VulkanLensFlareFilter.h"
-#include "VulkanSSAOFilter.h"
 #include "VulkanFramebufferManager.h"
 #include "VulkanImageWrapper.h"
 #include "VulkanImageManager.h"
@@ -186,15 +177,6 @@ namespace spades {
 			// Invalidate shared pipeline caches before cleaning up
 			VulkanOptimizedVoxelModel::InvalidateSharedPipeline(device.GetPointerOrNull());
 
-			ssaoFilter.reset();
-			lensFlareFilter.reset();
-			temporalAAFilter.reset();
-			fogFilter.reset();
-			depthOfFieldFilter.reset();
-			colorCorrectionFilter.reset();
-			fxaaFilter.reset();
-			bloomFilter.reset();
-			autoExposureFilter.reset();
 			imageRenderer.reset();
 			spriteRenderer.reset();
 			longSpriteRenderer.reset();
