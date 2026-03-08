@@ -29,6 +29,7 @@
 #include <Core/Exception.h>
 #include <Core/FileManager.h>
 #include <Core/Math.h>
+#include <Core/Settings.h>
 #include <Gui/SDLVulkanDevice.h>
 #include <cmath>
 #include <cstring>
