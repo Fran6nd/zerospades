@@ -29,10 +29,10 @@ Base class to follow: [VulkanPostProcessFilter.h](VulkanPostProcessFilter.h), [V
 
 ### PP-2: Bloom (`r_bloom`)
 
-- [ ] **[PP-2a] Write Bloom Vulkan shaders** — port `OpenGL/PostFilters/Gauss1D.fs`, downsample and composite passes to Vulkan GLSL; create `Shaders/Vulkan/PostFilters/Gauss1D.vk.*`, `BloomDownsample.vk.*`, `BloomComposite.vk.*`; compile to SPIR-V.
+- [x] **[PP-2a] Write Bloom Vulkan shaders** — port `OpenGL/PostFilters/Gauss1D.fs`, downsample and composite passes to Vulkan GLSL; create `Shaders/Vulkan/PostFilters/Gauss1D.vk.*`, `BloomDownsample.vk.*`, `BloomComposite.vk.*`; compile to SPIR-V.
   - Reference: `Resources/Shaders/OpenGL/PostFilters/Gauss1D.*`
 
-- [ ] **[PP-2b] Implement `VulkanBloomFilter` and wire** — write `VulkanBloomFilter.h/.cpp` following `GLBloomFilter`; multi-level downsample/blur/composite internally; add member to `VulkanRenderer`; call `bloomFilter->Filter(cmd, currentInput, currentOutput)` after auto-exposure (or first in chain if HDR off). Swap.
+- [x] **[PP-2b] Implement `VulkanBloomFilter` and wire** — write `VulkanBloomFilter.h/.cpp` following `GLBloomFilter`; multi-level downsample/blur/composite internally; add member to `VulkanRenderer`; call `bloomFilter->Filter(cmd, currentInput, currentOutput)` after auto-exposure (or first in chain if HDR off). Swap.
   - Reference: [Sources/Draw/OpenGL/GLBloomFilter.h](../OpenGL/GLBloomFilter.h), [GLBloomFilter.cpp](../OpenGL/GLBloomFilter.cpp)
   - Files: [VulkanRenderer.h](VulkanRenderer.h), [VulkanRenderer.cpp](VulkanRenderer.cpp)
 
