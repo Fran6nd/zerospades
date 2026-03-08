@@ -52,9 +52,6 @@ namespace spades {
 			Handle<gui::SDLVulkanDevice> device;
 			VulkanImage* image;
 
-			float invScreenWidthFactored;
-			float invScreenHeightFactored;
-
 			std::vector<ImageVertex> vertices;
 			std::vector<uint32_t> indices;
 			std::vector<Batch> batches;
