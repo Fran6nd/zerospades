@@ -41,6 +41,7 @@
 #include "VulkanAutoExposureFilter.h"
 #include "VulkanBloomFilter.h"
 #include "VulkanFogFilter.h"
+#include "VulkanDepthOfFieldFilter.h"
 #include <Gui/SDLVulkanDevice.h>
 #include <Client/GameMap.h>
 #include <Core/Bitmap.h>
@@ -54,6 +55,7 @@
 SPADES_SETTING(r_hdr);
 SPADES_SETTING(r_bloom);
 SPADES_SETTING(r_fogShadow);
+SPADES_SETTING(r_depthOfField);
 SPADES_SETTING(r_water);
 SPADES_SETTING(r_softParticles);
 SPADES_SETTING(r_outlines);
@@ -158,6 +160,7 @@ namespace spades {
 			bloomFilter = stmp::make_unique<VulkanBloomFilter>(*this);
 			if (mapShadowRenderer)
 				fogFilter = stmp::make_unique<VulkanFogFilter>(*this);
+			depthOfFieldFilter = stmp::make_unique<VulkanDepthOfFieldFilter>(*this);
 
 			inited = true;
 			lastSwapchainGeneration = device->GetSwapchainGeneration();
@@ -196,6 +199,7 @@ namespace spades {
 			waterRenderer.reset();
 			shadowMapRenderer.reset();
 			mapShadowRenderer.reset();
+			depthOfFieldFilter.reset();
 			fogFilter.reset();
 			bloomFilter.reset();
 			autoExposureFilter.reset();
@@ -2063,6 +2067,15 @@ namespace spades {
 			if ((int)r_fogShadow && fogFilter && mapShadowRenderer && currentInput && currentOutput) {
 				fogFilter->Filter(commandBuffer, currentInput, currentOutput);
 				std::swap(currentInput, currentOutput);
+			}
+
+			// PP-4: Depth of Field
+			if ((int)r_depthOfField && depthOfFieldFilter && currentInput && currentOutput) {
+				const client::SceneDefinition& def = GetSceneDef();
+				if (def.depthOfFieldFocalLength > 0.0f || def.blurVignette > 0.0f) {
+					depthOfFieldFilter->Filter(commandBuffer, currentInput, currentOutput);
+					std::swap(currentInput, currentOutput);
+				}
 			}
 
 			// --- Blit final post-process result to swapchain ---

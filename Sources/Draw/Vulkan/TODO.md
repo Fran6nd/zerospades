@@ -54,7 +54,7 @@ Base class to follow: [VulkanPostProcessFilter.h](VulkanPostProcessFilter.h), [V
 - [x] **[PP-4a] Write DoF Vulkan shaders** — port `OpenGL/PostFilters/DoFCoCGen.fs`, `DoFBlur.fs`/`DoFBlur2.fs`, `DoFMix.fs` to Vulkan GLSL; create `Shaders/Vulkan/PostFilters/DoFCoCGen.vk.*`, `DoFBlur.vk.*`, `DoFMix.vk.*`; compile to SPIR-V.
   - Reference: `Resources/Shaders/OpenGL/PostFilters/DoFCoCGen.*`, `DoFBlur.*`, `DoFMix.*`
 
-- [ ] **[PP-4b] Implement `VulkanDepthOfFieldFilter` and wire** — write `VulkanDepthOfFieldFilter.h/.cpp` following `GLDepthOfFieldFilter`; add member; call after fog, before color correction: `depthOfFieldFilter->Filter(cmd, input, output, blurDepthRange, vignetteBlur, globalBlur, nearBlur, farBlur)` — params from `sceneDef` or cvars. Swap.
+- [x] **[PP-4b] Implement `VulkanDepthOfFieldFilter` and wire** — write `VulkanDepthOfFieldFilter.h/.cpp` following `GLDepthOfFieldFilter`; add member; call after fog, before color correction: `depthOfFieldFilter->Filter(cmd, input, output, blurDepthRange, vignetteBlur, globalBlur, nearBlur, farBlur)` — params from `sceneDef` or cvars. Swap.
   - Reference: [Sources/Draw/OpenGL/GLDepthOfFieldFilter.h](../OpenGL/GLDepthOfFieldFilter.h), [GLDepthOfFieldFilter.cpp](../OpenGL/GLDepthOfFieldFilter.cpp)
   - Files: [VulkanRenderer.h](VulkanRenderer.h), [VulkanRenderer.cpp](VulkanRenderer.cpp)
 
