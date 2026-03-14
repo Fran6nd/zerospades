@@ -42,6 +42,7 @@
 #include "GameMap.h"
 #include "World.h"
 
+#include "DemoRecorder.h"
 #include "NetClient.h"
 
 DEFINE_SPADES_SETTING(cg_clearCorpseOnRespawn, "0");
@@ -149,6 +150,7 @@ namespace spades {
 				} else if (doAutoRecord) {
 					if (net->StartDemoRecording("", buildHostContext())) {
 						SPLog("Started auto-recording demo: %s", net->GetDemoFilename().c_str());
+						DemoRecorder::PruneOldRecordings(10);
 					}
 				}
 			}

@@ -101,6 +101,12 @@ namespace spades {
 			 */
 			static std::string GenerateFilename(const std::string& context = "");
 
+			/**
+			 * Removes the oldest .dem files in Demos/ so at most maxCount remain.
+			 * Files are ordered by name (which matches recording order given the timestamp prefix).
+			 */
+			static void PruneOldRecordings(size_t maxCount);
+
 		private:
 			std::ofstream file;
 			Stopwatch stopwatch;

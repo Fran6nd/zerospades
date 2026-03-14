@@ -18,16 +18,21 @@
 
  */
 
+#include <algorithm>
 #include <chrono>
 #include <ctime>
 #include <iomanip>
 #include <sstream>
+#include <string>
+#include <vector>
 #include <sys/stat.h>
 
 #ifdef _WIN32
 #include <direct.h>
+#include <windows.h>
 #define MKDIR(path) _mkdir(path)
 #else
+#include <dirent.h>
 #define MKDIR(path) mkdir(path, 0755)
 #endif
 
@@ -144,6 +149,49 @@ namespace spades {
 			MKDIR("Demos");
 
 			return oss.str();
+		}
+
+		void DemoRecorder::PruneOldRecordings(size_t maxCount) {
+			std::vector<std::string> files;
+
+#ifdef _WIN32
+			WIN32_FIND_DATAA fd;
+			HANDLE hFind = FindFirstFileA("Demos\\*.dem", &fd);
+			if (hFind != INVALID_HANDLE_VALUE) {
+				do {
+					if (!(fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)) {
+						files.push_back(std::string("Demos/") + fd.cFileName);
+					}
+				} while (FindNextFileA(hFind, &fd));
+				FindClose(hFind);
+			}
+#else
+			DIR* dir = opendir("Demos");
+			if (dir) {
+				struct dirent* entry;
+				while ((entry = readdir(dir)) != nullptr) {
+					std::string name = entry->d_name;
+					if (name.size() > 4 && name.substr(name.size() - 4) == ".dem") {
+						files.push_back(std::string("Demos/") + name);
+					}
+				}
+				closedir(dir);
+			}
+#endif
+
+			if (files.size() <= maxCount)
+				return;
+
+			std::sort(files.begin(), files.end());
+
+			size_t toRemove = files.size() - maxCount;
+			for (size_t i = 0; i < toRemove; i++) {
+				if (remove(files[i].c_str()) == 0) {
+					SPLog("Pruned old demo recording: %s", files[i].c_str());
+				} else {
+					SPLog("Failed to prune demo recording: %s", files[i].c_str());
+				}
+			}
 		}
 
 	} // namespace client
