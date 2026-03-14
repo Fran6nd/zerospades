@@ -125,7 +125,7 @@ namespace spades {
 			std::string s = _Tr("Client", "You are connected with {0} ({2}) on {1}", verStr, osInfo, archInfo);
 			chatWindow->AddMessage(ChatWindow::ColoredMessage(s, MsgColorSysInfo));
 
-			// build demo filename context: gamemode-servername
+			// build demo filename context: gamemode-mapname-serveraddress
 			auto buildHostContext = [&]() -> std::string {
 				// game mode
 				std::string modeName = "game";
