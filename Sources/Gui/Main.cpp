@@ -175,6 +175,7 @@ namespace {
 
 namespace spades {
 	std::string g_recordDemoPath;
+	bool g_autoRecordDemo = false;
 }
 
 namespace {
@@ -189,14 +190,18 @@ namespace {
 	bool g_printHelp = false;
 
 	void printHelp(char* binaryName) {
-		printf("usage: %s [server_address] [v=protocol_version] [--replay demo.dem] [--record FILE] [-h|--help] [-v|--version]\n",
+		printf("usage: %s [server_address] [v=protocol_version] [--replay demo.dem] [--record [FILE]] [-h|--help] [-v|--version]\n",
 		       binaryName);
-		printf("  server_address    aos:// server address to connect to\n");
-		printf("  v=0.75 or v=0.76  protocol version (default: 0.75)\n");
-		printf("  --replay FILE     play back a demo recording\n");
-		printf("  --record FILE     record demos to FILE_1.dem, FILE_2.dem, etc.\n");
-		printf("  -h, --help        show this help message\n");
-		printf("  -v, --version     show version information\n");
+		printf("  server_address       aos:// server address to connect to\n");
+		printf("  v=0.75 or v=0.76     protocol version (default: 0.75)\n");
+		printf("  --replay FILE        play back a demo recording\n");
+		printf("  -r FILE              play back a demo recording (short form)\n");
+		printf("  --record [FILE]      record demos; FILE is used as base name (FILE_1.dem etc.)\n");
+		printf("                       omit FILE to auto-name recordings as Demos/YYYYMMDD_HHMMSS_host.dem\n");
+		printf("  -h, --help           show this help message\n");
+		printf("  -v, --version        show version information\n");
+		printf("\nAuto-recording can also be enabled permanently with the cg_autoRecord setting.\n");
+		printf("Recordings are kept in the Demos/ folder; only the last 10 are retained.\n");
 	}
 
 	std::regex const hostNameRegex{"aos://.*"};
@@ -235,11 +240,13 @@ namespace {
 				return 0;
 			}
 			if (!strcasecmp(a, "--record")) {
-				if (i + 1 < argc) {
-					spades::g_recordDemoPath = argv[++i];
-					return ++i;
+				++i;
+				if (i < argc && argv[i][0] != '-') {
+					spades::g_recordDemoPath = argv[i++];
+				} else {
+					spades::g_autoRecordDemo = true;
 				}
-				return 0;
+				return i;
 			}
 			// Handle bare .dem file path
 			size_t len = strlen(a);
