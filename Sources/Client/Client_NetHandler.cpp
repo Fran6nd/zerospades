@@ -53,6 +53,7 @@ DEFINE_SPADES_SETTING(cg_autoRecord, "0");
 namespace spades {
 	extern std::string g_recordDemoPath;
 	extern bool g_autoRecordDemo;
+	extern std::string g_pendingMapName;
 
 	namespace client {
 
@@ -139,25 +140,9 @@ namespace spades {
 				if (net && net->GetGameProperties()->isGameModeArena)
 					modeName = "arena";
 
-				// server hostname without port, sanitized
-				std::string host = hostname.ToString(false);
-				auto colonPos = host.rfind(':');
-				if (colonPos != std::string::npos)
-					host = host.substr(0, colonPos);
-				std::string serverCtx;
-				for (char c : host) {
-					if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9'))
-						serverCtx += c;
-					else
-						serverCtx += '-';
-					if (serverCtx.size() >= 28)
-						break;
-				}
-				// trim trailing separators
-				while (!serverCtx.empty() && serverCtx.back() == '-')
-					serverCtx.pop_back();
-
-				return serverCtx.empty() ? modeName : modeName + "-" + serverCtx;
+				if (!g_pendingMapName.empty())
+					return modeName + "-" + g_pendingMapName;
+				return modeName;
 			};
 
 			// start recording if --record was specified, or auto-record is enabled

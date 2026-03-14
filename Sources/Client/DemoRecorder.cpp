@@ -133,6 +133,20 @@ namespace spades {
 			return static_cast<float>(const_cast<Stopwatch&>(stopwatch).GetTime());
 		}
 
+		static std::string SanitizeContext(const std::string& s) {
+			std::string out;
+			out.reserve(s.size());
+			for (unsigned char c : s) {
+				if (std::isalnum(c))
+					out += static_cast<char>(std::tolower(c));
+				else if (!out.empty() && out.back() != '-')
+					out += '-';
+			}
+			while (!out.empty() && out.back() == '-')
+				out.pop_back();
+			return out;
+		}
+
 		std::string DemoRecorder::GenerateFilename(const std::string& context) {
 			auto now = std::chrono::system_clock::now();
 			auto time = std::chrono::system_clock::to_time_t(now);
@@ -141,7 +155,9 @@ namespace spades {
 			std::ostringstream oss;
 			oss << "Demos/" << std::put_time(tm, "%Y-%m-%d-%H-%M");
 			if (!context.empty()) {
-				oss << "-" << context;
+				std::string safe = SanitizeContext(context);
+				if (!safe.empty())
+					oss << "-" << safe;
 			}
 			oss << ".dem";
 
