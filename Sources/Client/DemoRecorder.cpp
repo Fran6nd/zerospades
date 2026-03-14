@@ -128,15 +128,17 @@ namespace spades {
 			return static_cast<float>(const_cast<Stopwatch&>(stopwatch).GetTime());
 		}
 
-		std::string DemoRecorder::GenerateFilename() {
+		std::string DemoRecorder::GenerateFilename(const std::string& context) {
 			auto now = std::chrono::system_clock::now();
 			auto time = std::chrono::system_clock::to_time_t(now);
 			auto tm = std::localtime(&time);
 
 			std::ostringstream oss;
-			oss << "Demos/demo_"
-			    << std::put_time(tm, "%Y%m%d_%H%M%S")
-			    << ".dem";
+			oss << "Demos/" << std::put_time(tm, "%Y%m%d_%H%M%S");
+			if (!context.empty()) {
+				oss << "_" << context;
+			}
+			oss << ".dem";
 
 			// Ensure the Demos directory exists
 			MKDIR("Demos");

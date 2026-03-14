@@ -95,10 +95,11 @@ namespace spades {
 			const std::string& GetFilename() const { return filename; }
 
 			/**
-			 * Generates a unique filename for a new demo.
-			 * Format: demo_YYYYMMDD_HHMMSS.dem
+			 * Generates a unique filename for a new demo in the Demos/ directory.
+			 * @param context Optional context appended to the filename (e.g. sanitized server address).
+			 *                Format: Demos/YYYYMMDD_HHMMSS[_context].dem
 			 */
-			static std::string GenerateFilename();
+			static std::string GenerateFilename(const std::string& context = "");
 
 		private:
 			std::ofstream file;

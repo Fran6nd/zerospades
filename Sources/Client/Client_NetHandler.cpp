@@ -120,7 +120,22 @@ namespace spades {
 			std::string s = _Tr("Client", "You are connected with {0} ({2}) on {1}", verStr, osInfo, archInfo);
 			chatWindow->AddMessage(ChatWindow::ColoredMessage(s, MsgColorSysInfo));
 
-			// start recording if --record was specified
+			// build sanitized hostname string for use in demo filenames
+			auto buildHostContext = [&]() -> std::string {
+				std::string host = hostname.ToString(false);
+				std::string ctx;
+				for (char c : host) {
+					if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9'))
+						ctx += c;
+					else
+						ctx += '_';
+					if (ctx.size() >= 32)
+						break;
+				}
+				return ctx;
+			};
+
+		// start recording if --record was specified
 			if (!g_recordDemoPath.empty() && net) {
 				recordGameCount++;
 				std::string filename = g_recordDemoPath + "_" + std::to_string(recordGameCount) + ".dem";
