@@ -47,9 +47,11 @@
 DEFINE_SPADES_SETTING(cg_clearCorpseOnRespawn, "0");
 DEFINE_SPADES_SETTING(cg_centerMessage, "2");
 DEFINE_SPADES_SETTING(cg_autoScreenshot, "0");
+DEFINE_SPADES_SETTING(cg_autoRecord, "0");
 
 namespace spades {
 	extern std::string g_recordDemoPath;
+	extern bool g_autoRecordDemo;
 
 	namespace client {
 
@@ -135,12 +137,19 @@ namespace spades {
 				return ctx;
 			};
 
-		// start recording if --record was specified
-			if (!g_recordDemoPath.empty() && net) {
-				recordGameCount++;
-				std::string filename = g_recordDemoPath + "_" + std::to_string(recordGameCount) + ".dem";
-				if (net->StartDemoRecording(filename)) {
-					SPLog("Started recording demo: %s", net->GetDemoFilename().c_str());
+			// start recording if --record was specified, or auto-record is enabled
+			if (net) {
+				const bool doAutoRecord = g_autoRecordDemo || (int)cg_autoRecord != 0;
+				if (!g_recordDemoPath.empty()) {
+					recordGameCount++;
+					std::string filename = g_recordDemoPath + "_" + std::to_string(recordGameCount) + ".dem";
+					if (net->StartDemoRecording(filename)) {
+						SPLog("Started recording demo: %s", net->GetDemoFilename().c_str());
+					}
+				} else if (doAutoRecord) {
+					if (net->StartDemoRecording("", buildHostContext())) {
+						SPLog("Started auto-recording demo: %s", net->GetDemoFilename().c_str());
+					}
 				}
 			}
 		}
