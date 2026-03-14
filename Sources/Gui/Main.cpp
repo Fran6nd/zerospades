@@ -35,6 +35,7 @@
 #include "Runner.h"
 #include "SplashWindow.h"
 #include <Client/Client.h>
+#include <Client/DemoRecorder.h>
 #include <Client/Fonts.h>
 #include <Client/GameMap.h>
 #include <Core/ConcurrentDispatch.h>
@@ -188,6 +189,7 @@ namespace {
 
 	bool g_printVersion = false;
 	bool g_printHelp = false;
+	bool g_printRecordList = false;
 
 	void printHelp(char* binaryName) {
 		printf("usage: %s [server_address] [v=protocol_version] [--replay demo.dem] [--record [FILE]] [-h|--help] [-v|--version]\n",
@@ -198,10 +200,29 @@ namespace {
 		printf("  -r FILE              play back a demo recording (short form)\n");
 		printf("  --record [FILE]      record demos; FILE is used as base name (FILE_1.dem etc.)\n");
 		printf("                       omit FILE to auto-name recordings as Demos/YYYYMMDD_HHMMSS_host.dem\n");
+		printf("  --record-list        list recordings in the Demos/ folder\n");
 		printf("  -h, --help           show this help message\n");
 		printf("  -v, --version        show version information\n");
 		printf("\nAuto-recording can also be enabled permanently with the cg_autoRecord setting.\n");
 		printf("Recordings are kept in the Demos/ folder; only the last 10 are retained.\n");
+	}
+
+	void printRecordList() {
+		auto files = spades::client::DemoRecorder::ListRecordings();
+		if (files.empty()) {
+			printf("No recordings found in Demos/\n");
+			return;
+		}
+		printf("%zu recording(s) in Demos/:\n", files.size());
+		for (const auto& path : files) {
+			struct stat st;
+			if (stat(path.c_str(), &st) == 0) {
+				long kb = static_cast<long>(st.st_size / 1024);
+				printf("  %s  (%ld KB)\n", path.c_str(), kb);
+			} else {
+				printf("  %s\n", path.c_str());
+			}
+		}
 	}
 
 	std::regex const hostNameRegex{"aos://.*"};
@@ -238,6 +259,10 @@ namespace {
 					return ++i;
 				}
 				return 0;
+			}
+			if (!strcasecmp(a, "--record-list") || !strcasecmp(a, "--record-ls")) {
+				g_printRecordList = true;
+				return ++i;
 			}
 			if (!strcasecmp(a, "--record")) {
 				++i;
@@ -366,6 +391,11 @@ int main(int argc, char** argv) {
 
 	if (g_printHelp) {
 		printHelp(argv[0]);
+		return 0;
+	}
+
+	if (g_printRecordList) {
+		printRecordList();
 		return 0;
 	}
 

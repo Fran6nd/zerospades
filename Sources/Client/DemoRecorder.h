@@ -24,6 +24,7 @@
 #include <fstream>
 #include <memory>
 #include <string>
+#include <vector>
 
 #include <Core/Stopwatch.h>
 
@@ -106,6 +107,11 @@ namespace spades {
 			 * Files are ordered by name (which matches recording order given the timestamp prefix).
 			 */
 			static void PruneOldRecordings(size_t maxCount);
+
+			/**
+			 * Returns a sorted list of .dem file paths found in Demos/.
+			 */
+			static std::vector<std::string> ListRecordings();
 
 		private:
 			std::ofstream file;

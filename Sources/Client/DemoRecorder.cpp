@@ -151,17 +151,15 @@ namespace spades {
 			return oss.str();
 		}
 
-		void DemoRecorder::PruneOldRecordings(size_t maxCount) {
+		static std::vector<std::string> ScanDemosDir() {
 			std::vector<std::string> files;
-
 #ifdef _WIN32
 			WIN32_FIND_DATAA fd;
 			HANDLE hFind = FindFirstFileA("Demos\\*.dem", &fd);
 			if (hFind != INVALID_HANDLE_VALUE) {
 				do {
-					if (!(fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)) {
+					if (!(fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY))
 						files.push_back(std::string("Demos/") + fd.cFileName);
-					}
 				} while (FindNextFileA(hFind, &fd));
 				FindClose(hFind);
 			}
@@ -171,18 +169,25 @@ namespace spades {
 				struct dirent* entry;
 				while ((entry = readdir(dir)) != nullptr) {
 					std::string name = entry->d_name;
-					if (name.size() > 4 && name.substr(name.size() - 4) == ".dem") {
+					if (name.size() > 4 && name.substr(name.size() - 4) == ".dem")
 						files.push_back(std::string("Demos/") + name);
-					}
 				}
 				closedir(dir);
 			}
 #endif
+			std::sort(files.begin(), files.end());
+			return files;
+		}
+
+		std::vector<std::string> DemoRecorder::ListRecordings() {
+			return ScanDemosDir();
+		}
+
+		void DemoRecorder::PruneOldRecordings(size_t maxCount) {
+			std::vector<std::string> files = ScanDemosDir();
 
 			if (files.size() <= maxCount)
 				return;
-
-			std::sort(files.begin(), files.end());
 
 			size_t toRemove = files.size() - maxCount;
 			for (size_t i = 0; i < toRemove; i++) {
