@@ -463,6 +463,7 @@ namespace spades {
 			void DrawAlivePlayersCount();
 			void DrawPlayingTime();
 			void DrawRecordingIndicator();
+			void DrawDemoPlaybackHUD();
 			void DrawHurtSprites();
 			void DrawScreenEffect(bool hurt, float fadeTime = 0.35F);
 			void DrawAlert();
