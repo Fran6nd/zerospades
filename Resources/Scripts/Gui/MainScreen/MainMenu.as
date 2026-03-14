@@ -102,6 +102,7 @@ namespace spades {
 			super(ui.manager);
 			@this.ui = ui;
 			@this.helper = ui.helper;
+			@this.Font = ui.fontManager.GuiFont;
 
 			float sw = Manager.ScreenWidth;
 			float sh = Manager.ScreenHeight;
