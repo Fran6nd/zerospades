@@ -483,6 +483,8 @@ namespace spades {
 			std::string ScreenShotPath();
 			void TakeScreenShot(bool sceneOnly, bool scoreboardOnly = false);
 
+			std::string BuildDemoContext();
+
 			std::string MapShotPath();
 			void TakeMapShot();
 
