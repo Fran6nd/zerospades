@@ -95,9 +95,9 @@ namespace spades {
 		string selectedDemoPath;
 
 		// Demo list column widths (pixels)
-		private float demoDateColWidth = 130.0F;
-		private float demoModeColWidth = 65.0F;
-		private float demoMapColWidth  = 185.0F;
+		private float demoDateColWidth;
+		private float demoModeColWidth;
+		private float demoMapColWidth;
 
 		private ConfigItem cg_protocolVersion("cg_protocolVersion", "3");
 		private ConfigItem cg_lastQuickConnectHost("cg_lastQuickConnectHost", "127.0.0.1");
@@ -108,6 +108,10 @@ namespace spades {
 			@this.ui = ui;
 			@this.helper = ui.helper;
 			@this.Font = ui.fontManager.GuiFont;
+
+			demoDateColWidth = 130.0F;
+			demoModeColWidth = 65.0F;
+			demoMapColWidth  = 185.0F;
 
 			float sw = Manager.ScreenWidth;
 			float sh = Manager.ScreenHeight;

@@ -66,15 +66,15 @@ namespace spades {
 
 	// Split a string on '-' (ASCII 0x2D) and return the parts.
 	string[] DemoSplitByDash(string s) {
-		string[] out;
+		string[] result;
 		int start = 0;
 		for (int i = 0; i <= int(s.length); i++) {
 			if (i == int(s.length) or s[i] == uint8(0x2D)) {
-				out.insertLast(s.substr(start, i - start));
+				result.insertLast(s.substr(start, i - start));
 				start = i + 1;
 			}
 		}
-		return out;
+		return result;
 	}
 
 	// -------------------------------------------------------------------------
