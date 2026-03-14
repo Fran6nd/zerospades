@@ -314,10 +314,10 @@ namespace spades {
 				{
 					spades::ui::SimpleTabStrip tabStrip(Manager);
 					tabStrip.Bounds = AABB2(contentsLeft, tabStripPos, contentsWidth, 24.0F);
+					AddChild(tabStrip);
 					tabStrip.AddItem(_Tr("MainScreen", "Servers"), serverPanel);
 					tabStrip.AddItem(_Tr("MainScreen", "Demos"), demoPanel);
 					@tabStrip.Changed = spades::ui::EventHandler(this.OnTabChanged);
-					AddChild(tabStrip);
 				}
 			}
 
