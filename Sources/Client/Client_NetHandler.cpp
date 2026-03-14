@@ -123,19 +123,41 @@ namespace spades {
 			std::string s = _Tr("Client", "You are connected with {0} ({2}) on {1}", verStr, osInfo, archInfo);
 			chatWindow->AddMessage(ChatWindow::ColoredMessage(s, MsgColorSysInfo));
 
-			// build sanitized hostname string for use in demo filenames
+			// build demo filename context: gamemode-servername
 			auto buildHostContext = [&]() -> std::string {
+				// game mode
+				std::string modeName = "game";
+				if (world) {
+					auto gmode = world->GetMode();
+					if (gmode) {
+						switch (gmode->ModeType()) {
+							case IGameMode::m_CTF: modeName = "ctf"; break;
+							case IGameMode::m_TC: modeName = "tc"; break;
+						}
+					}
+				}
+				if (net && net->GetGameProperties()->isGameModeArena)
+					modeName = "arena";
+
+				// server hostname without port, sanitized
 				std::string host = hostname.ToString(false);
-				std::string ctx;
+				auto colonPos = host.rfind(':');
+				if (colonPos != std::string::npos)
+					host = host.substr(0, colonPos);
+				std::string serverCtx;
 				for (char c : host) {
 					if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9'))
-						ctx += c;
+						serverCtx += c;
 					else
-						ctx += '_';
-					if (ctx.size() >= 32)
+						serverCtx += '-';
+					if (serverCtx.size() >= 28)
 						break;
 				}
-				return ctx;
+				// trim trailing separators
+				while (!serverCtx.empty() && serverCtx.back() == '-')
+					serverCtx.pop_back();
+
+				return serverCtx.empty() ? modeName : modeName + "-" + serverCtx;
 			};
 
 			// start recording if --record was specified, or auto-record is enabled
