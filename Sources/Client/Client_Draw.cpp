@@ -259,6 +259,8 @@ namespace spades {
 			if (!net || !net->IsDemoRecording())
 				return;
 
+			float sw = renderer->ScreenWidth();
+
 			float recTime = net->GetDemoRecordingTime();
 			int mins = static_cast<int>(recTime) / 60;
 			int secs = static_cast<int>(recTime) % 60;
@@ -272,7 +274,8 @@ namespace spades {
 
 			std::string label = std::string(dotVisible ? "\xe2\x97\x8f " : "  ") + "REC " + timeBuf;
 
-			float x = 8.0F;
+			Vector2 size = font.Measure(label);
+			float x = (sw - size.x) * 0.5F;
 			float y = 8.0F;
 
 			Vector4 red = MakeVector4(1, 0.15F, 0.15F, 1);
