@@ -40,6 +40,7 @@ DEFINE_SPADES_SETTING(cl_serverListUrl, "http://services.buildandshoot.com/serve
 
 namespace spades {
 	extern std::string g_pendingMapName;
+	extern std::string g_pendingServerAddress;
 
 	namespace {
 		struct CURLEasyDeleter {
@@ -414,6 +415,7 @@ namespace spades {
 				return "mainScreen == NULL";
 			}
 			g_pendingMapName = mapName;
+			g_pendingServerAddress = hostname;
 			return mainScreen->Connect(ServerAddress(
 			  hostname, protocolVersion == 3 ? ProtocolVersion::v075 : ProtocolVersion::v076));
 		}

@@ -133,10 +133,7 @@ namespace spades {
 			return static_cast<float>(const_cast<Stopwatch&>(stopwatch).GetTime());
 		}
 
-		// Sanitize a single filename component: alphanumeric only, lowercased,
-		// non-alnum runs collapsed to '_'. The '-' character is reserved as the
-		// field separator between components and must not appear inside one.
-		static std::string SanitizeComponent(const std::string& s) {
+		std::string DemoRecorder::SanitizeComponent(const std::string& s) {
 			std::string out;
 			out.reserve(s.size());
 			for (unsigned char c : s) {
@@ -157,11 +154,8 @@ namespace spades {
 
 			std::ostringstream oss;
 			oss << "Demos/" << std::put_time(tm, "%Y-%m-%d-%H-%M");
-			if (!context.empty()) {
-				std::string safe = SanitizeComponent(context);
-				if (!safe.empty())
-					oss << "-" << safe;
-			}
+			if (!context.empty())
+				oss << "-" << context;
 			oss << ".dem";
 
 			// Ensure the Demos directory exists

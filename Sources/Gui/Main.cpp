@@ -178,6 +178,7 @@ namespace spades {
 	std::string g_recordDemoPath;
 	bool g_autoRecordDemo = false;
 	std::string g_pendingMapName;
+	std::string g_pendingServerAddress;
 }
 
 namespace {
