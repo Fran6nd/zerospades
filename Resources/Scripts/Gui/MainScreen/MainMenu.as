@@ -306,29 +306,33 @@ namespace spades {
 					demoPanel.AddChild(playButton);
 				}
 				{
-					DemoListHeader header(Manager);
-					header.Bounds = AABB2(contentsLeft, headerPos, demoDateColWidth, headerHeight);
-					header.Text = _Tr("MainScreen", "Date");
-					demoPanel.AddChild(header);
-				}
-				{
-					DemoListHeader header(Manager);
-					header.Bounds = AABB2(contentsLeft + demoDateColWidth, headerPos, demoModeColWidth, headerHeight);
-					header.Text = _Tr("MainScreen", "Mode");
-					demoPanel.AddChild(header);
-				}
-				{
-					DemoListHeader header(Manager);
-					header.Bounds = AABB2(contentsLeft + demoDateColWidth + demoModeColWidth, headerPos, demoMapColWidth, headerHeight);
-					header.Text = _Tr("MainScreen", "Map");
-					demoPanel.AddChild(header);
-				}
-				{
-					DemoListHeader header(Manager);
-					float serverColLeft = demoDateColWidth + demoModeColWidth + demoMapColWidth;
-					header.Bounds = AABB2(contentsLeft + serverColLeft, headerPos, contentsWidth - serverColLeft, headerHeight);
-					header.Text = _Tr("MainScreen", "Server");
-					demoPanel.AddChild(header);
+					// Column order: Server | Map | Mode | Date
+					// Server is variable-width; the three rightmost columns are fixed.
+					float serverColWidth = contentsWidth - demoMapColWidth - demoModeColWidth - demoDateColWidth;
+					{
+						DemoListHeader header(Manager);
+						header.Bounds = AABB2(contentsLeft, headerPos, serverColWidth, headerHeight);
+						header.Text = _Tr("MainScreen", "Server");
+						demoPanel.AddChild(header);
+					}
+					{
+						DemoListHeader header(Manager);
+						header.Bounds = AABB2(contentsLeft + serverColWidth, headerPos, demoMapColWidth, headerHeight);
+						header.Text = _Tr("MainScreen", "Map");
+						demoPanel.AddChild(header);
+					}
+					{
+						DemoListHeader header(Manager);
+						header.Bounds = AABB2(contentsLeft + serverColWidth + demoMapColWidth, headerPos, demoModeColWidth, headerHeight);
+						header.Text = _Tr("MainScreen", "Mode");
+						demoPanel.AddChild(header);
+					}
+					{
+						DemoListHeader header(Manager);
+						header.Bounds = AABB2(contentsLeft + serverColWidth + demoMapColWidth + demoModeColWidth, headerPos, demoDateColWidth, headerHeight);
+						header.Text = _Tr("MainScreen", "Date");
+						demoPanel.AddChild(header);
+					}
 				}
 				{
 					@demoList = spades::ui::ListView(Manager);

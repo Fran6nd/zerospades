@@ -187,10 +187,13 @@ namespace spades {
 			r.DrawImage(null, AABB2(pos.x + 1.0F, pos.y + 1.0F, size.x, size.y));
 
 			if (info.structured) {
-				Font.Draw(info.timestamp,  pos + Vector2(4.0F, 2.0F), 1.0F, fgcolor);
-				Font.Draw(info.gameMode,   pos + Vector2(colDateWidth + 4.0F, 2.0F), 1.0F, fgcolor);
-				Font.Draw(info.mapName,    pos + Vector2(colDateWidth + colModeWidth + 4.0F, 2.0F), 1.0F, fgcolor);
-				Font.Draw(info.serverName, pos + Vector2(colDateWidth + colModeWidth + colMapWidth + 4.0F, 2.0F), 1.0F, fgcolor);
+				// Column order (left to right): Server | Map | Mode | Date
+				// Server takes whatever space is left; the three rightmost columns are fixed-width.
+				float serverWidth = size.x - colMapWidth - colModeWidth - colDateWidth;
+				Font.Draw(info.serverName, pos + Vector2(4.0F, 2.0F), 1.0F, fgcolor);
+				Font.Draw(info.mapName,    pos + Vector2(serverWidth + 4.0F, 2.0F), 1.0F, fgcolor);
+				Font.Draw(info.gameMode,   pos + Vector2(serverWidth + colMapWidth + 4.0F, 2.0F), 1.0F, fgcolor);
+				Font.Draw(info.timestamp,  pos + Vector2(serverWidth + colMapWidth + colModeWidth + 4.0F, 2.0F), 1.0F, fgcolor);
 			} else {
 				// Filename does not match the structured format; display it as-is.
 				Font.Draw(info.displayName, pos + Vector2(4.0F, 2.0F), 1.0F, fgcolor);
