@@ -54,7 +54,7 @@ namespace spades {
 	extern std::string g_recordDemoPath;
 	extern bool g_autoRecordDemo;
 	extern std::string g_pendingMapName;
-	extern std::string g_pendingServerAddress;
+	extern std::string g_pendingServerName;
 
 	namespace client {
 
@@ -144,8 +144,8 @@ namespace spades {
 				std::string ctx = modeName;
 				if (!g_pendingMapName.empty())
 					ctx += "-" + DemoRecorder::SanitizeComponent(g_pendingMapName);
-				if (!g_pendingServerAddress.empty())
-					ctx += "-" + DemoRecorder::SanitizeComponent(g_pendingServerAddress);
+				if (!g_pendingServerName.empty())
+					ctx += "-" + DemoRecorder::SanitizeComponent(g_pendingServerName);
 				return ctx;
 			};
 
