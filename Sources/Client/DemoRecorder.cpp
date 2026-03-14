@@ -139,9 +139,9 @@ namespace spades {
 			auto tm = std::localtime(&time);
 
 			std::ostringstream oss;
-			oss << "Demos/" << std::put_time(tm, "%Y%m%d_%H%M%S");
+			oss << "Demos/" << std::put_time(tm, "%Y-%m-%d-%H-%M");
 			if (!context.empty()) {
-				oss << "_" << context;
+				oss << "-" << context;
 			}
 			oss << ".dem";
 
