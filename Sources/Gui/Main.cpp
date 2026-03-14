@@ -215,9 +215,11 @@ namespace {
 		}
 		printf("%zu recording(s) in Demos/:\n", files.size());
 		for (const auto& path : files) {
-			struct stat st;
-			if (stat(path.c_str(), &st) == 0) {
-				long kb = static_cast<long>(st.st_size / 1024);
+			FILE* f = fopen(path.c_str(), "rb");
+			if (f) {
+				fseek(f, 0, SEEK_END);
+				long kb = ftell(f) / 1024;
+				fclose(f);
 				printf("  %s  (%ld KB)\n", path.c_str(), kb);
 			} else {
 				printf("  %s\n", path.c_str());
