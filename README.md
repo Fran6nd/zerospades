@@ -49,6 +49,9 @@ On CMake, before you configure the project, you will need to add a new string en
 
 Then you're ready to configure & generate.
 
+## Command-Line Arguments
+For the full list of supported command-line arguments see [COMMAND_LINE](COMMAND_LINE.md).
+
 ## Troubleshooting
 For troubleshooting and common problems see [TROUBLESHOOTING](TROUBLESHOOTING.md).
 
