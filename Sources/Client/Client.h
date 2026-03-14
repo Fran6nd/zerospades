@@ -462,6 +462,7 @@ namespace spades {
 			void DrawBlockPaletteHUD(float y);
 			void DrawAlivePlayersCount();
 			void DrawPlayingTime();
+			void DrawRecordingIndicator();
 			void DrawHurtSprites();
 			void DrawScreenEffect(bool hurt, float fadeTime = 0.35F);
 			void DrawAlert();
