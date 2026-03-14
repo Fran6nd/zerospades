@@ -94,6 +94,11 @@ namespace spades {
 		DemoListModel@ currentDemoListModel;
 		string selectedDemoPath;
 
+		// Demo list column widths (pixels)
+		private float demoDateColWidth = 130.0F;
+		private float demoModeColWidth = 65.0F;
+		private float demoMapColWidth  = 185.0F;
+
 		private ConfigItem cg_protocolVersion("cg_protocolVersion", "3");
 		private ConfigItem cg_lastQuickConnectHost("cg_lastQuickConnectHost", "127.0.0.1");
 		private ConfigItem cg_serverlistSort("cg_serverlistSort", "16385");
@@ -298,8 +303,27 @@ namespace spades {
 				}
 				{
 					DemoListHeader header(Manager);
-					header.Bounds = AABB2(contentsLeft, headerPos, contentsWidth, headerHeight);
-					header.Text = _Tr("MainScreen", "Demo File");
+					header.Bounds = AABB2(contentsLeft, headerPos, demoDateColWidth, headerHeight);
+					header.Text = _Tr("MainScreen", "Date");
+					demoPanel.AddChild(header);
+				}
+				{
+					DemoListHeader header(Manager);
+					header.Bounds = AABB2(contentsLeft + demoDateColWidth, headerPos, demoModeColWidth, headerHeight);
+					header.Text = _Tr("MainScreen", "Mode");
+					demoPanel.AddChild(header);
+				}
+				{
+					DemoListHeader header(Manager);
+					header.Bounds = AABB2(contentsLeft + demoDateColWidth + demoModeColWidth, headerPos, demoMapColWidth, headerHeight);
+					header.Text = _Tr("MainScreen", "Map");
+					demoPanel.AddChild(header);
+				}
+				{
+					DemoListHeader header(Manager);
+					float serverColLeft = demoDateColWidth + demoModeColWidth + demoMapColWidth;
+					header.Bounds = AABB2(contentsLeft + serverColLeft, headerPos, contentsWidth - serverColLeft, headerHeight);
+					header.Text = _Tr("MainScreen", "Server");
 					demoPanel.AddChild(header);
 				}
 				{
@@ -371,7 +395,7 @@ namespace spades {
 			string[] reversed;
 			for (int i = int(demos.length) - 1; i >= 0; i--)
 				reversed.insertLast(demos[i]);
-			DemoListModel model(Manager, reversed);
+			DemoListModel model(Manager, reversed, demoDateColWidth, demoModeColWidth, demoMapColWidth);
 			@demoList.Model = model;
 			@model.ItemActivated = DemoListItemEventHandler(this.DemoListItemActivated);
 			@model.ItemDoubleClicked = DemoListItemEventHandler(this.DemoListItemDoubleClicked);
