@@ -163,8 +163,7 @@ namespace spades {
 			if (!p)
 				return;
 			p->SetHeldBlockColor(color);
-			if (!isDemoMode)
-				net->SendHeldBlockColor();
+			activeNet->SendHeldBlockColor();
 		}
 
 		/** Captures the color of the block player is looking at. */
@@ -188,8 +187,7 @@ namespace spades {
 			}
 
 			p.SetHeldBlockColor(col);
-			if (!isDemoMode)
-				net->SendHeldBlockColor();
+			activeNet->SendHeldBlockColor();
 		}
 
 		void Client::SetSelectedTool(Player::ToolType type, bool quiet) {
@@ -301,13 +299,13 @@ namespace spades {
 				int score = player.GetScore();
 				if (score != lastScore)
 					lastScore = score;
-			} else if (isDemoMode) {
+			} else if (IsDemoMode()) {
 				// In demo mode with no local player, still update spectator camera
 				UpdateLocalSpectator(dt);
 			}
 
 			// Check if demo is paused - freeze game objects but allow camera movement
-			bool demoPaused = isDemoMode && demoNet && demoNet->IsPaused();
+			bool demoPaused = IsDemoMode() && demoNet && demoNet->IsPaused();
 
 			if (!demoPaused) {
 #if 0
@@ -593,12 +591,12 @@ namespace spades {
 			inp.crouch = actualInput.crouch;
 
 			// send player input
-			if (!isDemoMode) {
+			{
 				PlayerInput sentInput = inp;
 				WeaponInput sentWeaponInput = winp;
 
-				net->SendPlayerInput(sentInput);
-				net->SendWeaponInput(sentWeaponInput);
+				activeNet->SendPlayerInput(sentInput);
+				activeNet->SendWeaponInput(sentWeaponInput);
 			}
 
 			// send weapon reload
@@ -607,8 +605,7 @@ namespace spades {
 				if (winp.secondary && !isWeaponShotgun) {
 					winp.secondary = false;
 					player.SetWeaponInput(winp);
-					if (!isDemoMode)
-						net->SendWeaponInput(winp);
+					activeNet->SendWeaponInput(winp);
 					actualWeapInput = winp;
 					// do not overwrite input so zoom resumes automatically
 					if (!cg_holdAimDownSight)
@@ -616,8 +613,7 @@ namespace spades {
 				}
 
 				weapon.Reload();
-				if (!isDemoMode)
-					net->SendReload();
+				activeNet->SendReload();
 			}
 
 			// is the selected tool no longer usable (ex. out of ammo)?
@@ -626,8 +622,7 @@ namespace spades {
 				winp.primary = false;
 				winp.secondary = false;
 				player.SetWeaponInput(winp);
-				if (!isDemoMode)
-					net->SendWeaponInput(winp);
+				activeNet->SendWeaponInput(winp);
 				actualWeapInput = weapInput = winp;
 
 				// select another tool
@@ -644,7 +639,7 @@ namespace spades {
 			}
 
 			// send position/orientaion updates
-			if (!isDemoMode) {
+			{
 				float POSITION_UPDATE_RATE = 1.0F;             // 1/s
 				float ORIENTATION_UPDATE_RATE = 1.0F / 120.0F; // 120/s
 
@@ -653,7 +648,7 @@ namespace spades {
 					&& time - lastPosSentTime > POSITION_UPDATE_RATE) {
 					lastPosSentTime = time;
 					lastPosSent = curPos;
-					net->SendPosition(curPos);
+					activeNet->SendPosition(curPos);
 				}
 
 				Vector3 curFront = player.GetFront();
@@ -661,7 +656,7 @@ namespace spades {
 					&& time - lastOriSentTime > ORIENTATION_UPDATE_RATE) {
 					lastOriSentTime = time;
 					lastFrontSent = curFront;
-					net->SendOrientation(curFront);
+					activeNet->SendOrientation(curFront);
 				}
 			}
 
@@ -846,8 +841,8 @@ namespace spades {
 			stmp::optional<const Grenade&> g) {
 			SPADES_MARK_FUNCTION();
 
-			if (g && p.IsLocalPlayer() && !isDemoMode)
-				net->SendGrenade(*g);
+			if (g && p.IsLocalPlayer())
+				activeNet->SendGrenade(*g);
 
 			if (!IsMuted()) {
 				Handle<IAudioChunk> c =
@@ -1282,8 +1277,7 @@ namespace spades {
 			}
 
 			if (byLocalPlayer) {
-				if (!isDemoMode)
-					net->SendHit(hurtPlayer.GetId(), type);
+				activeNet->SendHit(hurtPlayer.GetId(), type);
 
 				// register bullet hits
 				if (!isMeleeHit)
@@ -1603,13 +1597,11 @@ namespace spades {
 
 		void Client::LocalPlayerBlockAction(spades::IntVector3 v, BlockActionType type) {
 			SPADES_MARK_FUNCTION();
-			if (!isDemoMode)
-				net->SendBlockAction(v, type);
+			activeNet->SendBlockAction(v, type);
 		}
 		void Client::LocalPlayerCreatedLineBlock(spades::IntVector3 v1, spades::IntVector3 v2) {
 			SPADES_MARK_FUNCTION();
-			if (!isDemoMode)
-				net->SendBlockLine(v1, v2);
+			activeNet->SendBlockLine(v1, v2);
 		}
 
 		void Client::LocalPlayerHurt(HurtType type, spades::Vector3 source) {

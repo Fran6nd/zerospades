@@ -75,7 +75,7 @@ namespace spades {
 		Client::Client(Handle<IRenderer> r, Handle<IAudioDevice> audioDev,
 					   const ServerAddress& host, Handle<FontManager> fontManager,
 					   const std::string& demoPath)
-			: isDemoMode(!demoPath.empty()),
+			: activeNet(nullptr),
 			  demoFilePath(demoPath),
 			  playerName(StripNewlines(cg_playerName.operator std::string()).substr(0, 15)),
 			  logStream(nullptr),
@@ -257,7 +257,7 @@ namespace spades {
 		}
 
 		void Client::ReloadDemo() {
-			if (!isDemoMode || demoFilePath.empty())
+			if (demoNet == nullptr || demoFilePath.empty())
 				return;
 
 			SetWorld(nullptr);
@@ -266,6 +266,7 @@ namespace spades {
 			demoNet = stmp::make_unique<DemoNetClient>(this);
 			if (!demoNet->OpenDemo(demoFilePath))
 				SPRaise("Failed to reload demo file: %s", demoFilePath.c_str());
+			activeNet = demoNet.get();
 		}
 
 		Client::~Client() {
@@ -579,7 +580,7 @@ namespace spades {
 			mumbleLink.SetContext(hostname.ToString(false));
 			mumbleLink.SetIdentity(playerName);
 
-			if (isDemoMode) {
+			if (!demoFilePath.empty()) {
 				SPLog("Starting demo playback: '%s'", demoFilePath.c_str());
 
 				// Check if file exists
@@ -593,10 +594,12 @@ namespace spades {
 				if (!demoNet->OpenDemo(demoFilePath)) {
 					SPRaise("Failed to open demo file (invalid format?): %s", demoFilePath.c_str());
 				}
+				activeNet = demoNet.get();
 			} else {
 				SPLog("Started connecting to '%s'", hostname.ToString().c_str());
 				net = stmp::make_unique<NetClient>(this);
 				net->Connect(hostname);
+				activeNet = net.get();
 			}
 
 			// get host/time string
@@ -650,16 +653,9 @@ namespace spades {
 
 			// update network or demo playback
 			try {
-				if (isDemoMode) {
-					demoNet->DoEvents(dt);
-				} else {
-					if (net->GetStatus() == NetClientStatusConnected)
-						net->DoEvents(0);
-					else
-						net->DoEvents(10);
-				}
+				activeNet->DoEvents(dt);
 			} catch (const std::exception& ex) {
-				NetClientStatus status = isDemoMode ? demoNet->GetStatus() : net->GetStatus();
+				NetClientStatus status = activeNet->GetStatus();
 				if (status == NetClientStatusNotConnected) {
 					SPLog("Disconnected because of error:\n%s", ex.what());
 					NetLog("Disconnected because of error:\n%s", ex.what());
@@ -696,7 +692,7 @@ namespace spades {
 			UpdateAutoFocus(dt);
 
 			if (world) {
-				float gameplayDt = (isDemoMode && demoNet) ? dt * demoNet->GetSpeed() : dt;
+				float gameplayDt = demoNet ? dt * demoNet->GetSpeed() : dt;
 				UpdateWorld(dt, gameplayDt);
 				mumbleLink.Update(world->GetLocalPlayer().get_pointer());
 			} else {
@@ -708,11 +704,10 @@ namespace spades {
 			limbo->Update(dt);
 
 			// The loading screen
-			NetClientStatus currentStatus = isDemoMode ? demoNet->GetStatus() : net->GetStatus();
+			NetClientStatus currentStatus = activeNet->GetStatus();
 			if (currentStatus == NetClientStatusReceivingMap) {
 				// Apply temporal smoothing on the progress value
-				float progress = isDemoMode ? demoNet->GetMapReceivingProgress()
-				                            : net->GetMapReceivingProgress();
+				float progress = activeNet->GetMapReceivingProgress();
 
 				if (mapReceivingProgressSmoothed > progress)
 					mapReceivingProgressSmoothed = progress;
@@ -764,7 +759,7 @@ namespace spades {
 
 		bool Client::IsLimboViewActive() {
 			// In demo mode, never show limbo view - user is spectating
-			if (isDemoMode)
+			if (IsDemoMode())
 				return false;
 			return world && (!world->GetLocalPlayer() || inGameLimbo);
 		}
@@ -782,7 +777,7 @@ namespace spades {
 				team = 255;
 
 			// In demo mode, player actions are replayed from the demo file
-			if (isDemoMode)
+			if (IsDemoMode())
 				return;
 
 			stmp::optional<Player&> maybePlayer = world->GetLocalPlayer();
@@ -792,7 +787,7 @@ namespace spades {
 					// NetClient doesn't like invalid weapon ID
 					weap = WeaponType::RIFLE_WEAPON;
 				}
-				net->SendJoin(team, weap, playerName, lastScore);
+				activeNet->SendJoin(team, weap, playerName, lastScore);
 			} else { // localplayer has joined
 				Player& p = maybePlayer.value();
 
@@ -800,9 +795,9 @@ namespace spades {
 				const auto curWeap = p.GetWeapon().GetWeaponType();
 
 				if (team != curTeam)
-					net->SendTeamChange(team);
+					activeNet->SendTeamChange(team);
 				if (team != 255 && weap != curWeap)
-					net->SendWeaponChange(weap);
+					activeNet->SendWeaponChange(weap);
 			}
 
 			// set loadout
@@ -1126,7 +1121,7 @@ namespace spades {
 			} while (nextId != startId);
 
 			followedPlayerId = nextId;
-			followCameraState.enabled = staffSpectating || isDemoMode || (followedPlayerId != localPlayerId);
+			followCameraState.enabled = staffSpectating || IsDemoMode() || (followedPlayerId != localPlayerId);
 		}
 	} // namespace client
 } // namespace spades
