@@ -347,7 +347,7 @@ int main(int argc, char** argv) {
 		} else {
 			if (SUCCEEDED(SHGetFolderPathW(NULL, CSIDL_APPDATA, NULL, 0, buf))) {
 				std::wstring datadir = buf;
-				datadir += L"\\ZeroSpades\\Resources";
+				datadir += L"\\OpenSpades\\Resources";
 
 				spades::g_userResourceDirectory = Utf8FromWString(datadir.c_str());
 
@@ -381,7 +381,7 @@ int main(int argc, char** argv) {
 		}
 
 		spades::g_userResourceDirectory =
-		  home + "/Library/Application Support/ZeroSpades/Resources";
+		  home + "/Library/Application Support/OpenSpades/Resources";
 
 		spades::FileManager::AddFileSystem(
 		  new spades::DirectoryFileSystem(spades::g_userResourceDirectory, true));
@@ -404,25 +404,25 @@ int main(int argc, char** argv) {
 
 		struct stat info;
 
-		if (stat((xdg_data_home + "/zerospades").c_str(), &info) != 0) {
-			if (stat((home + "/.zerospades").c_str(), &info) != 0) {
+		if (stat((xdg_data_home + "/openspades").c_str(), &info) != 0) {
+			if (stat((home + "/.openspades").c_str(), &info) != 0) {
 			} else if (info.st_mode & S_IFDIR) {
-				SPLog("ZeroSpades directory in XDG_DATA_HOME not found, though old directory "
+				SPLog("OpenSpades directory in XDG_DATA_HOME not found, though old directory "
 				      "exists. Trying to resolve compatibility problem.");
 
-				if (rename((home + "/.zerospades").c_str(),
-				           (xdg_data_home + "/zerospades").c_str()) != 0) {
+				if (rename((home + "/.openspades").c_str(),
+				           (xdg_data_home + "/openspades").c_str()) != 0) {
 					SPLog("Failed to move old directory to new.");
 				} else {
 					SPLog("Successfully moved old directory.");
 
-					if (mkdir((home + "/.zerospades").c_str(),
+					if (mkdir((home + "/.openspades").c_str(),
 					          S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH) == 0) {
 						SDL_RWops* io = SDL_RWFromFile(
-						  (home + "/.zerospades/CONTENT_MOVED_TO_NEW_DIR").c_str(), "wb");
+						  (home + "/.openspades/CONTENT_MOVED_TO_NEW_DIR").c_str(), "wb");
 						if (io != NULL) {
 							std::string text = ("Content of this directory moved to " +
-							                    xdg_data_home + "/zerospades");
+							                    xdg_data_home + "/openspades");
 							io->write(io, text.c_str(), text.length(), 1);
 							io->close(io);
 						}
@@ -431,7 +431,7 @@ int main(int argc, char** argv) {
 			}
 		}
 
-		spades::g_userResourceDirectory = xdg_data_home + "/zerospades/Resources";
+		spades::g_userResourceDirectory = xdg_data_home + "/openspades/Resources";
 
 		spades::FileManager::AddFileSystem(
 		  new spades::DirectoryFileSystem(spades::g_userResourceDirectory, true));
