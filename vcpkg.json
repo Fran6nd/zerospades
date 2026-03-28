@@ -1,0 +1,31 @@
+{
+  "name": "zerospades",
+  "version": "0.1.5",
+  "dependencies": [
+    "freetype",
+    "libogg",
+    "opus",
+    "opusfile",
+    {
+      "name": "sdl2",
+      "features": ["vulkan"]
+    },
+    {
+      "name": "libjpeg-turbo",
+      "features": ["jpeg8"]
+    },
+    {
+      "name": "sdl2-image",
+      "features": ["libjpeg-turbo"]
+    },
+    "spirv-cross",
+    {
+      "name": "glew",
+      "platform": "!osx & !ios"
+    },
+    {
+      "name": "curl",
+      "platform": "!osx & !ios"
+    }
+  ]
+}
