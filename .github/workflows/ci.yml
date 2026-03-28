@@ -26,15 +26,12 @@ jobs:
           path: |
             vcpkg/installed
             vcpkg/buildtrees
-          key: windows-x86-${{ hashFiles('vcpkg_x86-windows.txt', '.gitmodules') }}
+          key: windows-x86-${{ hashFiles('vcpkg.json', '.gitmodules') }}
           restore-keys: |
             windows-x86-
 
       - name: Bootstrap vcpkg
         run: vcpkg\bootstrap-vcpkg.bat -disableMetrics
-
-      - name: Build dependencies
-        run: vcpkg\vcpkg install --recurse @vcpkg_x86-windows.txt
 
       - name: Configure CMake
         run: |
@@ -78,17 +75,12 @@ jobs:
           path: |
             vcpkg/installed
             vcpkg/buildtrees
-          key: windows-x64-${{ hashFiles('vcpkg_x86-windows.txt', '.gitmodules') }}
+          key: windows-x64-${{ hashFiles('vcpkg.json', '.gitmodules') }}
           restore-keys: |
             windows-x64-
 
       - name: Bootstrap vcpkg
         run: vcpkg\bootstrap-vcpkg.bat -disableMetrics
-
-      - name: Build dependencies
-        run: |
-          (Get-Content vcpkg_x86-windows.txt) -replace 'x86-windows-static', 'x64-windows-static' | Set-Content vcpkg_x64-windows.txt
-          vcpkg\vcpkg install --recurse @vcpkg_x64-windows.txt
 
       - name: Configure CMake
         run: |
@@ -130,17 +122,12 @@ jobs:
           path: |
             vcpkg/installed
             vcpkg/buildtrees
-          key: macos-intel-${{ hashFiles('vcpkg_x86_64-darwin.txt', '.gitmodules') }}
+          key: macos-intel-${{ hashFiles('vcpkg.json', '.gitmodules') }}
           restore-keys: |
             macos-intel-
 
       - name: Bootstrap vcpkg
         run: vcpkg/bootstrap-vcpkg.sh -disableMetrics
-
-      - name: Build dependencies
-        run: |
-          sed 's/$/:x64-osx/' vcpkg_x86_64-darwin.txt > vcpkg_x64-osx.txt
-          vcpkg/vcpkg install --recurse @vcpkg_x64-osx.txt
 
       - name: Configure CMake
         run: |
@@ -188,17 +175,12 @@ jobs:
           path: |
             vcpkg/installed
             vcpkg/buildtrees
-          key: macos-arm-${{ hashFiles('vcpkg_x86_64-darwin.txt', '.gitmodules') }}
+          key: macos-arm-${{ hashFiles('vcpkg.json', '.gitmodules') }}
           restore-keys: |
             macos-arm-
 
       - name: Bootstrap vcpkg
         run: vcpkg/bootstrap-vcpkg.sh -disableMetrics
-
-      - name: Build dependencies
-        run: |
-          sed 's/$/:arm64-osx/' vcpkg_x86_64-darwin.txt > vcpkg_arm64-osx.txt
-          vcpkg/vcpkg install --recurse @vcpkg_arm64-osx.txt
 
       - name: Configure CMake
         run: |
