@@ -52,6 +52,7 @@
 #include <cstring>
 #include <vector>
 
+SPADES_SETTING(r_dlights);
 SPADES_SETTING(r_hdr);
 SPADES_SETTING(r_bloom);
 SPADES_SETTING(r_fogShadow);
@@ -970,6 +971,10 @@ namespace spades {
 
 		void VulkanRenderer::AddLight(const client::DynamicLightParam& light) {
 			SPADES_MARK_FUNCTION();
+			if (!r_dlights)
+				return;
+			if (!SphereFrustrumCull(light.origin, light.radius))
+				return;
 			EnsureInitialized();
 			EnsureSceneStarted();
 			lights.push_back(light);
