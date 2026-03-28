@@ -874,7 +874,7 @@ namespace spades {
 				dlDepth.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
 				dlDepth.depthTestEnable = VK_TRUE;
 				dlDepth.depthWriteEnable = VK_FALSE;
-				dlDepth.depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
+				dlDepth.depthCompareOp = VK_COMPARE_OP_EQUAL;
 				dlDepth.depthBoundsTestEnable = VK_FALSE;
 				dlDepth.stencilTestEnable = VK_FALSE;
 
