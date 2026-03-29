@@ -175,6 +175,21 @@ Base class to follow: [VulkanPostProcessFilter.h](VulkanPostProcessFilter.h), [V
 - [ ] **[BUG-1] All player shadows missing** — not yet investigated. Suspected causes: player (and all) models may be excluded from the shadow caster pass, or shadow map sampling is broken in the map/model shaders. Investigate whether models are submitted to `VulkanShadowMapRenderer`, and check for self-shadow bias or missing shadow texture bindings.
   - Files: [VulkanRenderer.cpp](VulkanRenderer.cpp) (shadow pass), [VulkanModelRenderer.cpp](VulkanModelRenderer.cpp), [VulkanShadowMapRenderer.cpp](VulkanShadowMapRenderer.cpp) (if exists)
 
+## Deferred Features (removed for minimum-quality PR)
+
+These were removed from the vulkan-mini branch to keep the initial PR small and correct.
+Restore from git history (`VulkanWaterRenderer.*`, mirror pass in `RecordCommandBuffer`).
+
+- [ ] **[DEFER-1] Water Renderer (`r_water` 1/2/3)** — Re-implement `VulkanWaterRenderer`; restore mirror
+  framebuffer + screen-copy images in `VulkanFramebufferManager`; restore mirror render pass and
+  refraction copy blocks in `RecordCommandBuffer`; re-enable `r_water > 0` guard in
+  `VulkanMapChunk::IsSolid`; unlock Shader Effects presets in `ConfigViewTabs.as`.
+  - References removed from: [VulkanRenderer.h](VulkanRenderer.h), [VulkanRenderer.cpp](VulkanRenderer.cpp),
+    [VulkanFramebufferManager.h](VulkanFramebufferManager.h), [VulkanFramebufferManager.cpp](VulkanFramebufferManager.cpp),
+    [VulkanOptimizedVoxelModel.cpp](VulkanOptimizedVoxelModel.cpp), [VulkanMapChunk.cpp](VulkanMapChunk.cpp)
+
+---
+
 ## Stubs / Placeholders to Rewrite
 
 - [ ] **[STUB-1] `VulkanWaterRenderer::RenderDynamicLightPass` uses sunlight pipeline as placeholder** — the method (`VulkanWaterRenderer.cpp:1015`) binds the sunlight pipeline instead of a dedicated water dynamic-light pipeline. Water surfaces do not respond to dynamic lights. Implement a specialized pipeline variant (and matching shader) for the water dynamic-light pass; remove the early-return guard and the placeholder comment.
