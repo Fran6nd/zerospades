@@ -41,7 +41,6 @@ namespace spades {
 		class VulkanSpriteRenderer;
 		class VulkanLongSpriteRenderer;
 		class VulkanImageRenderer;
-		class VulkanWaterRenderer;
 		class VulkanFlatMapRenderer;
 		class VulkanShadowMapRenderer;
 		class VulkanMapShadowRenderer;
@@ -129,14 +128,11 @@ namespace spades {
 			uint32_t lastSwapchainGeneration{0};
 
 			bool duringSceneRendering;
-			bool renderingMirror;
-
 			std::unique_ptr<VulkanMapRenderer> mapRenderer;
 			std::unique_ptr<VulkanModelRenderer> modelRenderer;
 			std::unique_ptr<VulkanSpriteRenderer> spriteRenderer;
 			std::unique_ptr<VulkanLongSpriteRenderer> longSpriteRenderer;
 			std::unique_ptr<VulkanImageRenderer> imageRenderer;
-			std::unique_ptr<VulkanWaterRenderer> waterRenderer;
 			std::unique_ptr<VulkanFlatMapRenderer> flatMapRenderer;
 			std::unique_ptr<VulkanShadowMapRenderer> shadowMapRenderer;
 			std::unique_ptr<VulkanMapShadowRenderer> mapShadowRenderer;
@@ -248,8 +244,7 @@ namespace spades {
 			VulkanImage* GetWhiteImage() { return whiteImage.GetPointerOrNull(); }
 			VulkanImage* GetDepthImageWrapper() { return depthImageWrapper.GetPointerOrNull(); }
 			VkImageView GetDepthImageView() const { return depthImageView; }
-			bool IsRenderingMirror() const { return renderingMirror; }
-		int GetRenderWidth() const { return renderWidth; }
+			int GetRenderWidth() const { return renderWidth; }
 		int GetRenderHeight() const { return renderHeight; }
 
 			void StartScene(const client::SceneDefinition& def) override;
@@ -295,7 +290,6 @@ namespace spades {
 			VulkanMapRenderer* GetMapRenderer() { return mapRenderer.get(); }
 			VulkanModelRenderer* GetModelRenderer() { return modelRenderer.get(); }
 			VulkanSpriteRenderer* GetSpriteRenderer() { return spriteRenderer.get(); }
-			VulkanWaterRenderer* GetWaterRenderer() { return waterRenderer.get(); }
 			VulkanShadowMapRenderer* GetShadowMapRenderer() { return shadowMapRenderer.get(); }
 			VulkanMapShadowRenderer* GetMapShadowRenderer() { return mapShadowRenderer.get(); }
 			VulkanFramebufferManager* GetFramebufferManager() { return framebufferManager.get(); }

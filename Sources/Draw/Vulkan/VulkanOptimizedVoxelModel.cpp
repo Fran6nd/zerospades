@@ -541,7 +541,7 @@ namespace spades {
 			fogCol *= fogCol; // linearize
 			float fogDist = renderer.GetFogDistance();
 
-			bool mirror = renderer.IsRenderingMirror();
+			bool mirror = false;
 			int rw = renderer.GetRenderWidth();
 			int rh = renderer.GetRenderHeight();
 
@@ -651,7 +651,7 @@ namespace spades {
 			const Matrix4& projectionViewMatrix = renderer.GetProjectionViewMatrix();
 			const auto& eye = renderer.GetSceneDef().viewOrigin;
 			float fogDist = renderer.GetFogDistance();
-			bool mirror = renderer.IsRenderingMirror();
+			bool mirror = false;
 			int rw = renderer.GetRenderWidth();
 			int rh = renderer.GetRenderHeight();
 
@@ -768,7 +768,7 @@ namespace spades {
 			Vector3 fogCol = renderer.GetFogColor();
 			fogCol *= fogCol; // linearize
 			float fogDist = renderer.GetFogDistance();
-			bool mirror = renderer.IsRenderingMirror();
+			bool mirror = false;
 			int rw = renderer.GetRenderWidth();
 			int rh = renderer.GetRenderHeight();
 

@@ -24,7 +24,6 @@
 #include "VulkanSpriteRenderer.h"
 #include "VulkanLongSpriteRenderer.h"
 #include "VulkanImageRenderer.h"
-#include "VulkanWaterRenderer.h"
 #include "VulkanFlatMapRenderer.h"
 #include "VulkanShadowMapRenderer.h"
 #include "VulkanMapShadowRenderer.h"
@@ -57,7 +56,6 @@ SPADES_SETTING(r_hdr);
 SPADES_SETTING(r_bloom);
 SPADES_SETTING(r_fogShadow);
 SPADES_SETTING(r_depthOfField);
-SPADES_SETTING(r_water);
 SPADES_SETTING(r_softParticles);
 SPADES_SETTING(r_outlines);
 
@@ -84,13 +82,11 @@ namespace spades {
 		  lastTime(0),
 		  frameNumber(0),
 		  duringSceneRendering(false),
-		  renderingMirror(false),
 		  mapRenderer(nullptr),
 		  modelRenderer(nullptr),
 		  spriteRenderer(nullptr),
 		  longSpriteRenderer(nullptr),
 			imageRenderer(nullptr),
-		waterRenderer(nullptr),
 		flatMapRenderer(nullptr),
 		shadowMapRenderer(nullptr),
 		mapShadowRenderer(nullptr),
@@ -133,7 +129,6 @@ namespace spades {
 				longSpriteRenderer = stmp::make_unique<VulkanLongSpriteRenderer>(*this);
 				imageRenderer = stmp::make_unique<VulkanImageRenderer>(*this);
 			imageManager = stmp::make_unique<VulkanImageManager>(*this, device);
-			waterRenderer = stmp::make_unique<VulkanWaterRenderer>(*this, map);
 
 			// Create a 1x1 white image for solid color rendering
 			{
@@ -154,7 +149,6 @@ namespace spades {
 			// Preload shaders
 			VulkanMapRenderer::PreloadShaders(*this);
 			VulkanOptimizedVoxelModel::PreloadShaders(*this);
-			VulkanWaterRenderer::PreloadShaders(*this);
 
 			// Post-process filters
 			autoExposureFilter = stmp::make_unique<VulkanAutoExposureFilter>(*this);
@@ -197,7 +191,6 @@ namespace spades {
 			imageManager.reset();
 			mapRenderer.reset();
 			flatMapRenderer.reset();
-			waterRenderer.reset();
 			shadowMapRenderer.reset();
 			mapShadowRenderer.reset();
 			depthOfFieldFilter.reset();
@@ -599,11 +592,7 @@ namespace spades {
 		CreateFramebuffers();
 		CreateCommandBuffers();
 
-		// Rebuild the offscreen framebuffer manager, which is sized to render dimensions.
-		// The water renderer holds references into the framebuffer manager, so reset it first.
-		waterRenderer.reset();
 		framebufferManager = stmp::make_unique<VulkanFramebufferManager>(device, renderWidth, renderHeight);
-		waterRenderer = stmp::make_unique<VulkanWaterRenderer>(*this, map);
 
 		lastSwapchainGeneration = device->GetSwapchainGeneration();
 		SPLog("Swapchain dependencies recreated (%dx%d)", renderWidth, renderHeight);
@@ -644,30 +633,12 @@ namespace spades {
 		}
 
 		bool VulkanRenderer::BoxFrustrumCull(const AABB3& box) {
-			if (renderingMirror) {
-				AABB3 bx = box;
-				std::swap(bx.min.z, bx.max.z);
-				bx.min.z = 63.0F * 2.0F - bx.min.z;
-				bx.max.z = 63.0F * 2.0F - bx.max.z;
-				return PlaneCullTest(frustrum[0], bx) && PlaneCullTest(frustrum[1], bx) &&
-				       PlaneCullTest(frustrum[2], bx) && PlaneCullTest(frustrum[3], bx) &&
-				       PlaneCullTest(frustrum[4], bx) && PlaneCullTest(frustrum[5], bx);
-			}
 			return PlaneCullTest(frustrum[0], box) && PlaneCullTest(frustrum[1], box) &&
 			       PlaneCullTest(frustrum[2], box) && PlaneCullTest(frustrum[3], box) &&
 			       PlaneCullTest(frustrum[4], box) && PlaneCullTest(frustrum[5], box);
 		}
 
 		bool VulkanRenderer::SphereFrustrumCull(const Vector3& center, float radius) {
-			if (renderingMirror) {
-				Vector3 vx = center;
-				vx.z = 63.0F * 2.0F - vx.z;
-				for (int i = 0; i < 6; i++) {
-					if (frustrum[i].GetDistanceTo(vx) < -radius)
-						return false;
-				}
-				return true;
-			}
 			for (int i = 0; i < 6; i++) {
 				if (frustrum[i].GetDistanceTo(center) < -radius)
 					return false;
@@ -876,10 +847,6 @@ namespace spades {
 				flatMapRenderer.reset();
 			}
 
-			// Notify water renderer about map change
-			if (waterRenderer) {
-				waterRenderer->SetGameMap(map);
-			}
 		}
 
 		void VulkanRenderer::SetFogDistance(float distance) {
@@ -1008,11 +975,7 @@ namespace spades {
 				if (lastTime == 0) dt = 0.0f; // No animation on the first frame
 				lastDt = dt;
 
-				// Update water simulation
-				if (waterRenderer) {
-					waterRenderer->UpdateSimulation(dt);
-				}
-			}
+		}
 
 			// Reset the fence for this frame slot (waited on in StartScene)
 			vkResetFences(device->GetDevice(), 1, &inFlightFences[currentFrameSlot]);
@@ -1452,9 +1415,7 @@ namespace spades {
 				mapShadowRenderer->GameMapChanged(x, y, z, map);
 			if (flatMapRenderer)
 				flatMapRenderer->GameMapChanged(x, y, z, *map);
-			if (waterRenderer)
-				waterRenderer->GameMapChanged(x, y, z, map);
-		}
+			}
 
 		void VulkanRenderer::ProcessDeferredDeletions() {
 			SPADES_MARK_FUNCTION();
@@ -1556,11 +1517,6 @@ namespace spades {
 				return;
 			}
 
-			if (waterRenderer) {
-				waterRenderer->UploadWaveTextures(commandBuffer);
-			}
-
-
 		// Realize map chunks BEFORE starting render pass (updates buffers outside render pass)
 		if (sceneUsedInThisFrame && mapRenderer) {
 			mapRenderer->Realize();
@@ -1593,118 +1549,7 @@ namespace spades {
 			shadowMapRenderer->Render(commandBuffer);
 		}
 
-		// Render mirror pass for water reflections (r_water >= 2)
-		if (sceneUsedInThisFrame && framebufferManager && waterRenderer && (int)r_water >= 2) {
-			renderingMirror = true;
-
-			// Save original matrices
-			Matrix4 originalViewMatrix = viewMatrix;
-			Matrix4 originalProjectionViewMatrix = projectionViewMatrix;
-
-			// Create reflected view matrix (reflect across water plane at z=63)
-			Matrix4 reflectedView = viewMatrix * Matrix4::Translate(0, 0, 63);
-			reflectedView = reflectedView * Matrix4::Scale(1, 1, -1);
-			reflectedView = reflectedView * Matrix4::Translate(0, 0, -63);
-			viewMatrix = reflectedView;
-			projectionViewMatrix = projectionMatrix * viewMatrix;
-
-			// Get fog color for background
-			Vector3 bgColor = GetFogColorForSolidPass();
-
-			// Clear mirror framebuffer
-			framebufferManager->ClearMirrorImage(commandBuffer, bgColor);
-
-			// Begin mirror render pass
-			VkRenderPassBeginInfo mirrorRenderPassInfo{};
-			mirrorRenderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-			mirrorRenderPassInfo.renderPass = framebufferManager->GetRenderPass();
-			mirrorRenderPassInfo.framebuffer = framebufferManager->GetMirrorFramebuffer();
-			mirrorRenderPassInfo.renderArea.offset = {0, 0};
-			mirrorRenderPassInfo.renderArea.extent = {static_cast<uint32_t>(renderWidth), static_cast<uint32_t>(renderHeight)};
-
-			VkClearValue mirrorClearValues[2];
-			mirrorClearValues[0].color = {{bgColor.x, bgColor.y, bgColor.z, 1.0f}};
-			mirrorClearValues[1].depthStencil = {1.0f, 0};
-			mirrorRenderPassInfo.clearValueCount = 2;
-			mirrorRenderPassInfo.pClearValues = mirrorClearValues;
-
-			vkCmdBeginRenderPass(commandBuffer, &mirrorRenderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
-
-			// Set viewport with flipped Y for Vulkan
-			VkViewport mirrorViewport{};
-			mirrorViewport.x = 0.0f;
-			mirrorViewport.y = static_cast<float>(renderHeight);
-			mirrorViewport.width = static_cast<float>(renderWidth);
-			mirrorViewport.height = -static_cast<float>(renderHeight);
-			mirrorViewport.minDepth = 0.0f;
-			mirrorViewport.maxDepth = 1.0f;
-			vkCmdSetViewport(commandBuffer, 0, 1, &mirrorViewport);
-
-			VkRect2D mirrorScissor{};
-			mirrorScissor.offset = {0, 0};
-			mirrorScissor.extent = {static_cast<uint32_t>(renderWidth), static_cast<uint32_t>(renderHeight)};
-			vkCmdSetScissor(commandBuffer, 0, 1, &mirrorScissor);
-
-			// Note: Don't render sky in mirror pass - OpenGL just uses fog color clear
-			// Rendering sky here with non-reflected view axes causes incorrect reflections
-
-			// Render mirrored map
-			if (mapRenderer) {
-				mapRenderer->RenderSunlightPass(commandBuffer);
-			}
-
-			// Render mirrored models
-			if (modelRenderer) {
-				modelRenderer->RenderSunlightPass(commandBuffer, false);
-			}
-
-			vkCmdEndRenderPass(commandBuffer);
-
-			// Restore original matrices
-			viewMatrix = originalViewMatrix;
-			projectionViewMatrix = originalProjectionViewMatrix;
-			renderingMirror = false;
-
-			// Transition mirror images to shader read for water sampling
-			Handle<VulkanImage> mirrorColor = framebufferManager->GetMirrorColorImage();
-			Handle<VulkanImage> mirrorDepth = framebufferManager->GetMirrorDepthImage();
-
-			VkImageMemoryBarrier mirrorBarriers[2]{};
-			mirrorBarriers[0].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-			mirrorBarriers[0].oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-			mirrorBarriers[0].newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-			mirrorBarriers[0].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-			mirrorBarriers[0].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-			mirrorBarriers[0].image = mirrorColor->GetImage();
-			mirrorBarriers[0].subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-			mirrorBarriers[0].subresourceRange.baseMipLevel = 0;
-			mirrorBarriers[0].subresourceRange.levelCount = 1;
-			mirrorBarriers[0].subresourceRange.baseArrayLayer = 0;
-			mirrorBarriers[0].subresourceRange.layerCount = 1;
-			mirrorBarriers[0].srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-			mirrorBarriers[0].dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-
-			mirrorBarriers[1].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-			mirrorBarriers[1].oldLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-			mirrorBarriers[1].newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-			mirrorBarriers[1].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-			mirrorBarriers[1].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-			mirrorBarriers[1].image = mirrorDepth->GetImage();
-			mirrorBarriers[1].subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
-			mirrorBarriers[1].subresourceRange.baseMipLevel = 0;
-			mirrorBarriers[1].subresourceRange.levelCount = 1;
-			mirrorBarriers[1].subresourceRange.baseArrayLayer = 0;
-			mirrorBarriers[1].subresourceRange.layerCount = 1;
-			mirrorBarriers[1].srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-			mirrorBarriers[1].dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-
-			vkCmdPipelineBarrier(commandBuffer,
-				VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
-				VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-				0, 0, nullptr, 0, nullptr, 2, mirrorBarriers);
-		}
-
-		// If we're rendering a 3D scene, render it to the offscreen framebuffer first
+		// Render 3D scene to offscreen framebuffer
 		if (sceneUsedInThisFrame && framebufferManager) {
 			// Use fog color for solid pass (which may be black if fog shadow is enabled)
 			Vector3 bgColor = GetFogColorForSolidPass();
@@ -1939,159 +1784,15 @@ namespace spades {
 				longSpriteRenderer->Clear();
 			}
 
-			// Copy scene to mirror images for water refraction when no real mirror pass
-			if ((int)r_water > 0 && waterRenderer && framebufferManager->GetMirrorColorImage() && (int)r_water < 2) {
-				framebufferManager->CopyToMirrorImage(commandBuffer);
-			}
-
-			// Copy scene to screen copy images for water refraction sampling
-			// (water renders to the same framebuffer, so it can't sample from it directly)
-			if ((int)r_water > 0 && waterRenderer) {
-				framebufferManager->CopySceneForWaterSampling(commandBuffer);
-			}
-
-			if ((int)r_water > 0 && waterRenderer && framebufferManager->GetMirrorColorImage()) {
-
-				// Transition renderColorImage and renderDepthImage back to COLOR_ATTACHMENT_OPTIMAL
-				// for water rendering
-				VkImageMemoryBarrier backToAttachment[2]{};
-				backToAttachment[0].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-				backToAttachment[0].oldLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-				backToAttachment[0].newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-				backToAttachment[0].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-				backToAttachment[0].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-				backToAttachment[0].image = offscreenColor->GetImage();
-				backToAttachment[0].subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-				backToAttachment[0].subresourceRange.baseMipLevel = 0;
-				backToAttachment[0].subresourceRange.levelCount = 1;
-				backToAttachment[0].subresourceRange.baseArrayLayer = 0;
-				backToAttachment[0].subresourceRange.layerCount = 1;
-				backToAttachment[0].srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
-				backToAttachment[0].dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-
-				backToAttachment[1].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-				backToAttachment[1].oldLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-				backToAttachment[1].newLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-				backToAttachment[1].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-				backToAttachment[1].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-				backToAttachment[1].image = offscreenDepth->GetImage();
-				backToAttachment[1].subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
-				backToAttachment[1].subresourceRange.baseMipLevel = 0;
-				backToAttachment[1].subresourceRange.levelCount = 1;
-				backToAttachment[1].subresourceRange.baseArrayLayer = 0;
-				backToAttachment[1].subresourceRange.layerCount = 1;
-				backToAttachment[1].srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
-				backToAttachment[1].dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-
-				vkCmdPipelineBarrier(commandBuffer,
-					VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-					VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
-					0, 0, nullptr, 0, nullptr, 2, backToAttachment);
-
-				// Begin water render pass with LOAD_OP to preserve scene content
-				VkRenderPassBeginInfo waterRenderPassInfo{};
-				waterRenderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-				waterRenderPassInfo.renderPass = framebufferManager->GetWaterRenderPass();
-				waterRenderPassInfo.framebuffer = framebufferManager->GetRenderFramebuffer();
-				waterRenderPassInfo.renderArea.offset = {0, 0};
-				waterRenderPassInfo.renderArea.extent = {static_cast<uint32_t>(renderWidth), static_cast<uint32_t>(renderHeight)};
-				waterRenderPassInfo.clearValueCount = 0; // No clear, using LOAD_OP
-				waterRenderPassInfo.pClearValues = nullptr;
-
-				vkCmdBeginRenderPass(commandBuffer, &waterRenderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
-				waterRenderer->RenderSunlightPass(commandBuffer);
-				vkCmdEndRenderPass(commandBuffer);
-
-				// Transition color and depth back to SHADER_READ_ONLY for the post-process chain.
-				VkImageMemoryBarrier waterPostBarriers[2]{};
-				waterPostBarriers[0].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-				waterPostBarriers[0].oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-				waterPostBarriers[0].newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-				waterPostBarriers[0].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-				waterPostBarriers[0].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-				waterPostBarriers[0].image = offscreenColor->GetImage();
-				waterPostBarriers[0].subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-				waterPostBarriers[0].subresourceRange.baseMipLevel = 0;
-				waterPostBarriers[0].subresourceRange.levelCount = 1;
-				waterPostBarriers[0].subresourceRange.baseArrayLayer = 0;
-				waterPostBarriers[0].subresourceRange.layerCount = 1;
-				waterPostBarriers[0].srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-				waterPostBarriers[0].dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-
-				waterPostBarriers[1].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-				waterPostBarriers[1].oldLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-				waterPostBarriers[1].newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-				waterPostBarriers[1].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-				waterPostBarriers[1].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-				waterPostBarriers[1].image = offscreenDepth->GetImage();
-				waterPostBarriers[1].subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
-				waterPostBarriers[1].subresourceRange.baseMipLevel = 0;
-				waterPostBarriers[1].subresourceRange.levelCount = 1;
-				waterPostBarriers[1].subresourceRange.baseArrayLayer = 0;
-				waterPostBarriers[1].subresourceRange.layerCount = 1;
-				waterPostBarriers[1].srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-				waterPostBarriers[1].dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-
-				vkCmdPipelineBarrier(commandBuffer,
-					VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
-					VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-					0, 0, nullptr, 0, nullptr, 2, waterPostBarriers);
-			}
-
-			// --- Post-process ping-pong setup ---
-			// currentInput: image in SHADER_READ_ONLY_OPTIMAL, consumed by each filter.
-			// currentOutput: image filters render into; each filter's render pass transitions
-			//   it UNDEFINED → COLOR_ATTACHMENT (during) → SHADER_READ_ONLY (on vkCmdEndRenderPass).
-			// After each filter: swap(currentInput, currentOutput); no explicit barrier needed
-			//   between filters because the render pass finalLayout handles SHADER_READ_ONLY for
-			//   the new currentInput, and initialLayout=UNDEFINED accepts any layout for currentOutput.
-			VulkanImage* currentInput = offscreenColor.GetPointerOrNull();
-			Handle<VulkanImage> ppTempImage;
-			if (temporaryImagePool && framebufferManager) {
-				ppTempImage = temporaryImagePool->Acquire(
-					static_cast<uint32_t>(renderWidth),
-					static_cast<uint32_t>(renderHeight),
-					framebufferManager->GetMainColorFormat()
-				);
-			}
-			VulkanImage* currentOutput = ppTempImage.GetPointerOrNull();
-
-			// PP-1: Auto-exposure
-			if ((int)r_hdr && autoExposureFilter && currentInput && currentOutput) {
-				autoExposureFilter->Filter(commandBuffer, currentInput, currentOutput, lastDt);
-				std::swap(currentInput, currentOutput);
-			}
-
-			// PP-2: Bloom
-			if ((int)r_bloom && bloomFilter && currentInput && currentOutput) {
-				bloomFilter->Filter(commandBuffer, currentInput, currentOutput);
-				std::swap(currentInput, currentOutput);
-			}
-
-			// PP-3: Fog shadow
-			if ((int)r_fogShadow && fogFilter && mapShadowRenderer && currentInput && currentOutput) {
-				fogFilter->Filter(commandBuffer, currentInput, currentOutput);
-				std::swap(currentInput, currentOutput);
-			}
-
-			// PP-4: Depth of Field
-			if ((int)r_depthOfField && depthOfFieldFilter && currentInput && currentOutput) {
-				const client::SceneDefinition& def = GetSceneDef();
-				if (def.depthOfFieldFocalLength > 0.0f || def.blurVignette > 0.0f) {
-					depthOfFieldFilter->Filter(commandBuffer, currentInput, currentOutput);
-					std::swap(currentInput, currentOutput);
-				}
-			}
-
-			// --- Blit final post-process result to swapchain ---
-			// Transition final image (currentInput) from SHADER_READ_ONLY to TRANSFER_SRC
+			// --- Blit offscreen image to swapchain ---
+			// Transition offscreen color from SHADER_READ_ONLY to TRANSFER_SRC
 			VkImageMemoryBarrier barrier1{};
 			barrier1.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
 			barrier1.oldLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 			barrier1.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
 			barrier1.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 			barrier1.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-			barrier1.image = currentInput->GetImage();
+			barrier1.image = offscreenColor->GetImage();
 			barrier1.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 			barrier1.subresourceRange.baseMipLevel = 0;
 			barrier1.subresourceRange.levelCount = 1;
@@ -2139,11 +1840,11 @@ namespace spades {
 			                            static_cast<int32_t>(device->GetSwapchainExtent().height), 1};
 
 			vkCmdBlitImage(commandBuffer,
-				currentInput->GetImage(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+				offscreenColor->GetImage(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
 				device->GetSwapchainImage(imageIndex), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
 				1, &blitRegion, VK_FILTER_LINEAR);
 
-			// Transition currentInput back to SHADER_READ_ONLY for next frame
+			// Transition offscreen color back to SHADER_READ_ONLY for next frame
 			barrier1.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
 			barrier1.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 			barrier1.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;

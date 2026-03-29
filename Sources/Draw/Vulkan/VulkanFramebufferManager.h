@@ -90,19 +90,8 @@ namespace spades {
 			Handle<VulkanImage> renderColorImage;
 			Handle<VulkanImage> renderDepthImage;
 
-			// Mirror framebuffer for water reflections
-			VkFramebuffer mirrorFramebuffer;
-			Handle<VulkanImage> mirrorColorImage;
-			Handle<VulkanImage> mirrorDepthImage;
-
-			// Screen copy images for water refraction sampling
-			// (can't sample from render targets during the water pass)
-			Handle<VulkanImage> screenCopyColorImage;
-			Handle<VulkanImage> screenCopyDepthImage;
-
 			// Render pass used for all framebuffers
 			VkRenderPass renderPass;
-			VkRenderPass waterRenderPass; // Render pass with LOAD_OP for water rendering
 			VkRenderPass spriteRenderPass; // Color-only render pass for soft sprite rendering
 			VkFramebuffer spriteFramebuffer;
 
@@ -117,7 +106,6 @@ namespace spades {
 			/** Sets up for scene rendering. */
 			void PrepareSceneRendering(VkCommandBuffer commandBuffer);
 
-			BufferHandle PrepareForWaterRendering(VkCommandBuffer commandBuffer);
 			BufferHandle StartPostProcessing();
 
 			void MakeSureAllBuffersReleased();
@@ -126,7 +114,6 @@ namespace spades {
 			Handle<VulkanImage> GetColorImage() { return renderColorImage; }
 			VkFormat GetMainColorFormat() { return fbColorFormat; }
 			VkRenderPass GetRenderPass() { return renderPass; }
-			VkRenderPass GetWaterRenderPass() { return waterRenderPass; }
 			VkRenderPass GetSpriteRenderPass() { return spriteRenderPass; }
 			VkFramebuffer GetRenderFramebuffer() { return renderFramebuffer; }
 			VkFramebuffer GetSpriteFramebuffer() { return spriteFramebuffer; }
@@ -140,16 +127,6 @@ namespace spades {
 			 * Creates BufferHandle with a given size and format.
 			 */
 			BufferHandle CreateBufferHandle(int w, int h, VkFormat colorFormat);
-
-			void CopyToMirrorImage(VkCommandBuffer commandBuffer, VkFramebuffer srcFb = VK_NULL_HANDLE);
-			void ClearMirrorImage(VkCommandBuffer commandBuffer, Vector3 bgCol);
-			Handle<VulkanImage> GetMirrorColorImage() { return mirrorColorImage; }
-			Handle<VulkanImage> GetMirrorDepthImage() { return mirrorDepthImage; }
-			VkFramebuffer GetMirrorFramebuffer() { return mirrorFramebuffer; }
-
-			void CopySceneForWaterSampling(VkCommandBuffer commandBuffer);
-			Handle<VulkanImage> GetScreenCopyColorImage() { return screenCopyColorImage; }
-			Handle<VulkanImage> GetScreenCopyDepthImage() { return screenCopyDepthImage; }
 		};
 
 		// Shorter name
