@@ -42,6 +42,7 @@
 #include "VulkanBloomFilter.h"
 #include "VulkanFogFilter.h"
 #include "VulkanDepthOfFieldFilter.h"
+#include "VulkanFXAAFilter.h"
 #include <Gui/SDLVulkanDevice.h>
 #include <Client/GameMap.h>
 #include <Core/Bitmap.h>
@@ -57,6 +58,8 @@ SPADES_SETTING(r_hdr);
 SPADES_SETTING(r_bloom);
 SPADES_SETTING(r_fogShadow);
 SPADES_SETTING(r_depthOfField);
+SPADES_SETTING(r_fxaa);
+SPADES_SETTING(r_multisamples);
 SPADES_SETTING(r_softParticles);
 SPADES_SETTING(r_outlines);
 
@@ -157,6 +160,7 @@ namespace spades {
 			if (mapShadowRenderer)
 				fogFilter = stmp::make_unique<VulkanFogFilter>(*this);
 			depthOfFieldFilter = stmp::make_unique<VulkanDepthOfFieldFilter>(*this);
+			fxaaFilter = stmp::make_unique<VulkanFXAAFilter>(*this);
 
 			inited = true;
 			lastSwapchainGeneration = device->GetSwapchainGeneration();
@@ -194,6 +198,7 @@ namespace spades {
 			flatMapRenderer.reset();
 			shadowMapRenderer.reset();
 			mapShadowRenderer.reset();
+			fxaaFilter.reset();
 			depthOfFieldFilter.reset();
 			fogFilter.reset();
 			bloomFilter.reset();
@@ -1815,7 +1820,8 @@ namespace spades {
 			RunFilter(bloomFilter.get(),        (int)r_bloom != 0);
 			RunFilter(fogFilter.get(),          (int)r_fogShadow != 0);
 			RunFilter(depthOfFieldFilter.get(), (int)r_depthOfField != 0);
-			// fxaaFilter plugged in here once AA-1 is wired
+			// FXAA runs last; skip when MSAA is active (mutually exclusive)
+			RunFilter(fxaaFilter.get(), (int)r_fxaa != 0 && (int)r_multisamples == 0);
 
 			// --- Blit final post-process image to swapchain ---
 			// Transition currentInput from SHADER_READ_ONLY to TRANSFER_SRC
