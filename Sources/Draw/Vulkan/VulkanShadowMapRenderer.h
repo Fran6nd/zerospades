@@ -66,12 +66,13 @@ namespace spades {
 			VkPipelineLayout modelPipelineLayout;
 
 			// Cascade shadow descriptor exposed to scene renderers (set 1)
-			// binding 0: UBO with 3 cascade matrices + 3 split depths
+			// binding 0: UBO with 3 cascade matrices
 			// binding 1-3: sampler2D for each cascade depth map
 			VkDescriptorSetLayout cascadeDescriptorSetLayout;
 			VkDescriptorPool cascadeDescriptorPool;
 			VkDescriptorSet cascadeDescriptorSet;
 			Handle<VulkanBuffer> cascadeMatrixBuffer;
+			Handle<VulkanImage> nullDepthImage; // 1x1 depth=1.0 placeholder for unrendered cascades
 
 			void BuildMatrix(float near, float far);
 			void CreateRenderPass();

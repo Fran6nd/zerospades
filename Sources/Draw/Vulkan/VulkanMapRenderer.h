@@ -115,7 +115,7 @@ namespace spades {
 			void RenderDepthPass(VkCommandBuffer commandBuffer);
 			void RenderShadowMapPass(VkCommandBuffer commandBuffer, VkPipelineLayout shadowPipelineLayout);
 
-			void CreatePipelines(VkRenderPass renderPass);
+			void CreatePipelines(VkRenderPass renderPass, VkDescriptorSetLayout cascadeLayout = VK_NULL_HANDLE);
 			void DestroyPipelines();
 
 			void UpdateShadowDescriptor(VulkanImage* shadowImage);

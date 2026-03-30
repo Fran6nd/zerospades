@@ -391,7 +391,7 @@ namespace spades {
 
 			vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, activePipeline);
 
-			// Bind shadow map descriptor set
+			// Bind shadow map descriptor set (set 0)
 			VulkanMapRenderer* mapRendererPrerender = renderer.GetMapRenderer();
 			if (mapRendererPrerender) {
 				VkDescriptorSet shadowDs = mapRendererPrerender->GetShadowDescriptorSet();
@@ -399,6 +399,16 @@ namespace spades {
 					vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
 					                        sharedPipeline.pipelineLayout, 0, 1,
 					                        &shadowDs, 0, nullptr);
+				}
+			}
+
+			// Bind cascade shadow descriptor set (set 1)
+			if (auto* smr = renderer.GetShadowMapRenderer()) {
+				VkDescriptorSet cascadeDs = smr->GetCascadeDescriptorSet();
+				if (cascadeDs != VK_NULL_HANDLE) {
+					vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+					                        sharedPipeline.pipelineLayout, 1, 1,
+					                        &cascadeDs, 0, nullptr);
 				}
 			}
 
@@ -533,7 +543,7 @@ namespace spades {
 			// Bind pipeline
 			vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, activePipeline);
 
-			// Bind shadow map descriptor set from map renderer
+			// Bind shadow map descriptor set from map renderer (set 0)
 			VulkanMapRenderer* mapRenderer = renderer.GetMapRenderer();
 			if (mapRenderer) {
 				VkDescriptorSet shadowDs = mapRenderer->GetShadowDescriptorSet();
@@ -541,6 +551,16 @@ namespace spades {
 					vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
 					                        sharedPipeline.pipelineLayout, 0, 1,
 					                        &shadowDs, 0, nullptr);
+				}
+			}
+
+			// Bind cascade shadow descriptor set (set 1)
+			if (auto* smr = renderer.GetShadowMapRenderer()) {
+				VkDescriptorSet cascadeDs = smr->GetCascadeDescriptorSet();
+				if (cascadeDs != VK_NULL_HANDLE) {
+					vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+					                        sharedPipeline.pipelineLayout, 1, 1,
+					                        &cascadeDs, 0, nullptr);
 				}
 			}
 
@@ -1045,7 +1065,7 @@ namespace spades {
 				}
 			}
 
-			// Pipeline layout with push constants and shadow map descriptor set
+			// Pipeline layout with push constants, shadow map descriptor (set 0), and cascade descriptor (set 1)
 			VkPushConstantRange pushConstantRange{};
 			pushConstantRange.offset = 0;
 			if (sharedPipeline.physicalLighting) {
@@ -1057,10 +1077,16 @@ namespace spades {
 				pushConstantRange.size = 172;
 			}
 
+			VkDescriptorSetLayout cascadeLayout = VK_NULL_HANDLE;
+			if (auto* smr = renderer.GetShadowMapRenderer()) {
+				cascadeLayout = smr->GetCascadeDescriptorSetLayout();
+			}
+
+			VkDescriptorSetLayout setLayouts[2] = { sharedPipeline.descriptorSetLayout, cascadeLayout };
 			VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
 			pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-			pipelineLayoutInfo.setLayoutCount = 1;
-			pipelineLayoutInfo.pSetLayouts = &sharedPipeline.descriptorSetLayout;
+			pipelineLayoutInfo.setLayoutCount = (cascadeLayout != VK_NULL_HANDLE) ? 2 : 1;
+			pipelineLayoutInfo.pSetLayouts = setLayouts;
 			pipelineLayoutInfo.pushConstantRangeCount = 1;
 			pipelineLayoutInfo.pPushConstantRanges = &pushConstantRange;
 

@@ -39,6 +39,7 @@ layout(location = 1) out vec3 ambientLight;    // ambient lighting component
 layout(location = 2) out vec3 fogDensity;
 layout(location = 3) out vec3 outFogColor;
 layout(location = 4) out vec3 shadowCoord;     // shadow map coordinates
+layout(location = 5) out vec3 outWorldPos;     // world-space position for cascade shadows
 
 void main() {
 	// Convert uint8 position to float
@@ -73,6 +74,9 @@ void main() {
 	// mapShadowCoord.xy /= 512.0 (normalize to texture coords)
 	vec3 wPos = worldPos.xyz;
 	shadowCoord = vec3(wPos.x / 512.0, (wPos.y - wPos.z) / 512.0, wPos.z / 255.0);
+
+	// World position for cascade shadow sampling in fragment shader
+	outWorldPos = wPos;
 
 	// Fog density based on horizontal distance (matching SW/GL implementation)
 	vec2 horzRelativePos = worldPos.xy - pushConstants.viewOrigin.xy;

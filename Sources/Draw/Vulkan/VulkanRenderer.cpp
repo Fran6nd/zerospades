@@ -821,23 +821,27 @@ namespace spades {
 				mapShadowRenderer.reset();
 			}
 
+			// Initialize cascade shadow map renderer BEFORE map renderer so pipeline layouts can
+			// include the cascade descriptor set layout
+			if (map) {
+				shadowMapRenderer = stmp::make_unique<VulkanShadowMapRenderer>(*this);
+			} else {
+				shadowMapRenderer.reset();
+			}
+
 			// Initialize map renderer
 			if (map) {
+				VkDescriptorSetLayout cascadeLayout = shadowMapRenderer
+					? shadowMapRenderer->GetCascadeDescriptorSetLayout()
+					: VK_NULL_HANDLE;
 				mapRenderer = stmp::make_unique<VulkanMapRenderer>(map, *this);
-				mapRenderer->CreatePipelines(framebufferManager->GetRenderPass()); // Use offscreen render pass for 3D rendering
+				mapRenderer->CreatePipelines(framebufferManager->GetRenderPass(), cascadeLayout);
 				// Link shadow texture to map renderer
 				if (mapShadowRenderer) {
 					mapRenderer->UpdateShadowDescriptor(mapShadowRenderer->GetShadowImage());
 				}
 			} else {
 				mapRenderer.reset();
-			}
-
-			// Initialize shadow map renderer (cascaded depth maps for fog)
-			if (map) {
-				shadowMapRenderer = stmp::make_unique<VulkanShadowMapRenderer>(*this);
-			} else {
-				shadowMapRenderer.reset();
 			}
 
 			// Initialize flat map renderer (minimap)

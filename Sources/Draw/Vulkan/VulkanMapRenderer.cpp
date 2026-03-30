@@ -468,7 +468,7 @@ namespace spades {
 			}
 		}
 
-		void VulkanMapRenderer::CreatePipelines(VkRenderPass renderPass) {
+		void VulkanMapRenderer::CreatePipelines(VkRenderPass renderPass, VkDescriptorSetLayout cascadeLayout) {
 			SPADES_MARK_FUNCTION();
 
 			VkDevice vkDevice = device->GetDevice();
@@ -689,10 +689,11 @@ namespace spades {
 				pushConstantRange.size = 108;
 			}
 
+			VkDescriptorSetLayout setLayouts[2] = { descriptorSetLayout, cascadeLayout };
 			VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
 			pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-			pipelineLayoutInfo.setLayoutCount = 1;
-			pipelineLayoutInfo.pSetLayouts = &descriptorSetLayout;
+			pipelineLayoutInfo.setLayoutCount = (cascadeLayout != VK_NULL_HANDLE) ? 2 : 1;
+			pipelineLayoutInfo.pSetLayouts = setLayouts;
 			pipelineLayoutInfo.pushConstantRangeCount = 1;
 			pipelineLayoutInfo.pPushConstantRanges = &pushConstantRange;
 

@@ -25,6 +25,7 @@
 #include "VulkanMapChunk.h"
 #include "VulkanMapRenderer.h"
 #include "VulkanRenderer.h"
+#include "VulkanShadowMapRenderer.h"
 #include "VulkanBuffer.h"
 #include "VulkanDynamicLight.h"
 #include <Gui/SDLVulkanDevice.h>
@@ -437,11 +438,24 @@ namespace spades {
 				                   0, sizeof(pushConstants), &pushConstants);
 			}
 
-			// Bind shadow map descriptor set
+			// Bind shadow map descriptor set (set 0: static height-map shadow)
 			if (renderer.textureDescriptorSet != VK_NULL_HANDLE) {
 				vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
 				                        renderer.pipelineLayout, 0, 1,
 				                        &renderer.textureDescriptorSet, 0, nullptr);
+			}
+
+			// Bind cascade shadow descriptor set (set 1: dynamic model shadows)
+			{
+				VulkanShadowMapRenderer* smr = renderer.renderer.GetShadowMapRenderer();
+				if (smr) {
+					VkDescriptorSet cascadeDs = smr->GetCascadeDescriptorSet();
+					if (cascadeDs != VK_NULL_HANDLE) {
+						vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+						                        renderer.pipelineLayout, 1, 1,
+						                        &cascadeDs, 0, nullptr);
+					}
+				}
 			}
 
 			// Bind vertex buffer

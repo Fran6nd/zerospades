@@ -40,6 +40,7 @@ layout(location = 2) out vec3 customColorOut;
 layout(location = 3) out vec3 shadowCoord;     // shadow map coordinates
 layout(location = 4) out vec3 fogDensityOut;
 layout(location = 5) out vec3 outFogColor;
+layout(location = 6) out vec3 outWorldPos;     // world-space position for cascade shadows
 
 void main() {
 	// Convert uint8 position to float
@@ -70,6 +71,9 @@ void main() {
 
 	// Shadow map coordinates (sun projects diagonally along y-z)
 	shadowCoord = vec3(worldPos.x / 512.0, (worldPos.y - worldPos.z) / 512.0, worldPos.z / 255.0);
+
+	// World position for cascade shadow sampling in fragment shader
+	outWorldPos = worldPos;
 
 	// Fog density pre-computed on CPU from model world position
 	fogDensityOut = vec3(pushConstants.fogDensity);

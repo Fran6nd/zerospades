@@ -106,13 +106,21 @@ namespace spades {
 			subpass.colorAttachmentCount = 0;
 			subpass.pDepthStencilAttachment = &depthAttachmentRef;
 
-			VkSubpassDependency dependency{};
-			dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
-			dependency.dstSubpass = 0;
-			dependency.srcStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
-			dependency.dstStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
-			dependency.srcAccessMask = 0;
-			dependency.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+			VkSubpassDependency dependencies[2]{};
+			// Wait for previous passes before writing depth
+			dependencies[0].srcSubpass = VK_SUBPASS_EXTERNAL;
+			dependencies[0].dstSubpass = 0;
+			dependencies[0].srcStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+			dependencies[0].dstStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+			dependencies[0].srcAccessMask = 0;
+			dependencies[0].dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+			// Ensure depth write is visible to fragment shader reads in subsequent passes
+			dependencies[1].srcSubpass = 0;
+			dependencies[1].dstSubpass = VK_SUBPASS_EXTERNAL;
+			dependencies[1].srcStageMask = VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+			dependencies[1].dstStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+			dependencies[1].srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+			dependencies[1].dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
 
 			VkRenderPassCreateInfo renderPassInfo{};
 			renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
@@ -120,8 +128,8 @@ namespace spades {
 			renderPassInfo.pAttachments = &depthAttachment;
 			renderPassInfo.subpassCount = 1;
 			renderPassInfo.pSubpasses = &subpass;
-			renderPassInfo.dependencyCount = 1;
-			renderPassInfo.pDependencies = &dependency;
+			renderPassInfo.dependencyCount = 2;
+			renderPassInfo.pDependencies = dependencies;
 
 			if (vkCreateRenderPass(device->GetDevice(), &renderPassInfo, nullptr, &renderPass) != VK_SUCCESS) {
 				SPRaise("Failed to create shadow map render pass");
@@ -603,22 +611,120 @@ namespace spades {
 			if (vkAllocateDescriptorSets(vkDevice, &allocInfo, &cascadeDescriptorSet) != VK_SUCCESS)
 				SPRaise("Failed to allocate cascade shadow descriptor set");
 
-			// Write UBO binding (depth images written in Render() after they exist)
+			// Initialize UBO with "outside range" matrices so unrendered cascades return no-shadow
+			{
+				CascadeUBO initUBO{};
+				for (int i = 0; i < NumSlices; i++) {
+					// Matrix that maps any world pos to clip (2, 2, 0, 1) -> UV (1.5, 1.5) = outside [0,1]
+					memset(initUBO.matrices[i].m, 0, sizeof(initUBO.matrices[i].m));
+					initUBO.matrices[i].m[12] = 2.0f; // col3.x
+					initUBO.matrices[i].m[13] = 2.0f; // col3.y
+					initUBO.matrices[i].m[15] = 1.0f; // col3.w
+				}
+				void* p = cascadeMatrixBuffer->Map();
+				memcpy(p, &initUBO, sizeof(initUBO));
+				cascadeMatrixBuffer->Unmap();
+			}
+
+			// Create 1x1 placeholder depth image (depth=1.0 = fully lit, no shadow)
+			nullDepthImage = Handle<VulkanImage>::New(
+				device, 1, 1,
+				VK_FORMAT_D32_SFLOAT,
+				VK_IMAGE_TILING_OPTIMAL,
+				VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
+				VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
+			);
+			nullDepthImage->CreateImageView(VK_IMAGE_ASPECT_DEPTH_BIT);
+			nullDepthImage->CreateSampler(VK_FILTER_NEAREST, VK_FILTER_NEAREST,
+				VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, false);
+
+			// Initialize null depth image to depth=1.0 via one-shot command buffer
+			{
+				VkCommandBufferAllocateInfo cbAllocInfo{};
+				cbAllocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+				cbAllocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+				cbAllocInfo.commandPool = device->GetCommandPool();
+				cbAllocInfo.commandBufferCount = 1;
+
+				VkCommandBuffer cb;
+				vkAllocateCommandBuffers(vkDevice, &cbAllocInfo, &cb);
+
+				VkCommandBufferBeginInfo beginInfo{};
+				beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+				beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+				vkBeginCommandBuffer(cb, &beginInfo);
+
+				// Transition UNDEFINED → TRANSFER_DST_OPTIMAL for clear
+				VkImageMemoryBarrier barrier{};
+				barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+				barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+				barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+				barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+				barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+				barrier.image = nullDepthImage->GetImage();
+				barrier.subresourceRange = {VK_IMAGE_ASPECT_DEPTH_BIT, 0, 1, 0, 1};
+				barrier.srcAccessMask = 0;
+				barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+				vkCmdPipelineBarrier(cb,
+					VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
+					0, 0, nullptr, 0, nullptr, 1, &barrier);
+
+				// Clear to depth=1.0
+				VkClearDepthStencilValue clearVal{1.0f, 0};
+				VkImageSubresourceRange range{VK_IMAGE_ASPECT_DEPTH_BIT, 0, 1, 0, 1};
+				vkCmdClearDepthStencilImage(cb, nullDepthImage->GetImage(),
+					VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &clearVal, 1, &range);
+
+				// Transition TRANSFER_DST_OPTIMAL → DEPTH_STENCIL_READ_ONLY_OPTIMAL
+				barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+				barrier.newLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
+				barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+				barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+				vkCmdPipelineBarrier(cb,
+					VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+					0, 0, nullptr, 0, nullptr, 1, &barrier);
+
+				vkEndCommandBuffer(cb);
+
+				VkSubmitInfo submitInfo{};
+				submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+				submitInfo.commandBufferCount = 1;
+				submitInfo.pCommandBuffers = &cb;
+				vkQueueSubmit(device->GetGraphicsQueue(), 1, &submitInfo, VK_NULL_HANDLE);
+				vkQueueWaitIdle(device->GetGraphicsQueue());
+				vkFreeCommandBuffers(vkDevice, device->GetCommandPool(), 1, &cb);
+			}
+
+			// Write UBO binding and initialize sampler bindings with null depth image
 			VkDescriptorBufferInfo bufInfo{};
 			bufInfo.buffer = cascadeMatrixBuffer->GetBuffer();
 			bufInfo.offset = 0;
 			bufInfo.range = sizeof(CascadeUBO);
 
-			VkWriteDescriptorSet uboWrite{};
-			uboWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-			uboWrite.dstSet = cascadeDescriptorSet;
-			uboWrite.dstBinding = 0;
-			uboWrite.dstArrayElement = 0;
-			uboWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-			uboWrite.descriptorCount = 1;
-			uboWrite.pBufferInfo = &bufInfo;
+			VkWriteDescriptorSet writes[4]{};
+			writes[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+			writes[0].dstSet = cascadeDescriptorSet;
+			writes[0].dstBinding = 0;
+			writes[0].dstArrayElement = 0;
+			writes[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+			writes[0].descriptorCount = 1;
+			writes[0].pBufferInfo = &bufInfo;
 
-			vkUpdateDescriptorSets(vkDevice, 1, &uboWrite, 0, nullptr);
+			VkDescriptorImageInfo nullImgInfos[NumSlices]{};
+			for (int i = 0; i < NumSlices; i++) {
+				nullImgInfos[i].imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
+				nullImgInfos[i].imageView = nullDepthImage->GetImageView();
+				nullImgInfos[i].sampler = nullDepthImage->GetSampler();
+
+				writes[1 + i].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+				writes[1 + i].dstSet = cascadeDescriptorSet;
+				writes[1 + i].dstBinding = 1 + i;
+				writes[1 + i].dstArrayElement = 0;
+				writes[1 + i].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+				writes[1 + i].descriptorCount = 1;
+				writes[1 + i].pImageInfo = &nullImgInfos[i];
+			}
+			vkUpdateDescriptorSets(vkDevice, 4, writes, 0, nullptr);
 
 			SPLog("Cascade shadow descriptor created successfully");
 		}
@@ -634,6 +740,7 @@ namespace spades {
 				cascadeDescriptorSet = VK_NULL_HANDLE;
 			}
 			cascadeMatrixBuffer = nullptr;
+			nullDepthImage = nullptr;
 			if (cascadeDescriptorSetLayout != VK_NULL_HANDLE) {
 				vkDestroyDescriptorSetLayout(vkDevice, cascadeDescriptorSetLayout, nullptr);
 				cascadeDescriptorSetLayout = VK_NULL_HANDLE;
