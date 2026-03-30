@@ -195,7 +195,10 @@ namespace spades {
 			VkPipelineMultisampleStateCreateInfo multisampling{};
 			multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
 			multisampling.sampleShadingEnable = VK_FALSE;
-			multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+			// The soft-particle pipeline targets the 1-sample sprite render pass.
+			// The non-soft pipeline targets the offscreen pass, which may be MSAA.
+			multisampling.rasterizationSamples = softParticles ? VK_SAMPLE_COUNT_1_BIT
+			                                                   : renderer.GetSampleCount();
 
 			VkPipelineDepthStencilStateCreateInfo depthStencil{};
 			depthStencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;

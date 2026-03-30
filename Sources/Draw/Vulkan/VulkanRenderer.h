@@ -295,6 +295,7 @@ namespace spades {
 			VulkanShadowMapRenderer* GetShadowMapRenderer() { return shadowMapRenderer.get(); }
 			VulkanMapShadowRenderer* GetMapShadowRenderer() { return mapShadowRenderer.get(); }
 			VulkanFramebufferManager* GetFramebufferManager() { return framebufferManager.get(); }
+			VkSampleCountFlagBits GetSampleCount() const;
 			VkPipelineCache GetPipelineCache() const;
 
 		// Program registration API

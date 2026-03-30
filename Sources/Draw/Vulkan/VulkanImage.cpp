@@ -28,7 +28,8 @@ namespace spades {
 
 		VulkanImage::VulkanImage(Handle<gui::SDLVulkanDevice> dev, uint32_t w, uint32_t h,
 		                         VkFormat fmt, VkImageTiling tiling, VkImageUsageFlags usage,
-		                         VkMemoryPropertyFlags properties)
+		                         VkMemoryPropertyFlags properties,
+		                         VkSampleCountFlagBits samples)
 		: device(std::move(dev)),
 		  image(VK_NULL_HANDLE),
 		  allocation(VK_NULL_HANDLE),
@@ -57,7 +58,7 @@ namespace spades {
 			imageInfo.tiling = tiling;
 			imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 			imageInfo.usage = usage;
-			imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+			imageInfo.samples = samples;
 			imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
 			// Use dedicated allocation for images to avoid MoltenVK's MTLHeap-based

@@ -1494,6 +1494,10 @@ namespace spades {
 		return pipelineCache ? pipelineCache->GetCache() : VK_NULL_HANDLE;
 	}
 
+	VkSampleCountFlagBits VulkanRenderer::GetSampleCount() const {
+		return framebufferManager ? framebufferManager->GetSampleCount() : VK_SAMPLE_COUNT_1_BIT;
+	}
+
 	void VulkanRenderer::QueueBufferForDeletion(Handle<VulkanBuffer> buffer) {
 			if (buffer) {
 				DeferredDeletion deletion;
@@ -1642,7 +1646,11 @@ namespace spades {
 			modelRenderer->RenderSunlightPass(commandBuffer, true);
 		}
 
-		bool useSoftParticles = spriteRenderer && spriteRenderer->IsSoftParticles();
+		// Soft particles and fog shadow both require sampling the 1-sample depth texture.
+		// When MSAA is active the depth buffer is multisampled and cannot be used as a
+		// combined image sampler, so both features are disabled for this frame.
+		bool msaaActive = framebufferManager && framebufferManager->GetSampleCount() > VK_SAMPLE_COUNT_1_BIT;
+		bool useSoftParticles = !msaaActive && spriteRenderer && spriteRenderer->IsSoftParticles();
 
 			// Render sprites (non-soft mode: inside offscreen pass with hardware depth test)
 			if (!useSoftParticles) {
@@ -1670,10 +1678,10 @@ namespace spades {
 			Handle<VulkanImage> offscreenDepth = framebufferManager->GetDepthImage();
 
 			if (useSoftParticles) {
-				// Soft particles: transition depth to shader-readable, render sprites
-				// in a color-only pass sampling the depth texture
+				// Soft particles: transition 1-sample depth to shader-readable, render
+				// sprites in a color-only pass that samples it for a depth-fade effect.
+				// This path is only reached when MSAA is disabled (enforced above).
 
-				// Transition depth to SHADER_READ_ONLY for sampling
 				VkImageMemoryBarrier depthBarrier{};
 				depthBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
 				depthBarrier.oldLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
@@ -1706,7 +1714,6 @@ namespace spades {
 
 				vkCmdBeginRenderPass(commandBuffer, &spriteRenderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 
-				// Set viewport and scissor
 				VkViewport spriteViewport{};
 				spriteViewport.x = 0.0f;
 				spriteViewport.y = static_cast<float>(renderHeight);
@@ -1721,15 +1728,13 @@ namespace spades {
 				spriteScissor.extent = {static_cast<uint32_t>(renderWidth), static_cast<uint32_t>(renderHeight)};
 				vkCmdSetScissor(commandBuffer, 0, 1, &spriteScissor);
 
-				// Render soft sprites
 				if (spriteRenderer) {
 					spriteRenderer->Render(commandBuffer, imageIndex);
 				}
 
 				vkCmdEndRenderPass(commandBuffer);
 
-				// Transition color to SHADER_READ_ONLY for water/post-processing
-				// (depth is already in SHADER_READ_ONLY)
+				// Transition color to SHADER_READ_ONLY (depth is already there)
 				VkImageMemoryBarrier colorBarrier{};
 				colorBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
 				colorBarrier.oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
@@ -1749,8 +1754,17 @@ namespace spades {
 					VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
 					VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
 					0, 0, nullptr, 0, nullptr, 1, &colorBarrier);
+
+			} else if (msaaActive) {
+				// MSAA resolve happened inside the render pass.
+				// offscreenColor (renderColorImage) is already in SHADER_READ_ONLY_OPTIMAL
+				// from the resolve attachment's finalLayout — no barrier needed for color.
+				// The MSAA depth image stays in DEPTH_STENCIL_ATTACHMENT_OPTIMAL and is
+				// never sampled (fog/soft-particles disabled above).
+				(void)offscreenDepth; // unused in this path
+
 			} else {
-				// Non-soft: transition both color and depth to shader read-only
+				// Non-soft, non-MSAA: transition both color and depth to SHADER_READ_ONLY
 				VkImageMemoryBarrier barriers[2]{};
 				barriers[0].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
 				barriers[0].oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
@@ -1818,10 +1832,11 @@ namespace spades {
 
 			RunFilter(autoExposureFilter.get(), (int)r_hdr != 0);
 			RunFilter(bloomFilter.get(),        (int)r_bloom != 0);
-			RunFilter(fogFilter.get(),          (int)r_fogShadow != 0);
+			// Fog filter samples the depth texture — disabled when MSAA is active
+			RunFilter(fogFilter.get(),          (int)r_fogShadow != 0 && !msaaActive);
 			RunFilter(depthOfFieldFilter.get(), (int)r_depthOfField != 0);
-			// FXAA runs last; skip when MSAA is active (mutually exclusive)
-			RunFilter(fxaaFilter.get(), (int)r_fxaa != 0 && (int)r_multisamples == 0);
+			// FXAA runs last; mutually exclusive with MSAA
+			RunFilter(fxaaFilter.get(), (int)r_fxaa != 0 && !msaaActive);
 
 			// --- Blit final post-process image to swapchain ---
 			// Transition currentInput from SHADER_READ_ONLY to TRANSFER_SRC
@@ -2068,7 +2083,7 @@ namespace spades {
 			VkPipelineMultisampleStateCreateInfo multisampling{};
 			multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
 			multisampling.sampleShadingEnable = VK_FALSE;
-			multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+			multisampling.rasterizationSamples = GetSampleCount();
 
 			// Depth stencil - no depth test, sky is always in background
 			VkPipelineDepthStencilStateCreateInfo depthStencil{};
@@ -2264,7 +2279,7 @@ namespace spades {
 
 			VkPipelineMultisampleStateCreateInfo multisampling{};
 			multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
-			multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+			multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT; // swapchain pass, always 1-sample
 
 			// No depth test — this is a 2D post-process over the swapchain image
 			VkPipelineDepthStencilStateCreateInfo depthStencil{};
@@ -2533,7 +2548,7 @@ namespace spades {
 
 			VkPipelineMultisampleStateCreateInfo multisampling{};
 			multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
-			multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+			multisampling.rasterizationSamples = GetSampleCount();
 
 			VkPipelineDepthStencilStateCreateInfo depthStencil{};
 			depthStencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;

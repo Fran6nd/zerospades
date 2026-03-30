@@ -85,10 +85,19 @@ namespace spades {
 			VkFormat fbColorFormat;
 			VkFormat fbDepthFormat;
 
-			// Main render framebuffer
-			VkFramebuffer renderFramebuffer;
+			// MSAA sample count (VK_SAMPLE_COUNT_1_BIT when MSAA is disabled)
+			VkSampleCountFlagBits msaaSamples;
+
+			// 1-sample resolve targets (always present; used by post-process chain and blit)
 			Handle<VulkanImage> renderColorImage;
 			Handle<VulkanImage> renderDepthImage;
+
+			// MSAA render targets (only allocated when msaaSamples > 1)
+			Handle<VulkanImage> msaaColorImage;
+			Handle<VulkanImage> msaaDepthImage;
+
+			// Main render framebuffer
+			VkFramebuffer renderFramebuffer;
 
 			// Render pass used for all framebuffers
 			VkRenderPass renderPass;
@@ -110,9 +119,15 @@ namespace spades {
 
 			void MakeSureAllBuffersReleased();
 
-			Handle<VulkanImage> GetDepthImage() { return renderDepthImage; }
+			// Returns the depth image that was used as the depth attachment in the scene render pass.
+			// Non-MSAA: the 1-sample renderDepthImage.
+			// MSAA: the N-sample msaaDepthImage (cannot be sampled as sampler2D).
+			Handle<VulkanImage> GetDepthImage() {
+				return (msaaSamples > VK_SAMPLE_COUNT_1_BIT) ? msaaDepthImage : renderDepthImage;
+			}
 			Handle<VulkanImage> GetColorImage() { return renderColorImage; }
 			VkFormat GetMainColorFormat() { return fbColorFormat; }
+			VkSampleCountFlagBits GetSampleCount() { return msaaSamples; }
 			VkRenderPass GetRenderPass() { return renderPass; }
 			VkRenderPass GetSpriteRenderPass() { return spriteRenderPass; }
 			VkFramebuffer GetRenderFramebuffer() { return renderFramebuffer; }
