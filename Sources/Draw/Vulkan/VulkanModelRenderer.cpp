@@ -21,6 +21,7 @@
 #include "VulkanModelRenderer.h"
 #include "VulkanModel.h"
 #include "VulkanRenderer.h"
+#include "VulkanShadowMapRenderer.h"
 #include <Gui/SDLVulkanDevice.h>
 #include <Core/Debug.h>
 
@@ -51,12 +52,13 @@ namespace spades {
 			models[model->renderId].params.push_back(param);
 		}
 
-		void VulkanModelRenderer::RenderShadowMapPass(VkCommandBuffer commandBuffer) {
+		void VulkanModelRenderer::RenderShadowMapPass(VkCommandBuffer commandBuffer,
+		                                               VulkanShadowMapRenderer& shadowMapRenderer) {
 			SPADES_MARK_FUNCTION();
 
 			for (const auto& m : models) {
 				VulkanModel* model = m.model;
-				model->RenderShadowMapPass(commandBuffer, m.params);
+				model->RenderShadowMapPass(commandBuffer, m.params, shadowMapRenderer);
 			}
 		}
 

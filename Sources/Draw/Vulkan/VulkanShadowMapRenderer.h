@@ -53,6 +53,7 @@ namespace spades {
 			OBB3 obb;
 			float vpWidth, vpHeight;
 
+			// Map-chunk shadow pipeline (stride 20)
 			VkPipelineLayout pipelineLayout;
 			VkDescriptorSetLayout descriptorSetLayout;
 			VkPipeline pipeline;
@@ -60,11 +61,24 @@ namespace spades {
 			VkDescriptorSet descriptorSets[NumSlices];
 			Handle<VulkanBuffer> uniformBuffers[NumSlices];
 
+			// Model shadow pipeline (stride 12, full matrix push constant)
+			VkPipeline modelPipeline;
+			VkPipelineLayout modelPipelineLayout;
+
+			// Cascade shadow descriptor exposed to scene renderers (set 1)
+			// binding 0: UBO with 3 cascade matrices + 3 split depths
+			// binding 1-3: sampler2D for each cascade depth map
+			VkDescriptorSetLayout cascadeDescriptorSetLayout;
+			VkDescriptorPool cascadeDescriptorPool;
+			VkDescriptorSet cascadeDescriptorSet;
+			Handle<VulkanBuffer> cascadeMatrixBuffer;
+
 			void BuildMatrix(float near, float far);
 			void CreateRenderPass();
 			void CreateFramebuffers();
 			void CreatePipeline();
 			void CreateDescriptorSets();
+			void CreateCascadeDescriptor();
 			void DestroyResources();
 
 		public:
@@ -80,6 +94,10 @@ namespace spades {
 			const Matrix4* GetMatrices() const { return matrices; }
 			VulkanImage* GetShadowMapImage(int slice) { return shadowMapImages[slice].GetPointerOrNull(); }
 			VkPipelineLayout GetPipelineLayout() const { return pipelineLayout; }
+			VkPipeline GetModelPipeline() const { return modelPipeline; }
+			VkPipelineLayout GetModelPipelineLayout() const { return modelPipelineLayout; }
+			VkDescriptorSet GetCascadeDescriptorSet() const { return cascadeDescriptorSet; }
+			VkDescriptorSetLayout GetCascadeDescriptorSetLayout() const { return cascadeDescriptorSetLayout; }
 		};
 	}
 }

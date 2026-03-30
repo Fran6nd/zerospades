@@ -33,6 +33,7 @@ namespace spades {
 	namespace draw {
 		class VulkanRenderer;
 		class VulkanModel;
+		class VulkanShadowMapRenderer;
 
 		class VulkanModelRenderer {
 			VulkanRenderer& renderer;
@@ -52,7 +53,7 @@ namespace spades {
 
 			void AddModel(VulkanModel* model, const client::ModelRenderParam& param);
 
-			void RenderShadowMapPass(VkCommandBuffer commandBuffer);
+			void RenderShadowMapPass(VkCommandBuffer commandBuffer, VulkanShadowMapRenderer& shadowMapRenderer);
 
 			void Prerender(VkCommandBuffer commandBuffer, bool ghostPass);
 			void RenderSunlightPass(VkCommandBuffer commandBuffer, bool ghostPass);

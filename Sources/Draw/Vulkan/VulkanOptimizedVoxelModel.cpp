@@ -21,6 +21,7 @@
 #include "VulkanOptimizedVoxelModel.h"
 #include "VulkanRenderer.h"
 #include "VulkanMapRenderer.h"
+#include "VulkanShadowMapRenderer.h"
 #include "VulkanBuffer.h"
 #include "VulkanImage.h"
 #include "VulkanImageWrapper.h"
@@ -468,7 +469,8 @@ namespace spades {
 		}
 
 		void VulkanOptimizedVoxelModel::RenderShadowMapPass(VkCommandBuffer commandBuffer,
-		                                                    std::vector<client::ModelRenderParam> params) {
+		                                                    std::vector<client::ModelRenderParam> params,
+		                                                    VulkanShadowMapRenderer& shadowMapRenderer) {
 			SPADES_MARK_FUNCTION();
 
 			if (numIndices == 0 || !vertexBuffer || !indexBuffer)
@@ -477,18 +479,34 @@ namespace spades {
 			if (params.empty())
 				return;
 
-			// Bind vertex buffer
+			VkPipeline modelPipeline = shadowMapRenderer.GetModelPipeline();
+			VkPipelineLayout modelLayout = shadowMapRenderer.GetModelPipelineLayout();
+			if (modelPipeline == VK_NULL_HANDLE || modelLayout == VK_NULL_HANDLE)
+				return;
+
+			vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, modelPipeline);
+
 			VkBuffer vb = vertexBuffer->GetBuffer();
 			VkDeviceSize offsets[] = {0};
 			vkCmdBindVertexBuffers(commandBuffer, 0, 1, &vb, offsets);
-
-			// Bind index buffer
 			vkCmdBindIndexBuffer(commandBuffer, indexBuffer->GetBuffer(), 0, VK_INDEX_TYPE_UINT32);
 
-			// Render each model instance
 			for (const auto& param : params) {
 				if (param.depthHack || !param.castShadow || param.ghost)
 					continue;
+
+				// Push: mat4 modelMatrix (64) + vec3 modelOrigin (12) + float pad (4) = 80 bytes
+				struct {
+					Matrix4 modelMatrix;
+					Vector3 modelOrigin;
+					float pad;
+				} pc;
+				pc.modelMatrix = param.matrix;
+				pc.modelOrigin = origin;
+				pc.pad = 0.0f;
+
+				vkCmdPushConstants(commandBuffer, modelLayout, VK_SHADER_STAGE_VERTEX_BIT,
+				                   0, sizeof(pc), &pc);
 				vkCmdDrawIndexed(commandBuffer, numIndices, 1, 0, 0, 0);
 			}
 		}

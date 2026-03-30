@@ -170,6 +170,11 @@ namespace spades {
 		}
 
 		void VulkanImage::CreateImageView(VkImageAspectFlags aspectFlags) {
+			if (imageView != VK_NULL_HANDLE) {
+				vkDestroyImageView(device->GetDevice(), imageView, nullptr);
+				imageView = VK_NULL_HANDLE;
+			}
+
 			VkImageViewCreateInfo viewInfo{};
 			viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
 			viewInfo.image = image;

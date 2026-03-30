@@ -35,6 +35,7 @@ namespace spades {
 		class VulkanRenderer;
 		class VulkanBuffer;
 		class VulkanImage;
+		class VulkanShadowMapRenderer;
 
 		class VulkanOptimizedVoxelModel : public VulkanModel {
 			struct Vertex {
@@ -120,7 +121,8 @@ namespace spades {
 			               std::vector<client::ModelRenderParam> params,
 			               bool ghostPass) override;
 			void RenderShadowMapPass(VkCommandBuffer commandBuffer,
-			                         std::vector<client::ModelRenderParam> params) override;
+			                         std::vector<client::ModelRenderParam> params,
+			                         VulkanShadowMapRenderer& shadowMapRenderer) override;
 			void RenderSunlightPass(VkCommandBuffer commandBuffer,
 			                        std::vector<client::ModelRenderParam> params,
 			                        bool ghostPass) override;

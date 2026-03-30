@@ -28,6 +28,7 @@
 namespace spades {
 	namespace draw {
 		class VulkanModelRenderer;
+		class VulkanShadowMapRenderer;
 
 		class VulkanModel : public client::IModel {
 			friend class VulkanModelRenderer;
@@ -35,9 +36,10 @@ namespace spades {
 		public:
 			VulkanModel();
 
-			/** Renders for shadow map */
+			/** Renders for shadow map using model shadow pipeline from shadowMapRenderer */
 			virtual void RenderShadowMapPass(VkCommandBuffer commandBuffer,
-			                                 std::vector<client::ModelRenderParam> params) = 0;
+			                                 std::vector<client::ModelRenderParam> params,
+			                                 VulkanShadowMapRenderer& shadowMapRenderer) = 0;
 
 			/** Renders only in depth buffer (optional) */
 			virtual void Prerender(VkCommandBuffer commandBuffer,

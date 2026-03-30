@@ -46,7 +46,12 @@ namespace spades {
 		  pipelineLayout(VK_NULL_HANDLE),
 		  descriptorSetLayout(VK_NULL_HANDLE),
 		  pipeline(VK_NULL_HANDLE),
-		  descriptorPool(VK_NULL_HANDLE) {
+		  descriptorPool(VK_NULL_HANDLE),
+		  modelPipeline(VK_NULL_HANDLE),
+		  modelPipelineLayout(VK_NULL_HANDLE),
+		  cascadeDescriptorSetLayout(VK_NULL_HANDLE),
+		  cascadeDescriptorPool(VK_NULL_HANDLE),
+		  cascadeDescriptorSet(VK_NULL_HANDLE) {
 			SPADES_MARK_FUNCTION();
 
 			textureSize = (int)r_shadowMapSize;
@@ -67,6 +72,7 @@ namespace spades {
 				CreateFramebuffers();
 				CreatePipeline();
 				CreateDescriptorSets();
+				CreateCascadeDescriptor();
 			} catch (...) {
 				DestroyResources();
 				throw;
@@ -133,6 +139,16 @@ namespace spades {
 					VK_IMAGE_TILING_OPTIMAL,
 					VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
 					VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
+				);
+
+				// Replace the default color-aspect view with a depth-aspect view
+				shadowMapImages[i]->CreateImageView(VK_IMAGE_ASPECT_DEPTH_BIT);
+
+				// Create a NEAREST sampler so the depth value can be read in shaders
+				shadowMapImages[i]->CreateSampler(
+					VK_FILTER_NEAREST, VK_FILTER_NEAREST,
+					VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+					/*anisotropy=*/false
 				);
 
 				VkImageView attachments[] = { shadowMapImages[i]->GetImageView() };
@@ -358,6 +374,107 @@ namespace spades {
 			}
 
 			SPLog("Shadow map pipeline created successfully");
+
+			// ---------------------------------------------------------------
+			// Model shadow pipeline — same render pass, different vertex layout
+			// Vertex: uvec3 at location 0, stride 12 (VulkanOptimizedVoxelModel::Vertex)
+			// Push constants: mat4 modelMatrix (64) + vec3 modelOrigin (12) + float pad (4) = 80 bytes
+			// ---------------------------------------------------------------
+			{
+				std::vector<uint32_t> mVertCode = LoadSPIRVFile("Shaders/Vulkan/ShadowMapModel.vert.spv");
+				std::vector<uint32_t> mFragCode = LoadSPIRVFile("Shaders/Vulkan/ShadowMap.frag.spv");
+
+				VkShaderModuleCreateInfo mVertInfo{};
+				mVertInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+				mVertInfo.codeSize = mVertCode.size() * sizeof(uint32_t);
+				mVertInfo.pCode = mVertCode.data();
+				VkShaderModule mVertModule;
+				if (vkCreateShaderModule(vkDevice, &mVertInfo, nullptr, &mVertModule) != VK_SUCCESS)
+					SPRaise("Failed to create model shadow vertex shader module");
+
+				VkShaderModuleCreateInfo mFragInfo{};
+				mFragInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+				mFragInfo.codeSize = mFragCode.size() * sizeof(uint32_t);
+				mFragInfo.pCode = mFragCode.data();
+				VkShaderModule mFragModule;
+				if (vkCreateShaderModule(vkDevice, &mFragInfo, nullptr, &mFragModule) != VK_SUCCESS) {
+					vkDestroyShaderModule(vkDevice, mVertModule, nullptr);
+					SPRaise("Failed to create model shadow fragment shader module");
+				}
+
+				VkPipelineShaderStageCreateInfo mStages[2]{};
+				mStages[0].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+				mStages[0].stage = VK_SHADER_STAGE_VERTEX_BIT;
+				mStages[0].module = mVertModule;
+				mStages[0].pName = "main";
+				mStages[1].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+				mStages[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+				mStages[1].module = mFragModule;
+				mStages[1].pName = "main";
+
+				// Model vertex: uvec3 position at loc 0, stride 12
+				VkVertexInputBindingDescription mBinding{};
+				mBinding.binding = 0;
+				mBinding.stride = 12; // sizeof(VulkanOptimizedVoxelModel::Vertex)
+				mBinding.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+
+				VkVertexInputAttributeDescription mAttr{};
+				mAttr.binding = 0;
+				mAttr.location = 0;
+				mAttr.format = VK_FORMAT_R8G8B8_UINT;
+				mAttr.offset = 0;
+
+				VkPipelineVertexInputStateCreateInfo mVertexInput{};
+				mVertexInput.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+				mVertexInput.vertexBindingDescriptionCount = 1;
+				mVertexInput.pVertexBindingDescriptions = &mBinding;
+				mVertexInput.vertexAttributeDescriptionCount = 1;
+				mVertexInput.pVertexAttributeDescriptions = &mAttr;
+
+				// Push constants: mat4 modelMatrix (64) + vec3 modelOrigin (12) + float pad (4) = 80 bytes
+				VkPushConstantRange mPush{};
+				mPush.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+				mPush.offset = 0;
+				mPush.size = 80;
+
+				VkPipelineLayoutCreateInfo mLayoutInfo{};
+				mLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+				mLayoutInfo.setLayoutCount = 1;
+				mLayoutInfo.pSetLayouts = &descriptorSetLayout; // reuse same UBO layout
+				mLayoutInfo.pushConstantRangeCount = 1;
+				mLayoutInfo.pPushConstantRanges = &mPush;
+
+				if (vkCreatePipelineLayout(vkDevice, &mLayoutInfo, nullptr, &modelPipelineLayout) != VK_SUCCESS) {
+					vkDestroyShaderModule(vkDevice, mVertModule, nullptr);
+					vkDestroyShaderModule(vkDevice, mFragModule, nullptr);
+					SPRaise("Failed to create model shadow pipeline layout");
+				}
+
+				VkGraphicsPipelineCreateInfo mPipeInfo{};
+				mPipeInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+				mPipeInfo.stageCount = 2;
+				mPipeInfo.pStages = mStages;
+				mPipeInfo.pVertexInputState = &mVertexInput;
+				mPipeInfo.pInputAssemblyState = &inputAssembly;
+				mPipeInfo.pViewportState = &viewportState;
+				mPipeInfo.pRasterizationState = &rasterizer;
+				mPipeInfo.pMultisampleState = &multisampling;
+				mPipeInfo.pDepthStencilState = &depthStencil;
+				mPipeInfo.pColorBlendState = &colorBlending;
+				mPipeInfo.pDynamicState = &dynamicState;
+				mPipeInfo.layout = modelPipelineLayout;
+				mPipeInfo.renderPass = renderPass;
+				mPipeInfo.subpass = 0;
+				mPipeInfo.basePipelineHandle = VK_NULL_HANDLE;
+
+				result = vkCreateGraphicsPipelines(vkDevice, renderer.GetPipelineCache(), 1, &mPipeInfo, nullptr, &modelPipeline);
+				vkDestroyShaderModule(vkDevice, mVertModule, nullptr);
+				vkDestroyShaderModule(vkDevice, mFragModule, nullptr);
+				if (result != VK_SUCCESS)
+					SPRaise("Failed to create model shadow graphics pipeline");
+
+				SPLog("Model shadow pipeline created successfully");
+			}
 		}
 
 		void VulkanShadowMapRenderer::CreateDescriptorSets() {
@@ -422,10 +539,114 @@ namespace spades {
 			SPLog("Shadow map descriptor sets created successfully");
 		}
 
+		void VulkanShadowMapRenderer::CreateCascadeDescriptor() {
+			SPADES_MARK_FUNCTION();
+
+			VkDevice vkDevice = device->GetDevice();
+
+			// Layout: binding 0 = UBO (3 × mat4 cascade matrices), bindings 1-3 = cascade depth samplers
+			VkDescriptorSetLayoutBinding bindings[4]{};
+
+			// Binding 0: UBO with all cascade matrices
+			bindings[0].binding = 0;
+			bindings[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+			bindings[0].descriptorCount = 1;
+			bindings[0].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+
+			// Bindings 1-3: one depth sampler per cascade
+			for (int i = 0; i < NumSlices; i++) {
+				bindings[1 + i].binding = 1 + i;
+				bindings[1 + i].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+				bindings[1 + i].descriptorCount = 1;
+				bindings[1 + i].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+			}
+
+			VkDescriptorSetLayoutCreateInfo layoutInfo{};
+			layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+			layoutInfo.bindingCount = 4;
+			layoutInfo.pBindings = bindings;
+
+			if (vkCreateDescriptorSetLayout(vkDevice, &layoutInfo, nullptr, &cascadeDescriptorSetLayout) != VK_SUCCESS)
+				SPRaise("Failed to create cascade shadow descriptor set layout");
+
+			// UBO: 3 × mat4 (192 bytes)
+			struct CascadeUBO { Matrix4 matrices[NumSlices]; };
+			cascadeMatrixBuffer = Handle<VulkanBuffer>::New(
+				device,
+				sizeof(CascadeUBO),
+				VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+				VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
+			);
+
+			// Descriptor pool: 1 UBO + NumSlices samplers
+			VkDescriptorPoolSize poolSizes[2]{};
+			poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+			poolSizes[0].descriptorCount = 1;
+			poolSizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+			poolSizes[1].descriptorCount = NumSlices;
+
+			VkDescriptorPoolCreateInfo poolInfo{};
+			poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+			poolInfo.poolSizeCount = 2;
+			poolInfo.pPoolSizes = poolSizes;
+			poolInfo.maxSets = 1;
+
+			if (vkCreateDescriptorPool(vkDevice, &poolInfo, nullptr, &cascadeDescriptorPool) != VK_SUCCESS)
+				SPRaise("Failed to create cascade shadow descriptor pool");
+
+			VkDescriptorSetAllocateInfo allocInfo{};
+			allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+			allocInfo.descriptorPool = cascadeDescriptorPool;
+			allocInfo.descriptorSetCount = 1;
+			allocInfo.pSetLayouts = &cascadeDescriptorSetLayout;
+
+			if (vkAllocateDescriptorSets(vkDevice, &allocInfo, &cascadeDescriptorSet) != VK_SUCCESS)
+				SPRaise("Failed to allocate cascade shadow descriptor set");
+
+			// Write UBO binding (depth images written in Render() after they exist)
+			VkDescriptorBufferInfo bufInfo{};
+			bufInfo.buffer = cascadeMatrixBuffer->GetBuffer();
+			bufInfo.offset = 0;
+			bufInfo.range = sizeof(CascadeUBO);
+
+			VkWriteDescriptorSet uboWrite{};
+			uboWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+			uboWrite.dstSet = cascadeDescriptorSet;
+			uboWrite.dstBinding = 0;
+			uboWrite.dstArrayElement = 0;
+			uboWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+			uboWrite.descriptorCount = 1;
+			uboWrite.pBufferInfo = &bufInfo;
+
+			vkUpdateDescriptorSets(vkDevice, 1, &uboWrite, 0, nullptr);
+
+			SPLog("Cascade shadow descriptor created successfully");
+		}
+
 		void VulkanShadowMapRenderer::DestroyResources() {
 			SPADES_MARK_FUNCTION();
 
 			VkDevice vkDevice = device->GetDevice();
+
+			if (cascadeDescriptorPool != VK_NULL_HANDLE) {
+				vkDestroyDescriptorPool(vkDevice, cascadeDescriptorPool, nullptr);
+				cascadeDescriptorPool = VK_NULL_HANDLE;
+				cascadeDescriptorSet = VK_NULL_HANDLE;
+			}
+			cascadeMatrixBuffer = nullptr;
+			if (cascadeDescriptorSetLayout != VK_NULL_HANDLE) {
+				vkDestroyDescriptorSetLayout(vkDevice, cascadeDescriptorSetLayout, nullptr);
+				cascadeDescriptorSetLayout = VK_NULL_HANDLE;
+			}
+
+			if (modelPipeline != VK_NULL_HANDLE) {
+				vkDestroyPipeline(vkDevice, modelPipeline, nullptr);
+				modelPipeline = VK_NULL_HANDLE;
+			}
+			if (modelPipelineLayout != VK_NULL_HANDLE) {
+				vkDestroyPipelineLayout(vkDevice, modelPipelineLayout, nullptr);
+				modelPipelineLayout = VK_NULL_HANDLE;
+			}
 
 			if (descriptorPool != VK_NULL_HANDLE) {
 				vkDestroyDescriptorPool(vkDevice, descriptorPool, nullptr);
@@ -498,9 +719,8 @@ namespace spades {
 				BuildMatrix(near, far);
 				matrices[i] = matrix;
 
-				// Update uniform buffer with light space matrix
-				void* data;
-				data = uniformBuffers[i]->Map();
+				// Update per-cascade UBO with this slice's light-space matrix
+				void* data = uniformBuffers[i]->Map();
 				memcpy(data, &matrix, sizeof(Matrix4));
 				uniformBuffers[i]->Unmap();
 
@@ -519,7 +739,6 @@ namespace spades {
 
 				vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 
-				// Set viewport and scissor for shadow map
 				VkViewport viewport{};
 				viewport.x = 0.0f;
 				viewport.y = 0.0f;
@@ -534,29 +753,59 @@ namespace spades {
 				scissor.extent = {(uint32_t)textureSize, (uint32_t)textureSize};
 				vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
-				// Bind the shadow map pipeline
-				vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
+				vkCmdSetDepthBias(commandBuffer, 1.25f, 0.0f, 1.75f);
 
-				// Bind descriptor set with the light space matrix
+				// --- Map chunks (stride 20 pipeline) ---
+				vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
 				vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout,
 					0, 1, &descriptorSets[i], 0, nullptr);
 
-				// Set depth bias for shadow mapping (reduces shadow acne)
-				vkCmdSetDepthBias(commandBuffer, 1.25f, 0.0f, 1.75f);
-
-				// Render map shadow pass
 				VulkanMapRenderer* mapRenderer = renderer.GetMapRenderer();
 				if (mapRenderer) {
 					mapRenderer->RenderShadowMapPass(commandBuffer, pipelineLayout);
 				}
 
-				// Render model shadow pass
-				VulkanModelRenderer* modelRenderer = renderer.GetModelRenderer();
-				if (modelRenderer) {
-					modelRenderer->RenderShadowMapPass(commandBuffer);
+				// --- Model instances (stride 12 pipeline, per-instance push constants) ---
+				if (modelPipeline != VK_NULL_HANDLE) {
+					vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, modelPipeline);
+					// Reuse the same per-slice UBO descriptor (same layout, same binding)
+					vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, modelPipelineLayout,
+						0, 1, &descriptorSets[i], 0, nullptr);
+
+					VulkanModelRenderer* modelRenderer = renderer.GetModelRenderer();
+					if (modelRenderer) {
+						modelRenderer->RenderShadowMapPass(commandBuffer, *this);
+					}
 				}
 
 				vkCmdEndRenderPass(commandBuffer);
+			}
+
+			// Update cascade descriptor with all 3 matrices and shadow map images.
+			// This is done after all slices are rendered so the images are fully written.
+			if (cascadeDescriptorSet != VK_NULL_HANDLE && cascadeMatrixBuffer) {
+				struct CascadeUBO { Matrix4 m[NumSlices]; } ubo;
+				for (int i = 0; i < NumSlices; i++) ubo.m[i] = matrices[i];
+				void* p = cascadeMatrixBuffer->Map();
+				memcpy(p, &ubo, sizeof(ubo));
+				cascadeMatrixBuffer->Unmap();
+
+				VkWriteDescriptorSet writes[NumSlices]{};
+				VkDescriptorImageInfo imgInfos[NumSlices]{};
+				for (int i = 0; i < NumSlices; i++) {
+					imgInfos[i].imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
+					imgInfos[i].imageView = shadowMapImages[i]->GetImageView();
+					imgInfos[i].sampler = shadowMapImages[i]->GetSampler();
+
+					writes[i].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+					writes[i].dstSet = cascadeDescriptorSet;
+					writes[i].dstBinding = 1 + i;
+					writes[i].dstArrayElement = 0;
+					writes[i].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+					writes[i].descriptorCount = 1;
+					writes[i].pImageInfo = &imgInfos[i];
+				}
+				vkUpdateDescriptorSets(device->GetDevice(), NumSlices, writes, 0, nullptr);
 			}
 		}
 
