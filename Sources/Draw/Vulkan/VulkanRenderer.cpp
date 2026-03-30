@@ -37,6 +37,7 @@
 #include "VulkanProgramManager.h"
 #include "VulkanPipelineCache.h"
 #include "VulkanTemporaryImagePool.h"
+#include "VulkanPostProcessFilter.h"
 #include "VulkanAutoExposureFilter.h"
 #include "VulkanBloomFilter.h"
 #include "VulkanFogFilter.h"
@@ -1788,15 +1789,43 @@ namespace spades {
 				longSpriteRenderer->Clear();
 			}
 
-			// --- Blit offscreen image to swapchain ---
-			// Transition offscreen color from SHADER_READ_ONLY to TRANSFER_SRC
+			// --- Post-process filter chain (ping-pong) ---
+			// offscreenColor is in SHADER_READ_ONLY_OPTIMAL at this point.
+			// Each filter reads currentInput and writes to currentOutput (also SHADER_READ_ONLY_OPTIMAL).
+			// After the chain, currentInput is the final image ready for blit.
+			VulkanImage* currentInput  = offscreenColor.GetPointerOrNull();
+			VulkanImage* currentOutput = nullptr;
+
+			Handle<VulkanImage> ppTempImage;
+			if (temporaryImagePool) {
+				ppTempImage = temporaryImagePool->Acquire(
+				    static_cast<uint32_t>(renderWidth),
+				    static_cast<uint32_t>(renderHeight),
+				    framebufferManager->GetMainColorFormat());
+				currentOutput = ppTempImage.GetPointerOrNull();
+			}
+
+			auto RunFilter = [&](VulkanPostProcessFilter* filter, bool enabled) {
+				if (!enabled || !filter || !currentOutput) return;
+				filter->Filter(commandBuffer, currentInput, currentOutput);
+				std::swap(currentInput, currentOutput);
+			};
+
+			RunFilter(autoExposureFilter.get(), (int)r_hdr != 0);
+			RunFilter(bloomFilter.get(),        (int)r_bloom != 0);
+			RunFilter(fogFilter.get(),          (int)r_fogShadow != 0);
+			RunFilter(depthOfFieldFilter.get(), (int)r_depthOfField != 0);
+			// fxaaFilter plugged in here once AA-1 is wired
+
+			// --- Blit final post-process image to swapchain ---
+			// Transition currentInput from SHADER_READ_ONLY to TRANSFER_SRC
 			VkImageMemoryBarrier barrier1{};
 			barrier1.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
 			barrier1.oldLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 			barrier1.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
 			barrier1.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 			barrier1.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-			barrier1.image = offscreenColor->GetImage();
+			barrier1.image = currentInput->GetImage();
 			barrier1.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 			barrier1.subresourceRange.baseMipLevel = 0;
 			barrier1.subresourceRange.levelCount = 1;
@@ -1844,11 +1873,13 @@ namespace spades {
 			                            static_cast<int32_t>(device->GetSwapchainExtent().height), 1};
 
 			vkCmdBlitImage(commandBuffer,
-				offscreenColor->GetImage(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+				currentInput->GetImage(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
 				device->GetSwapchainImage(imageIndex), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
 				1, &blitRegion, VK_FILTER_LINEAR);
 
-			// Transition offscreen color back to SHADER_READ_ONLY for next frame
+			// Restore blit-source image to SHADER_READ_ONLY for next frame.
+			// (Temp pool images also need this so they are in the right layout when reacquired.)
+			barrier1.image = currentInput->GetImage();
 			barrier1.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
 			barrier1.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 			barrier1.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
@@ -1858,6 +1889,36 @@ namespace spades {
 				VK_PIPELINE_STAGE_TRANSFER_BIT,
 				VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
 				0, 0, nullptr, 0, nullptr, 1, &barrier1);
+
+			// If filters ran and we ping-ponged, offscreenColor is still in SHADER_READ_ONLY
+			// (it was never transitioned to TRANSFER_SRC). Re-declare it as COLOR_ATTACHMENT
+			// so it can be written in the next frame's offscreen render pass.
+			if (currentInput != offscreenColor.GetPointerOrNull()) {
+				VkImageMemoryBarrier restoreColor{};
+				restoreColor.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+				restoreColor.oldLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+				restoreColor.newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+				restoreColor.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+				restoreColor.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+				restoreColor.image = offscreenColor->GetImage();
+				restoreColor.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+				restoreColor.subresourceRange.baseMipLevel = 0;
+				restoreColor.subresourceRange.levelCount = 1;
+				restoreColor.subresourceRange.baseArrayLayer = 0;
+				restoreColor.subresourceRange.layerCount = 1;
+				restoreColor.srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
+				restoreColor.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+
+				vkCmdPipelineBarrier(commandBuffer,
+					VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+					VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+					0, 0, nullptr, 0, nullptr, 1, &restoreColor);
+			}
+
+			// Return temp image to pool
+			if (temporaryImagePool && ppTempImage) {
+				temporaryImagePool->Return(ppTempImage.GetPointerOrNull());
+			}
 
 			// Transition swapchain image to color attachment for UI rendering
 			barrier2.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
