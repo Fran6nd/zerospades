@@ -43,6 +43,7 @@
 #include "VulkanFogFilter.h"
 #include "VulkanDepthOfFieldFilter.h"
 #include "VulkanFXAAFilter.h"
+#include "VulkanSSAOFilter.h"
 #include <Gui/SDLVulkanDevice.h>
 #include <Client/GameMap.h>
 #include <Core/Bitmap.h>
@@ -59,6 +60,7 @@ SPADES_SETTING(r_bloom);
 SPADES_SETTING(r_fogShadow);
 SPADES_SETTING(r_depthOfField);
 SPADES_SETTING(r_fxaa);
+SPADES_SETTING(r_ssao);
 SPADES_SETTING(r_multisamples);
 SPADES_SETTING(r_softParticles);
 SPADES_SETTING(r_outlines);
@@ -161,6 +163,7 @@ namespace spades {
 				fogFilter = stmp::make_unique<VulkanFogFilter>(*this);
 			depthOfFieldFilter = stmp::make_unique<VulkanDepthOfFieldFilter>(*this);
 			fxaaFilter = stmp::make_unique<VulkanFXAAFilter>(*this);
+			ssaoFilter = stmp::make_unique<VulkanSSAOFilter>(*this);
 
 			inited = true;
 			lastSwapchainGeneration = device->GetSwapchainGeneration();
@@ -198,6 +201,7 @@ namespace spades {
 			flatMapRenderer.reset();
 			shadowMapRenderer.reset();
 			mapShadowRenderer.reset();
+			ssaoFilter.reset();
 			fxaaFilter.reset();
 			depthOfFieldFilter.reset();
 			fogFilter.reset();
@@ -1854,6 +1858,14 @@ namespace spades {
 			RunFilter(bloomFilter.get(),        (int)r_bloom != 0);
 			// Fog filter samples the depth texture — disabled when MSAA is active
 			RunFilter(fogFilter.get(),          (int)r_fogShadow != 0 && !msaaActive);
+
+			// SSAO samples the depth texture — disabled when MSAA is active.
+			// It has a non-standard signature so it is not called through RunFilter.
+			if ((int)r_ssao != 0 && !msaaActive && ssaoFilter && currentOutput) {
+				ssaoFilter->Filter(commandBuffer, currentInput, offscreenDepth.GetPointerOrNull(), currentOutput);
+				std::swap(currentInput, currentOutput);
+			}
+
 			RunFilter(depthOfFieldFilter.get(), (int)r_depthOfField != 0);
 			// FXAA runs last; mutually exclusive with MSAA
 			RunFilter(fxaaFilter.get(), (int)r_fxaa != 0 && !msaaActive);
