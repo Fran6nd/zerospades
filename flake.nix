@@ -40,6 +40,8 @@
                 freetype SDL2 SDL2_image libGL zlib curl glew opusfile libogg openal vulkan-loader vulkan-headers
               ] ++ lib.optionals stdenv.hostPlatform.isDarwin [
                 darwin.apple_sdk.frameworks.Cocoa
+              ] ++ lib.optionals stdenv.hostPlatform.isLinux [
+                xorg.libX11 xorg.libXext
               ]);
 
             cmakeFlags = [
