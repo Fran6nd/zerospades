@@ -1756,12 +1756,32 @@ namespace spades {
 					0, 0, nullptr, 0, nullptr, 1, &colorBarrier);
 
 			} else if (msaaActive) {
-				// MSAA resolve happened inside the render pass.
-				// offscreenColor (renderColorImage) is already in SHADER_READ_ONLY_OPTIMAL
-				// from the resolve attachment's finalLayout — no barrier needed for color.
-				// The MSAA depth image stays in DEPTH_STENCIL_ATTACHMENT_OPTIMAL and is
-				// never sampled (fog/soft-particles disabled above).
-				(void)offscreenDepth; // unused in this path
+				// MSAA resolve happened inside the render pass. The resolve attachment
+				// finalLayout transitions renderColorImage to SHADER_READ_ONLY_OPTIMAL, but
+				// that is only a layout transition — there is no implicit memory or execution
+				// dependency from the render pass write to subsequent fragment shader reads.
+				// An explicit barrier is required to ensure the resolve write is visible to
+				// the post-process filter chain.
+				VkImageMemoryBarrier resolveBarrier{};
+				resolveBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+				resolveBarrier.oldLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+				resolveBarrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+				resolveBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+				resolveBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+				resolveBarrier.image = offscreenColor->GetImage();
+				resolveBarrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+				resolveBarrier.subresourceRange.baseMipLevel = 0;
+				resolveBarrier.subresourceRange.levelCount = 1;
+				resolveBarrier.subresourceRange.baseArrayLayer = 0;
+				resolveBarrier.subresourceRange.layerCount = 1;
+				resolveBarrier.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+				resolveBarrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+
+				vkCmdPipelineBarrier(commandBuffer,
+					VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+					VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+					0, 0, nullptr, 0, nullptr, 1, &resolveBarrier);
+				(void)offscreenDepth; // MSAA depth is never sampled
 
 			} else {
 				// Non-soft, non-MSAA: transition both color and depth to SHADER_READ_ONLY
