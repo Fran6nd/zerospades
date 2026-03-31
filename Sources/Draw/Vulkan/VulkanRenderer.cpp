@@ -44,6 +44,7 @@
 #include "VulkanDepthOfFieldFilter.h"
 #include "VulkanFXAAFilter.h"
 #include "VulkanSSAOFilter.h"
+#include "VulkanColorCorrectionFilter.h"
 #include <Gui/SDLVulkanDevice.h>
 #include <Client/GameMap.h>
 #include <Core/Bitmap.h>
@@ -64,6 +65,7 @@ SPADES_SETTING(r_ssao);
 SPADES_SETTING(r_multisamples);
 SPADES_SETTING(r_softParticles);
 SPADES_SETTING(r_outlines);
+SPADES_SETTING(r_colorCorrection);
 
 namespace spades {
 	namespace draw {
@@ -164,6 +166,7 @@ namespace spades {
 			depthOfFieldFilter = stmp::make_unique<VulkanDepthOfFieldFilter>(*this);
 			fxaaFilter = stmp::make_unique<VulkanFXAAFilter>(*this);
 			ssaoFilter = stmp::make_unique<VulkanSSAOFilter>(*this);
+			colorCorrectionFilter = stmp::make_unique<VulkanColorCorrectionFilter>(*this);
 
 			inited = true;
 			lastSwapchainGeneration = device->GetSwapchainGeneration();
@@ -201,6 +204,7 @@ namespace spades {
 			flatMapRenderer.reset();
 			shadowMapRenderer.reset();
 			mapShadowRenderer.reset();
+			colorCorrectionFilter.reset();
 			ssaoFilter.reset();
 			fxaaFilter.reset();
 			depthOfFieldFilter.reset();
@@ -1867,6 +1871,7 @@ namespace spades {
 			}
 
 			RunFilter(depthOfFieldFilter.get(), (int)r_depthOfField != 0);
+			RunFilter(colorCorrectionFilter.get(), (int)r_colorCorrection != 0);
 			// FXAA runs last; mutually exclusive with MSAA
 			RunFilter(fxaaFilter.get(), (int)r_fxaa != 0 && !msaaActive);
 

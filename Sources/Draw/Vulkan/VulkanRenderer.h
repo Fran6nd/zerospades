@@ -60,6 +60,7 @@ namespace spades {
 		class VulkanDepthOfFieldFilter;
 		class VulkanFXAAFilter;
 		class VulkanSSAOFilter;
+		class VulkanColorCorrectionFilter;
 
 		class VulkanRenderer : public client::IRenderer, public client::IGameMapListener {
 			struct DebugLine {
@@ -150,6 +151,7 @@ namespace spades {
 		std::unique_ptr<VulkanDepthOfFieldFilter> depthOfFieldFilter;
 		std::unique_ptr<VulkanFXAAFilter> fxaaFilter;
 		std::unique_ptr<VulkanSSAOFilter> ssaoFilter;
+		std::unique_ptr<VulkanColorCorrectionFilter> colorCorrectionFilter;
 
 			Handle<VulkanImage> whiteImage; // 1x1 white image for solid color rendering
 

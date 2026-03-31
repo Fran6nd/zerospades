@@ -1,12 +1,54 @@
 # Vulkan Renderer — TODO
 
+## ★ HIGH PRIORITY — Antialiasing
+
+### AA-1: FXAA (`r_fxaa`)
+
+**Status:** Not implemented. Blocked by PP-B (ping-pong wiring not actually present in `RecordCommandBuffer` despite being marked done — see PP-B note below).
+
+- [ ] **[AA-1a] Write FXAA Vulkan shader** — port `Resources/Shaders/OpenGL/PostFilters/FXAA.fs` to Vulkan GLSL 450; create `Resources/Shaders/Vulkan/PostFilters/FXAA.vk.fs`; reuse `PassThrough.vk.vs` (fullscreen triangle, no vertex buffer needed). The `inverseVP` uniform becomes a push constant (`layout(push_constant) uniform PC { vec2 inverseVP; };`). Compile to SPIR-V: `glslc FXAA.vk.fs -o FXAA.vk.fs.spv`.
+  - Reference: [Resources/Shaders/OpenGL/PostFilters/FXAA.fs](../../../Resources/Shaders/OpenGL/PostFilters/FXAA.fs), [PassThrough.vk.vs](../../../Resources/Shaders/Vulkan/PostFilters/PassThrough.vk.vs)
+
+- [ ] **[AA-1b] Implement `VulkanFXAAFilter` class** — write `VulkanFXAAFilter.h/.cpp`; follows the same pattern as `VulkanFogFilter` (single render pass, single pipeline, per-frame descriptor pool + framebuffers); push constant contains `vec2 inverseVP = {1/w, 1/h}` filled from `input->GetWidth()/Height()`; single sampler binding (binding 0 = color texture). Condition: skip if `(int)r_fxaa == 0`.
+  - Reference: [VulkanFogFilter.h](VulkanFogFilter.h), [VulkanFogFilter.cpp](VulkanFogFilter.cpp)
+  - Files: new `VulkanFXAAFilter.h`, `VulkanFXAAFilter.cpp`
+
+- [ ] **[AA-1c] Wire FXAA in `RecordCommandBuffer`** — after PP-B wiring is in place, add `fxaaFilter` as `std::unique_ptr<VulkanFXAAFilter>` member in `VulkanRenderer.h`; construct in `Init()` (no condition); in `RecordCommandBuffer` call last in post chain, **only** when `(int)r_fxaa != 0`. Also add `SPADES_SETTING(r_fxaa)` near other cvar declarations in `VulkanRenderer.cpp`. Do **not** call when `r_multisamples > 0` (mutually exclusive — the setup UI enforces this but guard defensively). Swap.
+  - Files: [VulkanRenderer.h](VulkanRenderer.h), [VulkanRenderer.cpp](VulkanRenderer.cpp)
+
+---
+
+### AA-2: MSAA (`r_multisamples` = 0 / 2 / 4)
+
+**Status:** Not implemented. All scene pipelines hardcode `VK_SAMPLE_COUNT_1_BIT`. `r_multisamples` cvar is completely ignored by the Vulkan renderer.
+
+**Design:** MSAA is resolved at render-pass end (Vulkan native resolve attachment). The resolved 1-sample image is what the post-process chain, fog filter, and final blit see — no changes needed in PP filters. Sample count is determined once at `VulkanFramebufferManager` construction time (latch cvar — requires restart, same as GL). MSAA and FXAA are mutually exclusive (setup UI enforces `r_multisamples > 0 → r_fxaa=0`).
+
+- [ ] **[AA-2a] MSAA support in `VulkanFramebufferManager`** — when `r_multisamples ∈ {2,4}`, create an additional multisampled color image (`VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT`, no sampler needed) and multisampled depth image at the same resolution; update `CreateRenderPass()` to add a resolve attachment (the existing 1-sample `renderColorImage` becomes the resolve target); `colorAttachment.samples` / `depthAttachment.samples` → MSAA count; add `VkAttachmentDescription resolveAttachment` (`loadOp=DONT_CARE`, `storeOp=STORE`, `finalLayout=SHADER_READ_ONLY_OPTIMAL`); update `VkSubpassDescription` to use `pResolveAttachments`; update `renderFramebuffer` creation to include the MSAA images; add `GetSampleCount() → VkSampleCountFlagBits` accessor. When `r_multisamples == 0` behaviour is unchanged.
+  - Note: read `r_multisamples` value in constructor; clamp to `{0,2,4}` and verify device support via `vkGetPhysicalDeviceProperties` (fall back to 1 if unsupported).
+  - Files: [VulkanFramebufferManager.h](VulkanFramebufferManager.h), [VulkanFramebufferManager.cpp](VulkanFramebufferManager.cpp)
+
+- [ ] **[AA-2b] Propagate sample count to all scene pipelines** — add `SPADES_SETTING(r_multisamples)` to `VulkanRenderer.cpp`; pass `framebufferManager->GetSampleCount()` wherever a scene-rendering pipeline sets `multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT`:
+  - `VulkanRenderer.cpp` lines ~2004, ~2200, ~2469 (sky, outline, debug line pipelines — created inside `RecreateSwapchainDependencies` or dedicated Create* methods)
+  - `VulkanMapRenderer.cpp` line ~605
+  - `VulkanOptimizedVoxelModel.cpp` line ~1013 (all pipeline variants in `BuildPipeline`)
+  - `VulkanSpriteRenderer.cpp` line ~198
+  - `VulkanLongSpriteRenderer.cpp` line ~179
+  - **Do NOT change** post-process filter pipelines (Bloom, AutoExposure, Fog, DoF, FXAA) — they render to 1-sample temp images.
+  - **Do NOT change** shadow map pipeline, image renderer pipeline (UI), or swapchain render pass pipeline — also 1-sample.
+  - Pipelines are created after `framebufferManager` is initialised; make sure `GetSampleCount()` is accessible at pipeline-creation time.
+  - Files: [VulkanRenderer.cpp](VulkanRenderer.cpp), [VulkanMapRenderer.cpp](VulkanMapRenderer.cpp), [VulkanOptimizedVoxelModel.cpp](VulkanOptimizedVoxelModel.cpp), [VulkanSpriteRenderer.cpp](VulkanSpriteRenderer.cpp), [VulkanLongSpriteRenderer.cpp](VulkanLongSpriteRenderer.cpp)
+
+---
+
 ## Post-processing Infrastructure (sequential, complete in order)
 
 - [x] **[PP-A] Instantiate filter members in `VulkanRenderer`** — done per-filter alongside each PP-N implementation task below (each filter adds its own forward decl + member + destructor reset).
   - Files: [VulkanRenderer.h](VulkanRenderer.h), [VulkanRenderer.cpp](VulkanRenderer.cpp)
 
-- [x] **[PP-B] Replace direct blit with ping-pong post-process infrastructure** — in `RecordCommandBuffer()` (~line 2046), instead of blitting `offscreenColor` directly to the swapchain: allocate a second temp image via `temporaryImagePool`; introduce a `currentInput`/`currentOutput` pointer pair initialized to `offscreenColor`/tempImage; swap after each filter call; final blit uses `currentInput`. No filters called yet — pure plumbing.
-  - Files: [VulkanRenderer.cpp](VulkanRenderer.cpp) (blit path ~line 2046)
+- [ ] **[PP-B] Wire ping-pong post-process chain in `RecordCommandBuffer`** — **marked done prematurely**. The `temporaryImagePool` is allocated but filters are never called. In the section after the offscreen blit barriers (~line 1800), before the `vkCmdBlitImage` to swapchain: (1) allocate `tempImage = temporaryImagePool->Acquire(renderWidth, renderHeight, framebufferManager->GetMainColorFormat())`; (2) declare `VulkanImage* currentInput = offscreenColor.GetPointerOrNull()` and `VulkanImage* currentOutput = tempImage.GetPointerOrNull()`; (3) for each enabled filter call `filter->Filter(cmd, currentInput, currentOutput)` then `std::swap(currentInput, currentOutput)`; (4) transition `currentInput` (the last written image) from `SHADER_READ_ONLY_OPTIMAL` → `TRANSFER_SRC_OPTIMAL` for the final blit (replace the current `barrier1` which transitions `offscreenColor` directly). The existing `vkCmdBlitImage` call uses `currentInput->GetImage()` instead of `offscreenColor`. Return the temp image to pool after blit.
+  - **Filter call order**: autoExposureFilter (if `r_hdr`), bloomFilter (if `r_bloom`), fogFilter (if `r_fogShadow`), depthOfFieldFilter (if `r_depthOfField`), …, fxaaFilter (if `r_fxaa && r_multisamples==0`) — last.
+  - Files: [VulkanRenderer.cpp](VulkanRenderer.cpp) (blit path ~line 1800)
 
 ## Post-processing Filters
 
@@ -84,10 +126,10 @@ Base class to follow: [VulkanPostProcessFilter.h](VulkanPostProcessFilter.h), [V
 
 ### PP-7: Color Correction (`r_colorCorrection`)
 
-- [ ] **[PP-7a] Write ColorCorrection Vulkan shaders** — port `OpenGL/PostFilters/ColorCorrection.fs`/`ColorCorrection.vs` to Vulkan GLSL; create `Shaders/Vulkan/PostFilters/ColorCorrection.vk.*`; compile to SPIR-V.
+- [x] **[PP-7a] Write ColorCorrection Vulkan shaders** — port `OpenGL/PostFilters/ColorCorrection.fs`/`ColorCorrection.vs` to Vulkan GLSL; create `Shaders/Vulkan/PostFilters/ColorCorrection.vk.*`; compile to SPIR-V.
   - Reference: `Resources/Shaders/OpenGL/PostFilters/ColorCorrection.*`
 
-- [ ] **[PP-7b] Implement `VulkanColorCorrectionFilter` and wire** — write `VulkanColorCorrectionFilter.h/.cpp` following `GLColorCorrectionFilter`; add member; call near end of chain: `colorCorrectionFilter->Filter(cmd, currentInput, currentOutput, tint, fogLuminance)`. Swap.
+- [x] **[PP-7b] Implement `VulkanColorCorrectionFilter` and wire** — write `VulkanColorCorrectionFilter.h/.cpp` following `GLColorCorrectionFilter`; add member; call near end of chain after DoF, before FXAA.  Tint + fogLuminance + exposure computed internally from `renderer.GetFogColor()` and settings with temporal smoothing (mirrors `smoothedFogColor` in GL renderer).  Sharpening pre-pass (`r_sharpen`) omitted — add when needed.
   - Reference: [Sources/Draw/OpenGL/GLColorCorrectionFilter.h](../OpenGL/GLColorCorrectionFilter.h), [GLColorCorrectionFilter.cpp](../OpenGL/GLColorCorrectionFilter.cpp)
   - Files: [VulkanRenderer.h](VulkanRenderer.h), [VulkanRenderer.cpp](VulkanRenderer.cpp)
 
@@ -187,6 +229,26 @@ Restore from git history (`VulkanWaterRenderer.*`, mirror pass in `RecordCommand
   - References removed from: [VulkanRenderer.h](VulkanRenderer.h), [VulkanRenderer.cpp](VulkanRenderer.cpp),
     [VulkanFramebufferManager.h](VulkanFramebufferManager.h), [VulkanFramebufferManager.cpp](VulkanFramebufferManager.cpp),
     [VulkanOptimizedVoxelModel.cpp](VulkanOptimizedVoxelModel.cpp), [VulkanMapChunk.cpp](VulkanMapChunk.cpp)
+
+---
+
+## Cvar / Setup-Menu Inconsistencies
+
+These cvars appear in the setup menu but are silently ignored or partially supported by the Vulkan renderer. They should either be implemented or capped with a warning so the menu reflects reality.
+
+- [ ] **[CVAR-1] `r_fogShadow` levels 1 and 2 are identical** — `VulkanRenderer.cpp` treats any non-zero `r_fogShadow` value as "enable cascade shadow fog"; level 2 does nothing extra. In the GL renderer level 2 uses a higher-quality ambient shadow texture lookup. Either (a) implement the level-2 distinction, or (b) add a comment and cap `r_fogShadow` to 1 inside the Vulkan init path, and register an `incapableConfigs` entry for value "2" in `StartupScreenHelper` when the Vulkan renderer is active.
+  - Files: [VulkanRenderer.cpp](VulkanRenderer.cpp)
+
+- [ ] **[CVAR-2] `r_softParticles` level 2 not implemented** — `VulkanSpriteRenderer` checks `(int)r_softParticles != 0` and treats levels 1 and 2 as identical soft-particle mode. Level 2 in the GL renderer adds a gaussian depth-fade. Either implement it or cap to 1 for Vulkan (add clamp + `incapableConfigs` entry for "2").
+  - Files: [VulkanSpriteRenderer.cpp](VulkanSpriteRenderer.cpp)
+
+- [ ] **[CVAR-3] Unimplemented post-process cvars show no warning in setup menu** — the following cvars have no effect in the Vulkan renderer but the menu shows them as available (no `incapableConfigs` entry for the Vulkan renderer path):
+  - `r_radiosity` — GL-only radiosity GI; not referenced in Vulkan renderer at all
+  - `r_cameraBlur` — camera motion blur (PP-10d, not yet implemented); see [TODO PP-10d](TODO.md)
+  - `r_lensFlare` / `r_lensFlareDynamic` — lens flare filter (PP-6, not yet implemented); see [TODO PP-6](TODO.md)
+  - `r_ssao` — screen-space AO (PP-9, not yet implemented); see [TODO PP-9](TODO.md)
+  - Once each filter is implemented, remove its entry from this list. Until then, consider registering `incapableConfigs` entries in `StartupScreenHelper` when `r_renderer=vulkan` (or equivalent Vulkan-renderer detection) so the menu shows a "not supported" tooltip.
+  - Files: [Sources/Gui/StartupScreenHelper.cpp](../../Gui/StartupScreenHelper.cpp)
 
 ---
 
