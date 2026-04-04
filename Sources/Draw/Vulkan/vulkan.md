@@ -1,5 +1,15 @@
 # Vulkan Renderer
 
+## Shader Compilation
+
+Vulkan shaders are written in GLSL and live under `Resources/Shaders/Vulkan/`. They are compiled to SPIR-V at build time by `glslangValidator` (located via `find_program` in `CMakeLists.txt`). Each source file (`.vert`, `.frag`, `.vk.vs`, `.vk.fs`) produces a `.spv` file next to it in the source tree.
+
+- **Build:** `make` (or the CMake build target `compile_vulkan_shaders`) compiles all shaders automatically before the pak files are assembled.
+- **Clean:** `make clean` removes all `.spv` files. They are registered as `ADDITIONAL_CLEAN_FILES` on the `compile_vulkan_shaders` target in `Resources/CMakeLists.txt`.
+- **Git:** `.spv` files are gitignored (`*.spv` in `.gitignore`). Never commit them.
+
+---
+
 ## Cvar Naming Convention
 
 All Vulkan-specific cvars use the `r_vk_` prefix (e.g. `r_vk_bloom`, `r_vk_hdr`). This keeps Vulkan settings fully independent from the OpenGL renderer, which uses the plain `r_` prefix (e.g. `r_bloom`, `r_hdr`). Changing a setting in the Vulkan setup tab has no effect on the OpenGL renderer and vice versa.
