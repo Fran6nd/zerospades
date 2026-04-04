@@ -112,6 +112,10 @@ if(OPENSPADES_RESOURCES)
 		add_custom_target(compile_vulkan_shaders ALL
 			DEPENDS ${COMPILED_SPIRV_FILES}
 			COMMENT "Compiling Vulkan shaders to SPIR-V")
+
+		# Register .spv outputs so 'make clean' removes them
+		set_property(TARGET compile_vulkan_shaders APPEND PROPERTY
+			ADDITIONAL_CLEAN_FILES "${COMPILED_SPIRV_FILES}")
 	endif()
 
 	set(PAK_IN_FILES
