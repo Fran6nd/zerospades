@@ -35,7 +35,7 @@
 #include <cmath>
 #include <cstring>
 
-SPADES_SETTING(r_fogShadow);
+SPADES_SETTING(r_vk_fogShadow);
 
 namespace spades {
 	namespace draw {
@@ -389,9 +389,9 @@ namespace spades {
 			}
 
 			// ── Pick variant ──────────────────────────────────────────────────────
-			// r_fogShadow == 1 → Fog  (DDA-style sharp shadow shafts)
-			// r_fogShadow == anything else (typically 2) → Fog2 (smoother 16-step)
-			const bool useClassic = ((int)r_fogShadow == 1);
+			// r_vk_fogShadow == 1 → Fog  (DDA-style sharp shadow shafts)
+			// r_vk_fogShadow == anything else (typically 2) → Fog2 (smoother 16-step)
+			const bool useClassic = ((int)r_vk_fogShadow == 1);
 
 			const client::SceneDefinition& def = renderer.GetSceneDef();
 

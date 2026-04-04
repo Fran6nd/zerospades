@@ -56,15 +56,15 @@
 #include <cstring>
 #include <vector>
 
-SPADES_SETTING(r_dlights);
-SPADES_SETTING(r_hdr);
-SPADES_SETTING(r_bloom);
-SPADES_SETTING(r_fogShadow);
-SPADES_SETTING(r_depthOfField);
-SPADES_SETTING(r_fxaa);
-SPADES_SETTING(r_water);
-SPADES_SETTING(r_softParticles);
-SPADES_SETTING(r_outlines);
+SPADES_SETTING(r_vk_dlights);
+SPADES_SETTING(r_vk_hdr);
+SPADES_SETTING(r_vk_bloom);
+SPADES_SETTING(r_vk_fogShadow);
+SPADES_SETTING(r_vk_depthOfField);
+SPADES_SETTING(r_vk_fxaa);
+SPADES_SETTING(r_vk_water);
+SPADES_SETTING(r_vk_softParticles);
+SPADES_SETTING(r_vk_outlines);
 
 namespace spades {
 	namespace draw {
@@ -914,7 +914,7 @@ namespace spades {
 		}
 
 		Vector3 VulkanRenderer::GetFogColorForSolidPass() {
-			if (r_fogShadow && shadowMapRenderer)
+			if (r_vk_fogShadow && shadowMapRenderer)
 				return MakeVector3(0, 0, 0);
 			else
 				return fogColor;
@@ -994,7 +994,7 @@ namespace spades {
 
 		void VulkanRenderer::AddLight(const client::DynamicLightParam& light) {
 			SPADES_MARK_FUNCTION();
-			if (!r_dlights)
+			if (!r_vk_dlights)
 				return;
 			if (!SphereFrustrumCull(light.origin, light.radius))
 				return;
@@ -1649,12 +1649,12 @@ namespace spades {
 		}
 
 		// Render shadow maps BEFORE starting main render pass (shadow maps use their own render passes)
-		if (sceneUsedInThisFrame && shadowMapRenderer && r_fogShadow) {
+		if (sceneUsedInThisFrame && shadowMapRenderer && r_vk_fogShadow) {
 			shadowMapRenderer->Render(commandBuffer);
 		}
 
-		// Render mirror pass for water reflections (r_water >= 2)
-		if (sceneUsedInThisFrame && framebufferManager && waterRenderer && (int)r_water >= 2) {
+		// Render mirror pass for water reflections (r_vk_water >= 2)
+		if (sceneUsedInThisFrame && framebufferManager && waterRenderer && (int)r_vk_water >= 2) {
 			renderingMirror = true;
 
 			// Save original matrices
@@ -1996,17 +1996,17 @@ namespace spades {
 			}
 
 			// Copy scene to mirror images for water refraction when no real mirror pass
-			if ((int)r_water > 0 && waterRenderer && framebufferManager->GetMirrorColorImage() && (int)r_water < 2) {
+			if ((int)r_vk_water > 0 && waterRenderer && framebufferManager->GetMirrorColorImage() && (int)r_vk_water < 2) {
 				framebufferManager->CopyToMirrorImage(commandBuffer);
 			}
 
 			// Copy scene to screen copy images for water refraction sampling
 			// (water renders to the same framebuffer, so it can't sample from it directly)
-			if ((int)r_water > 0 && waterRenderer) {
+			if ((int)r_vk_water > 0 && waterRenderer) {
 				framebufferManager->CopySceneForWaterSampling(commandBuffer);
 			}
 
-			if ((int)r_water > 0 && waterRenderer && framebufferManager->GetMirrorColorImage()) {
+			if ((int)r_vk_water > 0 && waterRenderer && framebufferManager->GetMirrorColorImage()) {
 
 				// Transition renderColorImage and renderDepthImage back to COLOR_ATTACHMENT_OPTIMAL
 				// for water rendering
@@ -2113,25 +2113,25 @@ namespace spades {
 			VulkanImage* currentOutput = ppTempImage.GetPointerOrNull();
 
 			// PP-1: Auto-exposure
-			if ((int)r_hdr && autoExposureFilter && currentInput && currentOutput) {
+			if ((int)r_vk_hdr && autoExposureFilter && currentInput && currentOutput) {
 				autoExposureFilter->Filter(commandBuffer, currentInput, currentOutput, lastDt);
 				std::swap(currentInput, currentOutput);
 			}
 
 			// PP-2: Bloom
-			if ((int)r_bloom && bloomFilter && currentInput && currentOutput) {
+			if ((int)r_vk_bloom && bloomFilter && currentInput && currentOutput) {
 				bloomFilter->Filter(commandBuffer, currentInput, currentOutput);
 				std::swap(currentInput, currentOutput);
 			}
 
 			// PP-3: Fog shadow
-			if ((int)r_fogShadow && fogFilter && mapShadowRenderer && currentInput && currentOutput) {
+			if ((int)r_vk_fogShadow && fogFilter && mapShadowRenderer && currentInput && currentOutput) {
 				fogFilter->Filter(commandBuffer, currentInput, currentOutput);
 				std::swap(currentInput, currentOutput);
 			}
 
 			// PP-4: Depth of Field
-			if ((int)r_depthOfField && depthOfFieldFilter && currentInput && currentOutput) {
+			if ((int)r_vk_depthOfField && depthOfFieldFilter && currentInput && currentOutput) {
 				const client::SceneDefinition& def = GetSceneDef();
 				if (def.depthOfFieldFocalLength > 0.0f || def.blurVignette > 0.0f) {
 					depthOfFieldFilter->Filter(commandBuffer, currentInput, currentOutput);
@@ -2140,7 +2140,7 @@ namespace spades {
 			}
 
 			// PP-5: FXAA
-			if ((int)r_fxaa && fxaaFilter && currentInput && currentOutput) {
+			if ((int)r_vk_fxaa && fxaaFilter && currentInput && currentOutput) {
 				fxaaFilter->Filter(commandBuffer, currentInput, currentOutput);
 				std::swap(currentInput, currentOutput);
 			}
@@ -2151,7 +2151,7 @@ namespace spades {
 			// fog / soft-particle path already transitions to SHADER_READ_ONLY
 			// above; takes its own distance fade so it works whether or not
 			// the fog filter is enabled / correct.
-			if ((int)r_outlines && cavityOutlineFilter && currentInput && currentOutput) {
+			if ((int)r_vk_outlines && cavityOutlineFilter && currentInput && currentOutput) {
 				cavityOutlineFilter->Filter(commandBuffer, currentInput, currentOutput);
 				std::swap(currentInput, currentOutput);
 			}

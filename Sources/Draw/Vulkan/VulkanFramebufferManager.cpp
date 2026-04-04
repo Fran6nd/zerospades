@@ -25,10 +25,10 @@
 #include <Core/Exception.h>
 #include <Core/Settings.h>
 
-SPADES_SETTING(r_highPrec);
-SPADES_SETTING(r_hdr);
-SPADES_SETTING(r_srgb);
-SPADES_SETTING(r_water);
+SPADES_SETTING(r_vk_highPrec);
+SPADES_SETTING(r_vk_hdr);
+SPADES_SETTING(r_vk_srgb);
+SPADES_SETTING(r_vk_water);
 
 namespace spades {
 	namespace draw {
@@ -49,9 +49,9 @@ namespace spades {
 
 			SPLog("Initializing Vulkan framebuffer manager");
 
-			useHighPrec = (bool)(int)r_highPrec;
-			useHdr = (bool)(int)r_hdr;
-			useSRGB = (bool)(int)r_srgb;
+			useHighPrec = (bool)(int)r_vk_highPrec;
+			useHdr = (bool)(int)r_vk_hdr;
+			useSRGB = (bool)(int)r_vk_srgb;
 
 			// Determine color format
 			if (useSRGB) {
@@ -150,8 +150,8 @@ namespace spades {
 
 			// Create mirror framebuffer for water reflections
 			// Always create these - water shader needs them for reflections at all quality levels
-			// r_water < 2: mirror images filled via scene copy
-			// r_water >= 2: mirror images filled via reflected scene rendering
+			// r_vk_water < 2: mirror images filled via scene copy
+			// r_vk_water >= 2: mirror images filled via reflected scene rendering
 			{
 				SPLog("Creating mirror framebuffer for water reflections");
 				mirrorColorImage = Handle<VulkanImage>::New(
@@ -514,7 +514,7 @@ namespace spades {
 			               1, &colorCopyRegion);
 
 			// Copy depth attachment if needed
-			if ((int)r_water >= 3) {
+			if ((int)r_vk_water >= 3) {
 				VkImageCopy depthCopyRegion = {};
 				depthCopyRegion.srcSubresource.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
 				depthCopyRegion.srcSubresource.layerCount = 1;
