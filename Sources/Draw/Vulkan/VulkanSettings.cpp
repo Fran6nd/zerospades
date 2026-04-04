@@ -26,6 +26,7 @@
 namespace spades {
 
 DEFINE_SPADES_SETTING(r_vk_bloom,                "1");
+DEFINE_SPADES_SETTING(r_vk_cameraBlur,           "1");
 DEFINE_SPADES_SETTING(r_vk_colorCorrection,      "1");
 DEFINE_SPADES_SETTING(r_vk_depthOfField,         "0");
 DEFINE_SPADES_SETTING(r_vk_depthOfFieldMaxCoc,   "0.01");
@@ -38,13 +39,18 @@ DEFINE_SPADES_SETTING(r_vk_hdrAutoExposureMax,   "0.5");
 DEFINE_SPADES_SETTING(r_vk_hdrAutoExposureMin,   "-1.5");
 DEFINE_SPADES_SETTING(r_vk_hdrAutoExposureSpeed, "1");
 DEFINE_SPADES_SETTING(r_vk_highPrec,             "1");
+DEFINE_SPADES_SETTING(r_vk_lensFlare,            "1");
+DEFINE_SPADES_SETTING(r_vk_lensFlareDynamic,     "0");
+DEFINE_SPADES_SETTING(r_vk_modelShadows,         "1");
 DEFINE_SPADES_SETTING(r_vk_multisamples,         "0");
 DEFINE_SPADES_SETTING(r_vk_outlines,             "0");
 DEFINE_SPADES_SETTING(r_vk_physicalLighting,     "0");
+DEFINE_SPADES_SETTING(r_vk_radiosity,            "1");
 DEFINE_SPADES_SETTING(r_vk_saturation,           "1");
 DEFINE_SPADES_SETTING(r_vk_shadowMapSize,        "2048");
 DEFINE_SPADES_SETTING(r_vk_softParticles,        "1");
 DEFINE_SPADES_SETTING(r_vk_srgb,                 "0");
 DEFINE_SPADES_SETTING(r_vk_ssao,                 "0");
+DEFINE_SPADES_SETTING(r_vk_water,                "2");
 
 } // namespace spades
