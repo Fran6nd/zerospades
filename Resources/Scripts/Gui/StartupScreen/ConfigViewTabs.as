@@ -283,12 +283,6 @@ namespace spades {
 						"Off|MSAA 2x|4x|FXAA")));
 
 				cfg.AddRow(StartupScreenConfigCheckItemEditor(
-					ui, StartupScreenConfig(ui, "r_radiosity"), "0", "1",
-					_Tr("StartupScreen", "Global Illumination"),
-					_Tr("StartupScreen",
-						"Enables a physically based simulation of light path for more realistic lighting.")));
-
-				cfg.AddRow(StartupScreenConfigCheckItemEditor(
 					ui, StartupScreenConfig(ui, "r_hdr"), "0", "1",
 					_Tr("StartupScreen", "Linear HDR Rendering"),
 					_Tr("StartupScreen", "Uses a number representation which allows wider dynamic range during rendering process. "
@@ -303,21 +297,9 @@ namespace spades {
 				{
 					StartupScreenComplexConfig cplx;
 					cplx.AddEditor(StartupScreenConfigCheckItemEditor(
-						ui, StartupScreenConfig(ui, "r_cameraBlur"), "0", "1",
-						_Tr("StartupScreen", "Camera Blur"),
-						_Tr("StartupScreen", "Blurs the screen when you turn quickly.")));
-					cplx.AddEditor(StartupScreenConfigCheckItemEditor(
 						ui, StartupScreenConfig(ui, "r_bloom"), "0", "1",
 						_Tr("StartupScreen", "Lens Scattering Filter"),
 						_Tr("StartupScreen", "Simulates light being scattered by dust on the camera lens.")));
-					cplx.AddEditor(StartupScreenConfigCheckItemEditor(
-						ui, StartupScreenConfig(ui, "r_lensFlare"), "0", "1",
-						_Tr("StartupScreen", "Lens Flare"),
-						_Tr("StartupScreen", "The Sun causes lens flare.")));
-					cplx.AddEditor(StartupScreenConfigCheckItemEditor(
-						ui, StartupScreenConfig(ui, "r_lensFlareDynamic"), "0", "1",
-						_Tr("StartupScreen", "Flares for Dynamic Lights."),
-						_Tr("StartupScreen", "Enables lens flare for light sources other than the Sun.")));
 					cplx.AddEditor(StartupScreenConfigCheckItemEditor(
 						ui, StartupScreenConfig(ui, "r_colorCorrection"), "0", "1",
 						_Tr("StartupScreen", "Color Correction"),
@@ -331,10 +313,10 @@ namespace spades {
 						_Tr("StartupScreen", "Screen Space Ambient Occlusion"),
 						_Tr("StartupScreen", "Simulates soft shadows that occur between nearby objects.")));
 
-					cplx.AddPreset(StartupScreenComplexConfigPreset(_Tr("StartupScreen", "Low"), "0|0|0|0|0|0|0"));
-					cplx.AddPreset(StartupScreenComplexConfigPreset(_Tr("StartupScreen", "Medium"), "1|0|1|0|1|0|0"));
-					cplx.AddPreset(StartupScreenComplexConfigPreset(_Tr("StartupScreen", "High"), "1|1|1|1|1|1|0"));
-					cplx.AddPreset(StartupScreenComplexConfigPreset(_Tr("StartupScreen", "Ultra"), "1|1|1|1|1|1|1"));
+					cplx.AddPreset(StartupScreenComplexConfigPreset(_Tr("StartupScreen", "Low"), "0|0|0|0"));
+					cplx.AddPreset(StartupScreenComplexConfigPreset(_Tr("StartupScreen", "Medium"), "1|1|0|0"));
+					cplx.AddPreset(StartupScreenComplexConfigPreset(_Tr("StartupScreen", "High"), "1|1|1|0"));
+					cplx.AddPreset(StartupScreenComplexConfigPreset(_Tr("StartupScreen", "Ultra"), "1|1|1|1"));
 
 					cfg.AddRow(StartupScreenConfigComplexItemEditor(
 						ui, cplx, _Tr("StartupScreen", "Post-process"),
@@ -357,8 +339,7 @@ namespace spades {
 					_Tr("StartupScreen", "Level 1") + ":"  +
 					_Tr("StartupScreen", "Applies local illumination to the fog.") + "|" +
 					_Tr("StartupScreen", "Level 2") + ":"  +
-					_Tr("StartupScreen", "Applies both local illumination and global illumination to the fog.") + "\n\n" +
-					_Tr("StartupScreen", "Warning: '{0}' must be enabled.", _Tr("StartupScreen", "Global Illumination"))));
+					_Tr("StartupScreen", "Applies local illumination to the fog."));
 
 				{
 					StartupScreenComplexConfig cplx;
@@ -367,17 +348,13 @@ namespace spades {
 						_Tr("StartupScreen", "Dynamic Lights"),
 						_Tr("StartupScreen", "Gives some objects an ability to emit light to give them " "an energy-emitting impression.")));
 					cplx.AddEditor(StartupScreenConfigCheckItemEditor(
-						ui, StartupScreenConfig(ui, "r_modelShadows"), "0", "1",
-						_Tr("StartupScreen", "Shadows"),
-						_Tr("StartupScreen", "Non-static object casts a shadow.")));
-					cplx.AddEditor(StartupScreenConfigCheckItemEditor(
 						ui, StartupScreenConfig(ui, "r_physicalLighting"), "0", "1",
 						_Tr("StartupScreen", "Physically Based Lighting"),
 						_Tr("StartupScreen", "Uses more accurate approximation techniques to decide the brightness of objects.")));
 
-					cplx.AddPreset(StartupScreenComplexConfigPreset(_Tr("StartupScreen", "Low"), "1|0|0"));
-					cplx.AddPreset(StartupScreenComplexConfigPreset(_Tr("StartupScreen", "Medium"), "1|1|0"));
-					cplx.AddPreset(StartupScreenComplexConfigPreset(_Tr("StartupScreen", "High"), "1|1|1"));
+					cplx.AddPreset(StartupScreenComplexConfigPreset(_Tr("StartupScreen", "Low"), "1|0"));
+					cplx.AddPreset(StartupScreenComplexConfigPreset(_Tr("StartupScreen", "Medium"), "1|0"));
+					cplx.AddPreset(StartupScreenComplexConfigPreset(_Tr("StartupScreen", "High"), "1|1"));
 
 					cfg.AddRow(StartupScreenConfigComplexItemEditor(
 						ui, cplx, _Tr("StartupScreen", "Direct Lights"),
