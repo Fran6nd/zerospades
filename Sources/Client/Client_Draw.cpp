@@ -184,6 +184,11 @@ namespace spades {
 				ShowAlert(msg, AlertType::Error);
 				SPLog("Screenshot failed: %s", ex.what());
 			}
+
+			// Complete the frame: present the swapchain image acquired in DrawScene.
+			// Without this, each screenshot leaks an acquired swapchain image, exhausting
+			// the swapchain pool and causing AcquireNextImage to hang on subsequent calls.
+			renderer->Flip();
 		}
 
 		std::string Client::ScreenShotPath() {
