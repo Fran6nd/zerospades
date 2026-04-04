@@ -34,7 +34,7 @@
 #include <cstring>
 #include <fstream>
 
-SPADES_SETTING(r_softParticles);
+SPADES_SETTING(r_vk_softParticles);
 
 namespace spades {
 	namespace draw {
@@ -42,7 +42,7 @@ namespace spades {
 		    : renderer(r),
 		      device(static_cast<gui::SDLVulkanDevice*>(r.GetDevice().Unmanage())),
 		      lastImage(nullptr),
-		      softParticles((int)r_softParticles != 0 && r.GetSampleCount() == VK_SAMPLE_COUNT_1_BIT),
+		      softParticles((int)r_vk_softParticles != 0 && r.GetSampleCount() == VK_SAMPLE_COUNT_1_BIT),
 		      pipeline(VK_NULL_HANDLE),
 		      pipelineLayout(VK_NULL_HANDLE),
 		      descriptorSetLayout(VK_NULL_HANDLE),

@@ -34,9 +34,9 @@
 #include <cmath>
 #include <cstring>
 
-SPADES_SETTING(r_hdrAutoExposureMin);
-SPADES_SETTING(r_hdrAutoExposureMax);
-SPADES_SETTING(r_hdrAutoExposureSpeed);
+SPADES_SETTING(r_vk_hdrAutoExposureMin);
+SPADES_SETTING(r_vk_hdrAutoExposureMax);
+SPADES_SETTING(r_vk_hdrAutoExposureSpeed);
 
 namespace spades {
 	namespace draw {
@@ -633,9 +633,9 @@ namespace spades {
 			// Blend the 1×1 brightness into the persistent exposure accumulator
 			// using temporal smoothing.  The blend rate is carried in alpha.
 
-			float minExp = std::min(std::max((float)r_hdrAutoExposureMin, -10.0f), 10.0f);
-			float maxExp = std::min(std::max((float)r_hdrAutoExposureMax, minExp),  10.0f);
-			float speed  = std::max((float)r_hdrAutoExposureSpeed, 0.0f);
+			float minExp = std::min(std::max((float)r_vk_hdrAutoExposureMin, -10.0f), 10.0f);
+			float maxExp = std::min(std::max((float)r_vk_hdrAutoExposureMax, minExp),  10.0f);
+			float speed  = std::max((float)r_vk_hdrAutoExposureSpeed, 0.0f);
 			float rate   = 1.0f - std::pow(0.01f, dt * speed);
 
 			struct GainParams { float minGain, maxGain, rate; } gainPC{

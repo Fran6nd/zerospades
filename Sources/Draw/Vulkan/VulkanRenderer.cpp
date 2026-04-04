@@ -55,17 +55,17 @@
 #include <cstring>
 #include <vector>
 
-SPADES_SETTING(r_dlights);
-SPADES_SETTING(r_hdr);
-SPADES_SETTING(r_bloom);
-SPADES_SETTING(r_fogShadow);
-SPADES_SETTING(r_depthOfField);
-SPADES_SETTING(r_fxaa);
-SPADES_SETTING(r_ssao);
-SPADES_SETTING(r_multisamples);
-SPADES_SETTING(r_softParticles);
-SPADES_SETTING(r_outlines);
-SPADES_SETTING(r_colorCorrection);
+SPADES_SETTING(r_vk_dlights);
+SPADES_SETTING(r_vk_hdr);
+SPADES_SETTING(r_vk_bloom);
+SPADES_SETTING(r_vk_fogShadow);
+SPADES_SETTING(r_vk_depthOfField);
+SPADES_SETTING(r_vk_fxaa);
+SPADES_SETTING(r_vk_ssao);
+SPADES_SETTING(r_vk_multisamples);
+SPADES_SETTING(r_vk_softParticles);
+SPADES_SETTING(r_vk_outlines);
+SPADES_SETTING(r_vk_colorCorrection);
 
 namespace spades {
 	namespace draw {
@@ -876,7 +876,7 @@ namespace spades {
 		}
 
 		Vector3 VulkanRenderer::GetFogColorForSolidPass() {
-			if (r_fogShadow && shadowMapRenderer)
+			if (r_vk_fogShadow && shadowMapRenderer)
 				return MakeVector3(0, 0, 0);
 			else
 				return fogColor;
@@ -956,7 +956,7 @@ namespace spades {
 
 		void VulkanRenderer::AddLight(const client::DynamicLightParam& light) {
 			SPADES_MARK_FUNCTION();
-			if (!r_dlights)
+			if (!r_vk_dlights)
 				return;
 			if (!SphereFrustrumCull(light.origin, light.radius))
 				return;
@@ -1567,7 +1567,7 @@ namespace spades {
 		}
 
 		// Render shadow maps BEFORE starting main render pass (shadow maps use their own render passes)
-		if (sceneUsedInThisFrame && shadowMapRenderer && r_fogShadow) {
+		if (sceneUsedInThisFrame && shadowMapRenderer && r_vk_fogShadow) {
 			shadowMapRenderer->Render(commandBuffer);
 		}
 
@@ -1639,7 +1639,7 @@ namespace spades {
 			}
 
 			// Render outlines (wireframe back-faces with depth bias)
-			if ((int)r_outlines) {
+			if ((int)r_vk_outlines) {
 				if (!sceneDef.skipWorld && mapRenderer) {
 					mapRenderer->RenderOutlinePass(commandBuffer);
 				}
@@ -1858,22 +1858,22 @@ namespace spades {
 				std::swap(currentInput, currentOutput);
 			};
 
-			RunFilter(autoExposureFilter.get(), (int)r_hdr != 0);
-			RunFilter(bloomFilter.get(),        (int)r_bloom != 0);
+			RunFilter(autoExposureFilter.get(), (int)r_vk_hdr != 0);
+			RunFilter(bloomFilter.get(),        (int)r_vk_bloom != 0);
 			// Fog filter samples the depth texture — disabled when MSAA is active
-			RunFilter(fogFilter.get(),          (int)r_fogShadow != 0 && !msaaActive);
+			RunFilter(fogFilter.get(),          (int)r_vk_fogShadow != 0 && !msaaActive);
 
 			// SSAO samples the depth texture — disabled when MSAA is active.
 			// It has a non-standard signature so it is not called through RunFilter.
-			if ((int)r_ssao != 0 && !msaaActive && ssaoFilter && currentOutput) {
+			if ((int)r_vk_ssao != 0 && !msaaActive && ssaoFilter && currentOutput) {
 				ssaoFilter->Filter(commandBuffer, currentInput, offscreenDepth.GetPointerOrNull(), currentOutput);
 				std::swap(currentInput, currentOutput);
 			}
 
-			RunFilter(depthOfFieldFilter.get(), (int)r_depthOfField != 0);
-			RunFilter(colorCorrectionFilter.get(), (int)r_colorCorrection != 0);
+			RunFilter(depthOfFieldFilter.get(), (int)r_vk_depthOfField != 0);
+			RunFilter(colorCorrectionFilter.get(), (int)r_vk_colorCorrection != 0);
 			// FXAA runs last; mutually exclusive with MSAA
-			RunFilter(fxaaFilter.get(), (int)r_fxaa != 0 && !msaaActive);
+			RunFilter(fxaaFilter.get(), (int)r_vk_fxaa != 0 && !msaaActive);
 
 			// --- Blit final post-process image to swapchain ---
 			// Transition currentInput from SHADER_READ_ONLY to TRANSFER_SRC

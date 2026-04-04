@@ -34,8 +34,8 @@
 #include <cmath>
 #include <cstring>
 
-SPADES_SETTING(r_depthOfField);
-SPADES_SETTING(r_depthOfFieldMaxCoc);
+SPADES_SETTING(r_vk_depthOfField);
+SPADES_SETTING(r_vk_depthOfFieldMaxCoc);
 
 namespace spades {
 	namespace draw {
@@ -506,7 +506,7 @@ namespace spades {
 		// ─────────────────────────────────────────────────────────────────────
 
 		bool VulkanDepthOfFieldFilter::HighQuality() const {
-			return (int)r_depthOfField >= 2;
+			return (int)r_vk_depthOfField >= 2;
 		}
 
 		Handle<VulkanImage> VulkanDepthOfFieldFilter::BlurCoC(
@@ -729,7 +729,7 @@ namespace spades {
 
 			// ── 4. Scatter blur in three directions ───────────────────────────
 
-			float maxCocFrac = Clamp((float)r_depthOfFieldMaxCoc, 0.001f, 0.2f);
+			float maxCocFrac = Clamp((float)r_vk_depthOfFieldMaxCoc, 0.001f, 0.2f);
 			float maxCocPx   = (float)std::max(w, h) * maxCocFrac;
 			maxCocPx *= 0.7f + vignetteBlur * 0.5f;
 			maxCocPx *= 1.0f + 3.0f * globalBlur;

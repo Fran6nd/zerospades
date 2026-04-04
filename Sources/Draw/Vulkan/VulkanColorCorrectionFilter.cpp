@@ -34,11 +34,11 @@
 #include <cmath>
 #include <cstring>
 
-SPADES_SETTING(r_hdr);
-SPADES_SETTING(r_bloom);
-SPADES_SETTING(r_fogShadow);
-SPADES_SETTING(r_saturation);
-SPADES_SETTING(r_exposureValue);
+SPADES_SETTING(r_vk_hdr);
+SPADES_SETTING(r_vk_bloom);
+SPADES_SETTING(r_vk_fogShadow);
+SPADES_SETTING(r_vk_saturation);
+SPADES_SETTING(r_vk_exposureValue);
 
 namespace spades {
 	namespace draw {
@@ -367,23 +367,23 @@ namespace spades {
 			if (tintMax > 0.0f)
 				tint *= 1.0f / tintMax;
 
-			// Exposure from r_exposureValue (EV stops; default 0 → factor 1.0).
-			float exposure = std::pow(2.0f, static_cast<float>(r_exposureValue) * 0.5f);
+			// Exposure from r_vk_exposureValue (EV stops; default 0 → factor 1.0).
+			float exposure = std::pow(2.0f, static_cast<float>(r_vk_exposureValue) * 0.5f);
 			tint *= exposure;
 
 			// Saturation (scene saturation × global setting).
 			const client::SceneDefinition& def = renderer.GetSceneDef();
-			float saturation = def.saturation * static_cast<float>(r_saturation);
+			float saturation = def.saturation * static_cast<float>(r_vk_saturation);
 
 			// Enhancement (S-curve strength) — mirrors GL logic.
 			float enhancement;
-			bool  hdrOn = (int)r_hdr != 0;
+			bool  hdrOn = (int)r_vk_hdr != 0;
 			if (hdrOn) {
-				enhancement = (int)r_bloom != 0 ? 0.1f : 0.0f;
-				saturation  *= (int)r_bloom != 0 ? 0.8f : 0.9f;
+				enhancement = (int)r_vk_bloom != 0 ? 0.1f : 0.0f;
+				saturation  *= (int)r_vk_bloom != 0 ? 0.8f : 0.9f;
 			} else {
-				enhancement = (int)r_bloom != 0 ? 0.7f : 0.3f;
-				saturation  *= (int)r_bloom != 0 ? 0.85f : 1.0f;
+				enhancement = (int)r_vk_bloom != 0 ? 0.7f : 0.3f;
+				saturation  *= (int)r_vk_bloom != 0 ? 0.85f : 1.0f;
 			}
 
 			// ── Record draw ───────────────────────────────────────────────────────

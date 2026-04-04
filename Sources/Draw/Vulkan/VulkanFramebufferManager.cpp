@@ -25,10 +25,10 @@
 #include <Core/Exception.h>
 #include <Core/Settings.h>
 
-SPADES_SETTING(r_highPrec);
-SPADES_SETTING(r_hdr);
-SPADES_SETTING(r_srgb);
-SPADES_SETTING(r_multisamples);
+SPADES_SETTING(r_vk_highPrec);
+SPADES_SETTING(r_vk_hdr);
+SPADES_SETTING(r_vk_srgb);
+SPADES_SETTING(r_vk_multisamples);
 namespace spades {
 	namespace draw {
 
@@ -50,7 +50,7 @@ namespace spades {
 			if (requested >= 4 && TryCount(VK_SAMPLE_COUNT_4_BIT)) return VK_SAMPLE_COUNT_4_BIT;
 			if (requested >= 2 && TryCount(VK_SAMPLE_COUNT_2_BIT)) return VK_SAMPLE_COUNT_2_BIT;
 
-			SPLog("r_multisamples=%d is not supported by this device; falling back to no MSAA", requested);
+			SPLog("r_vk_multisamples=%d is not supported by this device; falling back to no MSAA", requested);
 			return VK_SAMPLE_COUNT_1_BIT;
 		}
 
@@ -69,9 +69,9 @@ namespace spades {
 
 			SPLog("Initializing Vulkan framebuffer manager");
 
-			useHighPrec = (bool)(int)r_highPrec;
-			useHdr = (bool)(int)r_hdr;
-			useSRGB = (bool)(int)r_srgb;
+			useHighPrec = (bool)(int)r_vk_highPrec;
+			useHdr = (bool)(int)r_vk_hdr;
+			useSRGB = (bool)(int)r_vk_srgb;
 
 			// Determine color format
 			if (useSRGB) {
@@ -104,7 +104,7 @@ namespace spades {
 			}
 
 			// Determine MSAA sample count
-			msaaSamples = SelectMsaaSampleCount(device->GetPhysicalDevice(), (int)r_multisamples);
+			msaaSamples = SelectMsaaSampleCount(device->GetPhysicalDevice(), (int)r_vk_multisamples);
 			if (msaaSamples > VK_SAMPLE_COUNT_1_BIT)
 				SPLog("MSAA enabled: %d samples", (int)msaaSamples);
 			else

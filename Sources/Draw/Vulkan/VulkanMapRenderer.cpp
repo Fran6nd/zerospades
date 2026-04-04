@@ -56,8 +56,8 @@ namespace spades {
 			SPADES_MARK_FUNCTION();
 
 			{
-				SPADES_SETTING(r_physicalLighting);
-				physicalLighting = (int)r_physicalLighting != 0;
+				SPADES_SETTING(r_vk_physicalLighting);
+				physicalLighting = (int)r_vk_physicalLighting != 0;
 			}
 
 			SPLog("Initializing Vulkan map renderer (physicalLighting=%d)", (int)physicalLighting);

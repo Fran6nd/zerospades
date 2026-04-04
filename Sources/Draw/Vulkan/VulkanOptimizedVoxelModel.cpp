@@ -886,8 +886,8 @@ namespace spades {
 			sharedPipeline.renderPass = renderPass;
 
 			{
-				SPADES_SETTING(r_physicalLighting);
-				sharedPipeline.physicalLighting = (int)r_physicalLighting != 0;
+				SPADES_SETTING(r_vk_physicalLighting);
+				sharedPipeline.physicalLighting = (int)r_vk_physicalLighting != 0;
 			}
 
 			// Load SPIR-V shaders
