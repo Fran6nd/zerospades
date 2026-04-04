@@ -46,15 +46,15 @@ The prefix applies to every renderer-specific cvar: quality toggles, post-proces
 
 These features are present in the OpenGL renderer but not yet implemented in the Vulkan renderer.
 
-| Feature | Cvar(s) | Status |
-|---------|---------|--------|
-| Water rendering | `r_vk_water` | Deferred. `VulkanWaterRenderer` was removed from this branch. Mirror pass, refraction copy, and screen-copy images in `VulkanFramebufferManager` need to be restored from git history. |
-| Temporal AA | `r_vk_temporalAA` | Not started. Requires projection-matrix jitter before scene render and a history-buffer accumulation pass after. |
-| Lens flare | `r_vk_lensFlare`, `r_vk_lensFlareDynamic` | Not started. Requires a scanner pass during the scene pass and a composite pass in the post chain. |
-| Camera motion blur | `r_vk_cameraBlur` | Not started. |
-| Gamma correction filter | — | Not started. Equivalent to GL `GLNonlinearizeFilter`. |
-| Bicubic resampling | `r_vk_scaleFilter` | Not started. Only relevant when render resolution differs from display resolution. |
-| Radiosity / global illumination | `r_radiosity` (GL only) | GL-only feature. No Vulkan implementation planned in the near term. |
+| Feature | Cvar(s) |
+|---------|---------|
+| Water rendering | `r_vk_water` |
+| Temporal AA | `r_vk_temporalAA` |
+| Lens flare | `r_vk_lensFlare`, `r_vk_lensFlareDynamic` | 
+| Camera motion blur | `r_vk_cameraBlur` |
+| Gamma correction filter | — |
+| Bicubic resampling | `r_vk_scaleFilter` |
+| Radiosity / global illumination | `r_radiosity` (GL only) |
 
 ---
 
@@ -102,10 +102,6 @@ Items are ordered roughly by priority.
 - **Gamma correction** — Port `OpenGL/PostFilters/GammaMix.fs/.vs`. Implement `VulkanGammaFilter` (equivalent to `GLNonlinearizeFilter`); wire after color correction.
 
 - **Bicubic resampling (`r_vk_scaleFilter`)** — Port `OpenGL/PostFilters/ResampleBicubic.fs/.vs`. Implement `VulkanBicubicResampleFilter`; wire as the final step when render resolution ≠ display resolution.
-
-### Deferred features
-
-- **Water renderer (`r_vk_water` 0–3)** — Restore `VulkanWaterRenderer` from git history. Restore the mirror framebuffer and screen-copy images in `VulkanFramebufferManager`, mirror render pass, refraction copy blocks in `RecordCommandBuffer`, and the `r_vk_water > 0` guard in `VulkanMapChunk::IsSolid`. Re-enable water presets in the setup screen's Shader Effects tab.
 
 ### Cvar quality levels
 
