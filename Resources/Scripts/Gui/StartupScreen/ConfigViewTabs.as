@@ -339,7 +339,7 @@ namespace spades {
 					_Tr("StartupScreen", "Level 1") + ":"  +
 					_Tr("StartupScreen", "Applies local illumination to the fog.") + "|" +
 					_Tr("StartupScreen", "Level 2") + ":"  +
-					_Tr("StartupScreen", "Applies local illumination to the fog."));
+					_Tr("StartupScreen", "Applies local illumination to the fog.")));
 
 				{
 					StartupScreenComplexConfig cplx;
