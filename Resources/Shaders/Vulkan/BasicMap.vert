@@ -47,8 +47,11 @@ void main() {
 	vec4 worldPos = vec4(position + pushConstants.modelOrigin, 1.0);
 	gl_Position = pushConstants.projectionViewMatrix * worldPos;
 
-	// Convert int8 normal to float and normalize
-	vec3 normalFloat = normalize(vec3(normalAttribute));
+	// Convert int8 normal to float and normalize.
+	// Guard against a zero vector (possible if the vertex format was misread by the driver):
+	// normalize(vec3(0)) is undefined and produces NaN on some implementations.
+	vec3 rawNormal = vec3(normalAttribute);
+	vec3 normalFloat = (dot(rawNormal, rawNormal) > 0.0) ? normalize(rawNormal) : vec3(0.0, 0.0, 1.0);
 
 	// Sun direction matching OpenGL: normalize(vec3(0, -1, -1))
 	vec3 sunDir = normalize(vec3(0.0, -1.0, -1.0));
