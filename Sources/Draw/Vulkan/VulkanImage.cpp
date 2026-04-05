@@ -203,7 +203,7 @@ namespace spades {
 			samplerInfo.addressModeV = addressMode;
 			samplerInfo.addressModeW = addressMode;
 
-			if (enableAnisotropy) {
+			if (enableAnisotropy && device->HasAnisotropy()) {
 				samplerInfo.anisotropyEnable = VK_TRUE;
 				samplerInfo.maxAnisotropy = 16.0f;
 			} else {
