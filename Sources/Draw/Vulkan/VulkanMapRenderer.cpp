@@ -874,12 +874,14 @@ namespace spades {
 					return;
 				}
 
-				// Depth: test EQUAL, no write (additive pass on existing geometry)
+				// Depth: test LESS_OR_EQUAL, no write (additive pass on existing geometry).
+				// EQUAL would be ideal but is unreliable on Intel/MoltenVK where re-rasterising
+				// the same vertices can produce depth values that differ by 1 ULP.
 				VkPipelineDepthStencilStateCreateInfo dlDepth{};
 				dlDepth.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
 				dlDepth.depthTestEnable = VK_TRUE;
 				dlDepth.depthWriteEnable = VK_FALSE;
-				dlDepth.depthCompareOp = VK_COMPARE_OP_EQUAL;
+				dlDepth.depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
 				dlDepth.depthBoundsTestEnable = VK_FALSE;
 				dlDepth.stencilTestEnable = VK_FALSE;
 
