@@ -736,7 +736,9 @@ namespace spades {
 			SPLog("Map renderer pipeline created successfully");
 
 			// --- Create outline pipeline ---
-			{
+			if (!device->HasFillModeNonSolid()) {
+				SPLog("fillModeNonSolid not available - map outline pipeline will not be created");
+			} else {
 				std::vector<uint32_t> olVertCode = LoadSPIRVFile("Shaders/Vulkan/MapOutline.vert.spv");
 				std::vector<uint32_t> olFragCode = LoadSPIRVFile("Shaders/Vulkan/Outline.frag.spv");
 
@@ -811,7 +813,7 @@ namespace spades {
 						}
 					}
 				}
-			}
+			} // else HasFillModeNonSolid
 
 			// --- Create dynamic light pipeline ---
 			{

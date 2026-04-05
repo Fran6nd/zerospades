@@ -1240,7 +1240,9 @@ namespace spades {
 			}
 
 			// --- Create outline pipeline ---
-			{
+			if (!device->HasFillModeNonSolid()) {
+				SPLog("fillModeNonSolid not available - model outline pipeline will not be created");
+			} else {
 				std::vector<uint32_t> olVertCode = LoadSPIRVFile("Shaders/Vulkan/ModelOutline.vert.spv");
 				std::vector<uint32_t> olFragCode = LoadSPIRVFile("Shaders/Vulkan/Outline.frag.spv");
 
@@ -1327,7 +1329,7 @@ namespace spades {
 						}
 					}
 				}
-			}
+			} // else HasFillModeNonSolid
 
 			// --- Create ghost depth pipeline (depth prepass for transparent models) ---
 			{
