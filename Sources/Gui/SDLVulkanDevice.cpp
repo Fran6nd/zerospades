@@ -77,7 +77,10 @@ namespace spades {
 		  currentFrame(0),
 		  allocator(VK_NULL_HANDLE),
 		  dedicatedAllocEnabled(false),
-		  bindMemory2Enabled(false)
+		  bindMemory2Enabled(false),
+		  featAnisotropy(false),
+		  featFillModeNonSolid(false),
+		  featSampleRateShading(false)
 #ifndef NDEBUG
 		  , debugMessenger(VK_NULL_HANDLE)
 #endif  // NDEBUG
@@ -406,17 +409,20 @@ namespace spades {
 
 			VkPhysicalDeviceFeatures deviceFeatures{};
 			// Only enable features that are actually supported
-			if (supportedFeatures.samplerAnisotropy) {
+			featAnisotropy = supportedFeatures.samplerAnisotropy == VK_TRUE;
+			if (featAnisotropy) {
 				deviceFeatures.samplerAnisotropy = VK_TRUE;
 			} else {
 				SPLog("Warning: Anisotropic filtering not supported on this device");
 			}
-			if (supportedFeatures.sampleRateShading) {
+			featSampleRateShading = supportedFeatures.sampleRateShading == VK_TRUE;
+			if (featSampleRateShading) {
 				deviceFeatures.sampleRateShading = VK_TRUE;
 			} else {
 				SPLog("Warning: Sample rate shading not supported on this device");
 			}
-			if (supportedFeatures.fillModeNonSolid) {
+			featFillModeNonSolid = supportedFeatures.fillModeNonSolid == VK_TRUE;
+			if (featFillModeNonSolid) {
 				deviceFeatures.fillModeNonSolid = VK_TRUE;
 			} else {
 				SPLog("Warning: fillModeNonSolid not supported - outlines will be disabled");

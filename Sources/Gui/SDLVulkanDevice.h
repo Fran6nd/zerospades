@@ -71,6 +71,11 @@ namespace spades {
 			bool dedicatedAllocEnabled;
 			bool bindMemory2Enabled;
 
+			// Enabled optional device features
+			bool featAnisotropy;
+			bool featFillModeNonSolid;
+			bool featSampleRateShading;
+
 			// Swapchain generation counter, incremented on every successful recreation
 		uint32_t swapchainGeneration{0};
 
@@ -130,6 +135,11 @@ namespace spades {
 
 			// Swapchain recreation (for window resize)
 			void RecreateSwapchain();
+
+			// Enabled optional device features (set during logical device creation)
+			bool HasAnisotropy() const { return featAnisotropy; }
+			bool HasFillModeNonSolid() const { return featFillModeNonSolid; }
+			bool HasSampleRateShading() const { return featSampleRateShading; }
 
 			// Returns a monotonically increasing counter, bumped on each swapchain recreation.
 			// Callers can compare against a cached value to detect when dependent resources
