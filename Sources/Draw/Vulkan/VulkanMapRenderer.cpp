@@ -543,10 +543,10 @@ namespace spades {
 
 			std::array<VkVertexInputAttributeDescription, 4> attributeDescriptions{};
 
-			// Position (location 0) - x, y, z are uint8_t at offset 0
+			// Position (location 0) - x, y, z at offset 0, pad byte at offset 3 (A ignored by shader)
 			attributeDescriptions[0].binding = 0;
 			attributeDescriptions[0].location = 0;
-			attributeDescriptions[0].format = VK_FORMAT_R8G8B8_UINT;
+			attributeDescriptions[0].format = VK_FORMAT_R8G8B8A8_UINT;
 			attributeDescriptions[0].offset = 0;
 
 			// AO coordinates (location 1) - aoX, aoY are uint16_t at offset 4
@@ -555,16 +555,18 @@ namespace spades {
 			attributeDescriptions[1].format = VK_FORMAT_R16G16_UINT;
 			attributeDescriptions[1].offset = 4;
 
-			// Color (location 2) - colorRed, colorGreen, colorBlue are uint8_t at offset 8
+			// Color (location 2) - colorRed, colorGreen, colorBlue at offset 8, shading byte at
+			// offset 11 becomes A (ignored by shader)
 			attributeDescriptions[2].binding = 0;
 			attributeDescriptions[2].location = 2;
-			attributeDescriptions[2].format = VK_FORMAT_R8G8B8_UINT;
+			attributeDescriptions[2].format = VK_FORMAT_R8G8B8A8_UINT;
 			attributeDescriptions[2].offset = 8;
 
-			// Normal (location 3) - nx, ny, nz are int8_t at offset 12
+			// Normal (location 3) - nx, ny, nz at offset 12, pad2 byte at offset 15 becomes A
+			// (ignored by shader)
 			attributeDescriptions[3].binding = 0;
 			attributeDescriptions[3].location = 3;
-			attributeDescriptions[3].format = VK_FORMAT_R8G8B8_SINT;
+			attributeDescriptions[3].format = VK_FORMAT_R8G8B8A8_SINT;
 			attributeDescriptions[3].offset = 12;
 
 			VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
