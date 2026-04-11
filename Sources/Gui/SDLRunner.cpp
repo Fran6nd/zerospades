@@ -340,8 +340,11 @@ namespace spades {
 				return RendererType::Vulkan;
 			else if (EqualsIgnoringCase(r_renderer, "sw"))
 				return RendererType::SW;
-			else
-				SPRaise("Unknown renderer name: %s", r_renderer.CString());
+			else {
+				SPLog("Unrecognized renderer '%s', falling back to OpenGL.", r_renderer.CString());
+				r_renderer = "gl";
+				return RendererType::GL;
+			}
 		}
 
 		class SDLSWPort : public draw::SWPort, public Disposable {
