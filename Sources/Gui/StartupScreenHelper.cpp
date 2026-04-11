@@ -227,6 +227,11 @@ namespace spades {
 				std::string err = SDL_GetError();
 				SPLog("SDL_SetVideoMode failed: %s", err.c_str());
 
+				if (window) {
+					SDL_DestroyWindow(window);
+					window = nullptr;
+				}
+
 				AddReport("OpenGL-capable graphics accelerator is unavailable.", red);
 				AddReport();
 
