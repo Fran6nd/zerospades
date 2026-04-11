@@ -50,8 +50,8 @@ void main() {
 	// World position via model matrix
 	vec3 worldPos = (pushConstants.modelMatrix * localPos).xyz;
 
-	// Convert int8 normal to float and normalize
-	vec3 normalFloat = normalize(vec3(normalAttribute));
+	// Transform normal to world space via model matrix (handles mirrored models correctly)
+	vec3 normalFloat = normalize((pushConstants.modelMatrix * vec4(normalize(vec3(normalAttribute)), 0.0)).xyz);
 
 	// Sun direction matching OpenGL: normalize(vec3(0, -1, -1))
 	vec3 sunDir = normalize(vec3(0.0, -1.0, -1.0));
