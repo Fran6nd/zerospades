@@ -341,9 +341,9 @@ namespace spades {
 			else if (EqualsIgnoringCase(r_renderer, "sw"))
 				return RendererType::SW;
 			else {
-				SPLog("Unrecognized renderer '%s', falling back to OpenGL.", r_renderer.CString());
-				r_renderer = "gl";
-				return RendererType::GL;
+				SPLog("Unrecognized renderer '%s', falling back to software renderer.", r_renderer.CString());
+				r_renderer = "sw";
+				return RendererType::SW;
 			}
 		}
 
