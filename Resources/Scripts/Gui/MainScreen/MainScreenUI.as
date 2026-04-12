@@ -77,13 +77,21 @@ namespace spades {
 			renderer.FogDistance = 128.0F;
 			time = -1.0F;
 
-			// returned from the client game, so reload the server list.
-			if (mainMenu !is null)
+			// returned from the client game or the KV6 editor, so reload the
+			// server list and the editor's file list (to pick up any saves).
+			if (mainMenu !is null) {
 				mainMenu.LoadServerList();
+				mainMenu.LoadKV6List();
+			}
 
 			if (manager !is null)
 				manager.KeyPanic();
 		}
+
+		// The main menu always uses an absolute cursor. (When the KV6 editor is
+		// open it runs as a C++ `subview`, so `MainScreen` queries the editor
+		// directly and never reaches this.)
+		bool NeedsAbsoluteMouseCoordinate() { return true; }
 
 		void MouseEvent(float x, float y) { manager.MouseEvent(x, y); }
 		void WheelEvent(float x, float y) { manager.WheelEvent(x, y); }
@@ -167,7 +175,9 @@ namespace spades {
 			renderer.Flip();
 		}
 
-		void Closing() { shouldExit = true; }
+		void Closing() {
+			shouldExit = true;
+		}
 
 		bool WantsToBeClosed() { return shouldExit; }
 	}

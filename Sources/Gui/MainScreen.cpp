@@ -19,6 +19,7 @@
  */
 
 #include "MainScreen.h"
+#include "KV6EditorView.h"
 #include "MainScreenHelper.h"
 #include <Client/Client.h>
 #include <Client/Fonts.h>
@@ -72,8 +73,15 @@ namespace spades {
 			SPADES_MARK_FUNCTION();
 			if (subview)
 				return subview->NeedsAbsoluteMouseCoordinate();
+			if (!ui)
+				return true;
 
-			return true;
+			ScopedPrivilegeEscalation privilege;
+			static ScriptFunction func("MainScreenUI", "bool NeedsAbsoluteMouseCoordinate()");
+			ScriptContextHandle c = func.Prepare();
+			c->SetObject(&*ui);
+			c.ExecuteChecked();
+			return c->GetReturnByte() != 0;
 		}
 
 		void MainScreen::MouseEvent(float x, float y) {
@@ -378,6 +386,18 @@ namespace spades {
 				            .Cast<View>();
 			} catch (const std::exception& ex) {
 				SPLog("[!] Error starting demo playback: %s", ex.what());
+				return ex.what();
+			}
+			return "";
+		}
+
+		std::string MainScreen::OpenKV6Editor(const std::string& path, bool isNew) {
+			try {
+				subview = Handle<KV6EditorView>::New(&*renderer, &*audioDevice, &*fontManager,
+				                                     path, isNew)
+				            .Cast<View>();
+			} catch (const std::exception& ex) {
+				SPLog("[!] Error while opening the KV6 editor: %s", ex.what());
 				return ex.what();
 			}
 			return "";

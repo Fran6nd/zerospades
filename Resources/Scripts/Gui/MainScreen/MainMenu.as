@@ -198,6 +198,17 @@ namespace spades {
 		private float demoSizeColWidth;
 		private float demoContentsWidth;
 
+		// Editor tab state
+		TabPanel@ editorPanel;
+		KV6ScreenHelper@ kv6Helper;
+		spades::ui::ListView@ kv6List;
+		spades::ui::Field@ kv6PathField;
+		KV6ListModel@ currentKV6ListModel;
+		string kv6Dir = "";          // current folder (absolute path)
+		string kv6Selected = "";     // selected entry name in the current folder
+		bool kv6SelectedIsFolder = false;
+		ConfigItem cl_kv6EditorFolder("cl_kv6EditorFolder", ""); // remembered folder (absolute)
+
 		// Mods tab state
 		ModsScreenHelper@ modsHelper;
 		TabPanel@ modsPanel;
@@ -269,6 +280,10 @@ namespace spades {
 				@demoPanel = TabPanel(Manager);
 				demoPanel.Bounds = AABB2(0.0F, 0.0F, sw, sh);
 				demoPanel.Visible = false;
+
+				@editorPanel = TabPanel(Manager);
+				editorPanel.Bounds = AABB2(0.0F, 0.0F, sw, sh);
+				editorPanel.Visible = false;
 
 				@modsPanel = TabPanel(Manager);
 				modsPanel.Bounds = AABB2(0.0F, 0.0F, sw, sh);
@@ -577,8 +592,75 @@ namespace spades {
 					modsPanel.AddChild(modsList);
 				}
 
+				// --- Editor panel contents (filesystem explorer) ---
+				{
+					@kv6Helper = KV6ScreenHelper();
+
+					// Restore the last-used folder (persisted in a cvar); fall back
+					// to the home (user data) folder if unset or gone.
+					kv6Dir = cl_kv6EditorFolder.StringValue;
+					if (kv6Dir.length == 0 or not kv6Helper.IsFolder(kv6Dir))
+						kv6Dir = kv6Helper.DefaultDir();
+
+					// Current-path display (editable; mirrors the demo name field).
+					{
+						@kv6PathField = spades::ui::Field(Manager);
+						kv6PathField.Bounds = AABB2(contentsLeft, 200.0F, contentsWidth - 480.0F, 30.0F);
+						kv6PathField.Placeholder = _Tr("MainScreen", "Type a path and press [Enter]");
+						editorPanel.AddChild(kv6PathField);
+					}
+					{
+						spades::ui::Button button(Manager);
+						button.Caption = _Tr("MainScreen", "Home");
+						button.Bounds = AABB2(contentsLeft + contentsWidth - 470.0F, 200.0F, 55.0F, 30.0F);
+						@button.Activated = spades::ui::EventHandler(this.OnKV6HomePressed);
+						editorPanel.AddChild(button);
+					}
+					{
+						spades::ui::Button button(Manager);
+						button.Caption = _Tr("MainScreen", "Up");
+						button.Bounds = AABB2(contentsLeft + contentsWidth - 410.0F, 200.0F, 55.0F, 30.0F);
+						@button.Activated = spades::ui::EventHandler(this.OnKV6UpPressed);
+						editorPanel.AddChild(button);
+					}
+					{
+						spades::ui::Button button(Manager);
+						button.Caption = _Tr("MainScreen", "New Folder");
+						button.Bounds = AABB2(contentsLeft + contentsWidth - 350.0F, 200.0F, 100.0F, 30.0F);
+						@button.Activated = spades::ui::EventHandler(this.OnNewFolderPressed);
+						editorPanel.AddChild(button);
+					}
+					{
+						spades::ui::Button button(Manager);
+						button.Caption = _Tr("MainScreen", "New Model");
+						button.Bounds = AABB2(contentsLeft + contentsWidth - 245.0F, 200.0F, 105.0F, 30.0F);
+						@button.Activated = spades::ui::EventHandler(this.OnNewModelPressed);
+						editorPanel.AddChild(button);
+					}
+					{
+						spades::ui::Button button(Manager);
+						button.Caption = _Tr("MainScreen", "Delete");
+						button.Bounds = AABB2(contentsLeft + contentsWidth - 135.0F, 200.0F, 135.0F, 30.0F);
+						@button.Activated = spades::ui::EventHandler(this.OnKV6DeletePressed);
+						editorPanel.AddChild(button);
+					}
+					{
+						spades::ui::Label header(Manager);
+						header.Text = _Tr("MainScreen", "Name");
+						header.Bounds = AABB2(contentsLeft, headerPos, contentsWidth, headerHeight);
+						header.Alignment = Vector2(0.0F, 0.5F);
+						editorPanel.AddChild(header);
+					}
+					{
+						@kv6List = spades::ui::ListView(Manager);
+						kv6List.Bounds = AABB2(contentsLeft, listPos, contentsWidth, footerPos - listPos - 44.0F);
+						editorPanel.AddChild(kv6List);
+					}
+				}
+
 				AddChild(serverPanel);
 				AddChild(demoPanel);
+				AddChild(editorPanel);
 				AddChild(modsPanel);
 
 				// Tab strip
@@ -588,6 +670,7 @@ namespace spades {
 					AddChild(tabStrip);
 					tabStrip.AddItem(_Tr("MainScreen", "Servers"), serverPanel);
 					tabStrip.AddItem(_Tr("MainScreen", "Demos"), demoPanel);
+					tabStrip.AddItem(_Tr("MainScreen", "Editor"), editorPanel);
 					// Hide the Mods tab while trying a single mod (--try-mod):
 					// the mod manager is irrelevant and its enabled set is bypassed.
 					if (!helper.IsTryingMod())
@@ -629,6 +712,7 @@ namespace spades {
 
 			LoadServerList();
 			LoadDemoList();
+			LoadKV6List();
 
 			if (helper.ShouldOpenModsTab())
 				LoadModList();
@@ -666,6 +750,8 @@ namespace spades {
 			// Refresh demo list when switching to demos tab
 			if (demoPanel.Visible)
 				LoadDemoList();
+			if (editorPanel.Visible)
+				LoadKV6List();
 			if (modsPanel.Visible)
 				LoadModList();
 		}
@@ -1079,6 +1165,155 @@ namespace spades {
 			al.Run();
 		}
 
+		void LoadKV6List() {
+			if (kv6Helper is null)
+				return;
+			string[]@ folders = kv6Helper.GetFolders(kv6Dir);
+			string[]@ files = kv6Helper.GetFiles(kv6Dir);
+			if (folders is null)
+				@folders = array<string>();
+			if (files is null)
+				@files = array<string>();
+
+			// Folders first, then files.
+			string[] names;
+			bool[] isFolder;
+			for (uint i = 0; i < folders.length; i++) {
+				names.insertLast(folders[i]);
+				isFolder.insertLast(true);
+			}
+			for (uint i = 0; i < files.length; i++) {
+				names.insertLast(files[i]);
+				isFolder.insertLast(false);
+			}
+
+			KV6ListModel model(Manager, names, isFolder);
+			@kv6List.Model = model;
+			@model.ItemActivated = KV6ListEventHandler(this.KV6ItemActivated);
+			@model.ItemDoubleClicked = KV6ListEventHandler(this.KV6ItemDoubleClicked);
+			@currentKV6ListModel = model;
+
+			kv6PathField.Text = kv6Dir;
+			cl_kv6EditorFolder.StringValue = kv6Dir; // remember for next time
+			kv6Selected = "";
+			kv6SelectedIsFolder = false;
+		}
+
+		private string KV6Child(string name) {
+			if (kv6Dir.length == 0)
+				return name;
+			uint8 last = kv6Dir[kv6Dir.length - 1];
+			if (last == uint8(0x2F) or last == uint8(0x5C)) // '/' or '\'
+				return kv6Dir + name;
+			return kv6Dir + "/" + name;
+		}
+
+		private void KV6ItemActivated(string name, bool isFolder) {
+			kv6Selected = name;
+			kv6SelectedIsFolder = isFolder;
+			// Show the full path so the user can read or edit it directly.
+			kv6PathField.Text = KV6Child(name) + (isFolder ? "/" : "");
+		}
+
+		private void NotImplemented() {
+			AlertScreen al(this, _Tr("MainScreen",
+				"This file type is not supported yet. Only .kv6 files can be edited."), 120.0F);
+			al.Run();
+		}
+
+		// Navigate to / open the absolute path typed into the path field.
+		void OnKV6PathEntered() {
+			string p = kv6PathField.Text;
+			// Trim trailing separators (but keep a lone root "/").
+			while (p.length > 1 and (p[p.length - 1] == uint8(0x2F) or p[p.length - 1] == uint8(0x5C)))
+				p = p.substr(0, p.length - 1);
+
+			if (p.length == 0)
+				return;
+			if (kv6Helper.IsFolder(p)) {
+				kv6Dir = p;
+				LoadKV6List();
+				return;
+			}
+
+			if (KV6IsModelFile(p) and not KV6IsEditable(p)) {
+				NotImplemented();
+				return;
+			}
+			// Treat as a .kv6 file (open existing, or create if it does not exist).
+			if (not KV6IsEditable(p))
+				p += ".kv6";
+			helper.OpenKV6Editor(p, not kv6Helper.Exists(p));
+		}
+
+		private void KV6ItemDoubleClicked(string name, bool isFolder) {
+			if (isFolder) {
+				kv6Dir = KV6Child(name);
+				LoadKV6List();
+			} else if (not KV6IsEditable(name)) {
+				NotImplemented();
+			} else {
+				helper.OpenKV6Editor(KV6Child(name), false);
+			}
+		}
+
+		private void OnKV6HomePressed(spades::ui::UIElement@ sender) {
+			kv6Dir = kv6Helper.DefaultDir();
+			LoadKV6List();
+		}
+
+		private void OnKV6UpPressed(spades::ui::UIElement@ sender) {
+			kv6Dir = kv6Helper.ParentDir(kv6Dir);
+			LoadKV6List();
+		}
+
+		private void OnNewFolderPressed(spades::ui::UIElement@ sender) {
+			KV6NamePrompt prompt(this, _Tr("MainScreen", "New Folder"), "");
+			@prompt.Closed = spades::ui::EventHandler(this.OnNewFolderClosed);
+			prompt.Run();
+		}
+		private void OnNewFolderClosed(spades::ui::UIElement@ sender) {
+			KV6NamePrompt@ p = cast<KV6NamePrompt>(sender);
+			if (p is null or not p.Result)
+				return;
+			if (p.Text.length == 0)
+				return;
+			kv6Helper.CreateFolder(KV6Child(p.Text));
+			LoadKV6List();
+		}
+
+		private void OnNewModelPressed(spades::ui::UIElement@ sender) {
+			KV6NamePrompt prompt(this, _Tr("MainScreen", "New Model"), "untitled");
+			@prompt.Closed = spades::ui::EventHandler(this.OnNewModelClosed);
+			prompt.Run();
+		}
+		private void OnNewModelClosed(spades::ui::UIElement@ sender) {
+			KV6NamePrompt@ p = cast<KV6NamePrompt>(sender);
+			if (p is null or not p.Result)
+				return;
+			string name = p.Text;
+			if (name.length == 0)
+				return;
+			if (not KV6IsEditable(name))
+				name += ".kv6";
+			helper.OpenKV6Editor(KV6Child(name), true);
+		}
+
+		private void OnKV6DeletePressed(spades::ui::UIElement@ sender) {
+			if (kv6Selected.length == 0)
+				return;
+			KV6ConfirmPrompt prompt(this, _Tr("MainScreen", "Delete '{0}'?", kv6Selected));
+			@prompt.Closed = spades::ui::EventHandler(this.OnKV6DeleteClosed);
+			prompt.Run();
+		}
+		private void OnKV6DeleteClosed(spades::ui::UIElement@ sender) {
+			KV6ConfirmPrompt@ p = cast<KV6ConfirmPrompt>(sender);
+			if (p is null or not p.Result)
+				return;
+			kv6Helper.Delete(KV6Child(kv6Selected));
+			LoadKV6List();
+		}
+
 		private void Connect() {
 			// Pass selectedMapName if known (server clicked in list); otherwise pass empty
 			// and let ConnectServer resolve it from the cached server list on the C++ side.
@@ -1095,6 +1330,8 @@ namespace spades {
 			if (IsEnabled and key == "Enter") {
 				if (demoPanel.Visible) {
 					PlaySelectedDemo();
+				} else if (editorPanel.Visible) {
+					OnKV6PathEntered();
 				} else {
 					Connect();
 				}

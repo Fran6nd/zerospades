@@ -93,6 +93,11 @@ namespace spades {
 												  asMETHOD(gui::MainScreenHelper, PlayDemo),
 												  asCALL_THISCALL);
 					manager->CheckError(r);
+					r = eng->RegisterObjectMethod("MainScreenHelper",
+												  "string OpenKV6Editor(string, bool)",
+												  asMETHOD(gui::MainScreenHelper, OpenKV6Editor),
+												  asCALL_THISCALL);
+					manager->CheckError(r);
 					r = eng->RegisterObjectMethod("MainScreenHelper", "int64 GetDemoFileSize(string)",
 												  asMETHOD(gui::MainScreenHelper, GetDemoFileSize),
 												  asCALL_THISCALL);
