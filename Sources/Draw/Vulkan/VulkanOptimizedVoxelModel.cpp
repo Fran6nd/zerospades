@@ -59,9 +59,17 @@ namespace spades {
 				vkDestroyPipeline(vkDevice, sharedPipeline.pipeline, nullptr);
 				sharedPipeline.pipeline = VK_NULL_HANDLE;
 			}
+			if (sharedPipeline.mirroredPipeline != VK_NULL_HANDLE) {
+				vkDestroyPipeline(vkDevice, sharedPipeline.mirroredPipeline, nullptr);
+				sharedPipeline.mirroredPipeline = VK_NULL_HANDLE;
+			}
 			if (sharedPipeline.dlightPipeline != VK_NULL_HANDLE) {
 				vkDestroyPipeline(vkDevice, sharedPipeline.dlightPipeline, nullptr);
 				sharedPipeline.dlightPipeline = VK_NULL_HANDLE;
+			}
+			if (sharedPipeline.mirroredDlightPipeline != VK_NULL_HANDLE) {
+				vkDestroyPipeline(vkDevice, sharedPipeline.mirroredDlightPipeline, nullptr);
+				sharedPipeline.mirroredDlightPipeline = VK_NULL_HANDLE;
 			}
 			if (sharedPipeline.shadowMapPipeline != VK_NULL_HANDLE) {
 				vkDestroyPipeline(vkDevice, sharedPipeline.shadowMapPipeline, nullptr);
@@ -75,9 +83,17 @@ namespace spades {
 				vkDestroyPipeline(vkDevice, sharedPipeline.ghostDepthPipeline, nullptr);
 				sharedPipeline.ghostDepthPipeline = VK_NULL_HANDLE;
 			}
+			if (sharedPipeline.mirroredGhostDepthPipeline != VK_NULL_HANDLE) {
+				vkDestroyPipeline(vkDevice, sharedPipeline.mirroredGhostDepthPipeline, nullptr);
+				sharedPipeline.mirroredGhostDepthPipeline = VK_NULL_HANDLE;
+			}
 			if (sharedPipeline.ghostColorPipeline != VK_NULL_HANDLE) {
 				vkDestroyPipeline(vkDevice, sharedPipeline.ghostColorPipeline, nullptr);
 				sharedPipeline.ghostColorPipeline = VK_NULL_HANDLE;
+			}
+			if (sharedPipeline.mirroredGhostColorPipeline != VK_NULL_HANDLE) {
+				vkDestroyPipeline(vkDevice, sharedPipeline.mirroredGhostColorPipeline, nullptr);
+				sharedPipeline.mirroredGhostColorPipeline = VK_NULL_HANDLE;
 			}
 			if (sharedPipeline.pipelineLayout != VK_NULL_HANDLE) {
 				vkDestroyPipelineLayout(vkDevice, sharedPipeline.pipelineLayout, nullptr);
@@ -385,10 +401,18 @@ namespace spades {
 
 			// Select pipeline: ghost depth prepass or opaque depth prepass
 			VkPipeline activePipeline = ghostPass ? sharedPipeline.ghostDepthPipeline : sharedPipeline.pipeline;
+			VkPipeline activeMirroredPipeline = ghostPass ? sharedPipeline.mirroredGhostDepthPipeline : sharedPipeline.mirroredPipeline;
 			if (activePipeline == VK_NULL_HANDLE)
 				return;
 
-			vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, activePipeline);
+			VkPipeline boundPipeline = VK_NULL_HANDLE;
+			auto bindPipeline = [&](VkPipeline p) {
+				if (p != boundPipeline) {
+					vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, p);
+					boundPipeline = p;
+				}
+			};
+			bindPipeline(activePipeline);
 
 			// Bind shadow map descriptor set
 			VulkanMapRenderer* mapRendererPrerender = renderer.GetMapRenderer();
@@ -418,6 +442,15 @@ namespace spades {
 			for (const auto& param : params) {
 				if (ghostPass != param.ghost)
 					continue;
+
+				// Switch to mirrored pipeline when the model matrix has a negative determinant
+				{
+					const auto& ax = param.matrix.GetAxis(0);
+					const auto& ay = param.matrix.GetAxis(1);
+					const auto& az = param.matrix.GetAxis(2);
+					bool isMirrored = Vector3::Dot(Vector3::Cross(ax, ay), az) < 0.0F;
+					bindPipeline(isMirrored ? activeMirroredPipeline : activePipeline);
+				}
 
 				Matrix4 mvpMatrix = projectionViewMatrix * param.matrix;
 
@@ -509,11 +542,19 @@ namespace spades {
 
 			// Select pipeline: ghost color pass or opaque pass
 			VkPipeline activePipeline = ghostPass ? sharedPipeline.ghostColorPipeline : sharedPipeline.pipeline;
+			VkPipeline activeMirroredPipeline = ghostPass ? sharedPipeline.mirroredGhostColorPipeline : sharedPipeline.mirroredPipeline;
 			if (activePipeline == VK_NULL_HANDLE)
 				return;
 
-			// Bind pipeline
-			vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, activePipeline);
+			// Bind pipeline (will be switched per-draw for mirrored models)
+			VkPipeline boundPipeline = VK_NULL_HANDLE;
+			auto bindPipeline = [&](VkPipeline p) {
+				if (p != boundPipeline) {
+					vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, p);
+					boundPipeline = p;
+				}
+			};
+			bindPipeline(activePipeline);
 
 			// Bind shadow map descriptor set from map renderer
 			VulkanMapRenderer* mapRenderer = renderer.GetMapRenderer();
@@ -558,6 +599,15 @@ namespace spades {
 					float rad = radius * param.matrix.GetAxis(0).GetLength();
 					if (!renderer.SphereFrustrumCull(modelOrigin, rad))
 						continue;
+				}
+
+				// Switch to mirrored pipeline when the model matrix has a negative determinant
+				{
+					const auto& ax = param.matrix.GetAxis(0);
+					const auto& ay = param.matrix.GetAxis(1);
+					const auto& az = param.matrix.GetAxis(2);
+					bool isMirrored = Vector3::Dot(Vector3::Cross(ax, ay), az) < 0.0F;
+					bindPipeline(isMirrored ? activeMirroredPipeline : activePipeline);
 				}
 
 				// Compute final MVP matrix
@@ -638,7 +688,14 @@ namespace spades {
 			if (sharedPipeline.dlightPipeline == VK_NULL_HANDLE)
 				return;
 
-			vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, sharedPipeline.dlightPipeline);
+			VkPipeline boundDlightPipeline = VK_NULL_HANDLE;
+			auto bindDlightPipeline = [&](VkPipeline p) {
+				if (p != boundDlightPipeline) {
+					vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, p);
+					boundDlightPipeline = p;
+				}
+			};
+			bindDlightPipeline(sharedPipeline.dlightPipeline);
 
 			// Bind vertex buffer
 			VkBuffer vb = vertexBuffer->GetBuffer();
@@ -681,6 +738,15 @@ namespace spades {
 						continue;
 					if (param.ghost)
 						continue;
+
+					// Switch to mirrored pipeline when the model matrix has a negative determinant
+					{
+						const auto& ax = param.matrix.GetAxis(0);
+						const auto& ay = param.matrix.GetAxis(1);
+						const auto& az = param.matrix.GetAxis(2);
+						bool isMirrored = Vector3::Dot(Vector3::Cross(ax, ay), az) < 0.0F;
+						bindDlightPipeline(isMirrored ? sharedPipeline.mirroredDlightPipeline : sharedPipeline.dlightPipeline);
+					}
 
 					Matrix4 mvpMatrix = projectionViewMatrix * param.matrix;
 
@@ -1072,6 +1138,15 @@ namespace spades {
 
 			result = vkCreateGraphicsPipelines(vkDevice, renderer.GetPipelineCache(), 1, &pipelineInfo, nullptr, &sharedPipeline.pipeline);
 
+			// Mirrored variant: same pipeline, front-face culled (for models with negative-scale matrices)
+			if (result == VK_SUCCESS) {
+				VkPipelineRasterizationStateCreateInfo mirroredRasterizer = rasterizer;
+				mirroredRasterizer.cullMode = VK_CULL_MODE_FRONT_BIT;
+				pipelineInfo.pRasterizationState = &mirroredRasterizer;
+				vkCreateGraphicsPipelines(vkDevice, renderer.GetPipelineCache(), 1, &pipelineInfo, nullptr, &sharedPipeline.mirroredPipeline);
+				pipelineInfo.pRasterizationState = &rasterizer;
+			}
+
 			// Cleanup shader modules
 			vkDestroyShaderModule(vkDevice, vertShaderModule, nullptr);
 			vkDestroyShaderModule(vkDevice, fragShaderModule, nullptr);
@@ -1183,6 +1258,14 @@ namespace spades {
 				dlPipelineInfo.subpass = 0;
 
 				result = vkCreateGraphicsPipelines(vkDevice, renderer.GetPipelineCache(), 1, &dlPipelineInfo, nullptr, &sharedPipeline.dlightPipeline);
+
+				// Mirrored dlight variant
+				if (result == VK_SUCCESS) {
+					VkPipelineRasterizationStateCreateInfo dlMirroredRasterizer = rasterizer;
+					dlMirroredRasterizer.cullMode = VK_CULL_MODE_FRONT_BIT;
+					dlPipelineInfo.pRasterizationState = &dlMirroredRasterizer;
+					vkCreateGraphicsPipelines(vkDevice, renderer.GetPipelineCache(), 1, &dlPipelineInfo, nullptr, &sharedPipeline.mirroredDlightPipeline);
+				}
 
 				vkDestroyShaderModule(vkDevice, dlVertModule, nullptr);
 				vkDestroyShaderModule(vkDevice, dlFragModule, nullptr);
@@ -1364,6 +1447,14 @@ namespace spades {
 
 						result = vkCreateGraphicsPipelines(vkDevice, renderer.GetPipelineCache(), 1, &gdPipelineInfo, nullptr, &sharedPipeline.ghostDepthPipeline);
 
+						// Mirrored ghost depth variant
+						if (result == VK_SUCCESS) {
+							VkPipelineRasterizationStateCreateInfo gdMirroredRasterizer = rasterizer;
+							gdMirroredRasterizer.cullMode = VK_CULL_MODE_FRONT_BIT;
+							gdPipelineInfo.pRasterizationState = &gdMirroredRasterizer;
+							vkCreateGraphicsPipelines(vkDevice, renderer.GetPipelineCache(), 1, &gdPipelineInfo, nullptr, &sharedPipeline.mirroredGhostDepthPipeline);
+						}
+
 						vkDestroyShaderModule(vkDevice, gdVertModule, nullptr);
 						vkDestroyShaderModule(vkDevice, gdFragModule, nullptr);
 
@@ -1461,6 +1552,14 @@ namespace spades {
 						gcPipelineInfo.subpass = 0;
 
 						result = vkCreateGraphicsPipelines(vkDevice, renderer.GetPipelineCache(), 1, &gcPipelineInfo, nullptr, &sharedPipeline.ghostColorPipeline);
+
+						// Mirrored ghost color variant
+						if (result == VK_SUCCESS) {
+							VkPipelineRasterizationStateCreateInfo gcMirroredRasterizer = rasterizer;
+							gcMirroredRasterizer.cullMode = VK_CULL_MODE_FRONT_BIT;
+							gcPipelineInfo.pRasterizationState = &gcMirroredRasterizer;
+							vkCreateGraphicsPipelines(vkDevice, renderer.GetPipelineCache(), 1, &gcPipelineInfo, nullptr, &sharedPipeline.mirroredGhostColorPipeline);
+						}
 
 						vkDestroyShaderModule(vkDevice, gcVertModule, nullptr);
 						vkDestroyShaderModule(vkDevice, gcFragModule, nullptr);

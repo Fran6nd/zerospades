@@ -55,20 +55,27 @@ namespace spades {
 			struct PipelineCache {
 				VkRenderPass renderPass;
 				VkPipeline pipeline;
+				VkPipeline mirroredPipeline;          // same as pipeline, VK_CULL_MODE_FRONT_BIT
 				VkPipeline dlightPipeline;
+				VkPipeline mirroredDlightPipeline;    // same as dlightPipeline, VK_CULL_MODE_FRONT_BIT
 				VkPipeline shadowMapPipeline;
 				VkPipeline outlinesPipeline;
 				VkPipeline ghostDepthPipeline;
+				VkPipeline mirroredGhostDepthPipeline; // same as ghostDepthPipeline, VK_CULL_MODE_FRONT_BIT
 				VkPipeline ghostColorPipeline;
+				VkPipeline mirroredGhostColorPipeline; // same as ghostColorPipeline, VK_CULL_MODE_FRONT_BIT
 				VkPipelineLayout pipelineLayout;
 				VkPipelineLayout dlightPipelineLayout;
 				VkDescriptorSetLayout descriptorSetLayout;
 				bool physicalLighting;
 
 				PipelineCache() : renderPass(VK_NULL_HANDLE), pipeline(VK_NULL_HANDLE),
-				                  dlightPipeline(VK_NULL_HANDLE), shadowMapPipeline(VK_NULL_HANDLE),
+				                  mirroredPipeline(VK_NULL_HANDLE),
+				                  dlightPipeline(VK_NULL_HANDLE), mirroredDlightPipeline(VK_NULL_HANDLE),
+				                  shadowMapPipeline(VK_NULL_HANDLE),
 				                  outlinesPipeline(VK_NULL_HANDLE),
-				                  ghostDepthPipeline(VK_NULL_HANDLE), ghostColorPipeline(VK_NULL_HANDLE),
+				                  ghostDepthPipeline(VK_NULL_HANDLE), mirroredGhostDepthPipeline(VK_NULL_HANDLE),
+				                  ghostColorPipeline(VK_NULL_HANDLE), mirroredGhostColorPipeline(VK_NULL_HANDLE),
 				                  pipelineLayout(VK_NULL_HANDLE),
 				                  dlightPipelineLayout(VK_NULL_HANDLE),
 				                  descriptorSetLayout(VK_NULL_HANDLE),
