@@ -41,6 +41,7 @@ namespace spades {
 		StartupScreenConfigView@ configViewSoftware;
 
 		private ConfigItem r_renderer("r_renderer");
+		private ConfigItem r_vulkan("r_vulkan");
 		private ConfigItem r_fullscreen("r_fullscreen");
 
 		StartupScreenGraphicsTab(StartupScreenUI@ ui, Vector2 size) {
@@ -412,14 +413,17 @@ namespace spades {
 		private void HandleHelpText(string text) { helpView.Text = text; }
 
 		private void OnDriverOpenGL(spades::ui::UIElement@) {
+			r_vulkan.IntValue = 0;
 			r_renderer.StringValue = "gl";
 			LoadConfig();
 		}
 		private void OnDriverVulkan(spades::ui::UIElement@) {
-			r_renderer.StringValue = "vulkan";
+			r_vulkan.IntValue = 1;
+			r_renderer.StringValue = "gl";
 			LoadConfig();
 		}
 		private void OnDriverSoftware(spades::ui::UIElement@) {
+			r_vulkan.IntValue = 0;
 			r_renderer.StringValue = "sw";
 			LoadConfig();
 		}
@@ -435,7 +439,7 @@ namespace spades {
 				configViewGL.Visible = false;
 				configViewVulkan.Visible = false;
 				configViewSoftware.Visible = true;
-			} else if (r_renderer.StringValue == "vulkan") {
+			} else if (r_vulkan.IntValue != 0 || r_renderer.StringValue == "vulkan") {
 				driverVulkan.Check();
 				configViewGL.Visible = false;
 				configViewVulkan.Visible = true;
