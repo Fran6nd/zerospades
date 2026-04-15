@@ -53,6 +53,7 @@ DEFINE_SPADES_SETTING(r_fullscreen, "0");
 DEFINE_SPADES_SETTING(r_vsync, "1");
 DEFINE_SPADES_SETTING(r_allowSoftwareRendering, "0");
 DEFINE_SPADES_SETTING(r_renderer, "gl");
+DEFINE_SPADES_SETTING(r_vulkan, "0");
 DEFINE_SPADES_SETTING(s_audioDriver, "openal");
 DEFINE_SPADES_SETTING(cl_fps, "0");
 
@@ -334,6 +335,10 @@ namespace spades {
 		}
 
 		auto SDLRunner::GetRendererType() -> RendererType {
+#ifdef USE_VULKAN
+			if ((bool)r_vulkan)
+				return RendererType::Vulkan;
+#endif
 			if (EqualsIgnoringCase(r_renderer, "gl"))
 				return RendererType::GL;
 			else if (EqualsIgnoringCase(r_renderer, "vulkan"))
