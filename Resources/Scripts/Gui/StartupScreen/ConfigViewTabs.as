@@ -419,7 +419,6 @@ namespace spades {
 		}
 		private void OnDriverVulkan(spades::ui::UIElement@) {
 			r_vulkan.IntValue = 1;
-			r_renderer.StringValue = "gl";
 			LoadConfig();
 		}
 		private void OnDriverSoftware(spades::ui::UIElement@) {
