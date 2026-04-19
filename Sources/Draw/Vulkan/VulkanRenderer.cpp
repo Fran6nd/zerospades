@@ -1541,8 +1541,6 @@ namespace spades {
 			// Process deferred deletions at the start of each frame
 			ProcessDeferredDeletions();
 
-			// SPLog("[VulkanRenderer::RecordCommandBuffer] Recording commands for image index %u", imageIndex);
-
 			VkCommandBuffer commandBuffer = commandBuffers[imageIndex];
 
 			VkCommandBufferBeginInfo beginInfo{};
