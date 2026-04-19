@@ -284,6 +284,7 @@ namespace spades {
 						subview->Closing();
 						subview = NULL;
 						RestoreRenderer();
+						return;
 					} else {
 						return;
 					}
@@ -293,6 +294,7 @@ namespace spades {
 					subview = NULL;
 					RestoreRenderer();
 					helper->errorMessage = ex.what();
+					return;
 				}
 			}
 
