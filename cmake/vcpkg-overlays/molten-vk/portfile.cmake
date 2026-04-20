@@ -9,8 +9,8 @@ vcpkg_download_distfile(ARCHIVE
 
 vcpkg_extract_source_archive(SOURCE_PATH ARCHIVE "${ARCHIVE}")
 
-# Headers (includes vulkan/, MoltenVK/, vk_video/)
-file(INSTALL "${SOURCE_PATH}/MoltenVK/include/"
+# Only install MoltenVK-specific headers; vulkan/ and vk_video/ come from the vulkan-headers package
+file(INSTALL "${SOURCE_PATH}/MoltenVK/include/MoltenVK"
     DESTINATION "${CURRENT_PACKAGES_DIR}/include"
 )
 
