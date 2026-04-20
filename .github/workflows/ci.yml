@@ -107,7 +107,7 @@ jobs:
 
   build-macos-intel:
     name: Build (macOS Intel, 13+)
-    runs-on: macos-13
+    runs-on: macos-15-intel
     env:
       MACOSX_DEPLOYMENT_TARGET: "13.0"
       VCPKG_OSX_DEPLOYMENT_TARGET: "13.0"
