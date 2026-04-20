@@ -38,6 +38,7 @@
 #include <Client/DemoRecorder.h>
 #include <Client/Fonts.h>
 #include <Client/GameMap.h>
+#include <Client/MapRegistry.h>
 #include <Core/ConcurrentDispatch.h>
 #include <Core/CpuID.h>
 #include <Core/Debug.h>
@@ -491,8 +492,9 @@ int main(int argc, char** argv) {
 
 #endif
 
-		// Set the demos base directory now that g_userResourceDirectory is final.
+		// Set the demos and maps base directory now that g_userResourceDirectory is final.
 		spades::client::DemoRecorder::SetBaseDirectory(spades::g_userResourceDirectory);
+		spades::client::MapRegistry::SetBaseDirectory(spades::g_userResourceDirectory);
 
 		// start log output to SystemMessages.log
 		try {
