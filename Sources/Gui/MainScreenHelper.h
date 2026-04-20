@@ -76,6 +76,27 @@ namespace spades {
 			~MainScreenServerList();
 		};
 
+		class MainScreenMapItem : public RefCountedObject {
+			std::string path;
+			std::string displayName;
+			uint64_t sizeBytes;
+			int64_t modified;
+
+		protected:
+			~MainScreenMapItem();
+
+		public:
+			MainScreenMapItem(std::string path, std::string displayName, uint64_t sizeBytes,
+			                  int64_t modified);
+
+			std::string GetPath() const { return path; }
+			std::string GetDisplayName() const { return displayName; }
+			/** File size in bytes. */
+			int64_t GetSizeBytes() const { return static_cast<int64_t>(sizeBytes); }
+			/** Last-modified time, Unix epoch seconds. */
+			int64_t GetModified() const { return modified; }
+		};
+
 		class MainScreenHelper : public RefCountedObject {
 			friend class MainScreen;
 			class ServerListQuery;
@@ -115,6 +136,8 @@ namespace spades {
 		std::string PlayDemo(std::string filename);
 		int64_t GetDemoFileSize(std::string filename);
 		bool DeleteDemo(std::string filename);
+
+		CScriptArray *GetMapList();
 		};
 	}
 }

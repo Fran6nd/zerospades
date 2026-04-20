@@ -38,6 +38,9 @@ namespace spades {
 
 					r = eng->RegisterObjectType("MainScreenServerItem", 0, asOBJ_REF);
 					manager->CheckError(r);
+
+					r = eng->RegisterObjectType("MainScreenMapItem", 0, asOBJ_REF);
+					manager->CheckError(r);
 					break;
 				case PhaseObjectMember:
 					r = eng->RegisterObjectBehaviour(
@@ -101,6 +104,10 @@ namespace spades {
 					                              asMETHOD(gui::MainScreenHelper, DeleteDemo),
 					                              asCALL_THISCALL);
 					manager->CheckError(r);
+					r = eng->RegisterObjectMethod(
+					  "MainScreenHelper", "array<spades::MainScreenMapItem@>@ GetMapList()",
+					  asMETHOD(gui::MainScreenHelper, GetMapList), asCALL_THISCALL);
+					manager->CheckError(r);
 					r = eng->RegisterObjectBehaviour(
 					  "MainScreenServerItem", asBEHAVE_ADDREF, "void f()",
 					  asMETHOD(gui::MainScreenServerItem, AddRef), asCALL_THISCALL);
@@ -148,6 +155,31 @@ namespace spades {
 					r = eng->RegisterObjectMethod("MainScreenServerItem", "bool get_Favorite() property",
 					                              asMETHOD(gui::MainScreenServerItem, IsFavorite),
 					                              asCALL_THISCALL);
+					manager->CheckError(r);
+
+					r = eng->RegisterObjectBehaviour(
+					  "MainScreenMapItem", asBEHAVE_ADDREF, "void f()",
+					  asMETHOD(gui::MainScreenMapItem, AddRef), asCALL_THISCALL);
+					manager->CheckError(r);
+					r = eng->RegisterObjectBehaviour(
+					  "MainScreenMapItem", asBEHAVE_RELEASE, "void f()",
+					  asMETHOD(gui::MainScreenMapItem, Release), asCALL_THISCALL);
+					manager->CheckError(r);
+					r = eng->RegisterObjectMethod(
+					  "MainScreenMapItem", "string get_Path() const property",
+					  asMETHOD(gui::MainScreenMapItem, GetPath), asCALL_THISCALL);
+					manager->CheckError(r);
+					r = eng->RegisterObjectMethod(
+					  "MainScreenMapItem", "string get_DisplayName() const property",
+					  asMETHOD(gui::MainScreenMapItem, GetDisplayName), asCALL_THISCALL);
+					manager->CheckError(r);
+					r = eng->RegisterObjectMethod(
+					  "MainScreenMapItem", "int64 get_SizeBytes() const property",
+					  asMETHOD(gui::MainScreenMapItem, GetSizeBytes), asCALL_THISCALL);
+					manager->CheckError(r);
+					r = eng->RegisterObjectMethod(
+					  "MainScreenMapItem", "int64 get_Modified() const property",
+					  asMETHOD(gui::MainScreenMapItem, GetModified), asCALL_THISCALL);
 					manager->CheckError(r);
 					break;
 				default: break;

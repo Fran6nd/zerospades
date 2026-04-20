@@ -33,6 +33,7 @@
 #include "MainScreen.h"
 #include "MainScreenHelper.h"
 #include <Client/DemoRecorder.h>
+#include <Client/MapRegistry.h>
 #include <Core/FileManager.h>
 #include <Core/IStream.h>
 #include <Core/Settings.h>
@@ -468,6 +469,20 @@ namespace spades {
 			return std::remove(filename.c_str()) == 0;
 		}
 
+		CScriptArray *MainScreenHelper::GetMapList() {
+			auto maps = client::MapRegistry::ListMaps();
+			asIScriptEngine *eng = ScriptManager::GetInstance()->GetEngine();
+			asITypeInfo *t = eng->GetTypeInfoByDecl("array<spades::MainScreenMapItem@>");
+			SPAssert(t != NULL);
+			CScriptArray *arr = CScriptArray::Create(t, static_cast<asUINT>(maps.size()));
+			for (size_t i = 0; i < maps.size(); i++) {
+				Handle<MainScreenMapItem> item{new MainScreenMapItem(
+				    maps[i].path, maps[i].displayName, maps[i].sizeBytes, maps[i].mtime), false};
+				arr->SetValue(static_cast<asUINT>(i), &item);
+			}
+			return arr;
+		}
+
 		std::string MainScreenHelper::GetPendingErrorMessage() {
 			std::string s = errorMessage;
 			errorMessage.clear();
@@ -491,5 +506,16 @@ namespace spades {
 		}
 
 		MainScreenServerItem::~MainScreenServerItem() { SPADES_MARK_FUNCTION(); }
+
+		MainScreenMapItem::MainScreenMapItem(std::string path, std::string displayName,
+		                                     uint64_t sizeBytes, int64_t modified)
+		    : path(std::move(path)),
+		      displayName(std::move(displayName)),
+		      sizeBytes(sizeBytes),
+		      modified(modified) {
+			SPADES_MARK_FUNCTION();
+		}
+
+		MainScreenMapItem::~MainScreenMapItem() { SPADES_MARK_FUNCTION(); }
 	} // namespace gui
 } // namespace spades
