@@ -121,42 +121,62 @@ endif()
 
 # Vulkan configuration
 if(USE_VULKAN)
-	if(APPLE)
-		# On macOS, link directly to MoltenVK instead of the Vulkan loader.
-		# MoltenVK exports all Vulkan entry points, so the loader is unnecessary
-		# and this makes the .app bundle self-contained.
-		find_library(MOLTENVK_LIBRARY NAMES MoltenVK
-			HINTS /opt/local/lib /opt/homebrew/lib /usr/local/lib
-			      ENV VULKAN_SDK
-			PATH_SUFFIXES lib)
-		if(NOT MOLTENVK_LIBRARY)
-			message(FATAL_ERROR "MoltenVK not found. Install via: port install MoltenVK-latest  OR  brew install molten-vk")
-		endif()
-		message(STATUS "Using MoltenVK directly: ${MOLTENVK_LIBRARY}")
+	if(USE_VCPKG)
+		# All Vulkan deps come from vcpkg — no system installation required.
+		find_package(VulkanHeaders CONFIG REQUIRED)
+		get_target_property(Vulkan_INCLUDE_DIRS Vulkan::Headers INTERFACE_INCLUDE_DIRECTORIES)
+		message(STATUS "Vulkan headers (vcpkg): ${Vulkan_INCLUDE_DIRS}")
 
-		# Find Vulkan headers (provided by vulkan-headers or molten-vk package)
-		find_path(Vulkan_INCLUDE_DIRS NAMES vulkan/vulkan.h
-			HINTS /opt/local/include /opt/homebrew/include /usr/local/include
-			      ENV VULKAN_SDK
-			PATH_SUFFIXES include)
-		if(NOT Vulkan_INCLUDE_DIRS)
-			message(FATAL_ERROR "Vulkan headers not found. Install via: port install vulkan-headers  OR  brew install vulkan-headers")
+		if(APPLE)
+			find_package(molten-vk CONFIG REQUIRED)
+			set(MOLTENVK_LIBRARY MoltenVK::MoltenVK)
+			message(STATUS "Using MoltenVK (vcpkg): ${MOLTENVK_LIBRARY}")
+		else()
+			find_package(Vulkan REQUIRED)
+			message(STATUS "Vulkan loader (vcpkg): ${Vulkan_LIBRARIES}")
 		endif()
-		message(STATUS "Vulkan headers: ${Vulkan_INCLUDE_DIRS}")
+
+		find_program(GLSLANG_VALIDATOR glslangValidator
+			HINTS "${_VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/tools/glslang"
+			NO_DEFAULT_PATH)
 	else()
-		# On non-Apple platforms, use the standard Vulkan SDK
-		find_package(Vulkan REQUIRED)
-		message(STATUS "Vulkan SDK found: ${Vulkan_INCLUDE_DIRS}")
-		message(STATUS "Vulkan library: ${Vulkan_LIBRARIES}")
+		if(APPLE)
+			# On macOS, link directly to MoltenVK instead of the Vulkan loader.
+			# MoltenVK exports all Vulkan entry points, so the loader is unnecessary
+			# and this makes the .app bundle self-contained.
+			find_library(MOLTENVK_LIBRARY NAMES MoltenVK
+				HINTS /opt/local/lib /opt/homebrew/lib /usr/local/lib
+				      ENV VULKAN_SDK
+				PATH_SUFFIXES lib)
+			if(NOT MOLTENVK_LIBRARY)
+				message(FATAL_ERROR "MoltenVK not found. Install via: port install MoltenVK-latest  OR  brew install molten-vk")
+			endif()
+			message(STATUS "Using MoltenVK directly: ${MOLTENVK_LIBRARY}")
+
+			# Find Vulkan headers (provided by vulkan-headers or molten-vk package)
+			find_path(Vulkan_INCLUDE_DIRS NAMES vulkan/vulkan.h
+				HINTS /opt/local/include /opt/homebrew/include /usr/local/include
+				      ENV VULKAN_SDK
+				PATH_SUFFIXES include)
+			if(NOT Vulkan_INCLUDE_DIRS)
+				message(FATAL_ERROR "Vulkan headers not found. Install via: port install vulkan-headers  OR  brew install vulkan-headers")
+			endif()
+			message(STATUS "Vulkan headers: ${Vulkan_INCLUDE_DIRS}")
+		else()
+			# On non-Apple platforms, use the standard Vulkan SDK
+			find_package(Vulkan REQUIRED)
+			message(STATUS "Vulkan SDK found: ${Vulkan_INCLUDE_DIRS}")
+			message(STATUS "Vulkan library: ${Vulkan_LIBRARIES}")
+		endif()
+
+		find_program(GLSLANG_VALIDATOR
+			NAMES glslangValidator
+			HINTS /opt/local/bin /opt/homebrew/bin /usr/local/bin
+			      ${Vulkan_INCLUDE_DIRS}/../bin
+			      ENV VULKAN_SDK
+			PATH_SUFFIXES bin)
 	endif()
 
-	# Find glslangValidator for build-time GLSL to SPIR-V compilation (required)
-	find_program(GLSLANG_VALIDATOR
-		NAMES glslangValidator
-		HINTS /opt/local/bin /opt/homebrew/bin /usr/local/bin
-		      ${Vulkan_INCLUDE_DIRS}/../bin
-		      ENV VULKAN_SDK
-		PATH_SUFFIXES bin)
 	if(GLSLANG_VALIDATOR)
 		message(STATUS "glslangValidator found: ${GLSLANG_VALIDATOR}")
 	else()
