@@ -135,6 +135,10 @@ jobs:
           sed 's/$/:x64-osx/' vcpkg_x86_64-darwin.txt > vcpkg_x64-osx.txt
           vcpkg/vcpkg install --recurse @vcpkg_x64-osx.txt
 
+      - name: Patch AngelScript for apple-clang CFI incompatibility
+        run: |
+          sed -i '' 's#defined(__clang__) \&\& defined(__OPTIMIZE__)#defined(__clang__) \&\& defined(__OPTIMIZE__) \&\& !defined(__APPLE__)#g' Sources/AngelScript/source/as_callfunc_x64_gcc.cpp
+
       - name: Build application
         uses: ashutoshvarma/action-cmake-build@master
         with:
