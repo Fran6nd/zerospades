@@ -18,6 +18,19 @@
       "name": "sdl2-image",
       "features": ["libjpeg-turbo"]
     },
+    "vulkan-headers",
+    {
+      "name": "glslang",
+      "features": ["tools"]
+    },
+    {
+      "name": "molten-vk",
+      "platform": "osx"
+    },
+    {
+      "name": "vulkan-loader",
+      "platform": "!osx & !ios"
+    },
     "spirv-cross",
     {
       "name": "glew",
