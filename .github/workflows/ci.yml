@@ -135,6 +135,14 @@ jobs:
           sed 's/$/:x64-osx/' vcpkg_x86_64-darwin.txt > vcpkg_x64-osx.txt
           vcpkg/vcpkg install --recurse @vcpkg_x64-osx.txt
 
+      # HACK: AngelScript (bundled, old) emits `.cfi_def_cfa_register` inside an
+      # inline-asm block in as_callfunc_x64_gcc.cpp. Apple-clang 16's integrated
+      # assembler rejects CFI directives inside `.cfi_startproc/.cfi_endproc`
+      # regions on Mach-O, breaking the x86_64 build (see conan-center-index
+      # #25353, libffi #852). The `macos-15-intel` runner only ships Xcode 16+,
+      # so we can't dodge via Xcode selection. Guard the two directives with
+      # `!defined(__APPLE__)` at CI time so no source file is committed to the
+      # branch. Remove this step once AngelScript is upgraded upstream.
       - name: Patch AngelScript for apple-clang CFI incompatibility
         run: |
           sed -i '' 's#defined(__clang__) \&\& defined(__OPTIMIZE__)#defined(__clang__) \&\& defined(__OPTIMIZE__) \&\& !defined(__APPLE__)#g' Sources/AngelScript/source/as_callfunc_x64_gcc.cpp
