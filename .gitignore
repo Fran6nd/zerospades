@@ -34,6 +34,7 @@ CMakeCache.txt
 *CMakeFiles/
 *.cmake
 !cmake/triplets/*.cmake
+!cmake/vcpkg-overlays/**/*.cmake
 
 # mac related
 *.DS_Store
