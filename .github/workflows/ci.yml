@@ -106,8 +106,11 @@ jobs:
           if-no-files-found: warn
 
   build-macos-intel:
-    name: Build (macOS Intel)
-    runs-on: macos-14
+    name: Build (macOS Intel, 13+)
+    runs-on: macos-13
+    env:
+      MACOSX_DEPLOYMENT_TARGET: "13.0"
+      VCPKG_OSX_DEPLOYMENT_TARGET: "13.0"
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -120,9 +123,9 @@ jobs:
           path: |
             vcpkg/installed
             vcpkg/buildtrees
-          key: macos-intel-${{ hashFiles('vcpkg_x86_64-darwin.txt', '.gitmodules') }}
+          key: macos-intel-13-${{ hashFiles('vcpkg_x86_64-darwin.txt', '.gitmodules') }}
           restore-keys: |
-            macos-intel-
+            macos-intel-13-
 
       - name: Bootstrap vcpkg
         run: vcpkg/bootstrap-vcpkg.sh -disableMetrics
@@ -142,6 +145,7 @@ jobs:
             -D CMAKE_TOOLCHAIN_FILE=${{ github.workspace }}/vcpkg/scripts/buildsystems/vcpkg.cmake
             -D VCPKG_TARGET_TRIPLET=x64-osx
             -D CMAKE_OSX_ARCHITECTURES=x86_64
+            -D CMAKE_OSX_DEPLOYMENT_TARGET=13.0
             -D CMAKE_CXX_STANDARD=17
           parallel: 8
 
