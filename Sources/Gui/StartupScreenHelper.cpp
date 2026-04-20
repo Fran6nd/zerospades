@@ -37,6 +37,11 @@
 
 #include "StartupScreen.h"
 #include <Audio/ALDevice.h>
+#if USE_VULKAN
+#include <cstring>
+#include <vector>
+#include <vulkan/vulkan.h>
+#endif
 #include <Core/FileManager.h>
 #include <Core/Settings.h>
 #include <Core/ShellApi.h>
@@ -633,6 +638,129 @@ namespace spades {
 					  }
 				  }));
 			}
+
+#if USE_VULKAN
+			// Probe Vulkan: create a headless instance, enumerate devices, report info.
+			{
+				SPLog("--- Vulkan Info ---");
+				AddReport("--- Vulkan ---");
+				AddReport();
+
+				std::vector<const char*> instExts;
+				VkInstanceCreateFlags instFlags = 0;
+#ifdef __APPLE__
+				bool hasGetPhysDevProps2 = false;
+				{
+					uint32_t n = 0;
+					vkEnumerateInstanceExtensionProperties(nullptr, &n, nullptr);
+					std::vector<VkExtensionProperties> exts(n);
+					if (n > 0)
+						vkEnumerateInstanceExtensionProperties(nullptr, &n, exts.data());
+					for (const auto& e : exts) {
+						if (strcmp(e.extensionName, VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME) == 0) {
+							instFlags |= VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR;
+							instExts.push_back(VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME);
+						}
+						if (strcmp(e.extensionName, "VK_KHR_get_physical_device_properties2") == 0) {
+							instExts.push_back("VK_KHR_get_physical_device_properties2");
+							hasGetPhysDevProps2 = true;
+						}
+					}
+				}
+#endif
+
+				VkApplicationInfo appInfo{};
+				appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
+				appInfo.pApplicationName = "ZeroSpades";
+				appInfo.apiVersion = VK_HEADER_VERSION_COMPLETE;
+
+				VkInstanceCreateInfo instCI{};
+				instCI.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
+				instCI.pApplicationInfo = &appInfo;
+				instCI.flags = instFlags;
+				instCI.enabledExtensionCount = static_cast<uint32_t>(instExts.size());
+				instCI.ppEnabledExtensionNames = instExts.data();
+
+				VkInstance vkProbe = VK_NULL_HANDLE;
+				if (vkCreateInstance(&instCI, nullptr, &vkProbe) == VK_SUCCESS) {
+					uint32_t devCount = 0;
+					vkEnumeratePhysicalDevices(vkProbe, &devCount, nullptr);
+					std::vector<VkPhysicalDevice> gpus(devCount);
+					if (devCount > 0)
+						vkEnumeratePhysicalDevices(vkProbe, &devCount, gpus.data());
+
+					if (devCount == 0) {
+						AddReport("No Vulkan-capable GPU found.", yellow);
+						AddReport();
+					}
+
+					for (uint32_t i = 0; i < devCount; ++i) {
+						VkPhysicalDevice pd = gpus[i];
+						VkPhysicalDeviceProperties props{};
+						vkGetPhysicalDeviceProperties(pd, &props);
+
+						uint32_t v = props.apiVersion;
+						std::string apiStr = std::to_string(VK_VERSION_MAJOR(v)) + "." +
+						                     std::to_string(VK_VERSION_MINOR(v)) + "." +
+						                     std::to_string(VK_VERSION_PATCH(v));
+
+						SPLog("Vulkan device %u: %s (API %s)", i, props.deviceName, apiStr.c_str());
+						AddReport(std::string("Device: ") + props.deviceName, col);
+						AddReport(std::string("Vulkan API: ") + apiStr, col);
+
+#ifdef __APPLE__
+						// Query MoltenVK version via VK_KHR_driver_properties
+						if (hasGetPhysDevProps2) {
+							uint32_t extCount = 0;
+							vkEnumerateDeviceExtensionProperties(pd, nullptr, &extCount, nullptr);
+							std::vector<VkExtensionProperties> devExts(extCount);
+							if (extCount > 0)
+								vkEnumerateDeviceExtensionProperties(pd, nullptr, &extCount, devExts.data());
+
+							bool hasDriverProps = false;
+							for (const auto& e : devExts)
+								if (strcmp(e.extensionName, "VK_KHR_driver_properties") == 0) {
+									hasDriverProps = true;
+									break;
+								}
+
+							if (hasDriverProps) {
+								auto fn = (PFN_vkGetPhysicalDeviceProperties2KHR)
+								    vkGetInstanceProcAddr(vkProbe, "vkGetPhysicalDeviceProperties2KHR");
+								if (fn) {
+									VkPhysicalDeviceDriverPropertiesKHR driverProps{};
+									driverProps.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DRIVER_PROPERTIES_KHR;
+									VkPhysicalDeviceProperties2KHR props2{};
+									props2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2_KHR;
+									props2.pNext = &driverProps;
+									fn(pd, &props2);
+
+									std::string driverStr;
+									if (driverProps.driverName[0] != '\0')
+										driverStr = driverProps.driverName;
+									if (driverProps.driverInfo[0] != '\0') {
+										if (!driverStr.empty())
+											driverStr += ' ';
+										driverStr += driverProps.driverInfo;
+									}
+									if (!driverStr.empty()) {
+										SPLog("Vulkan driver: %s", driverStr.c_str());
+										AddReport(std::string("Driver: ") + driverStr, col);
+									}
+								}
+							}
+						}
+#endif
+						AddReport();
+					}
+					vkDestroyInstance(vkProbe, nullptr);
+				} else {
+					SPLog("Vulkan probe instance creation failed");
+					AddReport("Vulkan is not available on this system.", yellow);
+					AddReport();
+				}
+			}
+#endif
 		}
 
 		void StartupScreenHelper::FixConfigs() { ExamineSystem(); }
