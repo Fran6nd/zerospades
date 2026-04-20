@@ -643,7 +643,8 @@ namespace spades {
 			// Probe Vulkan: create a headless instance, enumerate devices, report info.
 			{
 				SPLog("--- Vulkan Info ---");
-				AddReport("--- Vulkan ---");
+				AddReport();
+				AddReport("Vulkan:");
 				AddReport();
 
 				std::vector<const char*> instExts;
