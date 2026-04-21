@@ -74,9 +74,11 @@ namespace spades {
 
 		Client::Client(Handle<IRenderer> r, Handle<IAudioDevice> audioDev,
 					   const ServerAddress& host, Handle<FontManager> fontManager,
-					   const std::string& demoPath)
+					   const std::string& demoPath,
+					   const std::string& localMapPath)
 			: activeNet(nullptr),
 			  demoFilePath(demoPath),
+			  localMapFilePath(localMapPath),
 			  playerName(StripNewlines(cg_playerName.operator std::string()).substr(0, 15)),
 			  logStream(nullptr),
 			  hostname(host),
@@ -290,6 +292,10 @@ namespace spades {
 			if (demoNet) {
 				SPLog("Closing demo playback");
 				demoNet.reset();
+			}
+			if (localMapNet) {
+				SPLog("Closing local map playback");
+				localMapNet.reset();
 			}
 
 			SPLog("Disconnected");
@@ -598,6 +604,18 @@ namespace spades {
 					SPRaise("Failed to open demo file (invalid format?): %s", demoFilePath.c_str());
 				}
 				activeNet = demoNet.get();
+			} else if (!localMapFilePath.empty()) {
+				SPLog("Starting local map playback: '%s'", localMapFilePath.c_str());
+
+				std::ifstream testFile(localMapFilePath);
+				if (!testFile.good())
+					SPRaise("Map file not found: %s", localMapFilePath.c_str());
+				testFile.close();
+
+				localMapNet = stmp::make_unique<LocalMapNetClient>(this);
+				if (!localMapNet->OpenMap(localMapFilePath))
+					SPRaise("Failed to open map file: %s", localMapFilePath.c_str());
+				activeNet = localMapNet.get();
 			} else {
 				SPLog("Started connecting to '%s'", hostname.ToString().c_str());
 				net = stmp::make_unique<NetClient>(this);

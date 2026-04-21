@@ -31,6 +31,7 @@
 #include "ClientCameraMode.h"
 #include "DemoNetClient.h"
 #include "INetClient.h"
+#include "LocalMapNetClient.h"
 #include "NetClient.h"
 #include "ILocalEntity.h"
 #include "IRenderer.h"
@@ -109,8 +110,10 @@ namespace spades {
 
 			std::unique_ptr<NetClient> net;
 			std::unique_ptr<DemoNetClient> demoNet;
-			INetClient* activeNet; // points to net.get() or demoNet.get(), never null after DoInit
+			std::unique_ptr<LocalMapNetClient> localMapNet;
+			INetClient* activeNet; // points to net.get() / demoNet.get() / localMapNet.get()
 			std::string demoFilePath;
+			std::string localMapFilePath;
 
 			// Seek-key hold state.
 			// While a seek key is held, SeekPreview() advances demoSeekPendingTime so
@@ -515,9 +518,11 @@ namespace spades {
 		public:
 			Client(Handle<IRenderer>, Handle<IAudioDevice>,
 				const ServerAddress& host, Handle<FontManager>,
-				const std::string& demoPath = "");
+				const std::string& demoPath = "",
+				const std::string& localMapPath = "");
 
 			bool IsDemoMode() const { return demoNet != nullptr; }
+			bool IsLocalMapMode() const { return localMapNet != nullptr; }
 			DemoNetClient* GetDemoNetClient() { return demoNet.get(); }
 			void ReloadDemo();
 

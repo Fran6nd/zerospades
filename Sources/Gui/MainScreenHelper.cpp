@@ -469,6 +469,12 @@ namespace spades {
 			return std::remove(filename.c_str()) == 0;
 		}
 
+		std::string MainScreenHelper::LoadMap(std::string filename) {
+			if (mainScreen == NULL)
+				return "mainScreen == NULL";
+			return mainScreen->LoadMap(filename);
+		}
+
 		CScriptArray *MainScreenHelper::GetMapList() {
 			auto maps = client::MapRegistry::ListMaps();
 			asIScriptEngine *eng = ScriptManager::GetInstance()->GetEngine();

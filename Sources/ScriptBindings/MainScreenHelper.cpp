@@ -108,6 +108,10 @@ namespace spades {
 					  "MainScreenHelper", "array<spades::MainScreenMapItem@>@ GetMapList()",
 					  asMETHOD(gui::MainScreenHelper, GetMapList), asCALL_THISCALL);
 					manager->CheckError(r);
+					r = eng->RegisterObjectMethod("MainScreenHelper", "string LoadMap(string)",
+					                              asMETHOD(gui::MainScreenHelper, LoadMap),
+					                              asCALL_THISCALL);
+					manager->CheckError(r);
 					r = eng->RegisterObjectBehaviour(
 					  "MainScreenServerItem", asBEHAVE_ADDREF, "void f()",
 					  asMETHOD(gui::MainScreenServerItem, AddRef), asCALL_THISCALL);

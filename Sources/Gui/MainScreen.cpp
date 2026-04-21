@@ -382,5 +382,17 @@ namespace spades {
 			}
 			return "";
 		}
+
+		std::string MainScreen::LoadMap(const std::string& mapPath) {
+			try {
+				subview = Handle<client::Client>::New(&*renderer, &*audioDevice,
+				              ServerAddress(), fontManager, std::string(), mapPath)
+				            .Cast<View>();
+			} catch (const std::exception& ex) {
+				SPLog("[!] Error loading local map: %s", ex.what());
+				return ex.what();
+			}
+			return "";
+		}
 	} // namespace gui
 } // namespace spades
