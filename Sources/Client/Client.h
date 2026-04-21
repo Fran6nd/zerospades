@@ -382,6 +382,7 @@ namespace spades {
 			bool IsLimboViewActive();
 			void CloseLimboView();
 			void SpawnPressed();
+			void ToggleLocalMapFly();
 
 			stmp::optional<std::tuple<Player&, hitTag_t>> HotTrackedPlayer();
 

@@ -1008,7 +1008,10 @@ namespace spades {
 					  audioDevice->RegisterSound("Sounds/Player/Flashlight.opus");
 					audioDevice->PlayLocal(c.GetPointerOrNull(), AudioParam());
 				} else if (CheckKey(cg_keyLimbo, name) && down) {
-					inGameLimbo = true;
+					if (IsLocalMapMode())
+						ToggleLocalMapFly();
+					else
+						inGameLimbo = true;
 				} else if (CheckKey(cg_keySceneshot, name) && down) {
 					TakeScreenShot(true);
 				} else if (CheckKey(cg_keyScreenshot, name) && down) {

@@ -19,6 +19,7 @@
 
  */
 
+#include <cmath>
 #include <cstdarg>
 #include <cstdio>
 #include <cstdlib>
@@ -802,6 +803,9 @@ namespace spades {
 			// In demo mode, never show limbo view - user is spectating
 			if (IsDemoMode())
 				return false;
+			// Local-map mode uses the change-team key to toggle fly/walk, never to open limbo.
+			if (IsLocalMapMode())
+				return false;
 			return world && (!world->GetLocalPlayer() || inGameLimbo);
 		}
 
@@ -845,6 +849,58 @@ namespace spades {
 			limbo->SetSelectedTeam(team);
 			limbo->SetSelectedWeapon(weap);
 			inGameLimbo = false;
+		}
+
+		void Client::ToggleLocalMapFly() {
+			if (!IsLocalMapMode() || !world)
+				return;
+
+			stmp::optional<Player&> maybe = world->GetLocalPlayer();
+			if (!maybe)
+				return;
+			Player& current = maybe.value();
+			bool wasSpectator = current.IsSpectator();
+
+			Vector3 spawnPos;
+			Vector3 front;
+			float yaw = followAndFreeCameraState.yaw;
+			float pitch = followAndFreeCameraState.pitch;
+
+			if (wasSpectator) {
+				// Fly -> Walk: spawn at the free camera position and match its look vector.
+				// Free-camera front: (-cos(p)cos(y), -cos(p)sin(y), sin(p)).
+				spawnPos = freeCameraState.position;
+				float cp = std::cos(pitch);
+				front = MakeVector3(-std::cos(yaw) * cp, -std::sin(yaw) * cp, std::sin(pitch));
+			} else {
+				// Walk -> Fly: capture the player's eye and look vector into the free camera.
+				spawnPos = current.GetEye();
+				front = current.GetFront();
+				float fz = std::max(-1.0F, std::min(1.0F, front.z));
+				pitch = std::asin(fz);
+				yaw = std::atan2(-front.y, -front.x);
+			}
+
+			int newTeam = wasSpectator ? 0 : 2;
+			auto np = stmp::make_unique<Player>(*world, 0, RIFLE_WEAPON, newTeam);
+			if (newTeam == 0) {
+				np->SetPosition(spawnPos);
+				np->SetOrientation(front);
+				np->SetVelocity(MakeVector3(0, 0, 0));
+			}
+			world->SetPlayer(0, std::move(np));
+			world->SetLocalPlayerIndex(0);
+
+			if (newTeam == 2) {
+				freeCameraState.position = spawnPos;
+				freeCameraState.velocity = MakeVector3(0, 0, 0);
+				followAndFreeCameraState.yaw = yaw;
+				followAndFreeCameraState.pitch = pitch;
+			}
+
+			followCameraState.enabled = false;
+			playerInput = PlayerInput();
+			weapInput = WeaponInput();
 		}
 
 		void Client::ShowAlert(const std::string& contents, AlertType type) {
