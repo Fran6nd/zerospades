@@ -916,14 +916,20 @@ namespace spades {
 						}
 					}
 				} else if (CheckKey(cg_keyGlobalChat, name) && down) {
-					scriptedUI->EnterGlobalChatWindow();
-					scriptedUI->SetIgnored(name);
+					if (!IsLocalMapMode()) {
+						scriptedUI->EnterGlobalChatWindow();
+						scriptedUI->SetIgnored(name);
+					}
 				} else if (CheckKey(cg_keyTeamChat, name) && down) {
-					scriptedUI->EnterTeamChatWindow();
-					scriptedUI->SetIgnored(name);
+					if (!IsLocalMapMode()) {
+						scriptedUI->EnterTeamChatWindow();
+						scriptedUI->SetIgnored(name);
+					}
 				} else if (CheckKey(cg_keyChatLog, name) && down) {
-					scriptedUI->EnterChatLogWindow();
-					scriptedUI->SetIgnored(name);
+					if (!IsLocalMapMode()) {
+						scriptedUI->EnterChatLogWindow();
+						scriptedUI->SetIgnored(name);
+					}
 				} else if (CheckKey(cg_keyZoomChatLog, name)) {
 					chatWindow->SetExpanded(down);
 				} else if (CheckKey(cg_keyCaptureColor, name) && down) {
@@ -952,7 +958,8 @@ namespace spades {
 						audioDevice->PlayLocal(c.GetPointerOrNull(), AudioParam());
 					}
 				} else if (CheckKey(cg_keyScoreboard, name)) {
-					scoreboardVisible = down;
+					if (!IsLocalMapMode())
+						scoreboardVisible = down;
 				} else if (CheckKey(cg_keyToggleHud, name) && down) {
 					if (cg_hideHud) {
 						cg_hideHud = 0;

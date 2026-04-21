@@ -137,8 +137,8 @@ namespace spades {
 			followAndFreeCameraState.yaw = DEG2RAD(90);
 			followAndFreeCameraState.pitch = DEG2RAD(89);
 
-			// welcome players (skip during demo playback)
-			if (!IsDemoMode())
+			// welcome players (skip during demo playback and local-map mode)
+			if (!IsDemoMode() && !IsLocalMapMode())
 				centerMessageView->AddMessage(_Tr("Client", "Welcome to the server, {0}!", playerName));
 
 			// play intro sound
@@ -150,7 +150,8 @@ namespace spades {
 			std::string osInfo = VersionInfo::GetVersionInfo();
 			std::string archInfo = VersionInfo::GetAppArchitecture();
 			std::string s = _Tr("Client", "You are connected with {0} ({2}) on {1}", verStr, osInfo, archInfo);
-			chatWindow->AddMessage(ChatWindow::ColoredMessage(s, MsgColorSysInfo));
+			if (!IsLocalMapMode())
+				chatWindow->AddMessage(ChatWindow::ColoredMessage(s, MsgColorSysInfo));
 
 			// start recording if auto-record is enabled
 			if (net && (int)cg_demoAutoRecord != 0) {

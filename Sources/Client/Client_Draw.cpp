@@ -1505,6 +1505,17 @@ namespace spades {
 			int playerId = GetCameraTargetPlayerId();
 			auto maybeCamTarget = world->GetPlayer(playerId);
 
+			// Local-map free-roam has no other players to follow and no team selection,
+			// so collapse the spectate hints down to movement-only guidance.
+			if (IsLocalMapMode()) {
+				if (cameraMode == ClientCameraMode::Free) {
+					addLine(_Tr("Client", "[{0}/{1}] Go up/down",
+						TrKey(cg_keyJump), TrKey(cg_keyCrouch)));
+				}
+				addLine(_Tr("Client", "[{0}] Toggle fly/walk", TrKey(cg_keyLimbo)));
+				return;
+			}
+
 			// Help messages (make sure to synchronize these with the keyboard input handler)
 			if (FollowsNonLocalPlayer(cameraMode) && maybeCamTarget) {
 				Player& camTarget = maybeCamTarget.value();
@@ -1774,8 +1785,10 @@ namespace spades {
 						DrawSpectateHUD();
 					}
 
-					chatWindow->Draw();
-					killfeedWindow->Draw();
+					if (!IsLocalMapMode()) {
+						chatWindow->Draw();
+						killfeedWindow->Draw();
+					}
 
 					if (debugHitTestZoom)
 						DrawHitTestDebugger();
@@ -1790,7 +1803,7 @@ namespace spades {
 
 				DrawAlert();
 				centerMessageView->Draw();
-				if (scoreboardVisible) {
+				if (scoreboardVisible && !IsLocalMapMode()) {
 					scoreboard->Draw();
 					DrawPlayingTime();
 				}
