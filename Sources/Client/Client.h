@@ -632,6 +632,12 @@ namespace spades {
 			void LocalPlayerHurt(HurtType type, Vector3 source) override;
 			void LocalPlayerBuildError(BuildFailureReason reason) override;
 			// IWorldListener end
+
+			// Local-map mode helpers: apply block changes to the world directly instead of
+			// dispatching them to a server.
+			void ApplyLocalBlockAction(IntVector3, BlockActionType type);
+			void ApplyLocalBlockLine(IntVector3, IntVector3);
+			void RefillLocalMapStocks();
 		};
 	} // namespace client
 } // namespace spades

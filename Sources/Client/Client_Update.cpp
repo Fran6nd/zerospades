@@ -209,6 +209,9 @@ namespace spades {
 		void Client::UpdateWorld(float dt, float gameplayDt) {
 			SPADES_MARK_FUNCTION();
 
+			if (IsLocalMapMode())
+				RefillLocalMapStocks();
+
 			stmp::optional<Player&> maybePlayer = world->GetLocalPlayer();
 
 			if (maybePlayer) {
@@ -1530,6 +1533,13 @@ namespace spades {
 
 			Vector3 origin = g.GetPosition();
 
+			// Local-map mode has no server to broadcast block destruction.
+			// Replicate the vanilla 3x3x3 grenade crater directly on the client.
+			if (IsLocalMapMode() && world) {
+				IntVector3 center = origin.Floor();
+				ApplyLocalBlockAction(center, BlockActionGrenade);
+			}
+
 			if (origin.z >= 63.0F) {
 				GrenadeExplosionUnderwater(origin);
 
@@ -1597,11 +1607,88 @@ namespace spades {
 
 		void Client::LocalPlayerBlockAction(spades::IntVector3 v, BlockActionType type) {
 			SPADES_MARK_FUNCTION();
+
+			if (IsLocalMapMode()) {
+				ApplyLocalBlockAction(v, type);
+				return;
+			}
 			activeNet->SendBlockAction(v, type);
 		}
 		void Client::LocalPlayerCreatedLineBlock(spades::IntVector3 v1, spades::IntVector3 v2) {
 			SPADES_MARK_FUNCTION();
+
+			if (IsLocalMapMode()) {
+				ApplyLocalBlockLine(v1, v2);
+				return;
+			}
 			activeNet->SendBlockLine(v1, v2);
+		}
+
+		void Client::ApplyLocalBlockAction(spades::IntVector3 v, BlockActionType type) {
+			SPADES_MARK_FUNCTION();
+
+			stmp::optional<Player&> maybe = world->GetLocalPlayer();
+			if (!maybe)
+				return;
+			Player& p = maybe.value();
+
+			std::vector<IntVector3> cells;
+			if (type == BlockActionCreate) {
+				world->CreateBlock(v, p.GetBlockColor());
+				PlayerCreatedBlock(p);
+			} else if (type == BlockActionTool) {
+				cells.push_back(v);
+				world->DestroyBlock(cells);
+				if (p.IsToolSpade())
+					p.GotBlock();
+				PlayerDestroyedBlockWithWeaponOrTool(v);
+			} else if (type == BlockActionDig) {
+				for (int z = -1; z <= 1; z++)
+					cells.push_back(MakeIntVector3(v.x, v.y, v.z + z));
+				world->DestroyBlock(cells);
+				PlayerDiggedBlock(v);
+			} else if (type == BlockActionGrenade) {
+				for (int x = -1; x <= 1; x++)
+				for (int y = -1; y <= 1; y++)
+				for (int z = -1; z <= 1; z++)
+					cells.push_back(MakeIntVector3(v.x + x, v.y + y, v.z + z));
+				world->DestroyBlock(cells);
+				GrenadeDestroyedBlock(v);
+			}
+		}
+
+		void Client::RefillLocalMapStocks() {
+			SPADES_MARK_FUNCTION();
+
+			if (!world)
+				return;
+			stmp::optional<Player&> maybe = world->GetLocalPlayer();
+			if (!maybe || !maybe->IsAlive())
+				return;
+			Player& p = maybe.value();
+
+			// Keep HP full and grenades/blocks topped up without triggering the
+			// restock sound or UI effect.
+			p.Restock(100, 3, 50);
+
+			Weapon& w = p.GetWeapon();
+			w.Restock(w.GetClipSize(), w.GetMaxStock());
+		}
+
+		void Client::ApplyLocalBlockLine(spades::IntVector3 v1, spades::IntVector3 v2) {
+			SPADES_MARK_FUNCTION();
+
+			stmp::optional<Player&> maybe = world->GetLocalPlayer();
+			if (!maybe)
+				return;
+			Player& p = maybe.value();
+
+			auto cells = world->CubeLine(v1, v2, 50);
+			for (const auto& c : cells) {
+				if (!world->GetMap()->IsSolid(c.x, c.y, c.z))
+					world->CreateBlock(c, p.GetBlockColor());
+			}
+			PlayerCreatedBlock(p);
 		}
 
 		void Client::LocalPlayerHurt(HurtType type, spades::Vector3 source) {
