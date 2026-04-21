@@ -41,6 +41,7 @@
 #include "LimboView.h"
 #include "MapView.h"
 #include "PaletteView.h"
+#include "PieMenuView.h"
 #include "ScoreboardView.h"
 #include "TCProgressView.h"
 
@@ -145,6 +146,7 @@ namespace spades {
 			scoreboard = stmp::make_unique<ScoreboardView>(this);
 			limbo = stmp::make_unique<LimboView>(this);
 			paletteView = stmp::make_unique<PaletteView>(this);
+			pieMenuView = stmp::make_unique<PieMenuView>(this, chatFont);
 			tcView = stmp::make_unique<TCProgressView>(*this);
 			scriptedUI = Handle<ClientUI>::New(renderer.GetPointerOrNull(),
 				audioDev.GetPointerOrNull(), fontManager.GetPointerOrNull(), this);
