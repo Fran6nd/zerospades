@@ -775,7 +775,7 @@ namespace spades {
 				}
 
 				// demo record toggle â accessible for both players and spectators
-				if (CheckKey(cg_keyDemoRecord, name) && down && !IsDemoMode()) {
+				if (CheckKey(cg_keyDemoRecord, name) && down && net) {
 					if (net->IsDemoRecording()) {
 						net->StopDemoRecording();
 						ShowAlert(_Tr("Client", "Recording stopped"), AlertType::Notice);
