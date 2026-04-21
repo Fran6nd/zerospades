@@ -38,6 +38,7 @@
 #include "HurtRingView.h"
 #include "ILocalEntity.h"
 #include "MapView.h"
+#include "PieMenuView.h"
 #include "Tracer.h"
 
 #include "GameMap.h"
@@ -530,8 +531,16 @@ namespace spades {
 			Player& player = world->GetLocalPlayer().value();
 			Weapon& weapon = player.GetWeapon();
 
+			// auto-close pie menu if player died while it was open
+			if (pieMenuView && pieMenuView->IsOpen() && !player.IsAlive())
+				pieMenuView->Close();
+
 			PlayerInput inp = playerInput;
 			WeaponInput winp = weapInput;
+
+			// suppress weapon input while pie menu is held
+			if (pieMenuView && pieMenuView->IsOpen())
+				winp = WeaponInput();
 
 			bool isToolWeapon = player.IsToolWeapon();
 			bool isWeaponShotgun = weapon.IsReloadSlow();
