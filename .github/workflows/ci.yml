@@ -123,7 +123,7 @@ jobs:
           path: |
             vcpkg/installed
             vcpkg/buildtrees
-          key: macos-intel-12-${{ hashFiles('vcpkg_x86_64-darwin.txt', '.gitmodules') }}
+          key: macos-intel-12-${{ hashFiles('vcpkg_x86_64-darwin.txt', '.gitmodules', 'vcpkg-overlay/**') }}
           restore-keys: |
             macos-intel-12-
 
@@ -133,7 +133,7 @@ jobs:
       - name: Build dependencies
         run: |
           sed 's/$/:x64-osx/' vcpkg_x86_64-darwin.txt > vcpkg_x64-osx.txt
-          vcpkg/vcpkg install --recurse @vcpkg_x64-osx.txt
+          vcpkg/vcpkg install --recurse --overlay-ports=vcpkg-overlay/ports @vcpkg_x64-osx.txt
 
       # HACK: AngelScript (bundled, old) emits `.cfi_def_cfa_register` inside an
       # inline-asm block in as_callfunc_x64_gcc.cpp. Apple-clang 16's integrated
@@ -187,7 +187,7 @@ jobs:
           path: |
             vcpkg/installed
             vcpkg/buildtrees
-          key: macos-arm-${{ hashFiles('vcpkg_x86_64-darwin.txt', '.gitmodules') }}
+          key: macos-arm-${{ hashFiles('vcpkg_x86_64-darwin.txt', '.gitmodules', 'vcpkg-overlay/**') }}
           restore-keys: |
             macos-arm-
 
@@ -197,7 +197,7 @@ jobs:
       - name: Build dependencies
         run: |
           sed 's/$/:arm64-osx/' vcpkg_x86_64-darwin.txt > vcpkg_arm64-osx.txt
-          vcpkg/vcpkg install --recurse @vcpkg_arm64-osx.txt
+          vcpkg/vcpkg install --recurse --overlay-ports=vcpkg-overlay/ports @vcpkg_arm64-osx.txt
 
       - name: Build application
         uses: ashutoshvarma/action-cmake-build@master
