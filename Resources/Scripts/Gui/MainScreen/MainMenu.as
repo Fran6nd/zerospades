@@ -21,6 +21,7 @@
 #include "CreateProfileScreen.as"
 #include "ServerList.as"
 #include "DemoList.as"
+#include "MapList.as"
 
 namespace spades {
 
@@ -104,6 +105,17 @@ namespace spades {
 		private float demoSizeColWidth;
 		private float demoContentsWidth;
 
+		// Map tab state
+		TabPanel@ mapPanel;
+		spades::ui::ListView@ mapList;
+		MapListModel@ currentMapListModel;
+		MainScreenMapItem@ selectedMap;
+		spades::ui::Field@ mapNameField;
+
+		// Map list column widths (pixels)
+		private float mapDateColWidth;
+		private float mapSizeColWidth;
+
 		private ConfigItem cg_protocolVersion("cg_protocolVersion", "3");
 		private ConfigItem cg_lastQuickConnectHost("cg_lastQuickConnectHost", "127.0.0.1");
 		private ConfigItem cg_serverlistSort("cg_serverlistSort", "16385");
@@ -118,6 +130,9 @@ namespace spades {
 			demoModeColWidth = 85.0F;
 			demoMapColWidth  = 185.0F;
 			demoSizeColWidth = 70.0F;
+
+			mapDateColWidth = 130.0F;
+			mapSizeColWidth = 70.0F;
 
 			float sw = Manager.ScreenWidth;
 			float sh = Manager.ScreenHeight;
@@ -151,6 +166,10 @@ namespace spades {
 				@demoPanel = TabPanel(Manager);
 				demoPanel.Bounds = AABB2(0.0F, 0.0F, sw, sh);
 				demoPanel.Visible = false;
+
+				@mapPanel = TabPanel(Manager);
+				mapPanel.Bounds = AABB2(0.0F, 0.0F, sw, sh);
+				mapPanel.Visible = false;
 
 				// --- Server panel contents ---
 				{
@@ -376,8 +395,50 @@ namespace spades {
 					demoPanel.AddChild(demoList);
 				}
 
+				// --- Map panel contents ---
+				{
+					@mapNameField = spades::ui::Field(Manager);
+					mapNameField.Bounds = AABB2(contentsLeft, 200.0F, contentsWidth, 30.0F);
+					mapNameField.Placeholder = _Tr("MainScreen", "Select a map");
+					mapNameField.AcceptsFocus = false;
+					mapNameField.IsMouseInteractive = false;
+					mapPanel.AddChild(mapNameField);
+				}
+				{
+					// Column order: Name | Modified | Size
+					float fixedRight = mapDateColWidth + mapSizeColWidth;
+					float nameColWidth = contentsWidth - fixedRight;
+					float x = contentsLeft;
+					{
+						MapListHeader header(Manager);
+						header.Bounds = AABB2(x, headerPos, nameColWidth, headerHeight);
+						header.Text = _Tr("MainScreen", "Name");
+						mapPanel.AddChild(header);
+						x += nameColWidth;
+					}
+					{
+						MapListHeader header(Manager);
+						header.Bounds = AABB2(x, headerPos, mapDateColWidth, headerHeight);
+						header.Text = _Tr("MainScreen", "Modified");
+						mapPanel.AddChild(header);
+						x += mapDateColWidth;
+					}
+					{
+						MapListHeader header(Manager);
+						header.Bounds = AABB2(x, headerPos, mapSizeColWidth, headerHeight);
+						header.Text = _Tr("MainScreen", "Size");
+						mapPanel.AddChild(header);
+					}
+				}
+				{
+					@mapList = spades::ui::ListView(Manager);
+					mapList.Bounds = AABB2(contentsLeft, listPos, contentsWidth, footerPos - listPos - 14.0F);
+					mapPanel.AddChild(mapList);
+				}
+
 				AddChild(serverPanel);
 				AddChild(demoPanel);
+				AddChild(mapPanel);
 
 				// Tab strip
 				{
@@ -386,6 +447,7 @@ namespace spades {
 					AddChild(tabStrip);
 					tabStrip.AddItem(_Tr("MainScreen", "Servers"), serverPanel);
 					tabStrip.AddItem(_Tr("MainScreen", "Demos"), demoPanel);
+					tabStrip.AddItem(_Tr("MainScreen", "Maps"), mapPanel);
 					@tabStrip.Changed = spades::ui::EventHandler(this.OnTabChanged);
 				}
 			}
@@ -416,6 +478,7 @@ namespace spades {
 
 			LoadServerList();
 			LoadDemoList();
+			LoadMapList();
 		}
 
 		void LoadServerList() {
@@ -450,6 +513,32 @@ namespace spades {
 			// Refresh demo list when switching to demos tab
 			if (demoPanel.Visible)
 				LoadDemoList();
+			if (mapPanel.Visible)
+				LoadMapList();
+		}
+
+		void LoadMapList() {
+			MainScreenMapItem@[]@ maps = helper.GetMapList();
+			if (maps is null) {
+				@mapList.Model = spades::ui::ListViewModel();
+				return;
+			}
+			MapListModel model(Manager, maps, mapSizeColWidth, mapDateColWidth);
+			@mapList.Model = model;
+			@model.ItemActivated = MapListItemEventHandler(this.MapListItemActivated);
+			@model.ItemDoubleClicked = MapListItemEventHandler(this.MapListItemDoubleClicked);
+			@currentMapListModel = model;
+		}
+
+		void MapListItemActivated(MapListModel@ sender, MainScreenMapItem@ item) {
+			@selectedMap = item;
+			mapNameField.Text = item.DisplayName;
+		}
+
+		void MapListItemDoubleClicked(MapListModel@ sender, MainScreenMapItem@ item) {
+			@selectedMap = item;
+			mapNameField.Text = item.DisplayName;
+			// Actual load wired up in a later step once the backend exists.
 		}
 
 		void DemoListItemActivated(DemoListModel@ sender, string filename) {
