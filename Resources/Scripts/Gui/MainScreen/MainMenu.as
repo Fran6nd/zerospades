@@ -111,6 +111,8 @@ namespace spades {
 		MapListModel@ currentMapListModel;
 		MainScreenMapItem@ selectedMap;
 		spades::ui::Field@ mapNameField;
+		spades::ui::Button@ mapEditButton;
+		spades::ui::Button@ mapDeleteButton;
 
 		// Map list column widths (pixels)
 		private float mapDateColWidth;
@@ -398,11 +400,26 @@ namespace spades {
 				// --- Map panel contents ---
 				{
 					@mapNameField = spades::ui::Field(Manager);
-					mapNameField.Bounds = AABB2(contentsLeft, 200.0F, contentsWidth, 30.0F);
+					mapNameField.Bounds = AABB2(contentsLeft, 200.0F, contentsWidth - 270.0F, 30.0F);
 					mapNameField.Placeholder = _Tr("MainScreen", "Select a map");
 					mapNameField.AcceptsFocus = false;
 					mapNameField.IsMouseInteractive = false;
 					mapPanel.AddChild(mapNameField);
+				}
+				{
+					@mapDeleteButton = spades::ui::Button(Manager);
+					mapDeleteButton.Caption = _Tr("MainScreen", "Delete");
+					mapDeleteButton.Bounds = AABB2(contentsLeft + contentsWidth - 270.0F, 200.0F, 110.0F, 30.0F);
+					@mapDeleteButton.Activated = spades::ui::EventHandler(this.OnDeleteMapPressed);
+					mapPanel.AddChild(mapDeleteButton);
+				}
+				{
+					@mapEditButton = spades::ui::Button(Manager);
+					mapEditButton.Caption = _Tr("MainScreen", "Edit");
+					mapEditButton.HotKeyText = _Tr("Client", "[Enter]");
+					mapEditButton.Bounds = AABB2(contentsLeft + contentsWidth - 150.0F, 200.0F, 150.0F, 30.0F);
+					@mapEditButton.Activated = spades::ui::EventHandler(this.OnEditMapPressed);
+					mapPanel.AddChild(mapEditButton);
 				}
 				{
 					// Column order: Name | Modified | Size
@@ -538,7 +555,31 @@ namespace spades {
 		void MapListItemDoubleClicked(MapListModel@ sender, MainScreenMapItem@ item) {
 			@selectedMap = item;
 			mapNameField.Text = item.DisplayName;
-			// Actual load wired up in a later step once the backend exists.
+			EditSelectedMap();
+		}
+
+		private void EditSelectedMap() {
+			if (selectedMap is null)
+				return;
+			string msg = helper.LoadMap(selectedMap.Path);
+			if (msg.length > 0) {
+				AlertScreen al(this, msg);
+				al.Run();
+			}
+		}
+
+		private void OnEditMapPressed(spades::ui::UIElement@ sender) {
+			EditSelectedMap();
+		}
+
+		private void OnDeleteMapPressed(spades::ui::UIElement@ sender) {
+			if (selectedMap is null)
+				return;
+			if (!helper.DeleteMap(selectedMap.Path))
+				return;
+			@selectedMap = null;
+			mapNameField.Text = "";
+			LoadMapList();
 		}
 
 		void DemoListItemActivated(DemoListModel@ sender, string filename) {
@@ -775,6 +816,8 @@ namespace spades {
 			if (IsEnabled and key == "Enter") {
 				if (demoPanel.Visible) {
 					PlaySelectedDemo();
+				} else if (mapPanel.Visible) {
+					EditSelectedMap();
 				} else {
 					Connect();
 				}

@@ -112,6 +112,10 @@ namespace spades {
 					                              asMETHOD(gui::MainScreenHelper, LoadMap),
 					                              asCALL_THISCALL);
 					manager->CheckError(r);
+					r = eng->RegisterObjectMethod("MainScreenHelper", "bool DeleteMap(string)",
+					                              asMETHOD(gui::MainScreenHelper, DeleteMap),
+					                              asCALL_THISCALL);
+					manager->CheckError(r);
 					r = eng->RegisterObjectBehaviour(
 					  "MainScreenServerItem", asBEHAVE_ADDREF, "void f()",
 					  asMETHOD(gui::MainScreenServerItem, AddRef), asCALL_THISCALL);
