@@ -725,6 +725,22 @@ namespace spades {
 				@button.Activated = spades::ui::EventHandler(this.OnBrowseDemosFolderPressed);
 				AddChild(button);
 			}
+
+			AddLabel(0.0F, 240.0F, 30.0F, _Tr("StartupScreen", "Maps Folder"));
+			{
+				spades::ui::Button button(Manager);
+				string osType = helper.OperatingSystemType;
+				if (osType == "Windows") {
+					button.Caption = _Tr("StartupScreen", "Open Maps Folder in Explorer");
+				} else if (osType == "Mac") {
+					button.Caption = _Tr("StartupScreen", "Reveal Maps Folder in Finder");
+				} else {
+					button.Caption = _Tr("StartupScreen", "Browse Maps Folder");
+				}
+				button.Bounds = AABB2(160.0F, 240.0F, 350.0F, 30.0F);
+				@button.Activated = spades::ui::EventHandler(this.OnBrowseMapsFolderPressed);
+				AddChild(button);
+			}
 		}
 
 		void LoadConfig() {
@@ -754,6 +770,16 @@ namespace spades {
 
 			string msg = _Tr("StartupScreen",
 							 "An unknown error has occurred while opening the demos directory.");
+			AlertScreen al(Parent, msg, 100.0F);
+			al.Run();
+		}
+
+		private void OnBrowseMapsFolderPressed(spades::ui::UIElement@) {
+			if (helper.BrowseMapsDirectory())
+				return;
+
+			string msg = _Tr("StartupScreen",
+							 "An unknown error has occurred while opening the maps directory.");
 			AlertScreen al(Parent, msg, 100.0F);
 			al.Run();
 		}

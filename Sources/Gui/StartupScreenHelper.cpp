@@ -680,6 +680,24 @@ namespace spades {
 			return ShowDirectoryInShell(path);
 		}
 
+		bool StartupScreenHelper::BrowseMapsDirectory() {
+			std::string base = g_userResourceDirectory;
+			if (base.empty()) {
+				SPLog("Cannot open the maps directory: g_userResourceDirectory is empty.");
+				return false;
+			}
+
+			// Ensure the Maps directory exists before trying to open it.
+			std::string path = base + "/Maps";
+#ifdef WIN32
+			_mkdir(path.c_str());
+#else
+			mkdir(path.c_str(), 0755);
+#endif
+
+			return ShowDirectoryInShell(path);
+		}
+
 		bool StartupScreenHelper::OpenLinkInBrowser(const std::string& url) {
 			if (url.empty()) {
 				SPLog("Cannot open this URL: empty.");
