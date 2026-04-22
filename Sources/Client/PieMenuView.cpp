@@ -34,6 +34,39 @@ namespace spades {
 			constexpr float kDeadZone = 20.0F;
 			constexpr float kRingRadius = 140.0F;
 			constexpr float kSliceRadius = 64.0F;
+			constexpr float kRingInner = 70.0F;
+			constexpr float kRingOuter = 160.0F;
+			constexpr float kSliceGapDeg = 4.0F;
+			constexpr int kSegmentsPerSlice = 48;
+
+			// Draw a filled annular segment (pie slice without the center)
+			// via parallelogram tessellation along the arc.
+			void DrawRingSegment(IRenderer& r, Vector2 center, float rInner,
+			                     float rOuter, float aStart, float aEnd,
+			                     int segments) {
+				if (segments <= 0 || rOuter <= rInner || aEnd <= aStart)
+					return;
+
+				const AABB2 inRect(0.0F, 0.0F, 1.0F, 1.0F);
+				float step = (aEnd - aStart) / static_cast<float>(segments);
+
+				float c0 = cosf(aStart), s0 = sinf(aStart);
+				for (int i = 0; i < segments; i++) {
+					float a1 = aStart + step * static_cast<float>(i + 1);
+					float c1 = cosf(a1), s1 = sinf(a1);
+
+					Vector2 outerNear = center + MakeVector2(c0 * rOuter, s0 * rOuter);
+					Vector2 outerFar  = center + MakeVector2(c1 * rOuter, s1 * rOuter);
+					Vector2 innerNear = center + MakeVector2(c0 * rInner, s0 * rInner);
+
+					// Parallelogram approximation of the true ring segment.
+					// For small `step` the error vs. the correct innerFar is sub-pixel.
+					r.DrawImage(nullptr, outerNear, outerFar, innerNear, inRect);
+
+					c0 = c1;
+					s0 = s1;
+				}
+			}
 		} // namespace
 
 		PieMenuView::PieMenuView(Client* c, IFont* f)
