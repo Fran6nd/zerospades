@@ -1250,6 +1250,17 @@ namespace spades {
 			}
 		}
 
+		void Client::UpdateTeamPings(float dt) {
+			constexpr float kLifetime = 10.0F;
+			for (auto it = teamPings.begin(); it != teamPings.end();) {
+				it->second.age += dt;
+				if (it->second.age >= kLifetime)
+					it = teamPings.erase(it);
+				else
+					++it;
+			}
+		}
+
 		void Client::DrawDamageIndicators() {
 			SPADES_MARK_FUNCTION();
 
@@ -1286,6 +1297,122 @@ namespace spades {
 
 					font.DrawShadow(damageStr, scrPos + MakeVector2(1, 1), 1.0F, shadow, shadow);
 					font.Draw(damageStr, scrPos, 1.0F, color);
+				}
+			}
+		}
+
+		void Client::DrawTeamPings() {
+			SPADES_MARK_FUNCTION();
+
+			if (!world)
+				return;
+			auto maybeLocal = world->GetLocalPlayer();
+			if (!maybeLocal)
+				return;
+			Player& local = maybeLocal.value();
+
+			constexpr float kLifetime = 10.0F;
+			constexpr float kFadeIn = 0.15F;
+			constexpr float kFadeOut = 1.5F;
+			constexpr float kDiamondHalf = 10.0F;
+
+			IFont& font = fontManager->GetGuiFont();
+			const AABB2 inRect(0.0F, 0.0F, 1.0F, 1.0F);
+
+			for (const auto& kv : teamPings) {
+				const TeamPing& ping = kv.second;
+
+				if (ping.senderId < 0
+				    || ping.senderId
+				         >= static_cast<int>(world->GetNumPlayerSlots()))
+					continue;
+				auto maybeSender = world->GetPlayer(
+				    static_cast<unsigned int>(ping.senderId));
+				if (!maybeSender)
+					continue;
+				Player& sender = maybeSender.value();
+				if (!local.IsTeammate(sender))
+					continue;
+
+				Vector2 scrPos;
+				if (!Project(ping.position, scrPos))
+					continue;
+
+				float age = ping.age;
+				float alpha = 1.0F;
+				if (age < kFadeIn)
+					alpha = age / kFadeIn;
+				else if (age > kLifetime - kFadeOut)
+					alpha = (kLifetime - age) / kFadeOut;
+				alpha = Clamp(alpha, 0.0F, 1.0F);
+				if (alpha <= 0.0F)
+					continue;
+
+				// Subtle pulse + vertical bob so it reads as "alive".
+				float pulse = 1.0F + 0.12F * sinf(age * 6.0F);
+				scrPos.y += sinf(age * 2.5F) * 1.5F;
+				scrPos.x = floorf(scrPos.x) + 0.5F;
+				scrPos.y = floorf(scrPos.y) + 0.5F;
+
+				float r = kDiamondHalf * pulse;
+				Vector2 top = {scrPos.x, scrPos.y - r};
+				Vector2 right = {scrPos.x + r, scrPos.y};
+				Vector2 left = {scrPos.x - r, scrPos.y};
+
+				// Dark outline diamond (slightly larger, drawn behind).
+				{
+					float ro = r + 2.0F;
+					Vector2 topO = {scrPos.x, scrPos.y - ro};
+					Vector2 rightO = {scrPos.x + ro, scrPos.y};
+					Vector2 leftO = {scrPos.x - ro, scrPos.y};
+					float a = 0.75F * alpha;
+					renderer->SetColorAlphaPremultiplied(MakeVector4(0, 0, 0, a));
+					renderer->DrawImage(nullptr, topO, rightO, leftO, inRect);
+				}
+
+				// Team-colored filled diamond.
+				Vector4 teamCol = ConvertColorRGBA(sender.GetColor());
+				{
+					float a = alpha;
+					Vector4 col = MakeVector4(teamCol.x * a, teamCol.y * a,
+					                          teamCol.z * a, a);
+					renderer->SetColorAlphaPremultiplied(col);
+					renderer->DrawImage(nullptr, top, right, left, inRect);
+				}
+
+				// White center dot.
+				{
+					float rDot = 2.0F;
+					float a = alpha;
+					renderer->SetColorAlphaPremultiplied(MakeVector4(a, a, a, a));
+					renderer->DrawFilledRect(scrPos.x - rDot, scrPos.y - rDot,
+					                         scrPos.x + rDot, scrPos.y + rDot);
+				}
+
+				// Sender name above.
+				{
+					const std::string& nameStr = sender.GetName();
+					Vector2 nameSize = font.Measure(nameStr);
+					Vector2 namePos = {
+					    floorf(scrPos.x - nameSize.x * 0.5F),
+					    floorf(scrPos.y - r - nameSize.y - 3.0F),
+					};
+					Vector4 nameCol = teamCol;
+					nameCol.w = alpha;
+					Vector4 shadow = MakeVector4(0, 0, 0, 0.7F * alpha);
+					font.DrawShadow(nameStr, namePos, 1.0F, nameCol, shadow);
+				}
+
+				// Message below.
+				if (!ping.message.empty()) {
+					Vector2 msgSize = font.Measure(ping.message);
+					Vector2 msgPos = {
+					    floorf(scrPos.x - msgSize.x * 0.5F),
+					    floorf(scrPos.y + r + 3.0F),
+					};
+					Vector4 msgCol = MakeVector4(1.0F, 1.0F, 1.0F, alpha);
+					Vector4 shadow = MakeVector4(0, 0, 0, 0.7F * alpha);
+					font.DrawShadow(ping.message, msgPos, 1.0F, msgCol, shadow);
 				}
 			}
 		}
@@ -1720,6 +1847,8 @@ namespace spades {
 				} else if (spectatorPlayerNames) { // only if we are spectating
 					DrawPubOVL();
 				}
+
+				DrawTeamPings();
 
 				if (teamOverlayHeld && !localPlayerIsSpectator)
 					DrawTeamOverlay();

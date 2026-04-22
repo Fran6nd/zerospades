@@ -175,6 +175,7 @@ namespace spades {
 			lastHitTime = -100.0F;
 			hurtRingView->ClearAll();
 			killStreaks.clear();
+			teamPings.clear();
 
 			// reset on new map
 			placedBlocks = 0;
@@ -628,6 +629,7 @@ namespace spades {
 			pieMenuView->Update(dt);
 
 			UpdateDamageIndicators(dt);
+			UpdateTeamPings(dt);
 			UpdateAutoFocus(dt);
 
 			if (world) {
@@ -976,7 +978,42 @@ namespace spades {
 			NetLog("[Ping] %s (id=%d) @ (%d,%d,%d): %s",
 			       from.GetName().c_str(), from.GetId(),
 			       pos.x, pos.y, pos.z, message.c_str());
-			// TODO: spawn a temporary 3D intel marker at `pos`, attributed to `from`.
+
+			// Replace any prior ping from the same player (max one per sender).
+			TeamPing& ping = teamPings[from.GetId()];
+			ping.senderId = from.GetId();
+			ping.position =
+			  MakeVector3(static_cast<float>(pos.x) + 0.5F,
+			              static_cast<float>(pos.y) + 0.5F,
+			              static_cast<float>(pos.z) + 0.5F);
+			ping.message = message;
+			ping.age = 0.0F;
+
+			// Display the chat line without the "PING X Y Z" header.
+			std::string display = message.empty()
+				? _Tr("Client", "(ping)") : message;
+
+			{
+				std::string s = from.GetName();
+				s += ": ";
+				s += display;
+				scriptedUI->RecordChatLog(s, ConvertColorRGBA(from.GetColor()));
+			}
+
+			if (!(cg_ignoreChatMessages && !from.IsLocalPlayer())) {
+				std::string s = _Tr("Client", "[Ping] ");
+				s += ChatWindow::TeamColorMessage(from.GetName(), from.GetTeamId());
+				s += ": ";
+				s += display;
+				chatWindow->AddMessage(s);
+			}
+
+			if (!IsMuted()) {
+				Handle<IAudioChunk> c = audioDevice->RegisterSound("Sounds/Feedback/Chat.opus");
+				AudioParam params;
+				params.volume = (float)cg_chatBeep;
+				audioDevice->PlayLocal(c.GetPointerOrNull(), params);
+			}
 		}
 
 		void Client::ServerSentMessage(bool system, const std::string& msg) {

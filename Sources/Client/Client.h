@@ -213,6 +213,15 @@ namespace spades {
 			};
 			std::list<DamageIndicator> damageIndicators;
 
+			struct TeamPing {
+				int senderId = -1;
+				Vector3 position = {0.0F, 0.0F, 0.0F};
+				std::string message;
+				float age = 0.0F; // seconds since creation
+			};
+			// At most one ping per teammate (keyed by sender id).
+			std::unordered_map<int, TeamPing> teamPings;
+
 			float GetSprintState();
 			float GetAimDownState();
 
@@ -474,6 +483,9 @@ namespace spades {
 
 			void UpdateDamageIndicators(float dt);
 			void DrawDamageIndicators();
+
+			void UpdateTeamPings(float dt);
+			void DrawTeamPings();
 
 			bool teamOverlayHeld = false;
 			void DrawTeamOverlay();
