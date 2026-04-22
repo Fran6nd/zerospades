@@ -531,10 +531,6 @@ namespace spades {
 			Player& player = world->GetLocalPlayer().value();
 			Weapon& weapon = player.GetWeapon();
 
-			// auto-close pie menu if player died while it was open
-			if (pieMenuView && pieMenuView->IsOpen() && !player.IsAlive())
-				pieMenuView->Close();
-
 			PlayerInput inp = playerInput;
 			WeaponInput winp = weapInput;
 

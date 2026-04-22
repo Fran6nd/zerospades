@@ -608,6 +608,22 @@ namespace spades {
 			mapView->Update(dt);
 			largeMapView->Update(dt);
 			paletteView->Update(dt);
+
+			// Close the pie menu if the conditions that let it open no longer hold
+			// (player died, changed team to spectator, entered limbo, opened scripted UI, etc.)
+			if (pieMenuView->IsOpen()) {
+				bool shouldClose = true;
+				if (world && !scriptedUI->NeedsInput() && !inGameLimbo && !staffSpectating) {
+					auto maybePlayer = world->GetLocalPlayer();
+					if (maybePlayer) {
+						Player& lp = maybePlayer.value();
+						if (lp.IsAlive() && !lp.IsSpectator())
+							shouldClose = false;
+					}
+				}
+				if (shouldClose)
+					pieMenuView->Close();
+			}
 			pieMenuView->Update(dt);
 
 			UpdateDamageIndicators(dt);
