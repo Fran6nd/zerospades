@@ -419,24 +419,39 @@ namespace spades {
 							pieMenuView->Open(PieMenuView::Variant::Player, target.GetId());
 						} else {
 							pieMenuView->Open(PieMenuView::Variant::World);
+							// Raycast along the player's view to capture ping pos.
+							Vector3 origin = p.GetEye();
+							Vector3 dir = p.GetFront();
+							auto res = world->WeaponRayCast(origin, dir, p.GetId());
+							if (res.hit)
+								pieMenuView->SetPingPosition(res.hitPos);
 						}
 						weapInput = WeaponInput();
 					} else if (!down && pieMenuView->IsOpen()) {
 						PieMenuView::Variant v = pieMenuView->GetVariant();
 						int targetId = pieMenuView->GetTargetPlayerId();
+						bool hasPing = pieMenuView->HasPingPosition();
+						Vector3 pingPos = pieMenuView->GetPingPosition();
 						int sel = pieMenuView->Close();
-						if (sel >= 0) {
-							if (v == PieMenuView::Variant::Player && net && targetId >= 0) {
+						if (sel >= 0 && net) {
+							if (v == PieMenuView::Variant::Player && targetId >= 0) {
 								static const char* kPlayerMessages[4] = {
 									"Follow Me", "Retreat", "Help Me", "Thank You"};
 								char cmd[64];
 								std::snprintf(cmd, sizeof(cmd), "/pm #%d %s",
 								              targetId, kPlayerMessages[sel]);
 								net->SendChat(cmd, false);
-							} else {
-								static const char* kSliceNames[4] = {
-									"Top", "Right", "Bottom", "Left"};
-								SPLog("PieMenu: world / %s", kSliceNames[sel]);
+							} else if (v == PieMenuView::Variant::World && hasPing) {
+								static const char* kWorldMessages[4] = {
+									"Attack Here", "Defend Here",
+									"Enemy Here", "Destroy This"};
+								char cmd[96];
+								std::snprintf(cmd, sizeof(cmd), "PING %d %d %d %s",
+								              static_cast<int>(floorf(pingPos.x)),
+								              static_cast<int>(floorf(pingPos.y)),
+								              static_cast<int>(floorf(pingPos.z)),
+								              kWorldMessages[sel]);
+								net->SendChat(cmd, false);
 							}
 						}
 					}

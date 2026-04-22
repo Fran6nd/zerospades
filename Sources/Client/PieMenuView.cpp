@@ -71,10 +71,10 @@ namespace spades {
 		PieMenuView::PieMenuView(Client* c, IFont* f, IFont* big)
 		    : renderer(c->GetRenderer()), font(f), bigFont(big) {
 			worldLabels = {
-				_Tr("Client", "Top"),
-				_Tr("Client", "Right"),
-				_Tr("Client", "Bottom"),
-				_Tr("Client", "Left"),
+				_Tr("Client", "Attack Here"),
+				_Tr("Client", "Defend Here"),
+				_Tr("Client", "Enemy Here"),
+				_Tr("Client", "Destroy This"),
 			};
 			playerLabels = {
 				_Tr("Client", "Follow Me"),
@@ -90,6 +90,8 @@ namespace spades {
 			open = true;
 			variant = v;
 			targetPlayerId = tgtId;
+			hasPingPos = false;
+			pingPos = {0.0F, 0.0F, 0.0F};
 			cursor = {0.0F, 0.0F};
 			selection = None;
 			openPhase = 0.0F;
@@ -101,6 +103,8 @@ namespace spades {
 			open = false;
 			selection = None;
 			targetPlayerId = -1;
+			hasPingPos = false;
+			pingPos = {0.0F, 0.0F, 0.0F};
 			cursor = {0.0F, 0.0F};
 			openPhase = 0.0F;
 			highlight = {0.0F, 0.0F, 0.0F, 0.0F};

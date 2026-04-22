@@ -44,6 +44,8 @@ namespace spades {
 			bool open = false;
 			Variant variant = Variant::World;
 			int targetPlayerId = -1;
+			bool hasPingPos = false;
+			Vector3 pingPos = {0.0F, 0.0F, 0.0F};
 			Vector2 cursor = {0.0F, 0.0F};
 			int selection = None;
 
@@ -63,6 +65,9 @@ namespace spades {
 			bool IsOpen() const { return open; }
 			Variant GetVariant() const { return variant; }
 			int GetTargetPlayerId() const { return targetPlayerId; }
+			void SetPingPosition(Vector3 p) { pingPos = p; hasPingPos = true; }
+			bool HasPingPosition() const { return hasPingPos; }
+			Vector3 GetPingPosition() const { return pingPos; }
 			int GetSelection() const { return selection; }
 			const std::string& GetSelectionLabel() const;
 
