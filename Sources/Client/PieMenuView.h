@@ -55,6 +55,11 @@ namespace spades {
 			std::array<std::string, 4> worldLabels;
 			std::array<std::string, 4> playerLabels;
 
+			// Precomputed per-slice ray params (sin/cos of θ_c ± α).
+			// Populated once in the constructor; used by scanline fill.
+			struct SliceRay { float s1, c1, s2, c2; };
+			std::array<SliceRay, 4> sliceRays;
+
 		public:
 			PieMenuView(Client*, IFont* font, IFont* bigFont);
 			~PieMenuView();

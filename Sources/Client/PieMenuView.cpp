@@ -20,7 +20,9 @@
 
 #include "PieMenuView.h"
 
+#include <algorithm>
 #include <cmath>
+#include <limits>
 
 #include "Client.h"
 #include "IFont.h"
@@ -35,35 +37,134 @@ namespace spades {
 			constexpr float kRingInner = 70.0F;
 			constexpr float kRingOuter = 160.0F;
 			constexpr float kSliceGapDeg = 4.0F;
-			constexpr int kSegmentsPerSlice = 48;
 			constexpr float kLabelRadius = 115.0F;
 
-			// Draw a filled annular segment (pie slice without the center)
-			// via parallelogram tessellation along the arc.
-			void DrawRingSegment(IRenderer& r, Vector2 center, float rInner,
-			                     float rOuter, float aStart, float aEnd,
-			                     int segments) {
-				if (segments <= 0 || rOuter <= rInner || aEnd <= aStart)
+			// Normalized quarter-circle half-width table: table[i] = sqrt(1-(i/N)^2).
+			// Built once at program startup; radius-agnostic.
+			constexpr int kHalfWidthN = 1024;
+			const std::array<float, kHalfWidthN + 1> kHalfWidthTable = []() {
+				std::array<float, kHalfWidthN + 1> t{};
+				for (int i = 0; i <= kHalfWidthN; i++) {
+					float v = static_cast<float>(i) / static_cast<float>(kHalfWidthN);
+					float s = 1.0F - v * v;
+					t[static_cast<size_t>(i)] = (s > 0.0F) ? sqrtf(s) : 0.0F;
+				}
+				return t;
+			}();
+
+			// sqrt(r*r - y*y) via linear interp of the normalized table.
+			float CircleHalfWidth(float yAbs, float r) {
+				if (r <= 0.0F || yAbs >= r)
+					return 0.0F;
+				float t = yAbs / r;
+				float idxf = t * static_cast<float>(kHalfWidthN);
+				int i = static_cast<int>(idxf);
+				if (i >= kHalfWidthN)
+					return 0.0F;
+				float frac = idxf - static_cast<float>(i);
+				float w = kHalfWidthTable[static_cast<size_t>(i)]
+				        + (kHalfWidthTable[static_cast<size_t>(i + 1)]
+				           - kHalfWidthTable[static_cast<size_t>(i)]) * frac;
+				return w * r;
+			}
+
+			void DrawDiscFill(IRenderer& r, Vector2 center, float rOut) {
+				int yLo = static_cast<int>(floorf(-rOut));
+				int yHi = static_cast<int>(ceilf(rOut));
+				for (int y = yLo; y < yHi; y++) {
+					float yf = static_cast<float>(y) + 0.5F;
+					float w = CircleHalfWidth(fabsf(yf), rOut);
+					if (w <= 0.0F)
+						continue;
+					r.DrawImage(nullptr, AABB2(center.x - w, center.y + static_cast<float>(y),
+					                           2.0F * w, 1.0F));
+				}
+			}
+
+			void DrawAnnulusFill(IRenderer& r, Vector2 center, float rIn, float rOut) {
+				if (rIn <= 0.0F) {
+					DrawDiscFill(r, center, rOut);
 					return;
+				}
+				int yLo = static_cast<int>(floorf(-rOut));
+				int yHi = static_cast<int>(ceilf(rOut));
+				for (int y = yLo; y < yHi; y++) {
+					float yf = static_cast<float>(y) + 0.5F;
+					float yAbs = fabsf(yf);
+					float wOut = CircleHalfWidth(yAbs, rOut);
+					if (wOut <= 0.0F)
+						continue;
+					if (yAbs < rIn) {
+						float wIn = CircleHalfWidth(yAbs, rIn);
+						float strip = wOut - wIn;
+						if (strip > 0.0F) {
+							r.DrawImage(nullptr,
+							            AABB2(center.x - wOut,
+							                  center.y + static_cast<float>(y),
+							                  strip, 1.0F));
+							r.DrawImage(nullptr,
+							            AABB2(center.x + wIn,
+							                  center.y + static_cast<float>(y),
+							                  strip, 1.0F));
+						}
+					} else {
+						r.DrawImage(nullptr, AABB2(center.x - wOut,
+						                           center.y + static_cast<float>(y),
+						                           2.0F * wOut, 1.0F));
+					}
+				}
+			}
 
-				const AABB2 inRect(0.0F, 0.0F, 1.0F, 1.0F);
-				float step = (aEnd - aStart) / static_cast<float>(segments);
+			// Annulus ∩ wedge. Rays at θ_c ± α are encoded as (s1,c1) and (s2,c2).
+			// Inside-wedge half-planes:   -x·s1 + y·c1 ≥ 0   and   x·s2 - y·c2 ≥ 0.
+			void DrawSliceFill(IRenderer& r, Vector2 center, float rIn, float rOut,
+			                   float s1, float c1, float s2, float c2) {
+				int yLo = static_cast<int>(floorf(-rOut));
+				int yHi = static_cast<int>(ceilf(rOut));
+				const float kInf = std::numeric_limits<float>::infinity();
+				for (int y = yLo; y < yHi; y++) {
+					float yf = static_cast<float>(y) + 0.5F;
+					float yAbs = fabsf(yf);
+					float wOut = CircleHalfWidth(yAbs, rOut);
+					if (wOut <= 0.0F)
+						continue;
+					float wIn = (yAbs < rIn) ? CircleHalfWidth(yAbs, rIn) : 0.0F;
 
-				float c0 = cosf(aStart), s0 = sinf(aStart);
-				for (int i = 0; i < segments; i++) {
-					float a1 = aStart + step * static_cast<float>(i + 1);
-					float c1 = cosf(a1), s1 = sinf(a1);
+					// Clip by wedge rays.
+					float xLoW = -kInf, xHiW = kInf;
+					if (s1 > 0.0F) {
+						xHiW = std::min(xHiW, yf * c1 / s1);
+					} else if (s1 < 0.0F) {
+						xLoW = std::max(xLoW, yf * c1 / s1);
+					} else if (yf * c1 < 0.0F) {
+						continue;
+					}
+					if (s2 > 0.0F) {
+						xLoW = std::max(xLoW, yf * c2 / s2);
+					} else if (s2 < 0.0F) {
+						xHiW = std::min(xHiW, yf * c2 / s2);
+					} else if (yf * c2 < 0.0F) {
+						continue;
+					}
+					if (xHiW <= xLoW)
+						continue;
 
-					Vector2 outerNear = center + MakeVector2(c0 * rOuter, s0 * rOuter);
-					Vector2 outerFar  = center + MakeVector2(c1 * rOuter, s1 * rOuter);
-					Vector2 innerNear = center + MakeVector2(c0 * rInner, s0 * rInner);
-
-					// Parallelogram approximation of the true ring segment.
-					// For small `step` the error vs. the correct innerFar is sub-pixel.
-					r.DrawImage(nullptr, outerNear, outerFar, innerNear, inRect);
-
-					c0 = c1;
-					s0 = s1;
+					auto emit = [&](float xA, float xB) {
+						float xLo = std::max(xA, xLoW);
+						float xHi = std::min(xB, xHiW);
+						if (xHi > xLo) {
+							r.DrawImage(nullptr,
+							            AABB2(center.x + xLo,
+							                  center.y + static_cast<float>(y),
+							                  xHi - xLo, 1.0F));
+						}
+					};
+					if (yAbs < rIn) {
+						emit(-wOut, -wIn);
+						emit(wIn, wOut);
+					} else {
+						emit(-wOut, wOut);
+					}
 				}
 			}
 		} // namespace
@@ -82,6 +183,15 @@ namespace spades {
 				_Tr("Client", "Help Me"),
 				_Tr("Client", "Thank You"),
 			};
+
+			const float kPI = static_cast<float>(M_PI);
+			const float halfSliceRad = kPI * 0.25F - (kSliceGapDeg * kPI / 180.0F) * 0.5F;
+			const float sliceCenters[4] = {-kPI * 0.5F, 0.0F, kPI * 0.5F, kPI};
+			for (int i = 0; i < 4; i++) {
+				float t1 = sliceCenters[i] - halfSliceRad;
+				float t2 = sliceCenters[i] + halfSliceRad;
+				sliceRays[i] = {sinf(t1), cosf(t1), sinf(t2), cosf(t2)};
+			}
 		}
 
 		PieMenuView::~PieMenuView() {}
@@ -186,8 +296,6 @@ namespace spades {
 			// Slice angular centers in screen math (y-down):
 			// Top=-π/2, Right=0, Bottom=+π/2, Left=π.
 			const float kPI = static_cast<float>(M_PI);
-			const float halfSliceRad = kPI * 0.25F;
-			const float gapRad = kSliceGapDeg * kPI / 180.0F;
 			const float sliceCenters[4] = {
 				-kPI * 0.5F, 0.0F, kPI * 0.5F, kPI,
 			};
@@ -203,29 +311,24 @@ namespace spades {
 
 			// Backing disc
 			renderer.SetColorAlphaPremultiplied(MakeVector4(0, 0, 0, 0.55F * alpha));
-			DrawRingSegment(renderer, center, 0.0F, rOuter,
-			                0.0F, kPI * 2.0F, kSegmentsPerSlice * 4);
+			DrawDiscFill(renderer, center, rOuter);
 
 			// Slices
 			for (int i = 0; i < 4; i++) {
 				float h = highlight[i];
-				float a0 = sliceCenters[i] - halfSliceRad + gapRad * 0.5F;
-				float a1 = sliceCenters[i] + halfSliceRad - gapRad * 0.5F;
-
 				float fillA = (0.08F + (0.85F - 0.08F) * h) * alpha;
 				renderer.SetColorAlphaPremultiplied(MakeVector4(fillA, fillA, fillA, fillA));
 				float rOutSlice = rOuter + 10.0F * h;
-				DrawRingSegment(renderer, center, rInner, rOutSlice, a0, a1,
-				                kSegmentsPerSlice);
+				const SliceRay& rr = sliceRays[i];
+				DrawSliceFill(renderer, center, rInner, rOutSlice,
+				              rr.s1, rr.c1, rr.s2, rr.c2);
 			}
 
 			// Outer and inner outline rings (thin)
 			renderer.SetColorAlphaPremultiplied(MakeVector4(alpha * 0.5F, alpha * 0.5F,
 			                                                alpha * 0.5F, alpha * 0.5F));
-			DrawRingSegment(renderer, center, rOuter - 1.0F, rOuter,
-			                0.0F, kPI * 2.0F, kSegmentsPerSlice * 4);
-			DrawRingSegment(renderer, center, rInner, rInner + 1.0F,
-			                0.0F, kPI * 2.0F, kSegmentsPerSlice * 4);
+			DrawAnnulusFill(renderer, center, rOuter - 1.0F, rOuter);
+			DrawAnnulusFill(renderer, center, rInner, rInner + 1.0F);
 
 			// Labels at kLabelRadius along each cardinal
 			for (int i = 0; i < 4; i++) {
