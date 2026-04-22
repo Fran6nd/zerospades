@@ -45,6 +45,9 @@ namespace spades {
 			Vector2 cursor = {0.0F, 0.0F};
 			int selection = None;
 
+			float openPhase = 0.0F;
+			std::array<float, 4> highlight = {0.0F, 0.0F, 0.0F, 0.0F};
+
 			std::array<std::string, 4> worldLabels;
 			std::array<std::string, 4> playerLabels;
 
@@ -61,6 +64,7 @@ namespace spades {
 			const std::string& GetSelectionLabel() const;
 
 			void HandleMouseDelta(float dx, float dy);
+			void Update(float dt);
 			void Draw();
 		};
 	} // namespace client

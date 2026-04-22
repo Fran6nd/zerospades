@@ -607,6 +607,7 @@ namespace spades {
 			mapView->Update(dt);
 			largeMapView->Update(dt);
 			paletteView->Update(dt);
+			pieMenuView->Update(dt);
 
 			UpdateDamageIndicators(dt);
 			UpdateAutoFocus(dt);

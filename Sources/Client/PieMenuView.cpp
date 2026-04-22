@@ -91,6 +91,8 @@ namespace spades {
 			variant = v;
 			cursor = {0.0F, 0.0F};
 			selection = None;
+			openPhase = 0.0F;
+			highlight = {0.0F, 0.0F, 0.0F, 0.0F};
 		}
 
 		int PieMenuView::Close() {
@@ -98,7 +100,30 @@ namespace spades {
 			open = false;
 			selection = None;
 			cursor = {0.0F, 0.0F};
+			openPhase = 0.0F;
+			highlight = {0.0F, 0.0F, 0.0F, 0.0F};
 			return result;
+		}
+
+		void PieMenuView::Update(float dt) {
+			if (!open)
+				return;
+
+			constexpr float kOpenRate = 1.0F / 0.12F;
+			constexpr float kHighlightUpRate = 1.0F / 0.10F;
+			constexpr float kHighlightDownRate = 1.0F / 0.15F;
+
+			openPhase = std::min(1.0F, openPhase + dt * kOpenRate);
+
+			for (int i = 0; i < 4; i++) {
+				float target = (selection == i) ? 1.0F : 0.0F;
+				float rate = (target > highlight[i]) ? kHighlightUpRate : kHighlightDownRate;
+				float delta = dt * rate;
+				if (target > highlight[i])
+					highlight[i] = std::min(target, highlight[i] + delta);
+				else
+					highlight[i] = std::max(target, highlight[i] - delta);
+			}
 		}
 
 		const std::string& PieMenuView::GetSelectionLabel() const {
@@ -161,44 +186,54 @@ namespace spades {
 				-kPI * 0.5F, 0.0F, kPI * 0.5F, kPI,
 			};
 
-			// Backing disc: a filled fan from center out to kRingOuter, very dim.
-			renderer.SetColorAlphaPremultiplied(MakeVector4(0, 0, 0, 0.55F));
-			DrawRingSegment(renderer, center, 0.0F, kRingOuter,
+			// Ease-out open animation: scale from 0.85 → 1.0, alpha from 0 → 1.
+			float eased = 1.0F - (1.0F - openPhase) * (1.0F - openPhase);
+			float scale = 0.85F + 0.15F * eased;
+			float alpha = eased;
+
+			float rInner = kRingInner * scale;
+			float rOuter = kRingOuter * scale;
+			float rLabel = kLabelRadius * scale;
+
+			// Backing disc
+			renderer.SetColorAlphaPremultiplied(MakeVector4(0, 0, 0, 0.55F * alpha));
+			DrawRingSegment(renderer, center, 0.0F, rOuter,
 			                0.0F, kPI * 2.0F, kSegmentsPerSlice * 4);
 
 			// Slices
 			for (int i = 0; i < 4; i++) {
-				bool hot = (selection == i);
+				float h = highlight[i];
 				float a0 = sliceCenters[i] - halfSliceRad + gapRad * 0.5F;
 				float a1 = sliceCenters[i] + halfSliceRad - gapRad * 0.5F;
 
-				// Fill
-				Vector4 fill = hot ? MakeVector4(1.0F, 1.0F, 1.0F, 0.85F)
-				                   : MakeVector4(1.0F, 1.0F, 1.0F, 0.08F);
-				renderer.SetColorAlphaPremultiplied(fill);
-				float rOut = hot ? (kRingOuter + 10.0F) : kRingOuter;
-				DrawRingSegment(renderer, center, kRingInner, rOut, a0, a1,
+				float fillA = (0.08F + (0.85F - 0.08F) * h) * alpha;
+				renderer.SetColorAlphaPremultiplied(MakeVector4(fillA, fillA, fillA, fillA));
+				float rOutSlice = rOuter + 10.0F * h;
+				DrawRingSegment(renderer, center, rInner, rOutSlice, a0, a1,
 				                kSegmentsPerSlice);
 			}
 
 			// Outer and inner outline rings (thin)
-			renderer.SetColorAlphaPremultiplied(MakeVector4(1, 1, 1, 0.5F));
-			DrawRingSegment(renderer, center, kRingOuter - 1.0F, kRingOuter,
+			renderer.SetColorAlphaPremultiplied(MakeVector4(alpha * 0.5F, alpha * 0.5F,
+			                                                alpha * 0.5F, alpha * 0.5F));
+			DrawRingSegment(renderer, center, rOuter - 1.0F, rOuter,
 			                0.0F, kPI * 2.0F, kSegmentsPerSlice * 4);
-			DrawRingSegment(renderer, center, kRingInner, kRingInner + 1.0F,
+			DrawRingSegment(renderer, center, rInner, rInner + 1.0F,
 			                0.0F, kPI * 2.0F, kSegmentsPerSlice * 4);
 
-			// Labels, placed at kLabelRadius along each cardinal.
+			// Labels at kLabelRadius along each cardinal
 			for (int i = 0; i < 4; i++) {
-				bool hot = (selection == i);
+				float h = highlight[i];
 				Vector2 dir = {cosf(sliceCenters[i]), sinf(sliceCenters[i])};
-				Vector2 p = center + dir * kLabelRadius;
+				Vector2 p = center + dir * rLabel;
 
 				const std::string& label = labels[i];
 				Vector2 sz = font->Measure(label);
 				Vector2 textPos = {p.x - sz.x * 0.5F, p.y - sz.y * 0.5F};
-				Vector4 textColor = hot ? MakeVector4(1, 1, 1, 1) : MakeVector4(1, 1, 1, 0.85F);
-				Vector4 textShadow = MakeVector4(0, 0, 0, 0.6F);
+
+				float textA = (0.85F + 0.15F * h) * alpha;
+				Vector4 textColor = MakeVector4(textA, textA, textA, textA);
+				Vector4 textShadow = MakeVector4(0, 0, 0, 0.6F * alpha);
 				font->DrawShadow(label, textPos, 1.0F, textColor, textShadow);
 			}
 		}
