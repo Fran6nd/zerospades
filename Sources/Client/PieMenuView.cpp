@@ -77,18 +77,19 @@ namespace spades {
 				_Tr("Client", "Left"),
 			};
 			playerLabels = {
-				_Tr("Client", "Top"),
-				_Tr("Client", "Right"),
-				_Tr("Client", "Bottom"),
-				_Tr("Client", "Left"),
+				_Tr("Client", "Follow Me"),
+				_Tr("Client", "Retreat"),
+				_Tr("Client", "Help Me"),
+				_Tr("Client", "Thank You"),
 			};
 		}
 
 		PieMenuView::~PieMenuView() {}
 
-		void PieMenuView::Open(Variant v) {
+		void PieMenuView::Open(Variant v, int tgtId) {
 			open = true;
 			variant = v;
+			targetPlayerId = tgtId;
 			cursor = {0.0F, 0.0F};
 			selection = None;
 			openPhase = 0.0F;
@@ -99,6 +100,7 @@ namespace spades {
 			int result = selection;
 			open = false;
 			selection = None;
+			targetPlayerId = -1;
 			cursor = {0.0F, 0.0F};
 			openPhase = 0.0F;
 			highlight = {0.0F, 0.0F, 0.0F, 0.0F};

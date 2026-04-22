@@ -21,6 +21,8 @@
 
 #include "Client.h"
 
+#include <cstdio>
+
 #include <Core/Settings.h>
 #include <Core/Strings.h>
 
@@ -412,20 +414,30 @@ namespace spades {
 				if (CheckKey(cg_keyPieMenu, name) && localPlayerIsAlive && !localPlayerIsSpectating) {
 					if (down && !pieMenuView->IsOpen()) {
 						auto hot = HotTrackedPlayer();
-						PieMenuView::Variant v = hot
-							? PieMenuView::Variant::Player
-							: PieMenuView::Variant::World;
-						pieMenuView->Open(v);
+						if (hot) {
+							Player& target = std::get<0>(*hot);
+							pieMenuView->Open(PieMenuView::Variant::Player, target.GetId());
+						} else {
+							pieMenuView->Open(PieMenuView::Variant::World);
+						}
 						weapInput = WeaponInput();
 					} else if (!down && pieMenuView->IsOpen()) {
 						PieMenuView::Variant v = pieMenuView->GetVariant();
+						int targetId = pieMenuView->GetTargetPlayerId();
 						int sel = pieMenuView->Close();
 						if (sel >= 0) {
-							static const char* kSliceNames[4] = {
-								"Top", "Right", "Bottom", "Left"};
-							const char* variantName =
-								(v == PieMenuView::Variant::Player) ? "player" : "world";
-							SPLog("PieMenu: %s / %s", variantName, kSliceNames[sel]);
+							if (v == PieMenuView::Variant::Player && net && targetId >= 0) {
+								static const char* kPlayerMessages[4] = {
+									"Follow Me", "Retreat", "Help Me", "Thank You"};
+								char cmd[64];
+								std::snprintf(cmd, sizeof(cmd), "/pm %d %s",
+								              targetId, kPlayerMessages[sel]);
+								net->SendChat(cmd, false);
+							} else {
+								static const char* kSliceNames[4] = {
+									"Top", "Right", "Bottom", "Left"};
+								SPLog("PieMenu: world / %s", kSliceNames[sel]);
+							}
 						}
 					}
 					return;

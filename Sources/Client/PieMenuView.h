@@ -43,6 +43,7 @@ namespace spades {
 
 			bool open = false;
 			Variant variant = Variant::World;
+			int targetPlayerId = -1;
 			Vector2 cursor = {0.0F, 0.0F};
 			int selection = None;
 
@@ -56,11 +57,12 @@ namespace spades {
 			PieMenuView(Client*, IFont* font, IFont* bigFont);
 			~PieMenuView();
 
-			void Open(Variant v);
+			void Open(Variant v, int targetPlayerId = -1);
 			int Close();
 
 			bool IsOpen() const { return open; }
 			Variant GetVariant() const { return variant; }
+			int GetTargetPlayerId() const { return targetPlayerId; }
 			int GetSelection() const { return selection; }
 			const std::string& GetSelectionLabel() const;
 
