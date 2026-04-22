@@ -31,13 +31,12 @@ namespace spades {
 	namespace client {
 
 		namespace {
-			constexpr float kDeadZone = 20.0F;
-			constexpr float kRingRadius = 140.0F;
-			constexpr float kSliceRadius = 64.0F;
+			constexpr float kDeadZone = 60.0F;
 			constexpr float kRingInner = 70.0F;
 			constexpr float kRingOuter = 160.0F;
 			constexpr float kSliceGapDeg = 4.0F;
 			constexpr int kSegmentsPerSlice = 48;
+			constexpr float kLabelRadius = 115.0F;
 
 			// Draw a filled annular segment (pie slice without the center)
 			// via parallelogram tessellation along the arc.
@@ -118,7 +117,7 @@ namespace spades {
 			cursor.x += dx;
 			cursor.y += dy;
 
-			float maxR = kRingRadius + kSliceRadius;
+			float maxR = kRingOuter + 20.0F;
 			float len = sqrtf(cursor.x * cursor.x + cursor.y * cursor.y);
 			if (len > maxR) {
 				cursor.x *= maxR / len;
@@ -150,50 +149,58 @@ namespace spades {
 			float sh = renderer.ScreenHeight();
 			Vector2 center = {sw * 0.5F, sh * 0.5F};
 
-			// dim background circle (approximated by a filled square behind the ring)
-			renderer.SetColorAlphaPremultiplied(MakeVector4(0, 0, 0, 0.35F));
-			float r = kRingRadius + kSliceRadius;
-			renderer.DrawFilledRect(center.x - r, center.y - r, center.x + r,
-			                        center.y + r);
-
 			const auto& labels =
 			  (variant == Variant::Player) ? playerLabels : worldLabels;
 
-			// slice positions (Top, Right, Bottom, Left)
-			std::array<Vector2, 4> offsets = {{
-				{0.0F, -kRingRadius},
-				{kRingRadius, 0.0F},
-				{0.0F, kRingRadius},
-				{-kRingRadius, 0.0F},
-			}};
+			// Slice angular centers in screen math (y-down):
+			// Top=-π/2, Right=0, Bottom=+π/2, Left=π.
+			const float kPI = static_cast<float>(M_PI);
+			const float halfSliceRad = kPI * 0.25F;
+			const float gapRad = kSliceGapDeg * kPI / 180.0F;
+			const float sliceCenters[4] = {
+				-kPI * 0.5F, 0.0F, kPI * 0.5F, kPI,
+			};
 
+			// Backing disc: a filled fan from center out to kRingOuter, very dim.
+			renderer.SetColorAlphaPremultiplied(MakeVector4(0, 0, 0, 0.55F));
+			DrawRingSegment(renderer, center, 0.0F, kRingOuter,
+			                0.0F, kPI * 2.0F, kSegmentsPerSlice * 4);
+
+			// Slices
 			for (int i = 0; i < 4; i++) {
-				Vector2 p = center + offsets[i];
 				bool hot = (selection == i);
+				float a0 = sliceCenters[i] - halfSliceRad + gapRad * 0.5F;
+				float a1 = sliceCenters[i] + halfSliceRad - gapRad * 0.5F;
 
+				// Fill
 				Vector4 fill = hot ? MakeVector4(1.0F, 1.0F, 1.0F, 0.85F)
-				                   : MakeVector4(0.0F, 0.0F, 0.0F, 0.6F);
-				Vector4 edge = MakeVector4(1.0F, 1.0F, 1.0F, hot ? 1.0F : 0.5F);
-
-				float half = kSliceRadius * 0.5F;
+				                   : MakeVector4(1.0F, 1.0F, 1.0F, 0.08F);
 				renderer.SetColorAlphaPremultiplied(fill);
-				renderer.DrawFilledRect(p.x - half, p.y - half, p.x + half, p.y + half);
-				renderer.SetColorAlphaPremultiplied(edge);
-				renderer.DrawOutlinedRect(p.x - half, p.y - half, p.x + half, p.y + half);
+				float rOut = hot ? (kRingOuter + 10.0F) : kRingOuter;
+				DrawRingSegment(renderer, center, kRingInner, rOut, a0, a1,
+				                kSegmentsPerSlice);
+			}
 
-				// label
+			// Outer and inner outline rings (thin)
+			renderer.SetColorAlphaPremultiplied(MakeVector4(1, 1, 1, 0.5F));
+			DrawRingSegment(renderer, center, kRingOuter - 1.0F, kRingOuter,
+			                0.0F, kPI * 2.0F, kSegmentsPerSlice * 4);
+			DrawRingSegment(renderer, center, kRingInner, kRingInner + 1.0F,
+			                0.0F, kPI * 2.0F, kSegmentsPerSlice * 4);
+
+			// Labels, placed at kLabelRadius along each cardinal.
+			for (int i = 0; i < 4; i++) {
+				bool hot = (selection == i);
+				Vector2 dir = {cosf(sliceCenters[i]), sinf(sliceCenters[i])};
+				Vector2 p = center + dir * kLabelRadius;
+
 				const std::string& label = labels[i];
 				Vector2 sz = font->Measure(label);
 				Vector2 textPos = {p.x - sz.x * 0.5F, p.y - sz.y * 0.5F};
-				Vector4 textColor = hot ? MakeVector4(0, 0, 0, 1) : MakeVector4(1, 1, 1, 1);
-				Vector4 textShadow = hot ? MakeVector4(1, 1, 1, 0.3F) : MakeVector4(0, 0, 0, 0.5F);
+				Vector4 textColor = hot ? MakeVector4(1, 1, 1, 1) : MakeVector4(1, 1, 1, 0.85F);
+				Vector4 textShadow = MakeVector4(0, 0, 0, 0.6F);
 				font->DrawShadow(label, textPos, 1.0F, textColor, textShadow);
 			}
-
-			// cursor dot
-			Vector2 dot = center + cursor;
-			renderer.SetColorAlphaPremultiplied(MakeVector4(1, 1, 1, 1));
-			renderer.DrawFilledRect(dot.x - 2, dot.y - 2, dot.x + 2, dot.y + 2);
 		}
 	} // namespace client
 } // namespace spades
