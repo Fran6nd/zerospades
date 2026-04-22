@@ -430,7 +430,7 @@ namespace spades {
 								static const char* kPlayerMessages[4] = {
 									"Follow Me", "Retreat", "Help Me", "Thank You"};
 								char cmd[64];
-								std::snprintf(cmd, sizeof(cmd), "/pm %d %s",
+								std::snprintf(cmd, sizeof(cmd), "/pm #%d %s",
 								              targetId, kPlayerMessages[sel]);
 								net->SendChat(cmd, false);
 							} else {
