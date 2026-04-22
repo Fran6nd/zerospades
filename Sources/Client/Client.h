@@ -537,6 +537,11 @@ namespace spades {
 			void PlayerSentChatMessage(Player&, bool global, const std::string&);
 			void ServerSentMessage(bool system, const std::string&);
 
+			// Called when a teammate's team-chat message is "PING X Y Z Message".
+			// `from` is the sender; `pos` is the pinged world position; `message`
+			// is the free-form tail (e.g. "Attack Here"). Consumes the chat.
+			void HandleTeamPing(Player& from, IntVector3 pos, const std::string& message);
+
 			void PlayerCapturedIntel(Player&);
 			void PlayerPickedIntel(Player&);
 			void PlayerDropIntel(Player&);

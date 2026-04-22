@@ -22,6 +22,7 @@
 #include <cstdarg>
 #include <cstdlib>
 #include <ctime>
+#include <sstream>
 
 #include "Client.h"
 #include "Fonts.h"
@@ -876,6 +877,27 @@ namespace spades {
 #pragma mark - Chat Messages
 
 		void Client::PlayerSentChatMessage(Player& p, bool global, const std::string& msg) {
+			// Intercept "PING X Y Z Message" on team chat from a teammate.
+			if (!global && world) {
+				auto maybeLocal = world->GetLocalPlayer();
+				if (maybeLocal && p.IsTeammate(maybeLocal.value())) {
+					std::istringstream iss(msg);
+					std::string tag;
+					int x, y, z;
+					if ((iss >> tag >> x >> y >> z) && tag == "PING") {
+						std::string tail;
+						std::getline(iss, tail);
+						size_t first = tail.find_first_not_of(" \t");
+						if (first != std::string::npos)
+							tail = tail.substr(first);
+						else
+							tail.clear();
+						HandleTeamPing(p, IntVector3{x, y, z}, tail);
+						return;
+					}
+				}
+			}
+
 			std::string msgType = global
 				? _Tr("Client", "Global") : _Tr("Client", "Team");
 			std::string playerNameStr = p.GetName();
@@ -948,6 +970,13 @@ namespace spades {
 				params.volume = (float)cg_chatBeep;
 				audioDevice->PlayLocal(c.GetPointerOrNull(), params);
 			}
+		}
+
+		void Client::HandleTeamPing(Player& from, IntVector3 pos, const std::string& message) {
+			NetLog("[Ping] %s (id=%d) @ (%d,%d,%d): %s",
+			       from.GetName().c_str(), from.GetId(),
+			       pos.x, pos.y, pos.z, message.c_str());
+			// TODO: spawn a temporary 3D intel marker at `pos`, attributed to `from`.
 		}
 
 		void Client::ServerSentMessage(bool system, const std::string& msg) {
