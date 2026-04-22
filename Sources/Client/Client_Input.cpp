@@ -418,10 +418,15 @@ namespace spades {
 						pieMenuView->Open(v);
 						weapInput = WeaponInput();
 					} else if (!down && pieMenuView->IsOpen()) {
+						PieMenuView::Variant v = pieMenuView->GetVariant();
 						int sel = pieMenuView->Close();
-						if (sel >= 0)
-							ShowAlert(_Tr("Client", "Pie: {0}",
-								std::to_string(sel)), AlertType::Notice);
+						if (sel >= 0) {
+							static const char* kSliceNames[4] = {
+								"Top", "Right", "Bottom", "Left"};
+							const char* variantName =
+								(v == PieMenuView::Variant::Player) ? "player" : "world";
+							SPLog("PieMenu: %s / %s", variantName, kSliceNames[sel]);
+						}
 					}
 					return;
 				}
