@@ -39,6 +39,7 @@ namespace spades {
 		private:
 			IRenderer& renderer;
 			IFont* font;
+			IFont* bigFont;
 
 			bool open = false;
 			Variant variant = Variant::World;
@@ -52,7 +53,7 @@ namespace spades {
 			std::array<std::string, 4> playerLabels;
 
 		public:
-			PieMenuView(Client*, IFont* font);
+			PieMenuView(Client*, IFont* font, IFont* bigFont);
 			~PieMenuView();
 
 			void Open(Variant v);

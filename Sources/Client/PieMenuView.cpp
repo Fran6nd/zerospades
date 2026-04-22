@@ -68,8 +68,8 @@ namespace spades {
 			}
 		} // namespace
 
-		PieMenuView::PieMenuView(Client* c, IFont* f)
-		    : renderer(c->GetRenderer()), font(f) {
+		PieMenuView::PieMenuView(Client* c, IFont* f, IFont* big)
+		    : renderer(c->GetRenderer()), font(f), bigFont(big) {
 			worldLabels = {
 				_Tr("Client", "Top"),
 				_Tr("Client", "Right"),
@@ -235,6 +235,18 @@ namespace spades {
 				Vector4 textColor = MakeVector4(textA, textA, textA, textA);
 				Vector4 textShadow = MakeVector4(0, 0, 0, 0.6F * alpha);
 				font->DrawShadow(label, textPos, 1.0F, textColor, textShadow);
+			}
+
+			// Center readout: currently selected slice label, scaled by its highlight
+			if (selection >= 0 && selection < 4 && bigFont) {
+				float h = highlight[selection];
+				const std::string& center_label = labels[selection];
+				Vector2 sz = bigFont->Measure(center_label);
+				Vector2 pos = {center.x - sz.x * 0.5F, center.y - sz.y * 0.5F};
+				float a = h * alpha;
+				Vector4 col = MakeVector4(a, a, a, a);
+				Vector4 shd = MakeVector4(0, 0, 0, 0.7F * a);
+				bigFont->DrawShadow(center_label, pos, 1.0F, col, shd);
 			}
 		}
 	} // namespace client
