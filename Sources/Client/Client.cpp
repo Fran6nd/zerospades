@@ -19,6 +19,8 @@
 
  */
 
+#include <algorithm>
+#include <cmath>
 #include <cstdarg>
 #include <cstdlib>
 #include <ctime>
@@ -880,22 +882,41 @@ namespace spades {
 
 		void Client::PlayerSentChatMessage(Player& p, bool global, const std::string& msg) {
 			// Intercept "PING X Y Z Message" on team chat from a teammate.
-			if (!global && world) {
+			// Untrusted input — validate everything before dispatching.
+			if (!global && world && !p.IsSpectator()
+			    && msg.size() >= 5 && msg.size() <= 256
+			    && msg.compare(0, 5, "PING ") == 0) {
 				auto maybeLocal = world->GetLocalPlayer();
 				if (maybeLocal && p.IsTeammate(maybeLocal.value())) {
 					std::istringstream iss(msg);
 					std::string tag;
-					int x, y, z;
-					if ((iss >> tag >> x >> y >> z) && tag == "PING") {
-						std::string tail;
-						std::getline(iss, tail);
-						size_t first = tail.find_first_not_of(" \t");
-						if (first != std::string::npos)
-							tail = tail.substr(first);
-						else
-							tail.clear();
-						HandleTeamPing(p, IntVector3{x, y, z}, tail);
-						return;
+					float x, y, z;
+					if ((iss >> tag >> x >> y >> z) && tag == "PING"
+					    && std::isfinite(x) && std::isfinite(y) && std::isfinite(z)) {
+						constexpr float kPosLimit = 4096.0F;
+						if (std::fabs(x) <= kPosLimit
+						    && std::fabs(y) <= kPosLimit
+						    && std::fabs(z) <= kPosLimit) {
+							std::string tail;
+							std::getline(iss, tail);
+
+							// Trim leading whitespace.
+							size_t first = tail.find_first_not_of(" \t");
+							tail = (first == std::string::npos)
+								? std::string{} : tail.substr(first);
+
+							// Strip control chars (incl. CR/LF); cap length.
+							tail.erase(std::remove_if(tail.begin(), tail.end(),
+								[](unsigned char c) {
+									return c < 0x20 || c == 0x7F;
+								}), tail.end());
+							constexpr size_t kMaxPingMessage = 64;
+							if (tail.size() > kMaxPingMessage)
+								tail.resize(kMaxPingMessage);
+
+							HandleTeamPing(p, MakeVector3(x, y, z), tail);
+							return;
+						}
 					}
 				}
 			}
@@ -974,18 +995,15 @@ namespace spades {
 			}
 		}
 
-		void Client::HandleTeamPing(Player& from, IntVector3 pos, const std::string& message) {
-			NetLog("[Ping] %s (id=%d) @ (%d,%d,%d): %s",
+		void Client::HandleTeamPing(Player& from, Vector3 pos, const std::string& message) {
+			NetLog("[Ping] %s (id=%d) @ (%.2f,%.2f,%.2f): %s",
 			       from.GetName().c_str(), from.GetId(),
 			       pos.x, pos.y, pos.z, message.c_str());
 
 			// Replace any prior ping from the same player (max one per sender).
 			TeamPing& ping = teamPings[from.GetId()];
 			ping.senderId = from.GetId();
-			ping.position =
-			  MakeVector3(static_cast<float>(pos.x) + 0.5F,
-			              static_cast<float>(pos.y) + 0.5F,
-			              static_cast<float>(pos.z) + 0.5F);
+			ping.position = pos;
 			ping.message = message;
 			ping.age = 0.0F;
 

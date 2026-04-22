@@ -446,10 +446,9 @@ namespace spades {
 									"Attack Here", "Defend Here",
 									"Enemy Here", "Destroy This"};
 								char cmd[96];
-								std::snprintf(cmd, sizeof(cmd), "PING %d %d %d %s",
-								              static_cast<int>(floorf(pingPos.x)),
-								              static_cast<int>(floorf(pingPos.y)),
-								              static_cast<int>(floorf(pingPos.z)),
+								std::snprintf(cmd, sizeof(cmd),
+								              "PING %.2f %.2f %.2f %s",
+								              pingPos.x, pingPos.y, pingPos.z,
 								              kWorldMessages[sel]);
 								net->SendChat(cmd, false);
 							}
