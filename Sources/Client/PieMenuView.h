@@ -34,7 +34,9 @@ namespace spades {
 		class PieMenuView {
 		public:
 			enum class Variant { World, Player };
-			enum Slice { Top = 0, Right = 1, Bottom = 2, Left = 3, None = -1 };
+			enum Slice { None = -1 };
+
+			static constexpr int kSliceCount = 6;
 
 		private:
 			IRenderer& renderer;
@@ -50,15 +52,16 @@ namespace spades {
 			int selection = None;
 
 			float openPhase = 0.0F;
-			std::array<float, 4> highlight = {0.0F, 0.0F, 0.0F, 0.0F};
+			std::array<float, kSliceCount> highlight{};
 
-			std::array<std::string, 4> worldLabels;
-			std::array<std::string, 4> playerLabels;
+			std::array<std::string, kSliceCount> worldLabels;
+			std::array<std::string, kSliceCount> playerLabels;
 
 			// Precomputed per-slice ray params (sin/cos of θ_c ± α).
 			// Populated once in the constructor; used by scanline fill.
 			struct SliceRay { float s1, c1, s2, c2; };
-			std::array<SliceRay, 4> sliceRays;
+			std::array<SliceRay, kSliceCount> sliceRays;
+			std::array<float, kSliceCount> sliceCenterAngles;
 
 		public:
 			PieMenuView(Client*, IFont* font, IFont* bigFont);

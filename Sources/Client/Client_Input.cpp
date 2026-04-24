@@ -434,17 +434,21 @@ namespace spades {
 						Vector3 pingPos = pieMenuView->GetPingPosition();
 						int sel = pieMenuView->Close();
 						if (sel >= 0 && net) {
-							if (v == PieMenuView::Variant::Player && targetId >= 0) {
-								static const char* kPlayerMessages[4] = {
-									"Follow Me", "Retreat", "Help Me", "Thank You"};
+							if (v == PieMenuView::Variant::Player && targetId >= 0
+							    && sel < 6) {
+								static const char* kPlayerMessages[6] = {
+									"Follow Me", "Help Me", "Thank You",
+									"Retreat", "Sorry", "Cover Me"};
 								char cmd[64];
 								std::snprintf(cmd, sizeof(cmd), "/pm #%d %s",
 								              targetId, kPlayerMessages[sel]);
 								net->SendChat(cmd, false);
-							} else if (v == PieMenuView::Variant::World && hasPing) {
-								static const char* kWorldMessages[4] = {
-									"Attack Here", "Defend Here",
-									"Enemy Here", "Destroy This"};
+							} else if (v == PieMenuView::Variant::World && hasPing
+							           && sel < 6) {
+								static const char* kWorldMessages[6] = {
+									"Attack Here", "Enemy Here",
+									"Destroy This", "Defend Here",
+									"Build Here", "Regroup Here"};
 								char cmd[96];
 								std::snprintf(cmd, sizeof(cmd),
 								              "PING %.2f %.2f %.2f %s",

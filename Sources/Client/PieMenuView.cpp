@@ -173,23 +173,31 @@ namespace spades {
 		    : renderer(c->GetRenderer()), font(f), bigFont(big) {
 			worldLabels = {
 				_Tr("Client", "Attack Here"),
-				_Tr("Client", "Defend Here"),
 				_Tr("Client", "Enemy Here"),
 				_Tr("Client", "Destroy This"),
+				_Tr("Client", "Defend Here"),
+				_Tr("Client", "Build Here"),
+				_Tr("Client", "Regroup Here"),
 			};
 			playerLabels = {
 				_Tr("Client", "Follow Me"),
-				_Tr("Client", "Retreat"),
 				_Tr("Client", "Help Me"),
 				_Tr("Client", "Thank You"),
+				_Tr("Client", "Retreat"),
+				_Tr("Client", "Sorry"),
+				_Tr("Client", "Cover Me"),
 			};
 
 			const float kPI = static_cast<float>(M_PI);
-			const float halfSliceRad = kPI * 0.25F - (kSliceGapDeg * kPI / 180.0F) * 0.5F;
-			const float sliceCenters[4] = {-kPI * 0.5F, 0.0F, kPI * 0.5F, kPI};
-			for (int i = 0; i < 4; i++) {
-				float t1 = sliceCenters[i] - halfSliceRad;
-				float t2 = sliceCenters[i] + halfSliceRad;
+			const float kSliceSpan = kPI * 2.0F / static_cast<float>(kSliceCount);
+			const float halfSliceRad =
+				kSliceSpan * 0.5F - (kSliceGapDeg * kPI / 180.0F) * 0.5F;
+			for (int i = 0; i < kSliceCount; i++) {
+				float center =
+					-kPI * 0.5F + kSliceSpan * static_cast<float>(i);
+				sliceCenterAngles[i] = center;
+				float t1 = center - halfSliceRad;
+				float t2 = center + halfSliceRad;
 				sliceRays[i] = {sinf(t1), cosf(t1), sinf(t2), cosf(t2)};
 			}
 		}
@@ -205,7 +213,7 @@ namespace spades {
 			cursor = {0.0F, 0.0F};
 			selection = None;
 			openPhase = 0.0F;
-			highlight = {0.0F, 0.0F, 0.0F, 0.0F};
+			highlight.fill(0.0F);
 		}
 
 		int PieMenuView::Close() {
@@ -217,7 +225,7 @@ namespace spades {
 			pingPos = {0.0F, 0.0F, 0.0F};
 			cursor = {0.0F, 0.0F};
 			openPhase = 0.0F;
-			highlight = {0.0F, 0.0F, 0.0F, 0.0F};
+			highlight.fill(0.0F);
 			return result;
 		}
 
@@ -231,7 +239,7 @@ namespace spades {
 
 			openPhase = std::min(1.0F, openPhase + dt * kOpenRate);
 
-			for (int i = 0; i < 4; i++) {
+			for (int i = 0; i < kSliceCount; i++) {
 				float target = (selection == i) ? 1.0F : 0.0F;
 				float rate = (target > highlight[i]) ? kHighlightUpRate : kHighlightDownRate;
 				float delta = dt * rate;
@@ -244,7 +252,7 @@ namespace spades {
 
 		const std::string& PieMenuView::GetSelectionLabel() const {
 			static const std::string empty;
-			if (selection < 0 || selection > 3)
+			if (selection < 0 || selection >= kSliceCount)
 				return empty;
 			const auto& labels =
 			  (variant == Variant::Player) ? playerLabels : worldLabels;
@@ -276,9 +284,11 @@ namespace spades {
 			if (angle < 0.0F)
 				angle += static_cast<float>(M_PI) * 2.0F;
 
-			// 4 slices of 90 deg, centered on cardinal directions
-			float quarter = static_cast<float>(M_PI) * 0.5F;
-			int idx = static_cast<int>(floorf((angle + quarter * 0.5F) / quarter)) % 4;
+			// kSliceCount equal slices, top slice centered at angle 0.
+			float span = static_cast<float>(M_PI) * 2.0F
+				/ static_cast<float>(kSliceCount);
+			int idx = static_cast<int>(
+				floorf((angle + span * 0.5F) / span)) % kSliceCount;
 			selection = idx;
 		}
 
@@ -292,13 +302,6 @@ namespace spades {
 
 			const auto& labels =
 			  (variant == Variant::Player) ? playerLabels : worldLabels;
-
-			// Slice angular centers in screen math (y-down):
-			// Top=-π/2, Right=0, Bottom=+π/2, Left=π.
-			const float kPI = static_cast<float>(M_PI);
-			const float sliceCenters[4] = {
-				-kPI * 0.5F, 0.0F, kPI * 0.5F, kPI,
-			};
 
 			// Ease-out open animation: scale from 0.85 → 1.0, alpha from 0 → 1.
 			float eased = 1.0F - (1.0F - openPhase) * (1.0F - openPhase);
@@ -314,7 +317,7 @@ namespace spades {
 			DrawDiscFill(renderer, center, rOuter);
 
 			// Slices
-			for (int i = 0; i < 4; i++) {
+			for (int i = 0; i < kSliceCount; i++) {
 				float h = highlight[i];
 				float fillA = (0.08F + (0.85F - 0.08F) * h) * alpha;
 				renderer.SetColorAlphaPremultiplied(MakeVector4(fillA, fillA, fillA, fillA));
@@ -330,10 +333,10 @@ namespace spades {
 			DrawAnnulusFill(renderer, center, rOuter - 1.0F, rOuter);
 			DrawAnnulusFill(renderer, center, rInner, rInner + 1.0F);
 
-			// Labels at kLabelRadius along each cardinal
-			for (int i = 0; i < 4; i++) {
+			// Labels at kLabelRadius along each slice center
+			for (int i = 0; i < kSliceCount; i++) {
 				float h = highlight[i];
-				Vector2 dir = {cosf(sliceCenters[i]), sinf(sliceCenters[i])};
+				Vector2 dir = {cosf(sliceCenterAngles[i]), sinf(sliceCenterAngles[i])};
 				Vector2 p = center + dir * rLabel;
 
 				const std::string& label = labels[i];
@@ -347,7 +350,7 @@ namespace spades {
 			}
 
 			// Center readout: currently selected slice label, scaled by its highlight
-			if (selection >= 0 && selection < 4 && bigFont) {
+			if (selection >= 0 && selection < kSliceCount && bigFont) {
 				float h = highlight[selection];
 				const std::string& center_label = labels[selection];
 				Vector2 sz = bigFont->Measure(center_label);
