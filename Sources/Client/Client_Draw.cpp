@@ -538,6 +538,11 @@ namespace spades {
 			auto hottracked = HotTrackedPlayer();
 			if (hottracked) {
 				Player& player = std::get<0>(*hottracked);
+				if (teamOverlayHeld && world) {
+					auto maybeLocal = world->GetLocalPlayer();
+					if (maybeLocal && maybeLocal.value().IsTeammate(player))
+						return;
+				}
 				DrawPlayerName(player, MakeVector4(1, 1, 1, 1));
 			}
 		}
