@@ -1289,6 +1289,138 @@ namespace spades {
 			}
 		}
 
+		void Client::DrawTeamOverlay() {
+			SPADES_MARK_FUNCTION();
+
+			if (!world)
+				return;
+			auto maybeLocal = world->GetLocalPlayer();
+			if (!maybeLocal)
+				return;
+			Player& local = maybeLocal.value();
+			if (local.IsSpectator())
+				return;
+
+			IFont& font = cg_smallFont
+				? fontManager->GetSmallFont()
+				: fontManager->GetGuiFont();
+			const AABB2 inRect(0.0F, 0.0F, 1.0F, 1.0F);
+
+			auto drawEdge = [&](Vector2 a, Vector2 b, float thick,
+			                    const Vector4& col) {
+				Vector2 d = {b.x - a.x, b.y - a.y};
+				float len = sqrtf(d.x * d.x + d.y * d.y);
+				if (len <= 0.0001F)
+					return;
+				Vector2 n = {-d.y / len, d.x / len};
+				float t = thick * 0.5F;
+				Vector2 p1 = {a.x - n.x * t, a.y - n.y * t};
+				Vector2 p2 = {b.x - n.x * t, b.y - n.y * t};
+				Vector2 p3 = {a.x + n.x * t, a.y + n.y * t};
+				renderer->SetColorAlphaPremultiplied(col);
+				renderer->DrawImage(nullptr, p1, p2, p3, inRect);
+			};
+
+			for (size_t i = 0; i < world->GetNumPlayerSlots(); i++) {
+				auto maybePlayer = world->GetPlayer(static_cast<unsigned int>(i));
+				if (!maybePlayer)
+					continue;
+				Player& p = maybePlayer.value();
+				if (&p == &local)
+					continue;
+				if (p.IsSpectator() || !p.IsAlive())
+					continue;
+				if (!local.IsTeammate(p))
+					continue;
+				if (p.GetFront().GetSquaredLength() < 0.01F)
+					continue;
+
+				Vector3 origin = p.GetEye();
+				origin.z -= 0.55F; // above head
+
+				Vector2 scrPos;
+				if (!Project(origin, scrPos))
+					continue;
+
+				scrPos.x = floorf(scrPos.x) + 0.5F;
+				scrPos.y = floorf(scrPos.y) + 0.5F;
+
+				float dist = (origin - lastSceneDef.viewOrigin).GetLength2D();
+				float alpha = 0.9F;
+
+				const float r = 7.0F;
+				Vector2 top = {scrPos.x, scrPos.y - r};
+				Vector2 right = {scrPos.x + r, scrPos.y};
+				Vector2 bottom = {scrPos.x, scrPos.y + r};
+				Vector2 left = {scrPos.x - r, scrPos.y};
+
+				Vector4 teamCol = ConvertColorRGBA(p.GetColor());
+				Vector4 shadow = MakeVector4(0, 0, 0, 0.6F * alpha);
+				Vector4 outline = MakeVector4(teamCol.x * alpha,
+				                              teamCol.y * alpha,
+				                              teamCol.z * alpha, alpha);
+
+				// Dark shadow edges (thicker, drawn first).
+				drawEdge(top, right, 4.0F, shadow);
+				drawEdge(right, bottom, 4.0F, shadow);
+				drawEdge(bottom, left, 4.0F, shadow);
+				drawEdge(left, top, 4.0F, shadow);
+
+				// Team-colored outline edges.
+				drawEdge(top, right, 2.0F, outline);
+				drawEdge(right, bottom, 2.0F, outline);
+				drawEdge(bottom, left, 2.0F, outline);
+				drawEdge(left, top, 2.0F, outline);
+
+				// Small inner dot so the marker reads as a unit, not a hole.
+				{
+					float rDot = 1.5F;
+					Vector4 dotCol = MakeVector4(alpha, alpha, alpha, alpha);
+					renderer->SetColorAlphaPremultiplied(dotCol);
+					renderer->DrawFilledRect(scrPos.x - rDot, scrPos.y - rDot,
+					                         scrPos.x + rDot, scrPos.y + rDot);
+				}
+
+				// Build label: name + weapon/tool + distance
+				const char* toolName = "Spade";
+				switch (p.GetTool()) {
+					case Player::ToolSpade: toolName = "Spade"; break;
+					case Player::ToolBlock: toolName = "Block"; break;
+					case Player::ToolGrenade: toolName = "Grenade"; break;
+					case Player::ToolWeapon:
+						switch (p.GetWeaponType()) {
+							case RIFLE_WEAPON: toolName = "Rifle"; break;
+							case SMG_WEAPON: toolName = "SMG"; break;
+							case SHOTGUN_WEAPON: toolName = "Shotgun"; break;
+						}
+						break;
+				}
+
+				const std::string& nameStr = p.GetName();
+				Vector2 nameSize = font.Measure(nameStr);
+				Vector2 namePos = {
+				    floorf(scrPos.x - nameSize.x * 0.5F),
+				    floorf(scrPos.y - r - nameSize.y - 3.0F),
+				};
+				Vector4 nameCol = teamCol;
+				nameCol.w = alpha;
+				Vector4 nameShadow = MakeVector4(0, 0, 0, 0.7F * alpha);
+				font.DrawShadow(nameStr, namePos, 1.0F, nameCol, nameShadow);
+
+				char infoBuf[64];
+				std::snprintf(infoBuf, sizeof(infoBuf), "%s [%.0fm]",
+				              toolName, dist);
+				std::string infoStr = infoBuf;
+				Vector2 infoSize = font.Measure(infoStr);
+				Vector2 infoPos = {
+				    floorf(scrPos.x - infoSize.x * 0.5F),
+				    floorf(scrPos.y + r + 3.0F),
+				};
+				Vector4 infoCol = MakeVector4(1.0F, 1.0F, 1.0F, alpha);
+				font.DrawShadow(infoStr, infoPos, 1.0F, infoCol, nameShadow);
+			}
+		}
+
 		void Client::DrawDeadPlayerHUD() {
 			SPADES_MARK_FUNCTION();
 
@@ -1587,6 +1719,9 @@ namespace spades {
 				} else if (spectatorPlayerNames) { // only if we are spectating
 					DrawPubOVL();
 				}
+
+				if (teamOverlayHeld && !localPlayerIsSpectator)
+					DrawTeamOverlay();
 
 				if (IsFirstPerson(GetCameraMode()))
 					DrawFirstPersonHUD();

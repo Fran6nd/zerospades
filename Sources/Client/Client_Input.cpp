@@ -89,6 +89,8 @@ DEFINE_SPADES_SETTING(cg_keySaveMap, "8");
 DEFINE_SPADES_SETTING(cg_switchToolByWheel, "1");
 DEFINE_SPADES_SETTING(cg_debugCorpse, "0");
 
+DEFINE_SPADES_SETTING(cg_keyTeamOverlay, "Alt");
+
 SPADES_SETTING(cg_manualFocus);
 DEFINE_SPADES_SETTING(cg_keyAutoFocus, "MiddleMouseButton");
 
@@ -392,6 +394,12 @@ namespace spades {
 				bool localPlayerIsSpectator = p.IsSpectator();
 				bool localPlayerIsSpectating = localPlayerIsSpectator || staffSpectating;
 				bool isStaff = net ? net->GetGameProperties()->isStaff : false;
+
+				// Team overlay: hold to show teammate positions through walls
+				if (CheckKey(cg_keyTeamOverlay, name) && !localPlayerIsSpectating) {
+					teamOverlayHeld = down;
+					return;
+				}
 
 				switch (cameraMode) {
 					case ClientCameraMode::None:

@@ -471,6 +471,9 @@ namespace spades {
 			void UpdateDamageIndicators(float dt);
 			void DrawDamageIndicators();
 
+			bool teamOverlayHeld = false;
+			void DrawTeamOverlay();
+
 			void DrawScene();
 			void AddGrenadeToScene(Grenade&);
 			void AddDebugObjectToScene(const OBB3&, const Vector4& col = MakeVector4(1, 1, 1, 1));
