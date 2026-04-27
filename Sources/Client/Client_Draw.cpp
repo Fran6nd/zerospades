@@ -1385,16 +1385,16 @@ namespace spades {
 					                         scrPos.x + rDot, scrPos.y + rDot);
 				}
 
-				const char* toolName = "Spade";
+				const char* toolIconPath = "Gfx/Hotbar/Spade.png";
 				switch (p.GetTool()) {
-					case Player::ToolSpade: toolName = "Spade"; break;
-					case Player::ToolBlock: toolName = "Block"; break;
-					case Player::ToolGrenade: toolName = "Grenade"; break;
+					case Player::ToolSpade: toolIconPath = "Gfx/Hotbar/Spade.png"; break;
+					case Player::ToolBlock: toolIconPath = "Gfx/Hotbar/Block.png"; break;
+					case Player::ToolGrenade: toolIconPath = "Gfx/Hotbar/Grenade.png"; break;
 					case Player::ToolWeapon:
 						switch (p.GetWeaponType()) {
-							case RIFLE_WEAPON: toolName = "Rifle"; break;
-							case SMG_WEAPON: toolName = "SMG"; break;
-							case SHOTGUN_WEAPON: toolName = "Shotgun"; break;
+							case RIFLE_WEAPON: toolIconPath = "Gfx/Hotbar/Rifle.png"; break;
+							case SMG_WEAPON: toolIconPath = "Gfx/Hotbar/SMG.png"; break;
+							case SHOTGUN_WEAPON: toolIconPath = "Gfx/Hotbar/Shotgun.png"; break;
 						}
 						break;
 				}
@@ -1403,8 +1403,8 @@ namespace spades {
 				nameCol.w = alpha;
 				Vector4 textShadow = MakeVector4(0, 0, 0, 0.7F * alpha);
 
-				// Stack name and tool below the marker so the marker reads as
-				// the head of the label.
+				// Stack name and tool icon below the marker so the marker reads
+				// as the head of the label.
 				const std::string& nameStr = p.GetName();
 				Vector2 nameSize = font.Measure(nameStr);
 				Vector2 namePos = {
@@ -1413,14 +1413,31 @@ namespace spades {
 				};
 				font.DrawShadow(nameStr, namePos, 1.0F, nameCol, textShadow);
 
-				std::string toolStr = toolName;
-				Vector2 toolSize = font.Measure(toolStr);
-				Vector2 toolPos = {
-				    floorf(scrPos.x - toolSize.x * 0.5F),
-				    floorf(namePos.y + nameSize.y + 1.0F),
-				};
-				Vector4 toolCol = MakeVector4(1.0F, 1.0F, 1.0F, alpha);
-				font.DrawShadow(toolStr, toolPos, 1.0F, toolCol, textShadow);
+				Handle<IImage> toolIcon = renderer->RegisterImage(toolIconPath);
+				if (toolIcon) {
+					const float iconH = 14.0F;
+					float iconW = toolIcon->GetWidth() *
+					              (iconH / toolIcon->GetHeight());
+					Vector2 iconPos = {
+					    floorf(scrPos.x - iconW * 0.5F),
+					    floorf(namePos.y + nameSize.y + 2.0F),
+					};
+					AABB2 iconRect(iconPos.x, iconPos.y, iconW, iconH);
+					AABB2 iconShadowRect(iconPos.x + 1, iconPos.y + 1,
+					                     iconW, iconH);
+					AABB2 inRect(0, 0, toolIcon->GetWidth(),
+					             toolIcon->GetHeight());
+
+					Vector4 iconShadow = MakeVector4(0, 0, 0, 0.7F * alpha);
+					renderer->SetColorAlphaPremultiplied(iconShadow);
+					renderer->DrawImage(toolIcon.GetPointerOrNull(),
+					                    iconShadowRect, inRect);
+
+					Vector4 iconCol = MakeVector4(alpha, alpha, alpha, alpha);
+					renderer->SetColorAlphaPremultiplied(iconCol);
+					renderer->DrawImage(toolIcon.GetPointerOrNull(),
+					                    iconRect, inRect);
+				}
 			}
 		}
 
