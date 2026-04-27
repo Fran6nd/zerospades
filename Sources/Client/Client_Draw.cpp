@@ -1341,7 +1341,7 @@ namespace spades {
 					continue;
 
 				Vector3 origin = p.GetEye();
-				origin.z -= 0.55F; // above head
+				origin.z -= 0.95F; // clear of helmet at any pitch
 
 				Vector2 scrPos;
 				if (!Project(origin, scrPos))
@@ -1350,7 +1350,6 @@ namespace spades {
 				scrPos.x = floorf(scrPos.x) + 0.5F;
 				scrPos.y = floorf(scrPos.y) + 0.5F;
 
-				float dist = (origin - lastSceneDef.viewOrigin).GetLength2D();
 				float alpha = 0.9F;
 
 				const float r = 7.0F;
@@ -1386,7 +1385,6 @@ namespace spades {
 					                         scrPos.x + rDot, scrPos.y + rDot);
 				}
 
-				// Build label: name + weapon/tool + distance
 				const char* toolName = "Spade";
 				switch (p.GetTool()) {
 					case Player::ToolSpade: toolName = "Spade"; break;
@@ -1401,28 +1399,28 @@ namespace spades {
 						break;
 				}
 
+				Vector4 nameCol = teamCol;
+				nameCol.w = alpha;
+				Vector4 textShadow = MakeVector4(0, 0, 0, 0.7F * alpha);
+
+				// Stack name and tool below the marker so the marker reads as
+				// the head of the label.
 				const std::string& nameStr = p.GetName();
 				Vector2 nameSize = font.Measure(nameStr);
 				Vector2 namePos = {
 				    floorf(scrPos.x - nameSize.x * 0.5F),
-				    floorf(scrPos.y - r - nameSize.y - 3.0F),
-				};
-				Vector4 nameCol = teamCol;
-				nameCol.w = alpha;
-				Vector4 nameShadow = MakeVector4(0, 0, 0, 0.7F * alpha);
-				font.DrawShadow(nameStr, namePos, 1.0F, nameCol, nameShadow);
-
-				char infoBuf[64];
-				std::snprintf(infoBuf, sizeof(infoBuf), "%s [%.0fm]",
-				              toolName, dist);
-				std::string infoStr = infoBuf;
-				Vector2 infoSize = font.Measure(infoStr);
-				Vector2 infoPos = {
-				    floorf(scrPos.x - infoSize.x * 0.5F),
 				    floorf(scrPos.y + r + 3.0F),
 				};
-				Vector4 infoCol = MakeVector4(1.0F, 1.0F, 1.0F, alpha);
-				font.DrawShadow(infoStr, infoPos, 1.0F, infoCol, nameShadow);
+				font.DrawShadow(nameStr, namePos, 1.0F, nameCol, textShadow);
+
+				std::string toolStr = toolName;
+				Vector2 toolSize = font.Measure(toolStr);
+				Vector2 toolPos = {
+				    floorf(scrPos.x - toolSize.x * 0.5F),
+				    floorf(namePos.y + nameSize.y + 1.0F),
+				};
+				Vector4 toolCol = MakeVector4(1.0F, 1.0F, 1.0F, alpha);
+				font.DrawShadow(toolStr, toolPos, 1.0F, toolCol, textShadow);
 			}
 		}
 
