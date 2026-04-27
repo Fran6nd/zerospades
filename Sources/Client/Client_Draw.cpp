@@ -1352,11 +1352,17 @@ namespace spades {
 
 				float alpha = 0.9F;
 
-				const float r = 7.0F;
-				Vector2 top = {scrPos.x, scrPos.y - r};
-				Vector2 right = {scrPos.x + r, scrPos.y};
-				Vector2 bottom = {scrPos.x, scrPos.y + r};
-				Vector2 left = {scrPos.x - r, scrPos.y};
+				// DPI-aware chevron pointing down at the head.
+				float sh = renderer->ScreenHeight();
+				float sz = Clamp(sh * 0.012F, 9.0F, 22.0F);
+				float halfW = sz * 0.95F;
+				float depth = sz * 0.7F;
+				float thickShadow = std::max(3.0F, sz * 0.32F);
+				float thickOutline = std::max(1.5F, sz * 0.18F);
+
+				Vector2 tip = {scrPos.x, scrPos.y};
+				Vector2 wingL = {scrPos.x - halfW, scrPos.y - depth};
+				Vector2 wingR = {scrPos.x + halfW, scrPos.y - depth};
 
 				Vector4 teamCol = ConvertColorRGBA(p.GetColor());
 				Vector4 shadow = MakeVector4(0, 0, 0, 0.6F * alpha);
@@ -1364,26 +1370,12 @@ namespace spades {
 				                              teamCol.y * alpha,
 				                              teamCol.z * alpha, alpha);
 
-				// Dark shadow edges (thicker, drawn first).
-				drawEdge(top, right, 4.0F, shadow);
-				drawEdge(right, bottom, 4.0F, shadow);
-				drawEdge(bottom, left, 4.0F, shadow);
-				drawEdge(left, top, 4.0F, shadow);
+				drawEdge(wingL, tip, thickShadow, shadow);
+				drawEdge(tip, wingR, thickShadow, shadow);
+				drawEdge(wingL, tip, thickOutline, outline);
+				drawEdge(tip, wingR, thickOutline, outline);
 
-				// Team-colored outline edges.
-				drawEdge(top, right, 2.0F, outline);
-				drawEdge(right, bottom, 2.0F, outline);
-				drawEdge(bottom, left, 2.0F, outline);
-				drawEdge(left, top, 2.0F, outline);
-
-				// Small inner dot so the marker reads as a unit, not a hole.
-				{
-					float rDot = 1.5F;
-					Vector4 dotCol = MakeVector4(alpha, alpha, alpha, alpha);
-					renderer->SetColorAlphaPremultiplied(dotCol);
-					renderer->DrawFilledRect(scrPos.x - rDot, scrPos.y - rDot,
-					                         scrPos.x + rDot, scrPos.y + rDot);
-				}
+				float labelGap = floorf(sz * 0.35F) + 2.0F;
 
 				const char* toolIconPath = "Gfx/Hotbar/Spade.png";
 				switch (p.GetTool()) {
@@ -1409,7 +1401,7 @@ namespace spades {
 				Vector2 nameSize = font.Measure(nameStr);
 				Vector2 namePos = {
 				    floorf(scrPos.x - nameSize.x * 0.5F),
-				    floorf(scrPos.y + r + 3.0F),
+				    floorf(scrPos.y + labelGap),
 				};
 				font.DrawShadow(nameStr, namePos, 1.0F, nameCol, textShadow);
 
