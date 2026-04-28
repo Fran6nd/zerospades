@@ -472,6 +472,7 @@ namespace spades {
 			void DrawDamageIndicators();
 
 			bool teamOverlayHeld = false;
+			float teamOverlayAlpha = 0.0F;
 			void DrawTeamOverlay();
 
 			void DrawScene();

@@ -390,6 +390,13 @@ namespace spades {
 					hitFeedbackIconState = 0.0F;
 			}
 
+			{
+				float target = teamOverlayHeld ? 1.0F : 0.0F;
+				teamOverlayAlpha += (target - teamOverlayAlpha) * std::min(1.0F, dt * 14.0F);
+				if (teamOverlayAlpha < 0.001F) teamOverlayAlpha = 0.0F;
+				if (teamOverlayAlpha > 0.999F) teamOverlayAlpha = 1.0F;
+			}
+
 			if (debugHitTestZoom) {
 				debugHitTestZoomState += dt * 5.0F;
 				if (debugHitTestZoomState > 1.0F)

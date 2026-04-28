@@ -538,7 +538,7 @@ namespace spades {
 			auto hottracked = HotTrackedPlayer();
 			if (hottracked) {
 				Player& player = std::get<0>(*hottracked);
-				if (teamOverlayHeld && world) {
+				if (teamOverlayAlpha > 0.0F && world) {
 					auto maybeLocal = world->GetLocalPlayer();
 					if (maybeLocal && maybeLocal.value().IsTeammate(player))
 						return;
@@ -1350,7 +1350,9 @@ namespace spades {
 				scrPos.x = floorf(scrPos.x) + 0.5F;
 				scrPos.y = floorf(scrPos.y) + 0.5F;
 
-				float alpha = 0.9F;
+				float alpha = 0.9F * teamOverlayAlpha;
+				if (alpha <= 0.0F)
+					continue;
 
 				// DPI-aware chevron pointing down at the head.
 				float sh = renderer->ScreenHeight();
@@ -1733,7 +1735,7 @@ namespace spades {
 					DrawPubOVL();
 				}
 
-				if (teamOverlayHeld && !localPlayerIsSpectator)
+				if (teamOverlayAlpha > 0.0F && !localPlayerIsSpectator)
 					DrawTeamOverlay();
 
 				if (IsFirstPerson(GetCameraMode()))
