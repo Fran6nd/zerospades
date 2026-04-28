@@ -1294,22 +1294,27 @@ namespace spades {
 			}
 		}
 
-		void Client::DrawTeamOverlay() {
+		void Client::DrawPlayerChevron(Player& p, const Vector4& color) {
 			SPADES_MARK_FUNCTION();
 
-			if (!world)
+			float alpha = color.w;
+			if (alpha <= 0.0F)
 				return;
-			auto maybeLocal = world->GetLocalPlayer();
-			if (!maybeLocal)
+
+			Vector3 origin = p.GetEye();
+			origin.z -= 0.95F; // clear of helmet at any pitch
+
+			Vector2 scrPos;
+			if (!Project(origin, scrPos))
 				return;
-			Player& local = maybeLocal.value();
-			if (local.IsSpectator())
-				return;
+
+			scrPos.x = floorf(scrPos.x) + 0.5F;
+			scrPos.y = floorf(scrPos.y) + 0.5F;
 
 			IFont& font = cg_smallFont
 				? fontManager->GetSmallFont()
 				: fontManager->GetGuiFont();
-			const AABB2 inRect(0.0F, 0.0F, 1.0F, 1.0F);
+			const AABB2 inFullRect(0.0F, 0.0F, 1.0F, 1.0F);
 
 			auto drawEdge = [&](Vector2 a, Vector2 b, float thick,
 			                    const Vector4& col) {
@@ -1323,8 +1328,103 @@ namespace spades {
 				Vector2 p2 = {b.x - n.x * t, b.y - n.y * t};
 				Vector2 p3 = {a.x + n.x * t, a.y + n.y * t};
 				renderer->SetColorAlphaPremultiplied(col);
-				renderer->DrawImage(nullptr, p1, p2, p3, inRect);
+				renderer->DrawImage(nullptr, p1, p2, p3, inFullRect);
 			};
+
+			// DPI-aware chevron pointing down at the head.
+			float sh = renderer->ScreenHeight();
+			float sz = Clamp(sh * 0.012F, 9.0F, 22.0F);
+			float halfW = sz * 0.95F;
+			float depth = sz * 0.7F;
+			float thickShadow = std::max(3.0F, sz * 0.32F);
+			float thickOutline = std::max(1.5F, sz * 0.18F);
+
+			Vector2 tip = {scrPos.x, scrPos.y};
+			Vector2 wingL = {scrPos.x - halfW, scrPos.y - depth};
+			Vector2 wingR = {scrPos.x + halfW, scrPos.y - depth};
+
+			Vector4 shadow = MakeVector4(0, 0, 0, 0.6F * alpha);
+			Vector4 outline = MakeVector4(color.x * alpha,
+			                              color.y * alpha,
+			                              color.z * alpha, alpha);
+
+			drawEdge(wingL, tip, thickShadow, shadow);
+			drawEdge(tip, wingR, thickShadow, shadow);
+			drawEdge(wingL, tip, thickOutline, outline);
+			drawEdge(tip, wingR, thickOutline, outline);
+
+			float labelGap = floorf(sz * 0.35F) + 2.0F;
+
+			// Always show the class weapon, not the currently-held tool —
+			// it tells you what role the player is playing.
+			const char* toolIconPath = "Gfx/Hotbar/Rifle.png";
+			switch (p.GetWeaponType()) {
+				case RIFLE_WEAPON: toolIconPath = "Gfx/Hotbar/Rifle.png"; break;
+				case SMG_WEAPON: toolIconPath = "Gfx/Hotbar/SMG.png"; break;
+				case SHOTGUN_WEAPON: toolIconPath = "Gfx/Hotbar/Shotgun.png"; break;
+			}
+
+			Vector4 nameCol = MakeVector4(color.x, color.y, color.z, alpha);
+			Vector4 textShadow = MakeVector4(0, 0, 0, 0.7F * alpha);
+
+			// Stack name and weapon icon above the chevron, name on top.
+			const std::string& nameStr = p.GetName();
+			Vector2 nameSize = font.Measure(nameStr);
+			const float iconH = 14.0F;
+			float stackBottom = scrPos.y - depth - labelGap;
+
+			Handle<IImage> toolIcon = renderer->RegisterImage(toolIconPath);
+			float iconW = 0.0F;
+			Vector2 iconPos = {0, 0};
+			if (toolIcon) {
+				iconW = toolIcon->GetWidth() *
+				        (iconH / toolIcon->GetHeight());
+				iconPos = {
+				    floorf(scrPos.x - iconW * 0.5F),
+				    floorf(stackBottom - iconH),
+				};
+			}
+
+			Vector2 namePos = {
+			    floorf(scrPos.x - nameSize.x * 0.5F),
+			    floorf((toolIcon ? iconPos.y : stackBottom) - nameSize.y - 1.0F),
+			};
+			font.DrawShadow(nameStr, namePos, 1.0F, nameCol, textShadow);
+
+			if (toolIcon) {
+				AABB2 iconRect(iconPos.x, iconPos.y, iconW, iconH);
+				AABB2 iconShadowRect(iconPos.x + 1, iconPos.y + 1,
+				                     iconW, iconH);
+				AABB2 inRect(0, 0, toolIcon->GetWidth(),
+				             toolIcon->GetHeight());
+
+				Vector4 iconShadow = MakeVector4(0, 0, 0, 0.7F * alpha);
+				renderer->SetColorAlphaPremultiplied(iconShadow);
+				renderer->DrawImage(toolIcon.GetPointerOrNull(),
+				                    iconShadowRect, inRect);
+
+				Vector4 iconCol = MakeVector4(alpha, alpha, alpha, alpha);
+				renderer->SetColorAlphaPremultiplied(iconCol);
+				renderer->DrawImage(toolIcon.GetPointerOrNull(),
+				                    iconRect, inRect);
+			}
+		}
+
+		void Client::DrawTeamOverlay() {
+			SPADES_MARK_FUNCTION();
+
+			if (!world)
+				return;
+			auto maybeLocal = world->GetLocalPlayer();
+			if (!maybeLocal)
+				return;
+			Player& local = maybeLocal.value();
+			if (local.IsSpectator())
+				return;
+
+			float alpha = 0.9F * teamOverlayAlpha;
+			if (alpha <= 0.0F)
+				return;
 
 			for (size_t i = 0; i < world->GetNumPlayerSlots(); i++) {
 				auto maybePlayer = world->GetPlayer(static_cast<unsigned int>(i));
@@ -1340,99 +1440,9 @@ namespace spades {
 				if (p.GetFront().GetSquaredLength() < 0.01F)
 					continue;
 
-				Vector3 origin = p.GetEye();
-				origin.z -= 0.95F; // clear of helmet at any pitch
-
-				Vector2 scrPos;
-				if (!Project(origin, scrPos))
-					continue;
-
-				scrPos.x = floorf(scrPos.x) + 0.5F;
-				scrPos.y = floorf(scrPos.y) + 0.5F;
-
-				float alpha = 0.9F * teamOverlayAlpha;
-				if (alpha <= 0.0F)
-					continue;
-
-				// DPI-aware chevron pointing down at the head.
-				float sh = renderer->ScreenHeight();
-				float sz = Clamp(sh * 0.012F, 9.0F, 22.0F);
-				float halfW = sz * 0.95F;
-				float depth = sz * 0.7F;
-				float thickShadow = std::max(3.0F, sz * 0.32F);
-				float thickOutline = std::max(1.5F, sz * 0.18F);
-
-				Vector2 tip = {scrPos.x, scrPos.y};
-				Vector2 wingL = {scrPos.x - halfW, scrPos.y - depth};
-				Vector2 wingR = {scrPos.x + halfW, scrPos.y - depth};
-
-				Vector4 teamCol = ConvertColorRGBA(p.GetColor());
-				Vector4 shadow = MakeVector4(0, 0, 0, 0.6F * alpha);
-				Vector4 outline = MakeVector4(teamCol.x * alpha,
-				                              teamCol.y * alpha,
-				                              teamCol.z * alpha, alpha);
-
-				drawEdge(wingL, tip, thickShadow, shadow);
-				drawEdge(tip, wingR, thickShadow, shadow);
-				drawEdge(wingL, tip, thickOutline, outline);
-				drawEdge(tip, wingR, thickOutline, outline);
-
-				float labelGap = floorf(sz * 0.35F) + 2.0F;
-
-				// Always show the class weapon, not the currently-held tool —
-				// it tells you what role the teammate is playing.
-				const char* toolIconPath = "Gfx/Hotbar/Rifle.png";
-				switch (p.GetWeaponType()) {
-					case RIFLE_WEAPON: toolIconPath = "Gfx/Hotbar/Rifle.png"; break;
-					case SMG_WEAPON: toolIconPath = "Gfx/Hotbar/SMG.png"; break;
-					case SHOTGUN_WEAPON: toolIconPath = "Gfx/Hotbar/Shotgun.png"; break;
-				}
-
-				Vector4 nameCol = teamCol;
-				nameCol.w = alpha;
-				Vector4 textShadow = MakeVector4(0, 0, 0, 0.7F * alpha);
-
-				// Stack name and weapon icon above the chevron, name on top.
-				const std::string& nameStr = p.GetName();
-				Vector2 nameSize = font.Measure(nameStr);
-				const float iconH = 14.0F;
-				float stackBottom = scrPos.y - depth - labelGap;
-
-				Handle<IImage> toolIcon = renderer->RegisterImage(toolIconPath);
-				float iconW = 0.0F;
-				Vector2 iconPos = {0, 0};
-				if (toolIcon) {
-					iconW = toolIcon->GetWidth() *
-					        (iconH / toolIcon->GetHeight());
-					iconPos = {
-					    floorf(scrPos.x - iconW * 0.5F),
-					    floorf(stackBottom - iconH),
-					};
-				}
-
-				Vector2 namePos = {
-				    floorf(scrPos.x - nameSize.x * 0.5F),
-				    floorf((toolIcon ? iconPos.y : stackBottom) - nameSize.y - 1.0F),
-				};
-				font.DrawShadow(nameStr, namePos, 1.0F, nameCol, textShadow);
-
-				if (toolIcon) {
-					AABB2 iconRect(iconPos.x, iconPos.y, iconW, iconH);
-					AABB2 iconShadowRect(iconPos.x + 1, iconPos.y + 1,
-					                     iconW, iconH);
-					AABB2 inRect(0, 0, toolIcon->GetWidth(),
-					             toolIcon->GetHeight());
-
-					Vector4 iconShadow = MakeVector4(0, 0, 0, 0.7F * alpha);
-					renderer->SetColorAlphaPremultiplied(iconShadow);
-					renderer->DrawImage(toolIcon.GetPointerOrNull(),
-					                    iconShadowRect, inRect);
-
-					Vector4 iconCol = MakeVector4(alpha, alpha, alpha, alpha);
-					renderer->SetColorAlphaPremultiplied(iconCol);
-					renderer->DrawImage(toolIcon.GetPointerOrNull(),
-					                    iconRect, inRect);
-				}
+				Vector4 col = ConvertColorRGBA(p.GetColor());
+				col.w = alpha;
+				DrawPlayerChevron(p, col);
 			}
 		}
 

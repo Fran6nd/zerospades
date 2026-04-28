@@ -474,6 +474,7 @@ namespace spades {
 			bool teamOverlayHeld = false;
 			float teamOverlayAlpha = 0.0F;
 			void DrawTeamOverlay();
+			void DrawPlayerChevron(Player&, const Vector4& color);
 
 			void DrawScene();
 			void AddGrenadeToScene(Grenade&);
