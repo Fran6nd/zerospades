@@ -1377,18 +1377,13 @@ namespace spades {
 
 				float labelGap = floorf(sz * 0.35F) + 2.0F;
 
-				const char* toolIconPath = "Gfx/Hotbar/Spade.png";
-				switch (p.GetTool()) {
-					case Player::ToolSpade: toolIconPath = "Gfx/Hotbar/Spade.png"; break;
-					case Player::ToolBlock: toolIconPath = "Gfx/Hotbar/Block.png"; break;
-					case Player::ToolGrenade: toolIconPath = "Gfx/Hotbar/Grenade.png"; break;
-					case Player::ToolWeapon:
-						switch (p.GetWeaponType()) {
-							case RIFLE_WEAPON: toolIconPath = "Gfx/Hotbar/Rifle.png"; break;
-							case SMG_WEAPON: toolIconPath = "Gfx/Hotbar/SMG.png"; break;
-							case SHOTGUN_WEAPON: toolIconPath = "Gfx/Hotbar/Shotgun.png"; break;
-						}
-						break;
+				// Always show the class weapon, not the currently-held tool —
+				// it tells you what role the teammate is playing.
+				const char* toolIconPath = "Gfx/Hotbar/Rifle.png";
+				switch (p.GetWeaponType()) {
+					case RIFLE_WEAPON: toolIconPath = "Gfx/Hotbar/Rifle.png"; break;
+					case SMG_WEAPON: toolIconPath = "Gfx/Hotbar/SMG.png"; break;
+					case SHOTGUN_WEAPON: toolIconPath = "Gfx/Hotbar/Shotgun.png"; break;
 				}
 
 				Vector4 nameCol = teamCol;
