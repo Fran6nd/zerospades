@@ -1390,25 +1390,31 @@ namespace spades {
 				nameCol.w = alpha;
 				Vector4 textShadow = MakeVector4(0, 0, 0, 0.7F * alpha);
 
-				// Stack name and tool icon below the marker so the marker reads
-				// as the head of the label.
+				// Stack name and weapon icon above the chevron, name on top.
 				const std::string& nameStr = p.GetName();
 				Vector2 nameSize = font.Measure(nameStr);
+				const float iconH = 14.0F;
+				float stackBottom = scrPos.y - depth - labelGap;
+
+				Handle<IImage> toolIcon = renderer->RegisterImage(toolIconPath);
+				float iconW = 0.0F;
+				Vector2 iconPos = {0, 0};
+				if (toolIcon) {
+					iconW = toolIcon->GetWidth() *
+					        (iconH / toolIcon->GetHeight());
+					iconPos = {
+					    floorf(scrPos.x - iconW * 0.5F),
+					    floorf(stackBottom - iconH),
+					};
+				}
+
 				Vector2 namePos = {
 				    floorf(scrPos.x - nameSize.x * 0.5F),
-				    floorf(scrPos.y + labelGap),
+				    floorf((toolIcon ? iconPos.y : stackBottom) - nameSize.y - 1.0F),
 				};
 				font.DrawShadow(nameStr, namePos, 1.0F, nameCol, textShadow);
 
-				Handle<IImage> toolIcon = renderer->RegisterImage(toolIconPath);
 				if (toolIcon) {
-					const float iconH = 14.0F;
-					float iconW = toolIcon->GetWidth() *
-					              (iconH / toolIcon->GetHeight());
-					Vector2 iconPos = {
-					    floorf(scrPos.x - iconW * 0.5F),
-					    floorf(namePos.y + nameSize.y + 2.0F),
-					};
 					AABB2 iconRect(iconPos.x, iconPos.y, iconW, iconH);
 					AABB2 iconShadowRect(iconPos.x + 1, iconPos.y + 1,
 					                     iconW, iconH);
