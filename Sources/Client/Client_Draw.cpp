@@ -81,8 +81,6 @@ DEFINE_SPADES_SETTING(cg_hudPlayerCount, "0");
 DEFINE_SPADES_SETTING(cg_hudHealthBar, "1");
 DEFINE_SPADES_SETTING(cg_hudHealthAnimation, "1");
 DEFINE_SPADES_SETTING(cg_playerNames, "2");
-DEFINE_SPADES_SETTING(cg_playerNameX, "0");
-DEFINE_SPADES_SETTING(cg_playerNameY, "0");
 DEFINE_SPADES_SETTING(cg_playerNamesDead, "1");
 DEFINE_SPADES_SETTING(cg_dbgHitTestSize, "128");
 DEFINE_SPADES_SETTING(cg_dbgHitTestFadeTime, "10");
@@ -488,50 +486,6 @@ namespace spades {
 			return playerColor;
 		}
 
-		void Client::DrawPlayerName(Player& player, const Vector4& color) {
-			SPADES_MARK_FUNCTION();
-
-			Vector3 origin = player.GetEye();
-			origin.z -= 0.45F; // above player head
-
-			Vector2 scrPos;
-			if (Project(origin, scrPos)) {
-				scrPos.x += (int)cg_playerNameX;
-				scrPos.y += (int)cg_playerNameY;
-
-				std::string str = player.GetName();
-
-				// add distance
-				const float dist = (origin - lastSceneDef.viewOrigin).GetLength2D();
-				if ((int)cg_playerNames < 2 && dist <= FOG_DISTANCE) {
-					char buf[32];
-					snprintf(buf, sizeof(buf), " [%.1f]", dist);
-					str += buf;
-				}
-
-				IFont& font = cg_smallFont
-					? fontManager->GetSmallFont()
-					: fontManager->GetGuiFont();
-
-				Vector2 size = font.Measure(str);
-				scrPos.x -= size.x * 0.5F;
-				scrPos.y -= size.y;
-
-				// rounded for better pixel alignment
-				scrPos.x = floorf(scrPos.x);
-				scrPos.y = floorf(scrPos.y);
-
-				float luminosity = color.x + color.y + color.z;
-				Vector4 shadowColor = (luminosity > 0.9F)
-					? MakeVector4(0, 0, 0, 0.8F)
-					: MakeVector4(1, 1, 1, 0.8F);
-
-				shadowColor.w *= color.w;
-
-				font.DrawShadow(str, scrPos, 1.0F, color, shadowColor);
-			}
-		}
-
 		void Client::DrawHottrackedPlayerName() {
 			SPADES_MARK_FUNCTION();
 
@@ -543,7 +497,9 @@ namespace spades {
 					if (maybeLocal && maybeLocal.value().IsTeammate(player))
 						return;
 				}
-				DrawPlayerName(player, MakeVector4(1, 1, 1, 1));
+				Vector4 col = ConvertColorRGBA(player.GetColor());
+				col.w = 1.0F;
+				DrawPlayerChevron(player, col);
 			}
 		}
 
@@ -634,7 +590,7 @@ namespace spades {
 				const auto& color = GetPlayerColor(p);
 				if (staffSpectating)
 					DrawPlayerBox(p, color);
-				DrawPlayerName(p, color);
+				DrawPlayerChevron(p, color);
 			}
 		}
 
