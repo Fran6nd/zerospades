@@ -280,19 +280,14 @@ if(APPLE)
 	)
 
 
-	# Add optional code signing (can be configured via MACOSX_CODESIGN_IDENTITY)
+	# Optional Developer ID signing (for distribution).
 	# To sign: cmake -DMACOSX_CODESIGN_IDENTITY="Developer ID Application: Your Name" ..
-	# Note: Code signing must happen AFTER all binary modifications (install_name_tool, etc.)
+	# Local builds get ad-hoc signing inside bundle_macos_dylibs.sh — that's
+	# enough for the binary to launch on Apple Silicon.
 	if(MACOSX_CODESIGN_IDENTITY)
 		add_custom_command(TARGET ZeroSpades POST_BUILD
 			COMMAND codesign --force --deep --sign "${MACOSX_CODESIGN_IDENTITY}" "$<TARGET_BUNDLE_DIR:ZeroSpades>"
 			COMMENT "Code signing macOS bundle with identity: ${MACOSX_CODESIGN_IDENTITY}"
-		)
-	else()
-		# Ad-hoc signing for local development (allows the app to run without Gatekeeper issues)
-		add_custom_command(TARGET ZeroSpades POST_BUILD
-			COMMAND codesign --force --deep --sign - "$<TARGET_BUNDLE_DIR:ZeroSpades>" || echo "Warning: Code signing failed"
-			COMMENT "Ad-hoc code signing macOS bundle for local development"
 		)
 	endif()
 endif()
