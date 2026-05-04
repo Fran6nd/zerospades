@@ -114,4 +114,27 @@ for dylib in "$FRAMEWORKS_DIR"/*.dylib; do
     fix_dylib_refs "$dylib"
 done
 
+# Re-sign everything install_name_tool touched. Mach-O edits invalidate the
+# existing signature and arm64 macOS refuses to load unsigned pages.
+# Sign each Mach-O through a hardlink outside the .app: codesign auto-detects
+# bundle layout from the path and rejects "detritus" xattrs that iCloud /
+# Finder reapply on parent directories faster than we can strip them. A
+# hardlink in a neutral directory shares the inode so the binary inside the
+# bundle gets signed, while codesign sees a plain Mach-O.
+sign_mach_o() {
+    local target="$1"
+    xattr -d com.apple.provenance "$target" 2>/dev/null || true
+    local link
+    link="$(mktemp -u "${TMPDIR:-/tmp}/cs.XXXXXX")"
+    ln "$target" "$link"
+    codesign --force --sign - "$link"
+    rm -f "$link"
+}
+
+for dylib in "$FRAMEWORKS_DIR"/*.dylib; do
+    [ -f "$dylib" ] || continue
+    sign_mach_o "$dylib"
+done
+sign_mach_o "$EXECUTABLE"
+
 echo "Bundle dylib fixup complete."
