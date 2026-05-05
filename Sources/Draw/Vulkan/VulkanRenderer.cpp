@@ -42,6 +42,7 @@
 #include "VulkanBloomFilter.h"
 #include "VulkanFogFilter.h"
 #include "VulkanDepthOfFieldFilter.h"
+#include "VulkanFXAAFilter.h"
 #include <Gui/SDLVulkanDevice.h>
 #include <Client/GameMap.h>
 #include <Core/Bitmap.h>
@@ -57,6 +58,7 @@ SPADES_SETTING(r_hdr);
 SPADES_SETTING(r_bloom);
 SPADES_SETTING(r_fogShadow);
 SPADES_SETTING(r_depthOfField);
+SPADES_SETTING(r_fxaa);
 SPADES_SETTING(r_water);
 SPADES_SETTING(r_softParticles);
 SPADES_SETTING(r_outlines);
@@ -162,6 +164,7 @@ namespace spades {
 			if (mapShadowRenderer)
 				fogFilter = stmp::make_unique<VulkanFogFilter>(*this);
 			depthOfFieldFilter = stmp::make_unique<VulkanDepthOfFieldFilter>(*this);
+			fxaaFilter = stmp::make_unique<VulkanFXAAFilter>(*this);
 
 			inited = true;
 			lastSwapchainGeneration = device->GetSwapchainGeneration();
@@ -200,6 +203,7 @@ namespace spades {
 			waterRenderer.reset();
 			shadowMapRenderer.reset();
 			mapShadowRenderer.reset();
+			fxaaFilter.reset();
 			depthOfFieldFilter.reset();
 			fogFilter.reset();
 			bloomFilter.reset();
@@ -2079,6 +2083,12 @@ namespace spades {
 					depthOfFieldFilter->Filter(commandBuffer, currentInput, currentOutput);
 					std::swap(currentInput, currentOutput);
 				}
+			}
+
+			// PP-5: FXAA
+			if ((int)r_fxaa && fxaaFilter && currentInput && currentOutput) {
+				fxaaFilter->Filter(commandBuffer, currentInput, currentOutput);
+				std::swap(currentInput, currentOutput);
 			}
 
 			// --- Blit final post-process result to swapchain ---
