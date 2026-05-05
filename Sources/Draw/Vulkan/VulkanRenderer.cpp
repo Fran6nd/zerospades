@@ -43,6 +43,7 @@
 #include "VulkanFogFilter.h"
 #include "VulkanDepthOfFieldFilter.h"
 #include "VulkanFXAAFilter.h"
+#include "VulkanAmbientShadowRenderer.h"
 #include <Gui/SDLVulkanDevice.h>
 #include <Client/GameMap.h>
 #include <Core/Bitmap.h>
@@ -202,6 +203,7 @@ namespace spades {
 			flatMapRenderer.reset();
 			waterRenderer.reset();
 			shadowMapRenderer.reset();
+			ambientShadowRenderer.reset();
 			mapShadowRenderer.reset();
 			fxaaFilter.reset();
 			depthOfFieldFilter.reset();
@@ -850,8 +852,10 @@ namespace spades {
 			// Initialize map shadow renderer (heightmap shadow) BEFORE map renderer
 			if (map) {
 				mapShadowRenderer = stmp::make_unique<VulkanMapShadowRenderer>(*this, map);
+				ambientShadowRenderer = stmp::make_unique<VulkanAmbientShadowRenderer>(*this, *map);
 			} else {
 				mapShadowRenderer.reset();
+				ambientShadowRenderer.reset();
 			}
 
 			// Initialize map renderer
@@ -1454,6 +1458,8 @@ namespace spades {
 				mapRenderer->GameMapChanged(x, y, z, map);
 			if (mapShadowRenderer)
 				mapShadowRenderer->GameMapChanged(x, y, z, map);
+			if (ambientShadowRenderer)
+				ambientShadowRenderer->GameMapChanged(x, y, z, map);
 			if (flatMapRenderer)
 				flatMapRenderer->GameMapChanged(x, y, z, *map);
 			if (waterRenderer)
@@ -1588,6 +1594,12 @@ namespace spades {
 		// Update map shadow heightmap texture (incremental updates from block changes)
 		if (sceneUsedInThisFrame && mapShadowRenderer) {
 			mapShadowRenderer->Update(commandBuffer);
+		}
+
+		// Upload any per-block ambient occlusion chunks that the background
+		// dispatch finished computing this frame.
+		if (sceneUsedInThisFrame && ambientShadowRenderer) {
+			ambientShadowRenderer->Update(commandBuffer);
 		}
 
 		// Render shadow maps BEFORE starting main render pass (shadow maps use their own render passes)
