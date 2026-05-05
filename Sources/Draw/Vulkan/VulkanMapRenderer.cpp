@@ -632,27 +632,32 @@ namespace spades {
 			dynamicState.dynamicStateCount = 2;
 			dynamicState.pDynamicStates = dynamicStates;
 
-			// Create descriptor set layout for shadow map sampler (set 0, binding 0)
-			VkDescriptorSetLayoutBinding shadowSamplerBinding{};
-			shadowSamplerBinding.binding = 0;
-			shadowSamplerBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-			shadowSamplerBinding.descriptorCount = 1;
-			shadowSamplerBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+			// Descriptor set layout:
+			//   binding 0 — heightmap shadow 2D texture
+			//   binding 1 — per-block ambient occlusion 3D texture
+			VkDescriptorSetLayoutBinding bindings[2]{};
+			bindings[0].binding = 0;
+			bindings[0].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+			bindings[0].descriptorCount = 1;
+			bindings[0].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+			bindings[1].binding = 1;
+			bindings[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+			bindings[1].descriptorCount = 1;
+			bindings[1].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
 			VkDescriptorSetLayoutCreateInfo descriptorLayoutInfo{};
 			descriptorLayoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-			descriptorLayoutInfo.bindingCount = 1;
-			descriptorLayoutInfo.pBindings = &shadowSamplerBinding;
+			descriptorLayoutInfo.bindingCount = 2;
+			descriptorLayoutInfo.pBindings = bindings;
 
 			result = vkCreateDescriptorSetLayout(vkDevice, &descriptorLayoutInfo, nullptr, &descriptorSetLayout);
 			if (result != VK_SUCCESS) {
 				SPRaise("Failed to create descriptor set layout (error code: %d)", result);
 			}
 
-			// Create descriptor pool
 			VkDescriptorPoolSize poolSize{};
 			poolSize.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-			poolSize.descriptorCount = 1;
+			poolSize.descriptorCount = 2;
 
 			VkDescriptorPoolCreateInfo poolInfo{};
 			poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
@@ -977,25 +982,37 @@ namespace spades {
 			}
 		}
 
-		void VulkanMapRenderer::UpdateShadowDescriptor(VulkanImage* shadowImage) {
+		void VulkanMapRenderer::UpdateShadowDescriptor(VulkanImage* shadowImage,
+		                                                VkImageView aoView,
+		                                                VkSampler aoSampler) {
 			if (!shadowImage || textureDescriptorSet == VK_NULL_HANDLE)
 				return;
 
-			VkDescriptorImageInfo imageInfo{};
-			imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-			imageInfo.imageView = shadowImage->GetImageView();
-			imageInfo.sampler = shadowImage->GetSampler();
+			VkDescriptorImageInfo shadowInfo{};
+			shadowInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+			shadowInfo.imageView = shadowImage->GetImageView();
+			shadowInfo.sampler = shadowImage->GetSampler();
 
-			VkWriteDescriptorSet descriptorWrite{};
-			descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-			descriptorWrite.dstSet = textureDescriptorSet;
-			descriptorWrite.dstBinding = 0;
-			descriptorWrite.dstArrayElement = 0;
-			descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-			descriptorWrite.descriptorCount = 1;
-			descriptorWrite.pImageInfo = &imageInfo;
+			VkDescriptorImageInfo aoInfo{};
+			aoInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+			aoInfo.imageView = aoView;
+			aoInfo.sampler = aoSampler;
 
-			vkUpdateDescriptorSets(device->GetDevice(), 1, &descriptorWrite, 0, nullptr);
+			VkWriteDescriptorSet writes[2]{};
+			writes[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+			writes[0].dstSet = textureDescriptorSet;
+			writes[0].dstBinding = 0;
+			writes[0].descriptorCount = 1;
+			writes[0].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+			writes[0].pImageInfo = &shadowInfo;
+			writes[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+			writes[1].dstSet = textureDescriptorSet;
+			writes[1].dstBinding = 1;
+			writes[1].descriptorCount = 1;
+			writes[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+			writes[1].pImageInfo = &aoInfo;
+
+			vkUpdateDescriptorSets(device->GetDevice(), 2, writes, 0, nullptr);
 		}
 
 	} // namespace draw

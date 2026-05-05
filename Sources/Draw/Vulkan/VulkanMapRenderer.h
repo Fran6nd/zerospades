@@ -118,7 +118,11 @@ namespace spades {
 			void CreatePipelines(VkRenderPass renderPass);
 			void DestroyPipelines();
 
-			void UpdateShadowDescriptor(VulkanImage* shadowImage);
+			// Writes the per-frame texture descriptor set:
+			//   binding 0 = map (heightmap) shadow 2D texture
+			//   binding 1 = per-block ambient occlusion 3D texture
+			void UpdateShadowDescriptor(VulkanImage* shadowImage,
+			                            VkImageView aoView, VkSampler aoSampler);
 
 			VkDescriptorSet GetShadowDescriptorSet() const { return textureDescriptorSet; }
 			VkDescriptorSetLayout GetShadowDescriptorSetLayout() const { return descriptorSetLayout; }

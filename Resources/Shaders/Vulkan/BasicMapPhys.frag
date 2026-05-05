@@ -21,6 +21,7 @@
 #version 450
 
 layout(set = 0, binding = 0) uniform sampler2D mapShadowTexture;
+layout(set = 0, binding = 1) uniform sampler3D ambientShadowTexture;
 
 layout(push_constant) uniform PushConstants {
 	mat4 projectionViewMatrix;
@@ -34,13 +35,14 @@ layout(push_constant) uniform PushConstants {
 } pushConstants;
 
 layout(location = 0) in vec4 color;           // xyz = vertexColor, w = sun lambert
-layout(location = 1) in vec3 ambientLight;
+layout(location = 1) in vec3 ambientLight;     // hemisphere ambient fallback
 layout(location = 2) in vec3 fogDensity;
 layout(location = 3) in vec3 inFogColor;
 layout(location = 4) in vec3 shadowCoord;
 layout(location = 5) in vec3 viewSpaceCoord;
 layout(location = 6) in vec3 viewSpaceNormal;
 layout(location = 7) in vec3 reflectionDir;
+layout(location = 8) in vec3 aoCoord;          // 3D coords into AO texture
 
 layout(location = 0) out vec4 fragColor;
 
@@ -101,8 +103,12 @@ void main() {
 	float shadowVal = texture(mapShadowTexture, shadowCoord.xy).w;
 	float shadow = (shadowVal < shadowCoord.z - 0.0001) ? 0.0 : 1.0;
 
+	// Per-block ambient occlusion (matching GL MapRadiosity.fs).
+	vec2 ambTexVal = texture(ambientShadowTexture, aoCoord).xy;
+	float aoFactor = max(ambTexVal.x / max(ambTexVal.y, 0.25), 0.0);
+
 	fragColor = vec4(color.xyz, 1.0);
-	vec3 diffuseShading = ambientLight;
+	vec3 diffuseShading = ambientLight * aoFactor;
 	float shadowing = shadow * 0.6;
 
 	vec3 eyeVec = -normalize(viewSpaceCoord);

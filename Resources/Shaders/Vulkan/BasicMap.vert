@@ -35,10 +35,11 @@ layout(location = 2) in uvec3 colorAttribute;  // colorRed, colorGreen, colorBlu
 layout(location = 3) in ivec3 normalAttribute;
 
 layout(location = 0) out vec4 color;          // xyz = linearized vertex color, w = sun lambert
-layout(location = 1) out vec3 ambientLight;    // ambient lighting component
+layout(location = 1) out vec3 ambientLight;    // ambient lighting component (hemisphere fallback)
 layout(location = 2) out vec3 fogDensity;
 layout(location = 3) out vec3 outFogColor;
 layout(location = 4) out vec3 shadowCoord;     // shadow map coordinates
+layout(location = 5) out vec3 aoCoord;         // 3D coords into ambient-occlusion texture
 
 void main() {
 	// Convert uint8 position to float
@@ -79,4 +80,9 @@ void main() {
 	float horzDistance = dot(horzRelativePos, horzRelativePos);
 	fogDensity = vec3(min(horzDistance / (pushConstants.fogDistance * pushConstants.fogDistance), 1.0));
 	outFogColor = pushConstants.fogColor;
+
+	// AO 3D-texture coords. World position with z+1 (the 0-th slice is the
+	// "below ground" guard plane), divided by texture extent. Map dimensions
+	// are 512x512x64 in this game, so the texture is 512x512x65.
+	aoCoord = (worldPos.xyz + vec3(0.0, 0.0, 1.0)) / vec3(512.0, 512.0, 65.0);
 }
