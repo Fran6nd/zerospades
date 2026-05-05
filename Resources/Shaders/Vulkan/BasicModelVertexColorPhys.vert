@@ -38,7 +38,7 @@ layout(location = 1) in uvec3 colorAttribute;
 layout(location = 2) in ivec3 normalAttribute;
 
 layout(location = 0) out vec4 color;           // xyz = vertexColor, w = sun lambert (may be negative)
-layout(location = 1) out vec3 ambientLight;
+layout(location = 1) out vec3 ambientLight;    // hemisphere ambient fallback
 layout(location = 2) out vec3 customColorOut;
 layout(location = 3) out vec3 shadowCoord;
 layout(location = 4) out vec3 fogDensityOut;
@@ -46,6 +46,7 @@ layout(location = 5) out vec3 outFogColor;
 layout(location = 6) out vec3 viewSpaceCoord;
 layout(location = 7) out vec3 viewSpaceNormal;
 layout(location = 8) out vec3 reflectionDir;
+layout(location = 9) out vec3 aoCoord;          // 3D coords into AO texture
 
 void main() {
 	vec3 position = vec3(positionAttribute);
@@ -86,4 +87,6 @@ void main() {
 	viewSpaceCoord = viewModelPos.xyz;
 	viewSpaceNormal = normalize((pushConstants.viewMatrix * vec4(worldNormal, 0.0)).xyz);
 	reflectionDir = reflect(worldPos - pushConstants.viewOrigin, worldNormal);
+
+	aoCoord = (worldPos + vec3(0.0, 0.0, 1.0)) / vec3(512.0, 512.0, 65.0);
 }

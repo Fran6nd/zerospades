@@ -35,11 +35,12 @@ layout(location = 1) in uvec3 colorAttribute;  // RGB color stored in u,v as (R,
 layout(location = 2) in ivec3 normalAttribute;
 
 layout(location = 0) out vec4 color;           // xyz = vertexColor, w = sun lambert
-layout(location = 1) out vec3 ambientLight;    // ambient lighting component
+layout(location = 1) out vec3 ambientLight;    // hemisphere ambient fallback
 layout(location = 2) out vec3 customColorOut;
 layout(location = 3) out vec3 shadowCoord;     // shadow map coordinates
 layout(location = 4) out vec3 fogDensityOut;
 layout(location = 5) out vec3 outFogColor;
+layout(location = 6) out vec3 aoCoord;          // 3D coords into AO texture
 
 void main() {
 	// Convert uint8 position to float
@@ -74,4 +75,7 @@ void main() {
 	// Fog density pre-computed on CPU from model world position
 	fogDensityOut = vec3(pushConstants.fogDensity);
 	outFogColor = pushConstants.fogColor;
+
+	// AO 3D-texture coords (matches BasicMap; 512x512x65 texture).
+	aoCoord = (worldPos + vec3(0.0, 0.0, 1.0)) / vec3(512.0, 512.0, 65.0);
 }

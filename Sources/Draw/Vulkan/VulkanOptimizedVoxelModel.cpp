@@ -1074,18 +1074,26 @@ namespace spades {
 			dynamicState.dynamicStateCount = 2;
 			dynamicState.pDynamicStates = dynamicStates;
 
-			// Create descriptor set layout for shadow map sampler (set 0, binding 0)
+			// Descriptor set layout (set 0). Must stay binding-compatible with
+			// VulkanMapRenderer's layout — the voxel model reuses that
+			// renderer's descriptor set (see RenderSunlightPass below).
+			//   binding 0 — heightmap shadow 2D texture
+			//   binding 1 — per-block ambient occlusion 3D texture
 			{
-				VkDescriptorSetLayoutBinding shadowSamplerBinding{};
-				shadowSamplerBinding.binding = 0;
-				shadowSamplerBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-				shadowSamplerBinding.descriptorCount = 1;
-				shadowSamplerBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+				VkDescriptorSetLayoutBinding bindings[2]{};
+				bindings[0].binding = 0;
+				bindings[0].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+				bindings[0].descriptorCount = 1;
+				bindings[0].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+				bindings[1].binding = 1;
+				bindings[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+				bindings[1].descriptorCount = 1;
+				bindings[1].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
 				VkDescriptorSetLayoutCreateInfo descriptorLayoutInfo{};
 				descriptorLayoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-				descriptorLayoutInfo.bindingCount = 1;
-				descriptorLayoutInfo.pBindings = &shadowSamplerBinding;
+				descriptorLayoutInfo.bindingCount = 2;
+				descriptorLayoutInfo.pBindings = bindings;
 
 				result = vkCreateDescriptorSetLayout(vkDevice, &descriptorLayoutInfo, nullptr, &sharedPipeline.descriptorSetLayout);
 				if (result != VK_SUCCESS) {

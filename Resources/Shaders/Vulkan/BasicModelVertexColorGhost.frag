@@ -34,13 +34,15 @@ layout(push_constant) uniform PushConstants {
 } pushConstants;
 
 layout(set = 0, binding = 0) uniform sampler2D mapShadowTexture;
+layout(set = 0, binding = 1) uniform sampler3D ambientShadowTexture;
 
 layout(location = 0) in vec4 color;           // xyz = vertexColor, w = sun lambert
-layout(location = 1) in vec3 ambientLight;
+layout(location = 1) in vec3 ambientLight;     // hemisphere ambient fallback
 layout(location = 2) in vec3 customColor;
 layout(location = 3) in vec3 shadowCoord;
 layout(location = 4) in vec3 fogDensity;
 layout(location = 5) in vec3 inFogColor;
+layout(location = 6) in vec3 aoCoord;          // 3D coords into AO texture
 
 layout(location = 0) out vec4 fragColor;
 
@@ -56,9 +58,12 @@ void main() {
 
 	vertexColor *= vertexColor;
 
+	vec2 ambTexVal = texture(ambientShadowTexture, aoCoord).xy;
+	float aoFactor = max(ambTexVal.x / max(ambTexVal.y, 0.25), 0.0);
+
 	float sunLambert = color.w;
 	vec3 sun = vec3(0.6) * sunLambert * shadow;
-	fragColor = vec4(vertexColor * (ambientLight + sun), pushConstants._pad);
+	fragColor = vec4(vertexColor * (ambientLight * aoFactor + sun), pushConstants._pad);
 
 	fragColor.xyz = mix(fragColor.xyz, inFogColor, fogDensity);
 }

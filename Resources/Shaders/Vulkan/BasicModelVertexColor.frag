@@ -21,13 +21,15 @@
 #version 450
 
 layout(set = 0, binding = 0) uniform sampler2D mapShadowTexture;
+layout(set = 0, binding = 1) uniform sampler3D ambientShadowTexture;
 
 layout(location = 0) in vec4 color;           // xyz = vertexColor, w = sun lambert
-layout(location = 1) in vec3 ambientLight;
+layout(location = 1) in vec3 ambientLight;     // hemisphere ambient fallback
 layout(location = 2) in vec3 customColor;
 layout(location = 3) in vec3 shadowCoord;
 layout(location = 4) in vec3 fogDensity;
 layout(location = 5) in vec3 inFogColor;
+layout(location = 6) in vec3 aoCoord;          // 3D coords into AO texture
 
 layout(location = 0) out vec4 fragColor;
 
@@ -47,10 +49,14 @@ void main() {
 	// Linearize color (after team color substitution, matching OpenGL)
 	vertexColor *= vertexColor;
 
-	// Combine lighting: ambient + sun * shadow
+	// Per-block ambient occlusion (matching GL MapRadiosity.fs).
+	vec2 ambTexVal = texture(ambientShadowTexture, aoCoord).xy;
+	float aoFactor = max(ambTexVal.x / max(ambTexVal.y, 0.25), 0.0);
+
+	// Combine lighting: ambient (hemisphere * AO) + sun * shadow
 	float sunLambert = color.w;
 	vec3 sun = vec3(0.6) * sunLambert * shadow;
-	fragColor = vec4(vertexColor * (ambientLight + sun), 1.0);
+	fragColor = vec4(vertexColor * (ambientLight * aoFactor + sun), 1.0);
 
 	// Apply fog fading
 	fragColor.xyz = mix(fragColor.xyz, inFogColor, fogDensity);
