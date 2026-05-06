@@ -1447,6 +1447,17 @@ namespace spades {
 			}
 
 			stagingBuffer->Unmap();
+
+			// Present the swapchain image acquired by StartScene. Without this
+			// the screenshot path leaks an acquired-but-never-presented image
+			// every call, exhausting the swapchain pool after a few shots and
+			// stalling the next vkAcquireNextImageKHR until the GPU watchdog
+			// kills the device.
+			VkSemaphore waitSemaphores[] = {renderFinishedSemaphore};
+			device->PresentImage(currentImageIndex, waitSemaphores, 1);
+			lastTime = sceneDef.time;
+			sceneUsedInThisFrame = false;
+
 			return bmp;
 		}
 
