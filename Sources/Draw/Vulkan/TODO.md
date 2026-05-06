@@ -55,7 +55,49 @@ Still to port:
 - [ ] Player shadows are missing — models reach the shadow pass but never show up. Probably a missing per-instance push constant in [VulkanOptimizedVoxelModel.cpp](VulkanOptimizedVoxelModel.cpp) `RenderShadowMapPass`, or a bad bias.
 - [ ] **Fog is broken** (ZeroG) — currently the highest-priority visual bug. Compare against GL fog math + uniforms.
 - [ ] **Screenshots flipped vertically** — Vulkan-native NDC y-flip vs SDL/PNG row order, somewhere in the readback path.
-- [ ] **Map outlines are 1px wide** at [VulkanMapRenderer.cpp:776](VulkanMapRenderer.cpp#L776). GL uses 2px (`glLineWidth(2.0F)` at [GLRenderer.cpp:676](../OpenGL/GLRenderer.cpp#L676)). Vulkan needs `wideLines` device feature + `lineWidth = 2.0` (or polygon-offset wireframe trick) to match.
+- [x] **Map and model outlines — screen-space cavity post-pass.**
+  Implemented as [VulkanCavityOutlineFilter](VulkanCavityOutlineFilter.cpp)
+  + [CavityOutline.vk.fs](../../../Resources/Shaders/Vulkan/PostFilters/CavityOutline.vk.fs).
+  Single fullscreen pass at the end of the post-filter chain. Samples
+  the offscreen depth attachment at the centre and four cardinal
+  neighbours, reconstructs view-centric world position from each tap
+  via `inverse(scale(0.5) * translate(1) * proj * viewNoTranslation)`
+  (same convention as `VulkanFogFilter`), then measures the
+  out-of-plane distance of each neighbour against the centre's local
+  surface plane. Where that distance exceeds a tunable multiplier of
+  the typical pixel-to-pixel tangent length, a black overlay is
+  composited over the input colour. Distance fade uses the centre
+  tap's view-space distance against `fogDistance`, so it works
+  whether or not the fog filter is enabled.
+
+  Cost is `O(pixels)`, independent of voxel count. Hits map +
+  models + weapons + sprites uniformly because everything writes
+  depth. Works on every Vulkan implementation including MoltenVK
+  (just a fragment shader sampling a 2D depth image — no
+  `wideLines`, no `geometryShader`, no `fillModeNonSolid`).
+
+  The previous attempts were rejected:
+  * **Wireframe back-faces** (`POLYGON_MODE_LINE` + `wideLines`) —
+    `wideLines` unsupported on MoltenVK, and Metal's compute-shader
+    line rasterisation shim flickers at silhouettes.
+  * **Inverted-hull extrusion** — voxel meshes emit per-face vertex
+    copies. Adjacent face vertices push outward in different
+    directions at shared corners, leaving visible seams on every
+    voxel.
+  * **Geometry-shader extrusion** — `geometryShader` unsupported on
+    MoltenVK.
+
+## Outline tuning (future work)
+
+The cavity threshold (`thresholdsScale.x` in
+[VulkanCavityOutlineFilter.cpp](VulkanCavityOutlineFilter.cpp)) and
+edge strength (`invViewportFog.w`) are currently constants. Promote
+to `r_outlinesDepthThreshold` / `r_outlinesStrength` cvars once the
+defaults are confirmed across maps. A second tap pattern using
+reconstructed-normal differences (instead of depth-only) would
+catch interior creases on coplanar voxel arrangements; not needed
+for the current voxel geometry, where cardinal neighbours always
+straddle a depth jump at any visually meaningful edge.
 - [ ] **Mirrored model culling uses `VK_CULL_MODE_FRONT_BIT`** to flip handedness (e.g. left-hand view at [VulkanMapRenderer.cpp:777](VulkanMapRenderer.cpp#L777)). GL flips winding order via `glFrontFace(GL_CCW)`; Vulkan equivalent is toggling `VkPipelineRasterizationStateCreateInfo::frontFace` between `CW` / `COUNTER_CLOCKWISE`, not swapping cull mode. Current approach silently culls visible faces of mirrored geometry. Refactor to flip winding instead.
 - [ ] **PBR (`BasicMapPhys` / `BasicModelVertexColorPhys`) glitch** — visible artifact distinct from the FXAA regression and the AA aliasing. Reproduce with `r_fxaa = 0` and `r_multisamples = 0` (and Vulkan equivalents) before debugging so AA isn't a confound.
 

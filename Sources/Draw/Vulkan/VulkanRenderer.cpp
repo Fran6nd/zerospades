@@ -43,6 +43,7 @@
 #include "VulkanFogFilter.h"
 #include "VulkanDepthOfFieldFilter.h"
 #include "VulkanFXAAFilter.h"
+#include "VulkanCavityOutlineFilter.h"
 #include "VulkanAmbientShadowRenderer.h"
 #include <Gui/SDLVulkanDevice.h>
 #include <Client/GameMap.h>
@@ -166,6 +167,7 @@ namespace spades {
 				fogFilter = stmp::make_unique<VulkanFogFilter>(*this);
 			depthOfFieldFilter = stmp::make_unique<VulkanDepthOfFieldFilter>(*this);
 			fxaaFilter = stmp::make_unique<VulkanFXAAFilter>(*this);
+			cavityOutlineFilter = stmp::make_unique<VulkanCavityOutlineFilter>(*this);
 
 			inited = true;
 			lastSwapchainGeneration = device->GetSwapchainGeneration();
@@ -205,6 +207,7 @@ namespace spades {
 			shadowMapRenderer.reset();
 			ambientShadowRenderer.reset();
 			mapShadowRenderer.reset();
+			cavityOutlineFilter.reset();
 			fxaaFilter.reset();
 			depthOfFieldFilter.reset();
 			fogFilter.reset();
@@ -1788,15 +1791,11 @@ namespace spades {
 				}
 			}
 
-			// Render outlines (wireframe back-faces with depth bias)
-			if ((int)r_outlines) {
-				if (!sceneDef.skipWorld && mapRenderer) {
-					mapRenderer->RenderOutlinePass(commandBuffer);
-				}
-				if (modelRenderer) {
-					modelRenderer->RenderOutlinePass(commandBuffer);
-				}
-			}
+			// Outlines are rendered later as a screen-space cavity post-process
+			// pass (see PP-6 below). The per-renderer wireframe / inverted-hull
+			// approaches were retired because they either flicker on MoltenVK
+			// (line rasterisation), need unsupported features (geom shader), or
+			// leave visible seams at voxel corners (inverted hull).
 
 			// Ghost model pass: depth prepass then semi-transparent color pass
 		if (modelRenderer) {
@@ -2103,6 +2102,17 @@ namespace spades {
 			// PP-5: FXAA
 			if ((int)r_fxaa && fxaaFilter && currentInput && currentOutput) {
 				fxaaFilter->Filter(commandBuffer, currentInput, currentOutput);
+				std::swap(currentInput, currentOutput);
+			}
+
+			// Screen-space cavity / silhouette outline. Runs last so the
+			// outline is drawn on top of all colour grading at exactly screen-
+			// pixel boundaries. Reads the offscreen depth attachment that the
+			// fog / soft-particle path already transitions to SHADER_READ_ONLY
+			// above; takes its own distance fade so it works whether or not
+			// the fog filter is enabled / correct.
+			if ((int)r_outlines && cavityOutlineFilter && currentInput && currentOutput) {
+				cavityOutlineFilter->Filter(commandBuffer, currentInput, currentOutput);
 				std::swap(currentInput, currentOutput);
 			}
 

@@ -92,15 +92,6 @@ namespace spades {
 			}
 		}
 
-		void VulkanModelRenderer::RenderOutlinePass(VkCommandBuffer commandBuffer) {
-			SPADES_MARK_FUNCTION();
-
-			for (const auto& m : models) {
-				VulkanModel* model = m.model;
-				model->RenderOutlinePass(commandBuffer, m.params);
-			}
-		}
-
 		void VulkanModelRenderer::Clear() {
 			SPADES_MARK_FUNCTION();
 

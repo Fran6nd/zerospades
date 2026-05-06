@@ -59,7 +59,6 @@ namespace spades {
 				VkPipeline dlightPipeline;
 				VkPipeline mirroredDlightPipeline;    // same as dlightPipeline, VK_CULL_MODE_FRONT_BIT
 				VkPipeline shadowMapPipeline;
-				VkPipeline outlinesPipeline;
 				VkPipeline ghostDepthPipeline;
 				VkPipeline mirroredGhostDepthPipeline; // same as ghostDepthPipeline, VK_CULL_MODE_FRONT_BIT
 				VkPipeline ghostColorPipeline;
@@ -73,7 +72,6 @@ namespace spades {
 				                  mirroredPipeline(VK_NULL_HANDLE),
 				                  dlightPipeline(VK_NULL_HANDLE), mirroredDlightPipeline(VK_NULL_HANDLE),
 				                  shadowMapPipeline(VK_NULL_HANDLE),
-				                  outlinesPipeline(VK_NULL_HANDLE),
 				                  ghostDepthPipeline(VK_NULL_HANDLE), mirroredGhostDepthPipeline(VK_NULL_HANDLE),
 				                  ghostColorPipeline(VK_NULL_HANDLE), mirroredGhostColorPipeline(VK_NULL_HANDLE),
 				                  pipelineLayout(VK_NULL_HANDLE),
@@ -134,8 +132,6 @@ namespace spades {
 			void RenderDynamicLightPass(VkCommandBuffer commandBuffer,
 			                            std::vector<client::ModelRenderParam> params,
 			                            std::vector<void*> lights) override;
-			void RenderOutlinePass(VkCommandBuffer commandBuffer,
-			                       std::vector<client::ModelRenderParam> params) override;
 
 			IntVector3 GetDimensions() override { return dimensions; }
 			AABB3 GetBoundingBox() override { return boundingBox; }

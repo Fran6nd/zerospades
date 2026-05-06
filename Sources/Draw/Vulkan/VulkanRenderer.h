@@ -60,6 +60,7 @@ namespace spades {
 		class VulkanFogFilter;
 		class VulkanDepthOfFieldFilter;
 		class VulkanFXAAFilter;
+		class VulkanCavityOutlineFilter;
 		class VulkanAmbientShadowRenderer;
 
 		class VulkanRenderer : public client::IRenderer, public client::IGameMapListener {
@@ -154,6 +155,7 @@ namespace spades {
 		std::unique_ptr<VulkanFogFilter> fogFilter;
 		std::unique_ptr<VulkanDepthOfFieldFilter> depthOfFieldFilter;
 		std::unique_ptr<VulkanFXAAFilter> fxaaFilter;
+		std::unique_ptr<VulkanCavityOutlineFilter> cavityOutlineFilter;
 
 			Handle<VulkanImage> whiteImage; // 1x1 white image for solid color rendering
 

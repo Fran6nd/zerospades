@@ -71,6 +71,14 @@ namespace spades {
 			bool dedicatedAllocEnabled;
 			bool bindMemory2Enabled;
 
+			// Optional Vulkan device features. Each is true only if the physical
+			// device reports support AND we requested it in CreateLogicalDevice.
+			bool samplerAnisotropySupported{false};
+			bool sampleRateShadingSupported{false};
+			bool fillModeNonSolidSupported{false};
+			bool wideLinesSupported{false};
+			bool geometryShaderSupported{false};
+
 			// Swapchain generation counter, incremented on every successful recreation
 		uint32_t swapchainGeneration{0};
 
@@ -135,6 +143,15 @@ namespace spades {
 			// Callers can compare against a cached value to detect when dependent resources
 			// (framebuffers, depth image) need to be rebuilt.
 			uint32_t GetSwapchainGeneration() const { return swapchainGeneration; }
+
+			// Optional Vulkan feature availability. Renderers must consult these
+			// before relying on a feature so they can degrade gracefully on
+			// implementations that lack it (notably MoltenVK on macOS).
+			bool HasSamplerAnisotropy() const { return samplerAnisotropySupported; }
+			bool HasSampleRateShading() const { return sampleRateShadingSupported; }
+			bool HasFillModeNonSolid() const { return fillModeNonSolidSupported; }
+			bool HasWideLines() const { return wideLinesSupported; }
+			bool HasGeometryShader() const { return geometryShaderSupported; }
 		};
 
 	} // namespace gui

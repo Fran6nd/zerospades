@@ -75,10 +75,6 @@ namespace spades {
 				vkDestroyPipeline(vkDevice, sharedPipeline.shadowMapPipeline, nullptr);
 				sharedPipeline.shadowMapPipeline = VK_NULL_HANDLE;
 			}
-			if (sharedPipeline.outlinesPipeline != VK_NULL_HANDLE) {
-				vkDestroyPipeline(vkDevice, sharedPipeline.outlinesPipeline, nullptr);
-				sharedPipeline.outlinesPipeline = VK_NULL_HANDLE;
-			}
 			if (sharedPipeline.ghostDepthPipeline != VK_NULL_HANDLE) {
 				vkDestroyPipeline(vkDevice, sharedPipeline.ghostDepthPipeline, nullptr);
 				sharedPipeline.ghostDepthPipeline = VK_NULL_HANDLE;
@@ -200,10 +196,6 @@ namespace spades {
 				if (sharedPipeline.shadowMapPipeline != VK_NULL_HANDLE) {
 					vkDestroyPipeline(vkDevice, sharedPipeline.shadowMapPipeline, nullptr);
 					sharedPipeline.shadowMapPipeline = VK_NULL_HANDLE;
-				}
-				if (sharedPipeline.outlinesPipeline != VK_NULL_HANDLE) {
-					vkDestroyPipeline(vkDevice, sharedPipeline.outlinesPipeline, nullptr);
-					sharedPipeline.outlinesPipeline = VK_NULL_HANDLE;
 				}
 				if (sharedPipeline.ghostDepthPipeline != VK_NULL_HANDLE) {
 					vkDestroyPipeline(vkDevice, sharedPipeline.ghostDepthPipeline, nullptr);
@@ -804,97 +796,6 @@ namespace spades {
 			}
 		}
 
-		void VulkanOptimizedVoxelModel::RenderOutlinePass(VkCommandBuffer commandBuffer,
-		                                                  std::vector<client::ModelRenderParam> params) {
-			SPADES_MARK_FUNCTION();
-
-			if (numIndices == 0 || !vertexBuffer || !indexBuffer)
-				return;
-
-			if (params.empty())
-				return;
-
-			VkRenderPass renderPass = renderer.GetOffscreenRenderPass();
-			if (sharedPipeline.outlinesPipeline == VK_NULL_HANDLE || sharedPipeline.renderPass != renderPass) {
-				CreatePipeline(renderPass);
-			}
-
-			if (sharedPipeline.outlinesPipeline == VK_NULL_HANDLE)
-				return;
-
-			vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, sharedPipeline.outlinesPipeline);
-
-			VkBuffer vb = vertexBuffer->GetBuffer();
-			VkDeviceSize offsets[] = {0};
-			vkCmdBindVertexBuffers(commandBuffer, 0, 1, &vb, offsets);
-			vkCmdBindIndexBuffer(commandBuffer, indexBuffer->GetBuffer(), 0, VK_INDEX_TYPE_UINT32);
-
-			const Matrix4& projectionViewMatrix = renderer.GetProjectionViewMatrix();
-			const auto& eye = renderer.GetSceneDef().viewOrigin;
-			Vector3 fogCol = renderer.GetFogColor();
-			fogCol *= fogCol; // linearize
-			float fogDist = renderer.GetFogDistance();
-			bool mirror = renderer.IsRenderingMirror();
-			int rw = renderer.GetRenderWidth();
-			int rh = renderer.GetRenderHeight();
-
-			for (const auto& param : params) {
-				if (mirror && param.depthHack)
-					continue;
-				if (param.ghost)
-					continue;
-
-				// Frustum cull
-				{
-					const auto& modelOrigin = param.matrix.GetOrigin();
-					float rad = radius * param.matrix.GetAxis(0).GetLength();
-					if (!renderer.SphereFrustrumCull(modelOrigin, rad))
-						continue;
-				}
-
-				Matrix4 mvpMatrix = projectionViewMatrix * param.matrix;
-
-				Vector4 modelWorldPos4 = param.matrix * MakeVector4(origin.x, origin.y, origin.z, 1.0f);
-				float dx = modelWorldPos4.x - eye.x;
-				float dy = modelWorldPos4.y - eye.y;
-				float horzDistSq = dx * dx + dy * dy;
-				float fogDensity = std::min(horzDistSq / (fogDist * fogDist), 1.0f);
-
-				struct {
-					Matrix4 projectionViewModelMatrix;
-					Matrix4 modelMatrix;
-					Vector3 modelOrigin;
-					float fogDensityVal;
-					Vector3 customColor;
-					float _pad;
-					Vector3 fogColor;
-				} pushConstants;
-
-				pushConstants.projectionViewModelMatrix = mvpMatrix;
-				pushConstants.modelMatrix = param.matrix;
-				pushConstants.modelOrigin = origin;
-				pushConstants.fogDensityVal = fogDensity;
-				pushConstants.customColor = param.customColor;
-				pushConstants._pad = 0.0f;
-				pushConstants.fogColor = fogCol;
-
-				vkCmdPushConstants(commandBuffer, sharedPipeline.pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT,
-				                   0, 172, &pushConstants);
-
-				if (param.depthHack) {
-					VkViewport vp{0.0f, (float)rh, (float)rw, -(float)rh, 0.0f, 0.1f};
-					vkCmdSetViewport(commandBuffer, 0, 1, &vp);
-				}
-
-				vkCmdDrawIndexed(commandBuffer, numIndices, 1, 0, 0, 0);
-
-				if (param.depthHack) {
-					VkViewport vp{0.0f, (float)rh, (float)rw, -(float)rh, 0.0f, 1.0f};
-					vkCmdSetViewport(commandBuffer, 0, 1, &vp);
-				}
-			}
-		}
-
 		void VulkanOptimizedVoxelModel::CreatePipeline(VkRenderPass renderPass) {
 			SPADES_MARK_FUNCTION();
 
@@ -1286,95 +1187,9 @@ namespace spades {
 				}
 			}
 
-			// --- Create outline pipeline ---
-			{
-				std::vector<uint32_t> olVertCode = LoadSPIRVFile("Shaders/Vulkan/ModelOutline.vert.spv");
-				std::vector<uint32_t> olFragCode = LoadSPIRVFile("Shaders/Vulkan/Outline.frag.spv");
-
-				VkShaderModuleCreateInfo olVertInfo{};
-				olVertInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-				olVertInfo.codeSize = olVertCode.size() * sizeof(uint32_t);
-				olVertInfo.pCode = olVertCode.data();
-				VkShaderModule olVertModule;
-				result = vkCreateShaderModule(vkDevice, &olVertInfo, nullptr, &olVertModule);
-				if (result != VK_SUCCESS) {
-					SPLog("Warning: Failed to create model outline vertex shader module");
-				} else {
-					VkShaderModuleCreateInfo olFragInfo{};
-					olFragInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-					olFragInfo.codeSize = olFragCode.size() * sizeof(uint32_t);
-					olFragInfo.pCode = olFragCode.data();
-					VkShaderModule olFragModule;
-					result = vkCreateShaderModule(vkDevice, &olFragInfo, nullptr, &olFragModule);
-					if (result != VK_SUCCESS) {
-						vkDestroyShaderModule(vkDevice, olVertModule, nullptr);
-						SPLog("Warning: Failed to create model outline fragment shader module");
-					} else {
-						VkPipelineShaderStageCreateInfo olStages[2]{};
-						olStages[0].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-						olStages[0].stage = VK_SHADER_STAGE_VERTEX_BIT;
-						olStages[0].module = olVertModule;
-						olStages[0].pName = "main";
-						olStages[1].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-						olStages[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-						olStages[1].module = olFragModule;
-						olStages[1].pName = "main";
-
-						VkPipelineRasterizationStateCreateInfo olRasterizer{};
-						olRasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
-						olRasterizer.depthClampEnable = VK_FALSE;
-						olRasterizer.rasterizerDiscardEnable = VK_FALSE;
-						olRasterizer.polygonMode = VK_POLYGON_MODE_LINE;
-						olRasterizer.lineWidth = 1.0f;
-						olRasterizer.cullMode = VK_CULL_MODE_FRONT_BIT;
-						olRasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
-						olRasterizer.depthBiasEnable = VK_TRUE;
-						olRasterizer.depthBiasConstantFactor = 1.0f;
-						olRasterizer.depthBiasSlopeFactor = 1.0f;
-						olRasterizer.depthBiasClamp = 0.0f;
-
-						// No blending for outlines
-						VkPipelineColorBlendAttachmentState olBlend{};
-						olBlend.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
-						                         VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-						olBlend.blendEnable = VK_FALSE;
-
-						VkPipelineColorBlendStateCreateInfo olColorBlending{};
-						olColorBlending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-						olColorBlending.logicOpEnable = VK_FALSE;
-						olColorBlending.attachmentCount = 1;
-						olColorBlending.pAttachments = &olBlend;
-
-						VkGraphicsPipelineCreateInfo olPipelineInfo{};
-						olPipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-						olPipelineInfo.stageCount = 2;
-						olPipelineInfo.pStages = olStages;
-						olPipelineInfo.pVertexInputState = &vertexInputInfo;
-						olPipelineInfo.pInputAssemblyState = &inputAssembly;
-						olPipelineInfo.pViewportState = &viewportState;
-						olPipelineInfo.pRasterizationState = &olRasterizer;
-						olPipelineInfo.pMultisampleState = &multisampling;
-						olPipelineInfo.pDepthStencilState = &depthStencil;
-						olPipelineInfo.pColorBlendState = &olColorBlending;
-						olPipelineInfo.pDynamicState = &dynamicState;
-						olPipelineInfo.layout = sharedPipeline.pipelineLayout;
-						olPipelineInfo.renderPass = renderPass;
-						olPipelineInfo.subpass = 0;
-
-						result = vkCreateGraphicsPipelines(vkDevice, renderer.GetPipelineCache(), 1, &olPipelineInfo, nullptr, &sharedPipeline.outlinesPipeline);
-
-						vkDestroyShaderModule(vkDevice, olVertModule, nullptr);
-						vkDestroyShaderModule(vkDevice, olFragModule, nullptr);
-
-						if (result != VK_SUCCESS) {
-							SPLog("Warning: Failed to create model outline pipeline (error code: %d)", result);
-							sharedPipeline.outlinesPipeline = VK_NULL_HANDLE;
-						} else {
-							SPLog("Created shared model outline pipeline");
-						}
-					}
-				}
-			}
+			// (Outlines are produced by the screen-space cavity post-process
+			// pass — see VulkanCavityOutlineFilter — so the model renderer no
+			// longer owns an outline pipeline.)
 
 			// --- Create ghost depth pipeline (depth prepass for transparent models) ---
 			{

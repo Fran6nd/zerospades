@@ -57,7 +57,6 @@ namespace spades {
 			void Prerender(VkCommandBuffer commandBuffer, bool ghostPass);
 			void RenderSunlightPass(VkCommandBuffer commandBuffer, bool ghostPass);
 			void RenderDynamicLightPass(VkCommandBuffer commandBuffer, std::vector<void*> lights);
-			void RenderOutlinePass(VkCommandBuffer commandBuffer);
 
 			void Clear();
 		};

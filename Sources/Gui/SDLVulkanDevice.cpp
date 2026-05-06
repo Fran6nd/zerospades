@@ -405,21 +405,38 @@ namespace spades {
 			vkGetPhysicalDeviceFeatures(physicalDevice, &supportedFeatures);
 
 			VkPhysicalDeviceFeatures deviceFeatures{};
-			// Only enable features that are actually supported
-			if (supportedFeatures.samplerAnisotropy) {
+			// Only enable features that the physical device reports as supported.
+			// Each flag is also stored on the device so renderers can probe it
+			// later via Has*() and degrade gracefully when missing.
+			samplerAnisotropySupported = supportedFeatures.samplerAnisotropy == VK_TRUE;
+			if (samplerAnisotropySupported) {
 				deviceFeatures.samplerAnisotropy = VK_TRUE;
 			} else {
 				SPLog("Warning: Anisotropic filtering not supported on this device");
 			}
-			if (supportedFeatures.sampleRateShading) {
+			sampleRateShadingSupported = supportedFeatures.sampleRateShading == VK_TRUE;
+			if (sampleRateShadingSupported) {
 				deviceFeatures.sampleRateShading = VK_TRUE;
 			} else {
 				SPLog("Warning: Sample rate shading not supported on this device");
 			}
-			if (supportedFeatures.fillModeNonSolid) {
+			fillModeNonSolidSupported = supportedFeatures.fillModeNonSolid == VK_TRUE;
+			if (fillModeNonSolidSupported) {
 				deviceFeatures.fillModeNonSolid = VK_TRUE;
 			} else {
-				SPLog("Warning: fillModeNonSolid not supported - outlines will be disabled");
+				SPLog("Warning: fillModeNonSolid not supported - wireframe outlines unavailable");
+			}
+			wideLinesSupported = supportedFeatures.wideLines == VK_TRUE;
+			if (wideLinesSupported) {
+				deviceFeatures.wideLines = VK_TRUE;
+			} else {
+				SPLog("Warning: wideLines not supported - line outlines limited to 1px");
+			}
+			geometryShaderSupported = supportedFeatures.geometryShader == VK_TRUE;
+			if (geometryShaderSupported) {
+				deviceFeatures.geometryShader = VK_TRUE;
+			} else {
+				SPLog("Warning: geometryShader not supported - geom-shader paths disabled");
 			}
 
 			VkDeviceCreateInfo createInfo{};

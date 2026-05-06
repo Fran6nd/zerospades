@@ -54,9 +54,6 @@ namespace spades {
 			                                    std::vector<client::ModelRenderParam> params,
 			                                    std::vector<void*> lights) = 0;
 
-			virtual void RenderOutlinePass(VkCommandBuffer commandBuffer,
-			                               std::vector<client::ModelRenderParam> params) = 0;
-
 		private:
 			// members used when rendering by VulkanModelRenderer
 			int renderId;
