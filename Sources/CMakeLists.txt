@@ -200,21 +200,21 @@ endif()
 if(USE_VULKAN)
 	if(APPLE AND MOLTENVK_LIBRARY)
 		# Link directly to MoltenVK on macOS (no Vulkan loader needed)
-		target_link_libraries(OpenSpades ${MOLTENVK_LIBRARY})
+		target_link_libraries(ZeroSpades ${MOLTENVK_LIBRARY})
 	else()
-		target_link_libraries(OpenSpades Vulkan::Vulkan)
+		target_link_libraries(ZeroSpades Vulkan::Vulkan)
 	endif()
 	if(Vulkan_INCLUDE_DIRS)
-		target_include_directories(OpenSpades PRIVATE ${Vulkan_INCLUDE_DIRS})
+		target_include_directories(ZeroSpades PRIVATE ${Vulkan_INCLUDE_DIRS})
 	endif()
 
 	# Link spirv-cross if available
 	if(HAVE_SPIRV_CROSS)
-		target_link_libraries(OpenSpades ${SPIRV_CROSS_LIBRARIES})
+		target_link_libraries(ZeroSpades ${SPIRV_CROSS_LIBRARIES})
 		if(SPIRV_CROSS_INCLUDE_DIR)
-			target_include_directories(OpenSpades PRIVATE ${SPIRV_CROSS_INCLUDE_DIR})
+			target_include_directories(ZeroSpades PRIVATE ${SPIRV_CROSS_INCLUDE_DIR})
 		endif()
-		target_compile_definitions(OpenSpades PRIVATE HAVE_SPIRV_CROSS=1)
+		target_compile_definitions(ZeroSpades PRIVATE HAVE_SPIRV_CROSS=1)
 	endif()
 endif()
 
@@ -272,10 +272,10 @@ if(APPLE)
 
 	# Bundle all third-party dylibs into the .app and fix load paths.
 	# This handles MoltenVK, glslang, spirv-cross, and any transitive dependencies.
-	add_custom_command(TARGET OpenSpades POST_BUILD
+	add_custom_command(TARGET ZeroSpades POST_BUILD
 		COMMAND bash "${CMAKE_SOURCE_DIR}/cmake/bundle_macos_dylibs.sh"
-			"$<TARGET_FILE:OpenSpades>"
-			"$<TARGET_BUNDLE_CONTENT_DIR:OpenSpades>/Frameworks"
+			"$<TARGET_FILE:ZeroSpades>"
+			"$<TARGET_BUNDLE_CONTENT_DIR:ZeroSpades>/Frameworks"
 		COMMENT "Bundling third-party dylibs into macOS app"
 	)
 

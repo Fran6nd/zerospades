@@ -136,7 +136,7 @@ if(ZEROSPADES_RESOURCES)
 
 	# Ensure shaders are compiled before pak files are built
 	if(USE_VULKAN AND TARGET compile_vulkan_shaders)
-		add_dependencies(OpenSpades_Resources compile_vulkan_shaders)
+		add_dependencies(ZeroSpades_Resources compile_vulkan_shaders)
 	endif()
 
 	if(WIN32)
