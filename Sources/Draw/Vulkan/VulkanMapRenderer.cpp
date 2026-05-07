@@ -582,19 +582,21 @@ namespace spades {
 			// Descriptor set layout:
 			//   binding 0 — heightmap shadow 2D texture
 			//   binding 1 — per-block ambient occlusion 3D texture
-			VkDescriptorSetLayoutBinding bindings[2]{};
-			bindings[0].binding = 0;
-			bindings[0].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-			bindings[0].descriptorCount = 1;
-			bindings[0].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-			bindings[1].binding = 1;
-			bindings[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-			bindings[1].descriptorCount = 1;
-			bindings[1].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+			//   binding 2 — radiosity flat (directional GI base) 3D texture
+			//   binding 3 — radiosity X 3D texture
+			//   binding 4 — radiosity Y 3D texture
+			//   binding 5 — radiosity Z 3D texture
+			VkDescriptorSetLayoutBinding bindings[6]{};
+			for (uint32_t i = 0; i < 6; ++i) {
+				bindings[i].binding = i;
+				bindings[i].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+				bindings[i].descriptorCount = 1;
+				bindings[i].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+			}
 
 			VkDescriptorSetLayoutCreateInfo descriptorLayoutInfo{};
 			descriptorLayoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-			descriptorLayoutInfo.bindingCount = 2;
+			descriptorLayoutInfo.bindingCount = 6;
 			descriptorLayoutInfo.pBindings = bindings;
 
 			result = vkCreateDescriptorSetLayout(vkDevice, &descriptorLayoutInfo, nullptr, &descriptorSetLayout);
@@ -604,7 +606,7 @@ namespace spades {
 
 			VkDescriptorPoolSize poolSize{};
 			poolSize.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-			poolSize.descriptorCount = 2;
+			poolSize.descriptorCount = 6;
 
 			VkDescriptorPoolCreateInfo poolInfo{};
 			poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
@@ -852,7 +854,12 @@ namespace spades {
 
 		void VulkanMapRenderer::UpdateShadowDescriptor(VulkanImage* shadowImage,
 		                                                VkImageView aoView,
-		                                                VkSampler aoSampler) {
+		                                                VkSampler aoSampler,
+		                                                VkImageView radFlatView,
+		                                                VkImageView radXView,
+		                                                VkImageView radYView,
+		                                                VkImageView radZView,
+		                                                VkSampler radSampler) {
 			if (!shadowImage || textureDescriptorSet == VK_NULL_HANDLE)
 				return;
 
@@ -866,7 +873,15 @@ namespace spades {
 			aoInfo.imageView = aoView;
 			aoInfo.sampler = aoSampler;
 
-			VkWriteDescriptorSet writes[2]{};
+			VkDescriptorImageInfo radInfos[4]{};
+			VkImageView radViews[4] = {radFlatView, radXView, radYView, radZView};
+			for (int i = 0; i < 4; ++i) {
+				radInfos[i].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+				radInfos[i].imageView = radViews[i];
+				radInfos[i].sampler = radSampler;
+			}
+
+			VkWriteDescriptorSet writes[6]{};
 			writes[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 			writes[0].dstSet = textureDescriptorSet;
 			writes[0].dstBinding = 0;
@@ -879,8 +894,16 @@ namespace spades {
 			writes[1].descriptorCount = 1;
 			writes[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 			writes[1].pImageInfo = &aoInfo;
+			for (int i = 0; i < 4; ++i) {
+				writes[2 + i].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+				writes[2 + i].dstSet = textureDescriptorSet;
+				writes[2 + i].dstBinding = static_cast<uint32_t>(2 + i);
+				writes[2 + i].descriptorCount = 1;
+				writes[2 + i].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+				writes[2 + i].pImageInfo = &radInfos[i];
+			}
 
-			vkUpdateDescriptorSets(device->GetDevice(), 2, writes, 0, nullptr);
+			vkUpdateDescriptorSets(device->GetDevice(), 6, writes, 0, nullptr);
 		}
 
 	} // namespace draw

@@ -22,6 +22,12 @@
 
 // Ghost (semi-transparent) variant of BasicModelVertexColorPhys.frag.
 // Identical physical lighting, but outputs alpha = 0.5 for SRC_ALPHA blending.
+//
+// Ghosts intentionally skip directional radiosity — they render as a
+// translucent silhouette (placement preview, etc.), where the cheaper
+// hemisphere fallback is good enough and avoids extra texture bandwidth.
+// The VS outputs `radiosityTextureCoord` / `normalVarying` at locations
+// 10-11; we leave them unmatched here, which Vulkan permits.
 
 layout(set = 0, binding = 0) uniform sampler2D mapShadowTexture;
 layout(set = 0, binding = 1) uniform sampler3D ambientShadowTexture;

@@ -870,11 +870,16 @@ namespace spades {
 				mapRenderer = stmp::make_unique<VulkanMapRenderer>(map, *this);
 				mapRenderer->CreatePipelines(framebufferManager->GetRenderPass()); // Use offscreen render pass for 3D rendering
 				// Link shadow texture to map renderer
-				if (mapShadowRenderer && ambientShadowRenderer) {
+				if (mapShadowRenderer && ambientShadowRenderer && radiosityRenderer) {
 					mapRenderer->UpdateShadowDescriptor(
 						mapShadowRenderer->GetShadowImage(),
 						ambientShadowRenderer->GetImageView(),
-						ambientShadowRenderer->GetSampler());
+						ambientShadowRenderer->GetSampler(),
+						radiosityRenderer->GetImageViewFlat(),
+						radiosityRenderer->GetImageViewX(),
+						radiosityRenderer->GetImageViewY(),
+						radiosityRenderer->GetImageViewZ(),
+						radiosityRenderer->GetSampler());
 				}
 			} else {
 				mapRenderer.reset();

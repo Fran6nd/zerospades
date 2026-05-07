@@ -15,19 +15,6 @@ rough/aliased because the Vulkan path has **no AA at all**.
       and `rasterizationSamples` plumbed through every pipeline.
 - [ ] **Temporal AA** — not ported.
 
-## Progressive lighting gap
-
-Without these the world looks like it "pops in" because new chunks arrive
-with their final flat shading on frame 0; OpenGL refines block-level
-lighting over many frames so geometry visually settles. Affects map AND
-voxel models — both currently use the "null radiosity" hemisphere fallback
-in [BasicMap.vert:60-64](../../../Resources/Shaders/Vulkan/BasicMap.vert) and
-[BasicModelVertexColor.vert:60-64](../../../Resources/Shaders/Vulkan/BasicModelVertexColor.vert).
-
-- [ ] **Radiosity Renderer** — port
-      [GLRadiosityRenderer.cpp](../OpenGL/GLRadiosityRenderer.cpp).
-      Four 3D textures (`flat`, `X`, `Y`, `Z`) + per-block update queue.
-
 ## Post-processing filters
 
 Auto Exposure, Bloom, Fog and Depth of Field are done.

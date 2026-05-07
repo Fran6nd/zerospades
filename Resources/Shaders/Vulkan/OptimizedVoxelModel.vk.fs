@@ -62,7 +62,11 @@ vec3 EvaluateSunLight() {
 }
 
 vec3 EvaluateAmbientLight(float detailAmbientOcclusion) {
-	// TODO: Implement proper radiosity evaluation
+	// NOTE: This standalone .vk.fs shader is a leftover scaffold and is
+	// not used by the live voxel-model pipeline (VulkanOptimizedVoxelModel
+	// uses BasicModelVertexColor.{vert,frag} where directional radiosity
+	// from VulkanRadiosityRenderer is sampled — see BasicModelVertexColor.frag).
+	// Keep the cheap fallback here so the file still compiles.
 	return vec3(0.4) * detailAmbientOcclusion;
 }
 

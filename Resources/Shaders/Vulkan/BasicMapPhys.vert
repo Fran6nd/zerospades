@@ -45,6 +45,8 @@ layout(location = 5) out vec3 viewSpaceCoord;
 layout(location = 6) out vec3 viewSpaceNormal;
 layout(location = 7) out vec3 reflectionDir;
 layout(location = 8) out vec3 aoCoord;          // 3D coords into AO texture
+layout(location = 9) out vec3 radiosityTextureCoord; // 3D coords into radiosity textures
+layout(location = 10) out vec3 normalVarying;   // world-space surface normal
 
 void main() {
 	vec3 position = vec3(positionAttribute);
@@ -84,4 +86,8 @@ void main() {
 	reflectionDir = reflect(worldPos.xyz - pushConstants.viewOrigin, normalFloat);
 
 	aoCoord = (worldPos.xyz + vec3(0.0, 0.0, 1.0)) / vec3(512.0, 512.0, 65.0);
+
+	// Radiosity 3D-texture coords (matches GL MapRadiosity.vs).
+	radiosityTextureCoord = worldPos.xyz / vec3(512.0, 512.0, 64.0);
+	normalVarying = normalFloat;
 }

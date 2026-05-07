@@ -118,8 +118,15 @@ namespace spades {
 			// Writes the per-frame texture descriptor set:
 			//   binding 0 = map (heightmap) shadow 2D texture
 			//   binding 1 = per-block ambient occlusion 3D texture
+			//   binding 2 = radiosity flat (directional GI base) 3D texture
+			//   binding 3 = radiosity X (per-axis directional GI) 3D texture
+			//   binding 4 = radiosity Y (per-axis directional GI) 3D texture
+			//   binding 5 = radiosity Z (per-axis directional GI) 3D texture
 			void UpdateShadowDescriptor(VulkanImage* shadowImage,
-			                            VkImageView aoView, VkSampler aoSampler);
+			                            VkImageView aoView, VkSampler aoSampler,
+			                            VkImageView radFlatView, VkImageView radXView,
+			                            VkImageView radYView, VkImageView radZView,
+			                            VkSampler radSampler);
 
 			VkDescriptorSet GetShadowDescriptorSet() const { return textureDescriptorSet; }
 			VkDescriptorSetLayout GetShadowDescriptorSetLayout() const { return descriptorSetLayout; }

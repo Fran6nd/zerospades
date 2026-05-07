@@ -980,20 +980,22 @@ namespace spades {
 			// renderer's descriptor set (see RenderSunlightPass below).
 			//   binding 0 — heightmap shadow 2D texture
 			//   binding 1 — per-block ambient occlusion 3D texture
+			//   binding 2 — radiosity flat (directional GI base) 3D texture
+			//   binding 3 — radiosity X 3D texture
+			//   binding 4 — radiosity Y 3D texture
+			//   binding 5 — radiosity Z 3D texture
 			{
-				VkDescriptorSetLayoutBinding bindings[2]{};
-				bindings[0].binding = 0;
-				bindings[0].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-				bindings[0].descriptorCount = 1;
-				bindings[0].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-				bindings[1].binding = 1;
-				bindings[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-				bindings[1].descriptorCount = 1;
-				bindings[1].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+				VkDescriptorSetLayoutBinding bindings[6]{};
+				for (uint32_t i = 0; i < 6; ++i) {
+					bindings[i].binding = i;
+					bindings[i].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+					bindings[i].descriptorCount = 1;
+					bindings[i].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+				}
 
 				VkDescriptorSetLayoutCreateInfo descriptorLayoutInfo{};
 				descriptorLayoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-				descriptorLayoutInfo.bindingCount = 2;
+				descriptorLayoutInfo.bindingCount = 6;
 				descriptorLayoutInfo.pBindings = bindings;
 
 				result = vkCreateDescriptorSetLayout(vkDevice, &descriptorLayoutInfo, nullptr, &sharedPipeline.descriptorSetLayout);

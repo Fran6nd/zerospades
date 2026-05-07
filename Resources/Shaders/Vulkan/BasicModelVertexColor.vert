@@ -41,6 +41,8 @@ layout(location = 3) out vec3 shadowCoord;     // shadow map coordinates
 layout(location = 4) out vec3 fogDensityOut;
 layout(location = 5) out vec3 outFogColor;
 layout(location = 6) out vec3 aoCoord;          // 3D coords into AO texture
+layout(location = 7) out vec3 radiosityTextureCoord; // 3D coords into radiosity textures
+layout(location = 8) out vec3 normalVarying;    // world-space surface normal
 
 void main() {
 	// Convert uint8 position to float
@@ -78,4 +80,8 @@ void main() {
 
 	// AO 3D-texture coords (matches BasicMap; 512x512x65 texture).
 	aoCoord = (worldPos + vec3(0.0, 0.0, 1.0)) / vec3(512.0, 512.0, 65.0);
+
+	// Radiosity 3D-texture coords (matches GL MapRadiosity.vs).
+	radiosityTextureCoord = worldPos / vec3(512.0, 512.0, 64.0);
+	normalVarying = normalFloat;
 }

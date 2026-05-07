@@ -22,6 +22,12 @@
 
 // Ghost (semi-transparent) variant of BasicModelVertexColor.frag.
 // Identical lighting, but outputs alpha = pushConstants._pad (param.opacity).
+//
+// Ghosts intentionally skip directional radiosity — they render as a
+// translucent silhouette (placement preview, etc.), where the cheaper
+// hemisphere fallback is good enough and avoids extra texture bandwidth.
+// The VS outputs `radiosityTextureCoord` / `normalVarying` at locations
+// 7-8; we leave them unmatched here, which Vulkan permits.
 
 layout(push_constant) uniform PushConstants {
 	mat4 projectionViewMatrix;

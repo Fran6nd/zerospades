@@ -22,6 +22,10 @@
 
 layout(set = 0, binding = 0) uniform sampler2D mapShadowTexture;
 layout(set = 0, binding = 1) uniform sampler3D ambientShadowTexture;
+layout(set = 0, binding = 2) uniform sampler3D radiosityTextureFlat;
+layout(set = 0, binding = 3) uniform sampler3D radiosityTextureX;
+layout(set = 0, binding = 4) uniform sampler3D radiosityTextureY;
+layout(set = 0, binding = 5) uniform sampler3D radiosityTextureZ;
 
 layout(push_constant) uniform PushConstants {
 	mat4 projectionViewMatrix;
@@ -46,8 +50,16 @@ layout(location = 6) in vec3 viewSpaceCoord;
 layout(location = 7) in vec3 viewSpaceNormal;
 layout(location = 8) in vec3 reflectionDir;
 layout(location = 9) in vec3 aoCoord;          // 3D coords into AO texture
+layout(location = 10) in vec3 radiosityTextureCoord;
+layout(location = 11) in vec3 normalVarying;
 
 layout(location = 0) out vec4 fragColor;
+
+vec3 DecodeRadiosityValue(vec3 val) {
+	val *= 1023.0 / 1022.0;
+	val = (val * 2.0) - 1.0;
+	return val;
+}
 
 // Oren-Nayar diffuse BRDF
 float OrenNayar(float sigma, float dotLight, float dotEye) {
@@ -120,8 +132,19 @@ void main() {
 	vec2 ambTexVal = texture(ambientShadowTexture, aoCoord).xy;
 	float aoFactor = max(ambTexVal.x / max(ambTexVal.y, 0.25), 0.0);
 
+	// Directional radiosity (port of GL MapRadiosity.fs EvaluateRadiosity)
+	vec3 radiosity = DecodeRadiosityValue(texture(radiosityTextureFlat, radiosityTextureCoord).xyz);
+	vec3 nrm = normalize(normalVarying);
+	radiosity += nrm.x * DecodeRadiosityValue(texture(radiosityTextureX, radiosityTextureCoord).xyz);
+	radiosity += nrm.y * DecodeRadiosityValue(texture(radiosityTextureY, radiosityTextureCoord).xyz);
+	radiosity += nrm.z * DecodeRadiosityValue(texture(radiosityTextureZ, radiosityTextureCoord).xyz);
+	radiosity = max(radiosity, 0.0) * 1.5;
+
+	float aoTerm = aoFactor * (0.8 - nrm.z * 0.2);
+	vec3 ambientColor = mix(inFogColor, vec3(1.0), 0.5);
+
 	fragColor = vec4(vertexColor, 1.0);
-	vec3 diffuseShading = ambientLight * aoFactor;
+	vec3 diffuseShading = radiosity + aoTerm * ambientColor;
 	float shadowing = shadow * 0.6;
 
 	vec3 eyeVec = -normalize(viewSpaceCoord);

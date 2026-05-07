@@ -22,16 +22,28 @@
 
 layout(set = 0, binding = 0) uniform sampler2D mapShadowTexture;
 layout(set = 0, binding = 1) uniform sampler3D ambientShadowTexture;
+layout(set = 0, binding = 2) uniform sampler3D radiosityTextureFlat;
+layout(set = 0, binding = 3) uniform sampler3D radiosityTextureX;
+layout(set = 0, binding = 4) uniform sampler3D radiosityTextureY;
+layout(set = 0, binding = 5) uniform sampler3D radiosityTextureZ;
 
 layout(location = 0) in vec4 color;           // xyz = vertexColor, w = sun lambert
-layout(location = 1) in vec3 ambientLight;     // hemisphere ambient fallback
+layout(location = 1) in vec3 ambientLight;     // hemisphere ambient fallback (kept for VS↔FS compat)
 layout(location = 2) in vec3 customColor;
 layout(location = 3) in vec3 shadowCoord;
 layout(location = 4) in vec3 fogDensity;
 layout(location = 5) in vec3 inFogColor;
 layout(location = 6) in vec3 aoCoord;          // 3D coords into AO texture
+layout(location = 7) in vec3 radiosityTextureCoord;
+layout(location = 8) in vec3 normalVarying;
 
 layout(location = 0) out vec4 fragColor;
+
+vec3 DecodeRadiosityValue(vec3 val) {
+	val *= 1023.0 / 1022.0;
+	val = (val * 2.0) - 1.0;
+	return val;
+}
 
 void main() {
 	// Evaluate map shadow (matching OpenGL Map.fs: EvaluateMapShadow)
@@ -53,10 +65,21 @@ void main() {
 	vec2 ambTexVal = texture(ambientShadowTexture, aoCoord).xy;
 	float aoFactor = max(ambTexVal.x / max(ambTexVal.y, 0.25), 0.0);
 
-	// Combine lighting: ambient (hemisphere * AO) + sun * shadow
+	// Directional radiosity (port of GL MapRadiosity.fs EvaluateRadiosity)
+	vec3 radiosity = DecodeRadiosityValue(texture(radiosityTextureFlat, radiosityTextureCoord).xyz);
+	vec3 nrm = normalize(normalVarying);
+	radiosity += nrm.x * DecodeRadiosityValue(texture(radiosityTextureX, radiosityTextureCoord).xyz);
+	radiosity += nrm.y * DecodeRadiosityValue(texture(radiosityTextureY, radiosityTextureCoord).xyz);
+	radiosity += nrm.z * DecodeRadiosityValue(texture(radiosityTextureZ, radiosityTextureCoord).xyz);
+	radiosity = max(radiosity, 0.0) * 1.5;
+
+	float aoTerm = aoFactor * (0.8 - nrm.z * 0.2);
+	vec3 ambientColor = mix(inFogColor, vec3(1.0), 0.5);
+
+	// Combine lighting: directional radiosity + AO·skyAmbient + sun · shadow
 	float sunLambert = color.w;
 	vec3 sun = vec3(0.6) * sunLambert * shadow;
-	fragColor = vec4(vertexColor * (ambientLight * aoFactor + sun), 1.0);
+	fragColor = vec4(vertexColor * (radiosity + aoTerm * ambientColor + sun), 1.0);
 
 	// Apply fog fading
 	fragColor.xyz = mix(fragColor.xyz, inFogColor, fogDensity);
