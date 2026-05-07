@@ -65,6 +65,15 @@ namespace spades {
 			void Update(VkCommandBuffer commandBuffer);
 
 			VulkanImage* GetShadowImage() { return shadowImage.GetPointerOrNull(); }
+
+			// Read access to the CPU-side shadow column bitmap. Each pixel
+			// is encoded as in GLMapShadowRenderer: alpha=depth(0..63), low
+			// bit 7 of the BGR triple flags side-faces vs top-faces, RGB =
+			// 6-bit color of the surface block. Used by the radiosity
+			// evaluator.
+			const std::vector<uint32_t>& GetBitmap() const { return bitmap; }
+			int GetWidth() const { return w; }
+			int GetHeight() const { return h; }
 		};
 	} // namespace draw
 } // namespace spades

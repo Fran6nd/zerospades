@@ -45,6 +45,7 @@
 #include "VulkanFXAAFilter.h"
 #include "VulkanCavityOutlineFilter.h"
 #include "VulkanAmbientShadowRenderer.h"
+#include "VulkanRadiosityRenderer.h"
 #include <Gui/SDLVulkanDevice.h>
 #include <Client/GameMap.h>
 #include <Core/Bitmap.h>
@@ -206,6 +207,7 @@ namespace spades {
 			waterRenderer.reset();
 			shadowMapRenderer.reset();
 			ambientShadowRenderer.reset();
+			radiosityRenderer.reset();
 			mapShadowRenderer.reset();
 			cavityOutlineFilter.reset();
 			fxaaFilter.reset();
@@ -856,9 +858,11 @@ namespace spades {
 			if (map) {
 				mapShadowRenderer = stmp::make_unique<VulkanMapShadowRenderer>(*this, map);
 				ambientShadowRenderer = stmp::make_unique<VulkanAmbientShadowRenderer>(*this, *map);
+				radiosityRenderer = stmp::make_unique<VulkanRadiosityRenderer>(*this, *map);
 			} else {
 				mapShadowRenderer.reset();
 				ambientShadowRenderer.reset();
+				radiosityRenderer.reset();
 			}
 
 			// Initialize map renderer
@@ -1477,6 +1481,8 @@ namespace spades {
 				mapShadowRenderer->GameMapChanged(x, y, z, map);
 			if (ambientShadowRenderer)
 				ambientShadowRenderer->GameMapChanged(x, y, z, map);
+			if (radiosityRenderer)
+				radiosityRenderer->GameMapChanged(x, y, z, map);
 			if (flatMapRenderer)
 				flatMapRenderer->GameMapChanged(x, y, z, *map);
 			if (waterRenderer)
@@ -1617,6 +1623,12 @@ namespace spades {
 		// dispatch finished computing this frame.
 		if (sceneUsedInThisFrame && ambientShadowRenderer) {
 			ambientShadowRenderer->Update(commandBuffer);
+		}
+
+		// Upload any radiosity (flat / X / Y / Z) chunks that finished
+		// recomputing on the worker thread this frame.
+		if (sceneUsedInThisFrame && radiosityRenderer) {
+			radiosityRenderer->Update(commandBuffer);
 		}
 
 		// Render shadow maps BEFORE starting main render pass (shadow maps use their own render passes)

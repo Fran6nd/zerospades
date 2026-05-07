@@ -62,6 +62,7 @@ namespace spades {
 		class VulkanFXAAFilter;
 		class VulkanCavityOutlineFilter;
 		class VulkanAmbientShadowRenderer;
+		class VulkanRadiosityRenderer;
 
 		class VulkanRenderer : public client::IRenderer, public client::IGameMapListener {
 			struct DebugLine {
@@ -144,6 +145,7 @@ namespace spades {
 			std::unique_ptr<VulkanShadowMapRenderer> shadowMapRenderer;
 			std::unique_ptr<VulkanMapShadowRenderer> mapShadowRenderer;
 			std::unique_ptr<VulkanAmbientShadowRenderer> ambientShadowRenderer;
+			std::unique_ptr<VulkanRadiosityRenderer> radiosityRenderer;
 			std::unique_ptr<VulkanFramebufferManager> framebufferManager;
 			Handle<VulkanProgramManager> programManager;
 			Handle<VulkanModelManager> modelManager;
@@ -305,6 +307,7 @@ namespace spades {
 			VulkanShadowMapRenderer* GetShadowMapRenderer() { return shadowMapRenderer.get(); }
 			VulkanMapShadowRenderer* GetMapShadowRenderer() { return mapShadowRenderer.get(); }
 			VulkanAmbientShadowRenderer* GetAmbientShadowRenderer() { return ambientShadowRenderer.get(); }
+			VulkanRadiosityRenderer* GetRadiosityRenderer() { return radiosityRenderer.get(); }
 			VulkanFramebufferManager* GetFramebufferManager() { return framebufferManager.get(); }
 			VkPipelineCache GetPipelineCache() const;
 
