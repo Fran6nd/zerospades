@@ -116,19 +116,19 @@ done
 
 # Re-sign everything install_name_tool touched. Mach-O edits invalidate the
 # existing signature and arm64 macOS refuses to load unsigned pages.
-# Sign each Mach-O through a hardlink outside the .app: codesign auto-detects
-# bundle layout from the path and rejects "detritus" xattrs that iCloud /
-# Finder reapply on parent directories faster than we can strip them. A
-# hardlink in a neutral directory shares the inode so the binary inside the
-# bundle gets signed, while codesign sees a plain Mach-O.
+# Sign each Mach-O through a temporary copy outside the .app: codesign auto-
+# detects bundle layout from the path and rejects "detritus" xattrs that iCloud
+# / Finder reapply on parent directories faster than we can strip them. macOS
+# 26 changed codesign to allocate a new inode when rewriting the signature, so
+# a hardlink no longer reflects back to the original path — copy out, sign in
+# the neutral location, then move back over the original.
 sign_mach_o() {
     local target="$1"
-    xattr -d com.apple.provenance "$target" 2>/dev/null || true
-    local link
-    link="$(mktemp -u "${TMPDIR:-/tmp}/cs.XXXXXX")"
-    ln "$target" "$link"
-    codesign --force --sign - "$link"
-    rm -f "$link"
+    local tmp
+    tmp="$(mktemp -u "${TMPDIR:-/tmp}/cs.XXXXXX")"
+    cp "$target" "$tmp"
+    codesign --force --sign - "$tmp"
+    mv "$tmp" "$target"
 }
 
 for dylib in "$FRAMEWORKS_DIR"/*.dylib; do
