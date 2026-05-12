@@ -1457,6 +1457,18 @@ namespace spades {
 
 			stagingBuffer->Unmap();
 
+			// Flip vertically: the offscreen framebuffer is laid out with row 0
+			// at the bottom of the displayed scene (viewport y is inverted at
+			// draw time, but the readback returns raw memory order). PNG wants
+			// row 0 at the top, so swap row pairs in place.
+			for (int y = 0; y < renderHeight / 2; y++) {
+				uint32_t* topRow = pixels + (size_t)y * renderWidth;
+				uint32_t* bottomRow = pixels + (size_t)(renderHeight - 1 - y) * renderWidth;
+				for (int x = 0; x < renderWidth; x++) {
+					std::swap(topRow[x], bottomRow[x]);
+				}
+			}
+
 			// Present the swapchain image acquired by StartScene. Without this
 			// the screenshot path leaks an acquired-but-never-presented image
 			// every call, exhausting the swapchain pool after a few shots and
