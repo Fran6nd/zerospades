@@ -1539,8 +1539,10 @@ namespace spades {
 			if (localPlayerIsSpectator) {
 				addLine(_Tr("Client", "[{0}] Toggle player names",
 					TrKey(cg_keyToggleSpectatorNames)));
-				addLine(_Tr("Client", "[{0}] Toggle ESP",
-					TrKey(cg_keyStaffSpectating)));
+				bool isStaff = activeNet && activeNet->GetGameProperties()->isStaff;
+				if (isStaff || IsDemoMode())
+					addLine(_Tr("Client", "[{0}] Toggle ESP",
+						TrKey(cg_keyStaffSpectating)));
 			}
 
 			y += lh * 0.5F;
