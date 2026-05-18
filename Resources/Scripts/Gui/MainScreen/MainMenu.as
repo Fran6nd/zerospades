@@ -509,21 +509,38 @@ namespace spades {
 				if (msg.length > 0) {
 					// try to make the "disconnected" message more friendly.
 					string findStr = "Disconnected:";
-					if (msg.findFirst(findStr) >= 0) {
-						int ind1 = msg.findFirst(findStr);
-						int ind2 = msg.findFirst("\n", ind1);
+					int ind1 = msg.findFirst(findStr);
+					if (ind1 >= 0) {
+						// The reason can span multiple lines (e.g. the protocol
+						// extension handshake report). SPRaise always appends
+						// "\nat <file>:<line>" right after the message, so use
+						// that marker as the boundary rather than the first
+						// newline.
+						int contentStart = ind1 + findStr.length;
+						int ind2 = msg.findFirst("\nat ", contentStart);
 						if (ind2 < 0)
 							ind2 = msg.length;
-						ind1 += findStr.length;
-						msg = msg.substr(ind1, ind2 - ind1);
+						string reason = msg.substr(contentStart, ind2 - contentStart);
+						// drop the leading space coming from "Disconnected: %s"
+						if (reason.length > 0 and reason[0] == 0x20)
+							reason = reason.substr(1, reason.length - 1);
 						msg = _Tr(
 							"MainScreen",
 							"You were disconnected from the server because of the following reason:\n\n{0}",
-							msg);
+							reason);
 					}
 
-					// failed to connect.
-					AlertScreen al(this, msg);
+					// Size the popup so the extension handshake report doesn't get
+					// cramped — but cap it so it never overflows the screen.
+					int lineCount = int(msg.split("\n").length);
+					float h = float(lineCount) * 18.0F + 90.0F;
+					if (h < 200.0F)
+						h = 200.0F;
+					float maxH = Manager.ScreenHeight - 100.0F;
+					if (h > maxH)
+						h = maxH;
+
+					AlertScreen al(this, msg, h);
 					al.Run();
 				}
 			}
