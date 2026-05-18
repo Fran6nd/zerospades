@@ -30,22 +30,40 @@
 #include <Core/Exception.h>
 #include <Core/FileManager.h>
 #include <Core/Math.h>
+#include <Core/Settings.h>
 #include <Gui/SDLVulkanDevice.h>
 #include <cmath>
 #include <cstring>
 
+SPADES_SETTING(r_fogShadow);
+
 namespace spades {
 	namespace draw {
 
-		// Push constants layout (matches Fog2.vk.vs + Fog2.vk.fs, total = 128 bytes).
-		struct FogPushConstants {
+		// Push constants for Fog2.vk.vs + Fog2.vk.fs (total = 128 bytes).
+		struct Fog2PushConstants {
 			float viewProjInv[16];     // [0..63]  mat4 viewProjectionMatrixInv
 			float viewOriginFogDist[4]; // [64..79] xyz=viewOrigin, w=fogDistance
 			float sunlightScale[4];    // [80..95] xyz used
 			float ambientScale[4];     // [96..111] xyz used
 			float ditherFrame[4];      // [112..127] xy=per-frame noise seed
 		};
-		static_assert(sizeof(FogPushConstants) == 128, "FogPushConstants must be 128 bytes");
+		static_assert(sizeof(Fog2PushConstants) == 128, "Fog2PushConstants must be 128 bytes");
+
+		// Push constants for Fog.vk.vs + Fog.vk.fs (total = 96 bytes).
+		struct FogClassicPushConstants {
+			float viewOriginPad[4];   // [0..15]  xyz = viewOrigin
+			float viewAxisUp[4];      // [16..31] xyz
+			float viewAxisSide[4];    // [32..47] xyz
+			float viewAxisFront[4];   // [48..63] xyz
+			float fovZNearFar[4];     // [64..79] xy = (tan(fovX/2), -tan(fovY/2)),
+			                          //           y is pre-negated to match the
+			                          //           negative-height viewport used in
+			                          //           the scene pass.
+			                          //           z = zNear, w = zFar
+			float fogColorDist[4];    // [80..95] xyz = fogColor (linear), w = fogDistance
+		};
+		static_assert(sizeof(FogClassicPushConstants) == 96, "FogClassicPushConstants must be 96 bytes");
 
 		// ─────────────────────────────────────────────────────────────────────────
 		//  Construction / destruction
@@ -58,7 +76,9 @@ namespace spades {
 		      ppRenderPass(VK_NULL_HANDLE),
 		      triSamplerDSL(VK_NULL_HANDLE),
 		      fogLayout(VK_NULL_HANDLE),
-		      fogPipeline(VK_NULL_HANDLE) {
+		      fogPipeline(VK_NULL_HANDLE),
+		      fogClassicLayout(VK_NULL_HANDLE),
+		      fogClassicPipeline(VK_NULL_HANDLE) {
 			SPADES_MARK_FUNCTION();
 
 			for (int i = 0; i < MAX_FRAME_SLOTS; ++i)
@@ -84,6 +104,8 @@ namespace spades {
 					vkDestroyDescriptorPool(dev, perFrameDescPool[i], nullptr);
 			}
 
+			if (fogClassicPipeline != VK_NULL_HANDLE) vkDestroyPipeline(dev, fogClassicPipeline, nullptr);
+			if (fogClassicLayout   != VK_NULL_HANDLE) vkDestroyPipelineLayout(dev, fogClassicLayout, nullptr);
 			if (fogPipeline   != VK_NULL_HANDLE) vkDestroyPipeline(dev, fogPipeline, nullptr);
 			if (fogLayout     != VK_NULL_HANDLE) vkDestroyPipelineLayout(dev, fogLayout, nullptr);
 			if (triSamplerDSL != VK_NULL_HANDLE) vkDestroyDescriptorSetLayout(dev, triSamplerDSL, nullptr);
@@ -168,28 +190,11 @@ namespace spades {
 		}
 
 		void VulkanFogFilter::InitPipeline() {
-			VkDevice      dev   = device->GetDevice();
+			VkDevice        dev   = device->GetDevice();
 			VkPipelineCache cache = renderer.GetPipelineCache();
 
-			VkShaderModule vs = LoadSPIRV("Shaders/Vulkan/PostFilters/Fog2.vk.vs.spv");
-			VkShaderModule fs = LoadSPIRV("Shaders/Vulkan/PostFilters/Fog2.vk.fs.spv");
-
-			// Pipeline layout: triSamplerDSL + 128-byte push constants (VS+FS)
-			VkPushConstantRange pcr{};
-			pcr.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
-			pcr.offset     = 0;
-			pcr.size       = sizeof(FogPushConstants);
-
-			VkPipelineLayoutCreateInfo li{};
-			li.sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-			li.setLayoutCount         = 1;
-			li.pSetLayouts            = &triSamplerDSL;
-			li.pushConstantRangeCount = 1;
-			li.pPushConstantRanges    = &pcr;
-			if (vkCreatePipelineLayout(dev, &li, nullptr, &fogLayout) != VK_SUCCESS)
-				SPRaise("Failed to create fog pipeline layout");
-
-			// Fixed pipeline state
+			// Shared fixed pipeline state — every field below is identical between the
+			// two variants, so build it once and reuse it.
 			VkPipelineVertexInputStateCreateInfo vertexInput{};
 			vertexInput.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
 
@@ -230,33 +235,65 @@ namespace spades {
 			blend.attachmentCount = 1;
 			blend.pAttachments    = &noBlend;
 
-			VkPipelineShaderStageCreateInfo stages[2]{};
-			stages[0] = {VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO, nullptr, 0,
-			              VK_SHADER_STAGE_VERTEX_BIT,   vs, "main", nullptr};
-			stages[1] = {VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO, nullptr, 0,
-			              VK_SHADER_STAGE_FRAGMENT_BIT, fs, "main", nullptr};
+			// Build one pipeline + matching pipeline layout for a (vs, fs, pcSize) triple.
+			auto buildVariant = [&](const char* vsPath, const char* fsPath, uint32_t pcSize,
+			                        VkPipelineLayout* outLayout, VkPipeline* outPipeline,
+			                        const char* errLabel) {
+				VkShaderModule vs = LoadSPIRV(vsPath);
+				VkShaderModule fs = LoadSPIRV(fsPath);
 
-			VkGraphicsPipelineCreateInfo pi{};
-			pi.sType               = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-			pi.stageCount          = 2;
-			pi.pStages             = stages;
-			pi.pVertexInputState   = &vertexInput;
-			pi.pInputAssemblyState = &ia;
-			pi.pViewportState      = &vp;
-			pi.pRasterizationState = &rs;
-			pi.pMultisampleState   = &ms;
-			pi.pDepthStencilState  = &dss;
-			pi.pColorBlendState    = &blend;
-			pi.pDynamicState       = &dyn;
-			pi.layout              = fogLayout;
-			pi.renderPass          = ppRenderPass;
-			pi.subpass             = 0;
+				VkPushConstantRange pcr{};
+				pcr.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+				pcr.offset     = 0;
+				pcr.size       = pcSize;
 
-			if (vkCreateGraphicsPipelines(dev, cache, 1, &pi, nullptr, &fogPipeline) != VK_SUCCESS)
-				SPRaise("Failed to create fog pipeline");
+				VkPipelineLayoutCreateInfo li{};
+				li.sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+				li.setLayoutCount         = 1;
+				li.pSetLayouts            = &triSamplerDSL;
+				li.pushConstantRangeCount = 1;
+				li.pPushConstantRanges    = &pcr;
+				if (vkCreatePipelineLayout(dev, &li, nullptr, outLayout) != VK_SUCCESS)
+					SPRaise("Failed to create %s pipeline layout", errLabel);
 
-			vkDestroyShaderModule(dev, vs, nullptr);
-			vkDestroyShaderModule(dev, fs, nullptr);
+				VkPipelineShaderStageCreateInfo stages[2]{};
+				stages[0] = {VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO, nullptr, 0,
+				              VK_SHADER_STAGE_VERTEX_BIT,   vs, "main", nullptr};
+				stages[1] = {VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO, nullptr, 0,
+				              VK_SHADER_STAGE_FRAGMENT_BIT, fs, "main", nullptr};
+
+				VkGraphicsPipelineCreateInfo pi{};
+				pi.sType               = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+				pi.stageCount          = 2;
+				pi.pStages             = stages;
+				pi.pVertexInputState   = &vertexInput;
+				pi.pInputAssemblyState = &ia;
+				pi.pViewportState      = &vp;
+				pi.pRasterizationState = &rs;
+				pi.pMultisampleState   = &ms;
+				pi.pDepthStencilState  = &dss;
+				pi.pColorBlendState    = &blend;
+				pi.pDynamicState       = &dyn;
+				pi.layout              = *outLayout;
+				pi.renderPass          = ppRenderPass;
+				pi.subpass             = 0;
+
+				if (vkCreateGraphicsPipelines(dev, cache, 1, &pi, nullptr, outPipeline) != VK_SUCCESS)
+					SPRaise("Failed to create %s pipeline", errLabel);
+
+				vkDestroyShaderModule(dev, vs, nullptr);
+				vkDestroyShaderModule(dev, fs, nullptr);
+			};
+
+			buildVariant("Shaders/Vulkan/PostFilters/Fog2.vk.vs.spv",
+			             "Shaders/Vulkan/PostFilters/Fog2.vk.fs.spv",
+			             sizeof(Fog2PushConstants),
+			             &fogLayout, &fogPipeline, "fog2");
+
+			buildVariant("Shaders/Vulkan/PostFilters/Fog.vk.vs.spv",
+			             "Shaders/Vulkan/PostFilters/Fog.vk.fs.spv",
+			             sizeof(FogClassicPushConstants),
+			             &fogClassicLayout, &fogClassicPipeline, "fog");
 		}
 
 		void VulkanFogFilter::InitDescriptorPools() {
@@ -351,68 +388,111 @@ namespace spades {
 				vkResetDescriptorPool(dev, perFrameDescPool[frameSlot], 0);
 			}
 
-			// ── Build push constants ──────────────────────────────────────────────
+			// ── Pick variant ──────────────────────────────────────────────────────
+			// r_fogShadow == 1 → Fog  (DDA-style sharp shadow shafts)
+			// r_fogShadow == anything else (typically 2) → Fog2 (smoother 16-step)
+			const bool useClassic = ((int)r_fogShadow == 1);
 
 			const client::SceneDefinition& def = renderer.GetSceneDef();
 
-			// View matrix (no translation) × Vulkan projection → then map NDC to UV+depth
-			Matrix4 viewMat = def.ToViewMatrix();
-			viewMat.m[12]   = 0.0F;
-			viewMat.m[13]   = 0.0F;
-			viewMat.m[14]   = 0.0F;
-
-			Matrix4 projMat   = renderer.GetProjectionMatrix(); // Vulkan: z ∈ [0,1]
-			Matrix4 vp        = projMat * viewMat;
-
-			// Map Vulkan clip space (x,y ∈ [-1,1], z ∈ [0,1]) to UV+depth ([0,1]³).
-			// The scene was rasterised with a negative-height viewport
-			// (see VulkanRenderer: VkViewport{ y=h, height=-h }), so the offscreen
-			// color/depth textures store row 0 at clip_y = +1 (top of view).
-			// The fog filter draws with a normal positive viewport, so we must
-			// flip Y here to match the texture orientation when sampling and
-			// when inverting back to world space.
-			//   u = (x+1)*0.5,  v = (1-y)*0.5,  depth = z
-			vp = Matrix4::Translate(1.0F, -1.0F, 0.0F) * vp;
-			vp = Matrix4::Scale(0.5F, -0.5F, 1.0F)     * vp;
-
-			Matrix4 vpInv = vp.Inversed();
-
 			Vector3 fogCol = renderer.GetFogColor();
-			fogCol *= fogCol; // linearise (GL_SRGB scene, match GL renderer)
+			fogCol *= fogCol; // linearise (match GL renderer)
 
-			// Mirrors GLFogFilter2 sunlight/ambient scale computation.
-			constexpr float sunlightBrightness  = 0.6F;
-			constexpr float ambientBrightness   = 1.0F;
+			// ── Build push constants ──────────────────────────────────────────────
 
-			auto fogTransmission1 = [&](float f) {
-				return f / (sunlightBrightness + ambientBrightness * f + 1.0e-6F);
-			};
-			Vector3 ft{fogTransmission1(fogCol.x),
-			           fogTransmission1(fogCol.y),
-			           fogTransmission1(fogCol.z)};
+			Fog2PushConstants        pc2{};
+			FogClassicPushConstants  pc1{};
+			const void*  pcData = nullptr;
+			uint32_t     pcSize = 0;
 
-			FogPushConstants pc{};
+			if (useClassic) {
+				// Fog (Fog1) — per-vertex shadow ray origin/direction in shadow space.
+				pc1.viewOriginPad[0] = def.viewOrigin.x;
+				pc1.viewOriginPad[1] = def.viewOrigin.y;
+				pc1.viewOriginPad[2] = def.viewOrigin.z;
 
-			// mat4 (column-major, matching Matrix4 storage)
-			std::memcpy(pc.viewProjInv, vpInv.m, sizeof(pc.viewProjInv));
+				pc1.viewAxisUp[0]    = def.viewAxis[1].x;
+				pc1.viewAxisUp[1]    = def.viewAxis[1].y;
+				pc1.viewAxisUp[2]    = def.viewAxis[1].z;
 
-			pc.viewOriginFogDist[0] = def.viewOrigin.x;
-			pc.viewOriginFogDist[1] = def.viewOrigin.y;
-			pc.viewOriginFogDist[2] = def.viewOrigin.z;
-			pc.viewOriginFogDist[3] = renderer.GetFogDistance();
+				pc1.viewAxisSide[0]  = def.viewAxis[0].x;
+				pc1.viewAxisSide[1]  = def.viewAxis[0].y;
+				pc1.viewAxisSide[2]  = def.viewAxis[0].z;
 
-			pc.sunlightScale[0] = ft.x * sunlightBrightness;
-			pc.sunlightScale[1] = ft.y * sunlightBrightness;
-			pc.sunlightScale[2] = ft.z * sunlightBrightness;
+				pc1.viewAxisFront[0] = def.viewAxis[2].x;
+				pc1.viewAxisFront[1] = def.viewAxis[2].y;
+				pc1.viewAxisFront[2] = def.viewAxis[2].z;
 
-			pc.ambientScale[0] = ft.x * fogCol.x * ambientBrightness;
-			pc.ambientScale[1] = ft.y * fogCol.y * ambientBrightness;
-			pc.ambientScale[2] = ft.z * fogCol.z * ambientBrightness;
+				// tan(fov/2). Y is pre-negated to flip the per-pixel view-ray
+				// direction vertically, matching the negative-height viewport
+				// used during the scene pass (the texture stores top-of-view at
+				// row 0; without this flip, the shadow shafts march in the wrong
+				// vertical band).
+				pc1.fovZNearFar[0] =  tanf(def.fovX * 0.5F);
+				pc1.fovZNearFar[1] = -tanf(def.fovY * 0.5F);
+				pc1.fovZNearFar[2] = def.zNear;
+				pc1.fovZNearFar[3] = def.zFar;
 
-			// Per-frame dither seed — cycle 4 offsets like GL renderer.
-			std::uint32_t frame = frameCounter++ % 4;
-			pc.ditherFrame[0] = (float)(frame & 1) * 0.5F;
-			pc.ditherFrame[1] = (float)((frame >> 1) & 1) * 0.5F;
+				pc1.fogColorDist[0] = fogCol.x;
+				pc1.fogColorDist[1] = fogCol.y;
+				pc1.fogColorDist[2] = fogCol.z;
+				pc1.fogColorDist[3] = renderer.GetFogDistance();
+
+				pcData = &pc1;
+				pcSize = sizeof(pc1);
+			} else {
+				// Fog2 — view-projection inverse + sunlight/ambient transmission scales.
+				Matrix4 viewMat = def.ToViewMatrix();
+				viewMat.m[12]   = 0.0F;
+				viewMat.m[13]   = 0.0F;
+				viewMat.m[14]   = 0.0F;
+
+				Matrix4 projMat = renderer.GetProjectionMatrix(); // Vulkan: z ∈ [0,1]
+				Matrix4 vp      = projMat * viewMat;
+
+				// Map Vulkan clip space (x,y ∈ [-1,1], z ∈ [0,1]) to UV+depth ([0,1]³).
+				// The scene is rasterised with a negative-height viewport so the
+				// offscreen color/depth textures store row 0 at clip_y = +1.
+				// Flip Y here so vpInv produces the correct world ray for each
+				// (u, v) texel.
+				//   u = (x+1)*0.5,  v = (1-y)*0.5,  depth = z
+				vp = Matrix4::Translate(1.0F, -1.0F, 0.0F) * vp;
+				vp = Matrix4::Scale(0.5F, -0.5F, 1.0F)     * vp;
+
+				Matrix4 vpInv = vp.Inversed();
+
+				constexpr float sunlightBrightness = 0.6F;
+				constexpr float ambientBrightness  = 1.0F;
+
+				auto fogTransmission1 = [&](float f) {
+					return f / (sunlightBrightness + ambientBrightness * f + 1.0e-6F);
+				};
+				Vector3 ft{fogTransmission1(fogCol.x),
+				           fogTransmission1(fogCol.y),
+				           fogTransmission1(fogCol.z)};
+
+				std::memcpy(pc2.viewProjInv, vpInv.m, sizeof(pc2.viewProjInv));
+
+				pc2.viewOriginFogDist[0] = def.viewOrigin.x;
+				pc2.viewOriginFogDist[1] = def.viewOrigin.y;
+				pc2.viewOriginFogDist[2] = def.viewOrigin.z;
+				pc2.viewOriginFogDist[3] = renderer.GetFogDistance();
+
+				pc2.sunlightScale[0] = ft.x * sunlightBrightness;
+				pc2.sunlightScale[1] = ft.y * sunlightBrightness;
+				pc2.sunlightScale[2] = ft.z * sunlightBrightness;
+
+				pc2.ambientScale[0] = ft.x * fogCol.x * ambientBrightness;
+				pc2.ambientScale[1] = ft.y * fogCol.y * ambientBrightness;
+				pc2.ambientScale[2] = ft.z * fogCol.z * ambientBrightness;
+
+				std::uint32_t frame = frameCounter++ % 4;
+				pc2.ditherFrame[0] = (float)(frame & 1) * 0.5F;
+				pc2.ditherFrame[1] = (float)((frame >> 1) & 1) * 0.5F;
+
+				pcData = &pc2;
+				pcSize = sizeof(pc2);
+			}
 
 			// ── Gather image views ────────────────────────────────────────────────
 
@@ -449,12 +529,15 @@ namespace spades {
 			vkCmdSetViewport(cmd, 0, 1, &viewport);
 			vkCmdSetScissor(cmd, 0, 1, &scissor);
 
-			vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, fogPipeline);
+			VkPipeline       pipeline = useClassic ? fogClassicPipeline : fogPipeline;
+			VkPipelineLayout layout   = useClassic ? fogClassicLayout   : fogLayout;
+
+			vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
 			vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
-			                        fogLayout, 0, 1, &ds, 0, nullptr);
-			vkCmdPushConstants(cmd, fogLayout,
+			                        layout, 0, 1, &ds, 0, nullptr);
+			vkCmdPushConstants(cmd, layout,
 			                   VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
-			                   0, sizeof(pc), &pc);
+			                   0, pcSize, pcData);
 			vkCmdDraw(cmd, 3, 1, 0, 0);
 
 			vkCmdEndRenderPass(cmd);

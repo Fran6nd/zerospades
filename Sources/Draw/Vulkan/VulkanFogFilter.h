@@ -28,18 +28,23 @@
 namespace spades {
 	namespace draw {
 
-		// Fog filter (Fog2 style).
+		// Fog filter.
 		//
-		// Algorithm (mirrors GLFogFilter2):
-		//   Raymarches 16 samples along each view ray to accumulate in-scattered
-		//   sunlight from the shadow map, compositing the result onto the scene
-		//   colour image.  Ambient term is a full-coverage approximation (no
-		//   ambientShadowTexture yet).
+		// Two variants are built; r_fogShadow picks at draw time:
+		//   r_fogShadow == 1 → Fog  (Fog.vk.*  — DDA-style shadow raymarch, sharper,
+		//                            no AO/radiosity; ports GLFogFilter)
+		//   r_fogShadow == 2 → Fog2 (Fog2.vk.* — fixed 16-step march, smoother,
+		//                            matches GLFogFilter2 minus the 3D AO/radiosity
+		//                            textures that the Vulkan back-end does not yet
+		//                            have)
 		//
-		// Descriptor bindings (set 0):
-		//   0 — colorTexture    (combined sampler, SHADER_READ_ONLY)
-		//   1 — depthTexture    (combined sampler, SHADER_READ_ONLY, depth aspect)
+		// Descriptor bindings (set 0, shared between variants):
+		//   0 — colorTexture     (combined sampler, SHADER_READ_ONLY)
+		//   1 — depthTexture     (combined sampler, SHADER_READ_ONLY, depth aspect)
 		//   2 — shadowMapTexture (combined sampler, SHADER_READ_ONLY)
+		//
+		// Push-constant blocks differ between the two variants, so each pipeline
+		// gets its own VkPipelineLayout.
 		//
 		// Call Filter(cmd, input, output).  input must be in SHADER_READ_ONLY_OPTIMAL;
 		// output ends up in SHADER_READ_ONLY_OPTIMAL.  The depth image and the shadow
@@ -54,8 +59,13 @@ namespace spades {
 
 			VkDescriptorSetLayout triSamplerDSL; // bindings 0, 1, 2
 
+			// Fog2 (default, r_fogShadow == 2)
 			VkPipelineLayout fogLayout;
 			VkPipeline       fogPipeline;
+
+			// Fog / Fog1 (r_fogShadow == 1)
+			VkPipelineLayout fogClassicLayout;
+			VkPipeline       fogClassicPipeline;
 
 			static constexpr int MAX_FRAME_SLOTS = 2;
 			VkDescriptorPool perFrameDescPool[MAX_FRAME_SLOTS];
