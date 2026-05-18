@@ -180,4 +180,7 @@ void main() {
 	// Apply fog
 	fragColor.xyz = mix(fragColor.xyz, inFogColor, fogDensity);
 	fragColor.xyz = max(fragColor.xyz, 0.0);
+
+	// Gamma correct (see BasicModelVertexColor.frag for the rationale).
+	fragColor.xyz = sqrt(fragColor.xyz);
 }

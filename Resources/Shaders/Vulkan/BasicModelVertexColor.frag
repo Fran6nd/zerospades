@@ -83,4 +83,11 @@ void main() {
 
 	// Apply fog fading
 	fragColor.xyz = mix(fragColor.xyz, inFogColor, fogDensity);
+
+	// Gamma correct.  This matches BasicBlock.vk.fs (and the GL renderer
+	// without r_hdr): the shader produces a pseudo-sRGB value, then the
+	// framebuffer stores it as UNORM.  Without this step, players were
+	// being written linearly and ended up visibly darker than the world
+	// blocks at the same shading level.
+	fragColor.xyz = sqrt(max(fragColor.xyz, 0.0));
 }

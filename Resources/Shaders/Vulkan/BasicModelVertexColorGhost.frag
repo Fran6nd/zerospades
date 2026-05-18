@@ -72,4 +72,7 @@ void main() {
 	fragColor = vec4(vertexColor * (ambientLight * aoFactor + sun), pushConstants._pad);
 
 	fragColor.xyz = mix(fragColor.xyz, inFogColor, fogDensity);
+
+	// Gamma correct (see BasicModelVertexColor.frag for the rationale).
+	fragColor.xyz = sqrt(max(fragColor.xyz, 0.0));
 }
