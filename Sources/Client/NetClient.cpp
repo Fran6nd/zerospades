@@ -753,10 +753,15 @@ namespace spades {
 		}
 
 		void NetClient::HandleExtensionPacket(spades::client::NetPacketReader& r) {
+			extensionHandshakeCompleted = true;
+
 			int extCount = r.ReadByte();
 			for (int i = 0; i < extCount; i++) {
 				int extId = r.ReadByte();
 				int extVer = r.ReadByte();
+
+				serverAdvertisedExtensions[static_cast<uint8_t>(extId)] =
+				  static_cast<uint8_t>(extVer);
 
 				auto got = implementedExtensions.find(extId);
 				if (got == implementedExtensions.end()) {

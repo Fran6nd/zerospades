@@ -105,6 +105,11 @@ namespace spades {
 			  {ExtensionTypePlayerLimit, 1},
 			  {ExtensionTypeMessageTypes, 1},
 			  {ExtensionTypeKickReason, 1}};
+			/** Extensions advertised by the server, as received during the handshake.
+			 *  Includes ids unknown to this client. (map of extension id → version) */
+			std::unordered_map<uint8_t, uint8_t> serverAdvertisedExtensions;
+			/** True once an `ExtensionInfo` packet has been received from the server. */
+			bool extensionHandshakeCompleted = false;
 
 			class BandwidthMonitor {
 				ENetHost* host;
