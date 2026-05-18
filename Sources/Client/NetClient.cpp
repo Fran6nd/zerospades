@@ -19,7 +19,9 @@
 
  */
 
+#include <algorithm>
 #include <math.h>
+#include <stdio.h>
 #include <string.h>
 #include <vector>
 
@@ -713,20 +715,128 @@ namespace spades {
 			return inp;
 		}
 
-		std::string NetClient::DisconnectReasonString(uint32_t num) {
-			if (!customKickReasonString.empty())
-				return customKickReasonString;
-
-			switch (num) {
-				case 1: return _Tr("NetClient", "You are banned from this server.");
-				case 2: return _Tr("NetClient", "Your network's public address has too many connections to this server.");
-				case 3: return _Tr("NetClient", "Incompatible client protocol version.");
-				case 4: return _Tr("NetClient", "Server full");
-				case 5: return _Tr("NetClient", "Server shutdown");
-				case 10: return _Tr("NetClient", "You were kicked from this server.");
-				case 20: return _Tr("NetClient", "Invalid name");
-				default: return _Tr("NetClient", "Unknown Reason");
+		namespace {
+			std::string NetExtensionName(uint8_t id) {
+				switch (id) {
+					case ExtensionTypePlayerProperties: return "Player Properties";
+					case ExtensionTypePlayerLimit: return "Player Limit";
+					case ExtensionTypeMessageTypes: return "Message Types";
+					case ExtensionTypeKickReason: return "Kick Reason";
+					default: return std::string();
+				}
 			}
+
+			std::string FormatExtensionLine(uint8_t id, uint8_t version) {
+				std::string name = NetExtensionName(id);
+				char buf[128];
+				if (name.empty())
+					std::snprintf(buf, sizeof(buf),
+					              "    \xe2\x80\xa2 Unknown extension (id %u) v%u",
+					              static_cast<unsigned>(id), static_cast<unsigned>(version));
+				else
+					std::snprintf(buf, sizeof(buf), "    \xe2\x80\xa2 %s (id %u) v%u",
+					              name.c_str(), static_cast<unsigned>(id),
+					              static_cast<unsigned>(version));
+				return buf;
+			}
+		} // namespace
+
+		std::string NetClient::BuildExtensionHandshakeReport() {
+			if (!extensionHandshakeCompleted)
+				return std::string();
+
+			using Entry = std::pair<uint8_t, uint8_t>;
+			std::vector<Entry> common, clientOnly, serverOnly;
+
+			for (const auto& kv : implementedExtensions) {
+				auto it = serverAdvertisedExtensions.find(kv.first);
+				if (it == serverAdvertisedExtensions.end())
+					clientOnly.emplace_back(kv.first, kv.second);
+				else
+					common.emplace_back(kv.first, kv.second);
+			}
+			for (const auto& kv : serverAdvertisedExtensions) {
+				if (implementedExtensions.find(kv.first) == implementedExtensions.end())
+					serverOnly.emplace_back(kv.first, kv.second);
+			}
+
+			auto byId = [](const Entry& a, const Entry& b) { return a.first < b.first; };
+			std::sort(common.begin(), common.end(), byId);
+			std::sort(clientOnly.begin(), clientOnly.end(), byId);
+			std::sort(serverOnly.begin(), serverOnly.end(), byId);
+
+			std::string out;
+			out += "\n\n";
+			out += _Tr("NetClient", "Protocol extension handshake:");
+			out += "\n\n";
+
+			if (common.empty() && clientOnly.empty() && serverOnly.empty()) {
+				out += "    ";
+				out += _Tr("NetClient", "(server advertised no extensions)");
+				return out;
+			}
+
+			out += "  ";
+			out += _Tr("NetClient", "Negotiated with the server:");
+			out += "\n";
+			if (common.empty()) {
+				out += "    \xe2\x80\xa2 ";
+				out += _Tr("NetClient", "(none)");
+				out += "\n";
+			} else {
+				for (const auto& e : common)
+					out += FormatExtensionLine(e.first, e.second) + "\n";
+			}
+
+			if (!clientOnly.empty()) {
+				out += "\n  ";
+				out += _Tr("NetClient", "Only supported by this client:");
+				out += "\n";
+				for (const auto& e : clientOnly)
+					out += FormatExtensionLine(e.first, e.second) + "\n";
+			}
+
+			if (!serverOnly.empty()) {
+				out += "\n  ";
+				out += _Tr("NetClient", "Only advertised by the server:");
+				out += "\n";
+				for (const auto& e : serverOnly)
+					out += FormatExtensionLine(e.first, e.second) + "\n";
+			}
+
+			// Trim trailing newline.
+			while (!out.empty() && out.back() == '\n')
+				out.pop_back();
+			return out;
+		}
+
+		std::string NetClient::DisconnectReasonString(uint32_t num) {
+			std::string reason;
+			if (!customKickReasonString.empty()) {
+				reason = customKickReasonString;
+			} else {
+				switch (num) {
+					case 1: reason = _Tr("NetClient", "You are banned from this server."); break;
+					case 2: reason = _Tr("NetClient", "Your network's public address has too many connections to this server."); break;
+					case 3: reason = _Tr("NetClient", "Incompatible client protocol version."); break;
+					case 4: reason = _Tr("NetClient", "Server full"); break;
+					case 5: reason = _Tr("NetClient", "Server shutdown"); break;
+					case 10: reason = _Tr("NetClient", "You were kicked from this server."); break;
+					case 20: reason = _Tr("NetClient", "Invalid name"); break;
+					default: reason = _Tr("NetClient", "Unknown Reason"); break;
+				}
+			}
+
+			// Attach a handshake report when the server rejected us for a protocol
+			// version mismatch, but only if the extension handshake actually completed —
+			// otherwise we have nothing meaningful to compare against.
+			if (num == 3) {
+				std::string report = BuildExtensionHandshakeReport();
+				if (!report.empty())
+					reason += report;
+			}
+
+			return reason;
 		}
 
 		bool NetClient::HandleHandshakePackets(spades::client::NetPacketReader& r) {

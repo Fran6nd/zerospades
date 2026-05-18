@@ -149,6 +149,7 @@ namespace spades {
 
 			std::string customKickReasonString;
 			std::string DisconnectReasonString(uint32_t);
+			std::string BuildExtensionHandshakeReport();
 
 			void MapLoaded();
 
