@@ -364,10 +364,16 @@ namespace spades {
 			Matrix4 projMat   = renderer.GetProjectionMatrix(); // Vulkan: z ∈ [0,1]
 			Matrix4 vp        = projMat * viewMat;
 
-			// Map Vulkan NDC (x,y ∈ [-1,1], z ∈ [0,1]) to UV+depth ([0,1]³):
-			//   u = (x+1)*0.5,  v = (y+1)*0.5,  depth = z  (unchanged)
-			vp = Matrix4::Translate(1.0F, 1.0F, 0.0F) * vp;
-			vp = Matrix4::Scale(0.5F, 0.5F, 1.0F)     * vp;
+			// Map Vulkan clip space (x,y ∈ [-1,1], z ∈ [0,1]) to UV+depth ([0,1]³).
+			// The scene was rasterised with a negative-height viewport
+			// (see VulkanRenderer: VkViewport{ y=h, height=-h }), so the offscreen
+			// color/depth textures store row 0 at clip_y = +1 (top of view).
+			// The fog filter draws with a normal positive viewport, so we must
+			// flip Y here to match the texture orientation when sampling and
+			// when inverting back to world space.
+			//   u = (x+1)*0.5,  v = (1-y)*0.5,  depth = z
+			vp = Matrix4::Translate(1.0F, -1.0F, 0.0F) * vp;
+			vp = Matrix4::Scale(0.5F, -0.5F, 1.0F)     * vp;
 
 			Matrix4 vpInv = vp.Inversed();
 

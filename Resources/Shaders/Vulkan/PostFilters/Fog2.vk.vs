@@ -27,8 +27,10 @@
 //
 // The CPU must pass viewProjectionMatrixInv as the inverse of the matrix that
 // maps UV texture-space coordinates [0,1]^2 to view-centric clip space.  The
-// construction mirrors GLFogFilter2:
-//   viewProjectionMatrixInv = inverse( Scale(0.5) * Translate(1) * (proj * view_no_t) )
+// scene is rendered with a negative-height viewport (Vulkan Y-flip), so the
+// stored texture maps uv.y=0 to clip_y=+1.  The CPU forms:
+//   viewProjectionMatrixInv = inverse( Scale(0.5, -0.5, 1) * Translate(1, -1, 0)
+//                                      * (proj_vk * view_no_t) )
 
 #version 450
 
