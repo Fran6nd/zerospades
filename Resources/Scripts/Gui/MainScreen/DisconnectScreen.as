@@ -83,12 +83,13 @@ namespace spades {
 				AddChild(label);
 			}
 
-			// Header — TextViewer so longer prose wraps cleanly.
+			// Header — TextViewer so longer prose wraps cleanly. Must be
+			// AddChild()'d before setting Text so it picks up our Font.
 			{
 				spades::ui::TextViewer viewer(Manager);
+				AddChild(viewer);
 				viewer.Bounds = AABB2(ContentsLeft, ContentsTop, ContentsWidth, headerH);
 				viewer.Text = headerText;
-				AddChild(viewer);
 			}
 
 			// Column geometry.
