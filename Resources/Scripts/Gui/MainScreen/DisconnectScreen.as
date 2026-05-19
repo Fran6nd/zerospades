@@ -34,46 +34,150 @@ namespace spades {
 		}
 	}
 
+	// Renders a single row of the extension table. The column geometry is
+	// expressed as fractions of `Size.x` so the same layout matches the
+	// column headers drawn statically by `DisconnectScreen`.
+	class ExtensionRowItemUI : spades::ui::UIElement {
+		private ExtensionRow@ row;
+		private float ColFracName, ColFracClient;
+
+		ExtensionRowItemUI(spades::ui::UIManager@ manager, ExtensionRow@ row,
+		                   float colFracName, float colFracClient) {
+			super(manager);
+			@this.row = row;
+			ColFracName = colFracName;
+			ColFracClient = colFracClient;
+			IsMouseInteractive = false;
+		}
+
+		private string VersionCellText(int ver) {
+			if (ver < 0)
+				return "\xe2\x9c\x97"; // ✗
+			return "\xe2\x9c\x93 v" + ToString(ver); // ✓ v<n>
+		}
+
+		private Vector4 VersionCellColor(int ver) {
+			if (ver < 0)
+				return Vector4(0.95F, 0.55F, 0.55F, 1.0F);
+			return Vector4(0.65F, 0.95F, 0.65F, 1.0F);
+		}
+
+		void Render() {
+			Renderer@ r = Manager.Renderer;
+			Font@ font = this.Font;
+			Vector2 pos = ScreenPosition;
+			Vector2 size = Size;
+
+			float padding = 6.0F;
+			float colNameW = size.x * ColFracName;
+			float colClientW = size.x * ColFracClient;
+			float colServerW = size.x - colNameW - colClientW;
+			float colNameX = 0.0F;
+			float colClientX = colNameW;
+			float colServerX = colNameW + colClientW;
+
+			string nameText;
+			Vector4 nameColor;
+			if (row.name.length > 0) {
+				nameText = row.name + "   (id " + ToString(row.id) + ")";
+				nameColor = Vector4(0.95F, 0.95F, 0.95F, 1.0F);
+			} else {
+				nameText = "Unknown   (id " + ToString(row.id) + ")";
+				nameColor = Vector4(0.95F, 0.95F, 0.95F, 0.55F);
+			}
+
+			DrawCell(r, font, nameText, pos + Vector2(colNameX + padding, 0.0F),
+			         Vector2(colNameW - padding, size.y), 0.0F, nameColor);
+			DrawCell(r, font, VersionCellText(row.clientVersion),
+			         pos + Vector2(colClientX, 0.0F),
+			         Vector2(colClientW, size.y), 0.5F, VersionCellColor(row.clientVersion));
+			DrawCell(r, font, VersionCellText(row.serverVersion),
+			         pos + Vector2(colServerX, 0.0F),
+			         Vector2(colServerW, size.y), 0.5F, VersionCellColor(row.serverVersion));
+		}
+
+		private void DrawCell(Renderer@ r, Font@ font, string text, Vector2 cellPos,
+		                      Vector2 cellSize, float xAlign, Vector4 color) {
+			if (text.length == 0 or font is null)
+				return;
+			Vector2 textSize = font.Measure(text);
+			Vector2 textPos = cellPos + Vector2((cellSize.x - textSize.x) * xAlign,
+			                                    (cellSize.y - textSize.y) * 0.5F);
+			font.Draw(text, textPos, 1.0F, color);
+		}
+	}
+
+	class ExtensionTableModel : spades::ui::ListViewModel {
+		spades::ui::UIManager@ manager;
+		ExtensionRow@[]@ rows;
+		float ColFracName;
+		float ColFracClient;
+
+		ExtensionTableModel(spades::ui::UIManager@ manager, ExtensionRow@[]@ rows,
+		                    float colFracName, float colFracClient) {
+			@this.manager = manager;
+			@this.rows = rows;
+			ColFracName = colFracName;
+			ColFracClient = colFracClient;
+		}
+
+		int NumRows {
+			get { return int(rows.length); }
+		}
+
+		spades::ui::UIElement@ CreateElement(int row) {
+			return ExtensionRowItemUI(manager, rows[row], ColFracName, ColFracClient);
+		}
+
+		void RecycleElement(spades::ui::UIElement@ elem) {}
+	}
+
 	class DisconnectScreen : spades::ui::UIElement {
 		private float ContentsTop, ContentsHeight, ContentsLeft, ContentsWidth;
-		private float TableTop, TableBottom;
-		private float ColNameX, ColClientX, ColServerX;
-		private float ColNameW, ColClientW, ColServerW;
+		private float TableHeaderTop;
 		private float HeaderRowH;
+		private float ColFracName, ColFracClient;
 
 		private spades::ui::UIElement@ owner;
+		private spades::ui::ListView@ tableView;
 
-		DisconnectScreen(spades::ui::UIElement@ owner, string headerText, ExtensionRow@[]@ rows) {
+		DisconnectScreen(spades::ui::UIElement@ owner, string headerText,
+		                 ExtensionRow@[]@ rows, float height = 200.0F) {
 			super(owner.Manager);
 			@this.owner = owner;
 			@Font = Manager.RootElement.Font;
 			this.Bounds = owner.Bounds;
 
-			HeaderRowH = 26.0F;
+			HeaderRowH = 24.0F;
+			ColFracName = 0.56F;
+			ColFracClient = 0.22F;
 
+			// Match the geometry the original AlertScreen uses so this popup
+			// feels identical, just with extra structure inside.
 			float sw = Manager.ScreenWidth;
 			float sh = Manager.ScreenHeight;
 
-			ContentsWidth = 640.0F;
-			if (ContentsWidth > sw - 16.0F)
-				ContentsWidth = sw - 16.0F;
+			ContentsWidth = sw - 16.0F;
+			if (ContentsWidth > 800.0F)
+				ContentsWidth = 800.0F;
 			ContentsLeft = (sw - ContentsWidth) * 0.5F;
-
-			// Pre-measure header height by counting hard line breaks.
-			int headerLines = int(headerText.split("\n").length);
-			float headerH = float(headerLines) * 20.0F + 12.0F;
-
-			float rowH = 24.0F;
-			float bottomPad = 50.0F;   // for OK button
-			float gap = 16.0F;          // gap between header and table
-
-			float tableH = HeaderRowH + float(rows.length) * rowH;
-			ContentsHeight = headerH + gap + tableH + bottomPad;
-
-			float maxH = sh - 80.0F;
-			if (ContentsHeight > maxH)
-				ContentsHeight = maxH;
+			ContentsHeight = height;
 			ContentsTop = (sh - ContentsHeight) * 0.5F;
+
+			// Vertical layout. Allocate enough room for the prose to show ~3
+			// short lines, the static column header, the OK button, and give
+			// the rest to the scrollable table.
+			float proseH = 60.0F;
+			float buttonH = 30.0F;
+			float gap = 8.0F;
+			float bottomGap = 10.0F;
+
+			float tableHeaderY = ContentsTop + proseH + gap;
+			float tableBodyY = tableHeaderY + HeaderRowH;
+			float tableBodyH = ContentsHeight - proseH - gap - HeaderRowH - bottomGap - buttonH - gap;
+			if (tableBodyH < HeaderRowH)
+				tableBodyH = HeaderRowH;
+			TableHeaderTop = tableHeaderY;
 
 			// Background panel.
 			{
@@ -83,62 +187,42 @@ namespace spades {
 				AddChild(label);
 			}
 
-			// Header — TextViewer so longer prose wraps cleanly. Must be
-			// AddChild()'d before setting Text so it picks up our Font.
+			// Prose at top. Reuse TextViewer for word-wrap; it scrolls if the
+			// reason is unusually long. Must be reparented before setting text.
 			{
 				spades::ui::TextViewer viewer(Manager);
 				AddChild(viewer);
-				viewer.Bounds = AABB2(ContentsLeft, ContentsTop, ContentsWidth, headerH);
+				viewer.Bounds = AABB2(ContentsLeft, ContentsTop, ContentsWidth, proseH);
 				viewer.Text = headerText;
 			}
 
-			// Column geometry.
-			ColNameW = ContentsWidth * 0.56F;
-			ColClientW = ContentsWidth * 0.22F;
-			ColServerW = ContentsWidth - ColNameW - ColClientW;
-			ColNameX = ContentsLeft;
-			ColClientX = ColNameX + ColNameW;
-			ColServerX = ColClientX + ColClientW;
+			// Static column header row (drawn as labels, not part of the list
+			// so it doesn't scroll out of view).
+			float colNameW = ContentsWidth * ColFracName;
+			float colClientW = ContentsWidth * ColFracClient;
+			float colServerW = ContentsWidth - colNameW - colClientW;
+			float colNameX = ContentsLeft;
+			float colClientX = colNameX + colNameW;
+			float colServerX = colClientX + colClientW;
 
-			TableTop = ContentsTop + headerH + gap;
-			TableBottom = TableTop + tableH;
-
-			// Table header labels.
 			AddHeaderLabel(_Tr("DisconnectScreen", "Extension"),
-			               ColNameX + 6.0F, TableTop, ColNameW - 6.0F, HeaderRowH,
+			               colNameX + 6.0F, tableHeaderY, colNameW - 6.0F, HeaderRowH,
 			               Vector2(0.0F, 0.5F));
 			AddHeaderLabel(_Tr("DisconnectScreen", "Client"),
-			               ColClientX, TableTop, ColClientW, HeaderRowH,
+			               colClientX, tableHeaderY, colClientW, HeaderRowH,
 			               Vector2(0.5F, 0.5F));
 			AddHeaderLabel(_Tr("DisconnectScreen", "Server"),
-			               ColServerX, TableTop, ColServerW, HeaderRowH,
+			               colServerX, tableHeaderY, colServerW, HeaderRowH,
 			               Vector2(0.5F, 0.5F));
 
-			// Rows.
-			Vector4 nameColor = Vector4(0.95F, 0.95F, 0.95F, 1.0F);
-			Vector4 unknownColor = Vector4(0.95F, 0.95F, 0.95F, 0.55F);
-			for (uint i = 0; i < rows.length; i++) {
-				ExtensionRow@ row = rows[i];
-				float y = TableTop + HeaderRowH + float(i) * rowH;
-
-				string idText = "id " + ToString(row.id);
-				string nameText;
-				Vector4 thisNameColor;
-				if (row.name.length > 0) {
-					nameText = row.name + "   (" + idText + ")";
-					thisNameColor = nameColor;
-				} else {
-					nameText = _Tr("DisconnectScreen", "Unknown") + "   (" + idText + ")";
-					thisNameColor = unknownColor;
-				}
-				AddCellLabel(nameText, ColNameX + 6.0F, y, ColNameW - 6.0F, rowH,
-				             Vector2(0.0F, 0.5F), thisNameColor);
-				AddCellLabel(VersionCellText(row.clientVersion),
-				             ColClientX, y, ColClientW, rowH,
-				             Vector2(0.5F, 0.5F), VersionCellColor(row.clientVersion));
-				AddCellLabel(VersionCellText(row.serverVersion),
-				             ColServerX, y, ColServerW, rowH,
-				             Vector2(0.5F, 0.5F), VersionCellColor(row.serverVersion));
+			// Scrollable table body.
+			{
+				spades::ui::ListView lv(Manager);
+				lv.RowHeight = 22.0F;
+				AddChild(lv);
+				lv.Bounds = AABB2(ContentsLeft, tableBodyY, ContentsWidth, tableBodyH);
+				@lv.Model = ExtensionTableModel(Manager, rows, ColFracName, ColFracClient);
+				@tableView = lv;
 			}
 
 			// OK button.
@@ -146,23 +230,11 @@ namespace spades {
 				spades::ui::Button button(Manager);
 				button.Caption = _Tr("MessageBox", "OK");
 				button.Bounds = AABB2(ContentsLeft + ContentsWidth - 150.0F,
-				                      ContentsTop + ContentsHeight - 30.0F,
-				                      150.0F, 30.0F);
+				                      ContentsTop + ContentsHeight - buttonH,
+				                      150.0F, buttonH);
 				@button.Activated = spades::ui::EventHandler(this.OnOk);
 				AddChild(button);
 			}
-		}
-
-		private string VersionCellText(int ver) {
-			if (ver < 0)
-				return "\xe2\x9c\x97";  // ✗
-			return "\xe2\x9c\x93 v" + ToString(ver);  // ✓ v<n>
-		}
-
-		private Vector4 VersionCellColor(int ver) {
-			if (ver < 0)
-				return Vector4(0.95F, 0.55F, 0.55F, 1.0F);
-			return Vector4(0.65F, 0.95F, 0.65F, 1.0F);
 		}
 
 		private void AddHeaderLabel(string text, float x, float y, float w, float h,
@@ -172,16 +244,6 @@ namespace spades {
 			label.Bounds = AABB2(x, y, w, h);
 			label.Alignment = alignment;
 			label.TextColor = Vector4(0.72F, 0.88F, 1.0F, 1.0F);
-			AddChild(label);
-		}
-
-		private void AddCellLabel(string text, float x, float y, float w, float h,
-		                          Vector2 alignment, Vector4 color) {
-			spades::ui::Label label(Manager);
-			label.Text = text;
-			label.Bounds = AABB2(x, y, w, h);
-			label.Alignment = alignment;
-			label.TextColor = color;
 			AddChild(label);
 		}
 
@@ -216,7 +278,7 @@ namespace spades {
 			// Separator under the table header.
 			r.ColorNP = Vector4(1.0F, 1.0F, 1.0F, 0.18F);
 			r.DrawImage(null, AABB2(pos.x + ContentsLeft,
-			                        pos.y + TableTop + HeaderRowH,
+			                        pos.y + TableHeaderTop + HeaderRowH,
 			                        ContentsWidth, 1.0F));
 
 			UIElement::Render();

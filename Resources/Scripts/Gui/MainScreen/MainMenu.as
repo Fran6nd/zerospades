@@ -543,8 +543,6 @@ namespace spades {
 							prose);
 
 						if (parsed.rows !is null) {
-							framed += "\n\n";
-							framed += _Tr("MainScreen", "Protocol extension handshake:");
 							DisconnectScreen al(this, framed, parsed.rows);
 							al.Run();
 						} else {
