@@ -725,88 +725,50 @@ namespace spades {
 					default: return std::string();
 				}
 			}
-
-			std::string FormatExtensionLine(uint8_t id, uint8_t version) {
-				std::string name = NetExtensionName(id);
-				char buf[128];
-				if (name.empty())
-					std::snprintf(buf, sizeof(buf),
-					              "    \xe2\x80\xa2 Unknown extension (id %u) v%u",
-					              static_cast<unsigned>(id), static_cast<unsigned>(version));
-				else
-					std::snprintf(buf, sizeof(buf), "    \xe2\x80\xa2 %s (id %u) v%u",
-					              name.c_str(), static_cast<unsigned>(id),
-					              static_cast<unsigned>(version));
-				return buf;
-			}
 		} // namespace
 
 		std::string NetClient::BuildExtensionHandshakeReport() {
 			if (!extensionHandshakeCompleted)
 				return std::string();
 
-			using Entry = std::pair<uint8_t, uint8_t>;
-			std::vector<Entry> common, clientOnly, serverOnly;
-
-			for (const auto& kv : implementedExtensions) {
-				auto it = serverAdvertisedExtensions.find(kv.first);
-				if (it == serverAdvertisedExtensions.end())
-					clientOnly.emplace_back(kv.first, kv.second);
-				else
-					common.emplace_back(kv.first, kv.second);
-			}
+			// Union of all ids seen on either side.
+			std::vector<uint8_t> ids;
+			ids.reserve(implementedExtensions.size() + serverAdvertisedExtensions.size());
+			for (const auto& kv : implementedExtensions)
+				ids.push_back(kv.first);
 			for (const auto& kv : serverAdvertisedExtensions) {
 				if (implementedExtensions.find(kv.first) == implementedExtensions.end())
-					serverOnly.emplace_back(kv.first, kv.second);
+					ids.push_back(kv.first);
 			}
+			std::sort(ids.begin(), ids.end());
 
-			auto byId = [](const Entry& a, const Entry& b) { return a.first < b.first; };
-			std::sort(common.begin(), common.end(), byId);
-			std::sort(clientOnly.begin(), clientOnly.end(), byId);
-			std::sort(serverOnly.begin(), serverOnly.end(), byId);
+			if (ids.empty())
+				return std::string();
 
+			// Emit a structured block that the UI layer parses to render a
+			// two-column table. Format:
+			//   <<EXTHS>>
+			//   <id>|<name>|<clientVersion>|<serverVersion>
+			//   ...
+			//   <<EXTHS_END>>
+			// Versions are integers; -1 means the side does not implement that id.
+			// `name` is empty when the id is unknown to this client.
 			std::string out;
-			out += "\n\n";
-			out += _Tr("NetClient", "Protocol extension handshake:");
-			out += "\n\n";
+			out += "\n<<EXTHS>>\n";
+			for (uint8_t id : ids) {
+				auto itC = implementedExtensions.find(id);
+				auto itS = serverAdvertisedExtensions.find(id);
+				int clientVer = (itC == implementedExtensions.end()) ? -1 : (int)itC->second;
+				int serverVer = (itS == serverAdvertisedExtensions.end()) ? -1 : (int)itS->second;
+				std::string name = NetExtensionName(id);
 
-			if (common.empty() && clientOnly.empty() && serverOnly.empty()) {
-				out += "    ";
-				out += _Tr("NetClient", "(server advertised no extensions)");
-				return out;
+				char buf[160];
+				std::snprintf(buf, sizeof(buf), "%u|%s|%d|%d\n",
+				              static_cast<unsigned>(id), name.c_str(),
+				              clientVer, serverVer);
+				out += buf;
 			}
-
-			out += "  ";
-			out += _Tr("NetClient", "Negotiated with the server:");
-			out += "\n";
-			if (common.empty()) {
-				out += "    \xe2\x80\xa2 ";
-				out += _Tr("NetClient", "(none)");
-				out += "\n";
-			} else {
-				for (const auto& e : common)
-					out += FormatExtensionLine(e.first, e.second) + "\n";
-			}
-
-			if (!clientOnly.empty()) {
-				out += "\n  ";
-				out += _Tr("NetClient", "Only supported by this client:");
-				out += "\n";
-				for (const auto& e : clientOnly)
-					out += FormatExtensionLine(e.first, e.second) + "\n";
-			}
-
-			if (!serverOnly.empty()) {
-				out += "\n  ";
-				out += _Tr("NetClient", "Only advertised by the server:");
-				out += "\n";
-				for (const auto& e : serverOnly)
-					out += FormatExtensionLine(e.first, e.second) + "\n";
-			}
-
-			// Trim trailing newline.
-			while (!out.empty() && out.back() == '\n')
-				out.pop_back();
+			out += "<<EXTHS_END>>";
 			return out;
 		}
 
