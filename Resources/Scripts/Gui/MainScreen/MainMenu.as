@@ -537,15 +537,15 @@ namespace spades {
 							   prose[prose.length - 1] == 0x20))
 							prose = prose.substr(0, prose.length - 1);
 
-						string framed = _Tr(
+						string intro = _Tr(
 							"MainScreen",
-							"You were disconnected from the server because of the following reason:\n\n{0}",
-							prose);
+							"You were disconnected from the server because of the following reason:");
 
 						if (parsed.rows !is null) {
-							DisconnectScreen al(this, framed, parsed.rows);
+							DisconnectScreen al(this, intro, prose, parsed.rows);
 							al.Run();
 						} else {
+							string framed = intro + "\n\n" + prose;
 							int lineCount = int(framed.split("\n").length);
 							float h = float(lineCount) * 18.0F + 90.0F;
 							if (h < 200.0F)

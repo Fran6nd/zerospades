@@ -141,8 +141,8 @@ namespace spades {
 		private spades::ui::UIElement@ owner;
 		private spades::ui::ListView@ tableView;
 
-		DisconnectScreen(spades::ui::UIElement@ owner, string headerText,
-		                 ExtensionRow@[]@ rows, float height = 200.0F) {
+		DisconnectScreen(spades::ui::UIElement@ owner, string introText, string reasonText,
+		                 ExtensionRow@[]@ rows, float height = 240.0F) {
 			super(owner.Manager);
 			@this.owner = owner;
 			@Font = Manager.RootElement.Font;
@@ -152,8 +152,8 @@ namespace spades {
 			ColFracName = 0.56F;
 			ColFracClient = 0.22F;
 
-			// Match the geometry the original AlertScreen uses so this popup
-			// feels identical, just with extra structure inside.
+			// Match the original AlertScreen geometry so the popup feels
+			// identical, just with extra structure inside.
 			float sw = Manager.ScreenWidth;
 			float sh = Manager.ScreenHeight;
 
@@ -164,17 +164,20 @@ namespace spades {
 			ContentsHeight = height;
 			ContentsTop = (sh - ContentsHeight) * 0.5F;
 
-			// Vertical layout. Allocate enough room for the prose to show ~3
-			// short lines, the static column header, the OK button, and give
-			// the rest to the scrollable table.
-			float proseH = 60.0F;
-			float buttonH = 30.0F;
+			// Vertical layout. The two static labels at the top (intro + the
+			// actual kick reason) never scroll, so the reason — the part
+			// users actually care about — is always visible.
+			float introH = 22.0F;
+			float reasonH = 26.0F;
 			float gap = 8.0F;
 			float bottomGap = 10.0F;
+			float buttonH = 30.0F;
 
-			float tableHeaderY = ContentsTop + proseH + gap;
+			float introY = ContentsTop + 4.0F;
+			float reasonY = introY + introH + 2.0F;
+			float tableHeaderY = reasonY + reasonH + gap;
 			float tableBodyY = tableHeaderY + HeaderRowH;
-			float tableBodyH = ContentsHeight - proseH - gap - HeaderRowH - bottomGap - buttonH - gap;
+			float tableBodyH = ContentsHeight - (tableBodyY - ContentsTop) - bottomGap - buttonH - gap;
 			if (tableBodyH < HeaderRowH)
 				tableBodyH = HeaderRowH;
 			TableHeaderTop = tableHeaderY;
@@ -187,13 +190,25 @@ namespace spades {
 				AddChild(label);
 			}
 
-			// Prose at top. Reuse TextViewer for word-wrap; it scrolls if the
-			// reason is unusually long. Must be reparented before setting text.
+			// Intro line (dim).
 			{
-				spades::ui::TextViewer viewer(Manager);
-				AddChild(viewer);
-				viewer.Bounds = AABB2(ContentsLeft, ContentsTop, ContentsWidth, proseH);
-				viewer.Text = headerText;
+				spades::ui::Label label(Manager);
+				label.Text = introText;
+				label.Bounds = AABB2(ContentsLeft, introY, ContentsWidth, introH);
+				label.Alignment = Vector2(0.0F, 0.5F);
+				label.TextColor = Vector4(1.0F, 1.0F, 1.0F, 0.7F);
+				AddChild(label);
+			}
+
+			// Kick reason — the line users come here for. Slightly bigger.
+			{
+				spades::ui::Label label(Manager);
+				label.Text = reasonText;
+				label.Bounds = AABB2(ContentsLeft, reasonY, ContentsWidth, reasonH);
+				label.Alignment = Vector2(0.0F, 0.5F);
+				label.TextColor = Vector4(1.0F, 0.85F, 0.55F, 1.0F);
+				label.TextScale = 1.1F;
+				AddChild(label);
 			}
 
 			// Static column header row (drawn as labels, not part of the list
