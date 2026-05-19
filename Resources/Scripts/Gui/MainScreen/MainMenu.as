@@ -19,6 +19,7 @@
  */
 
 #include "CreateProfileScreen.as"
+#include "DisconnectScreen.as"
 #include "ServerList.as"
 
 namespace spades {
@@ -507,41 +508,60 @@ namespace spades {
 			if (IsEnabled) {
 				string msg = helper.GetPendingErrorMessage();
 				if (msg.length > 0) {
-					// try to make the "disconnected" message more friendly.
+					// Try to surface the "Disconnected:" payload nicely. SPRaise
+					// appends "\nat <file>:<line>" after the message, so use that
+					// marker as the boundary rather than the first newline — the
+					// reason may legitimately span multiple lines.
 					string findStr = "Disconnected:";
+					string reason;
+					bool isDisconnect = false;
 					int ind1 = msg.findFirst(findStr);
 					if (ind1 >= 0) {
-						// The reason can span multiple lines (e.g. the protocol
-						// extension handshake report). SPRaise always appends
-						// "\nat <file>:<line>" right after the message, so use
-						// that marker as the boundary rather than the first
-						// newline.
+						isDisconnect = true;
 						int contentStart = ind1 + findStr.length;
 						int ind2 = msg.findFirst("\nat ", contentStart);
 						if (ind2 < 0)
 							ind2 = msg.length;
-						string reason = msg.substr(contentStart, ind2 - contentStart);
-						// drop the leading space coming from "Disconnected: %s"
+						reason = msg.substr(contentStart, ind2 - contentStart);
 						if (reason.length > 0 and reason[0] == 0x20)
 							reason = reason.substr(1, reason.length - 1);
-						msg = _Tr(
-							"MainScreen",
-							"You were disconnected from the server because of the following reason:\n\n{0}",
-							reason);
 					}
 
-					// Size the popup so the extension handshake report doesn't get
-					// cramped — but cap it so it never overflows the screen.
-					int lineCount = int(msg.split("\n").length);
-					float h = float(lineCount) * 18.0F + 90.0F;
-					if (h < 200.0F)
-						h = 200.0F;
-					float maxH = Manager.ScreenHeight - 100.0F;
-					if (h > maxH)
-						h = maxH;
+					if (isDisconnect) {
+						ExtensionTableParseResult@ parsed = ParseExtensionTable(reason);
+						string prose = parsed.prose;
+						// drop trailing whitespace/newlines from the prose
+						while (prose.length > 0 and (
+							   prose[prose.length - 1] == 0x0a or
+							   prose[prose.length - 1] == 0x0d or
+							   prose[prose.length - 1] == 0x20))
+							prose = prose.substr(0, prose.length - 1);
 
-					AlertScreen al(this, msg, h);
-					al.Run();
+						string framed = _Tr(
+							"MainScreen",
+							"You were disconnected from the server because of the following reason:\n\n{0}",
+							prose);
+
+						if (parsed.rows !is null) {
+							framed += "\n\n";
+							framed += _Tr("MainScreen", "Protocol extension handshake:");
+							DisconnectScreen al(this, framed, parsed.rows);
+							al.Run();
+						} else {
+							int lineCount = int(framed.split("\n").length);
+							float h = float(lineCount) * 18.0F + 90.0F;
+							if (h < 200.0F)
+								h = 200.0F;
+							float maxH = Manager.ScreenHeight - 100.0F;
+							if (h > maxH)
+								h = maxH;
+							AlertScreen al(this, framed, h);
+							al.Run();
+						}
+					} else {
+						AlertScreen al(this, msg);
+						al.Run();
+					}
 				}
 			}
 		}
