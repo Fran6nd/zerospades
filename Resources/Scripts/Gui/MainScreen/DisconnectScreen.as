@@ -39,7 +39,7 @@ namespace spades {
 		private float TableTop, TableBottom;
 		private float ColNameX, ColClientX, ColServerX;
 		private float ColNameW, ColClientW, ColServerW;
-		private float HeaderRowH = 26.0F;
+		private float HeaderRowH;
 
 		private spades::ui::UIElement@ owner;
 
@@ -48,6 +48,8 @@ namespace spades {
 			@this.owner = owner;
 			@Font = Manager.RootElement.Font;
 			this.Bounds = owner.Bounds;
+
+			HeaderRowH = 26.0F;
 
 			float sw = Manager.ScreenWidth;
 			float sh = Manager.ScreenHeight;
