@@ -1262,11 +1262,8 @@ namespace spades {
 					std::string msg = StripNewlines(TrimSpaces(r.ReadRemainingString()));
 
 					if (type == ChatTypeSystem) {
-						if (playerId == 255) {
-							customKickReasonString = msg.substr(0, kKickReasonMaxBytes);
-							return;
-						}
-
+						// playerId 255 is the kick-reason channel, already consumed by
+						// HandleHandshakePackets before we get here.
 						client->ServerSentMessage(false, msg);
 
 						// Speculate the best game properties based on the server generated messages
