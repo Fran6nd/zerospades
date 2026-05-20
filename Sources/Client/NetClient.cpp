@@ -444,6 +444,7 @@ namespace spades {
 			SPLog("Connecting to %u:%u", (unsigned int)addr.host, (unsigned int)addr.port);
 
 			savedPackets.clear();
+			customKickReasonString.clear();
 
 			peer = enet_host_connect(host, &addr, 1, protocolVersion);
 			if (peer == NULL)
