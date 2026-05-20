@@ -780,6 +780,12 @@ namespace spades {
 						CaptureKickReason(r);
 						return true;
 					}
+					// Non-kick chat before we're fully Connected has no World to
+					// dispatch to. Park it so MapLoaded() can replay it later.
+					if (status != NetClientStatusConnected) {
+						savedPackets.push_back(r.GetData());
+						return true;
+					}
 					return false;
 				}
 				default: return false;
