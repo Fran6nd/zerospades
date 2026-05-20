@@ -144,6 +144,7 @@ namespace spades {
 
 			std::string customKickReasonString;
 			std::string DisconnectReasonString(uint32_t);
+			void CaptureKickReason(NetPacketReader&);
 
 			void MapLoaded();
 

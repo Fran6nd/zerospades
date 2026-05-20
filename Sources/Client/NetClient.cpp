@@ -722,6 +722,14 @@ namespace spades {
 			return inp;
 		}
 
+		// Max chat packet is 255 bytes: type + playerId + chatType + msg → 252 msg bytes.
+		static constexpr size_t kKickReasonMaxBytes = 252;
+
+		void NetClient::CaptureKickReason(spades::client::NetPacketReader& r) {
+			std::string msg = StripNewlines(TrimSpaces(r.ReadRemainingString()));
+			customKickReasonString = msg.substr(0, kKickReasonMaxBytes);
+		}
+
 		std::string NetClient::DisconnectReasonString(uint32_t num) {
 			if (!customKickReasonString.empty())
 				return customKickReasonString;
@@ -769,9 +777,7 @@ namespace spades {
 						r.Peek(0) == 255 && r.Peek(1) == ChatTypeSystem) {
 						r.ReadByte(); // playerId
 						r.ReadByte(); // chat type
-						std::string msg = StripNewlines(TrimSpaces(r.ReadRemainingString()));
-						// Whole packet capped at 255 bytes; 3 bytes are type+playerId+chatType
-						customKickReasonString = msg.substr(0, 252);
+						CaptureKickReason(r);
 						return true;
 					}
 					return false;
@@ -1257,8 +1263,7 @@ namespace spades {
 
 					if (type == ChatTypeSystem) {
 						if (playerId == 255) {
-							// Whole packet capped at 255 bytes; 3 bytes are type+playerId+chatType
-							customKickReasonString = msg.substr(0, 252);
+							customKickReasonString = msg.substr(0, kKickReasonMaxBytes);
 							return;
 						}
 
