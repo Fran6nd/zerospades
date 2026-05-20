@@ -195,6 +195,15 @@ namespace spades {
 				return (uint8_t)data[pos++];
 			}
 
+			uint8_t Peek(size_t offset = 0) const {
+				SPADES_MARK_FUNCTION();
+
+				if (pos + offset >= data.size())
+					SPRaise("Received packet truncated");
+
+				return (uint8_t)data[pos + offset];
+			}
+
 			float ReadFloat() {
 				SPADES_MARK_FUNCTION();
 				union {
@@ -754,12 +763,10 @@ namespace spades {
 					// branch doesn't SPRaise on "unexpected packet" and the ReceivingMap
 					// branch doesn't park it in savedPackets (which are only drained
 					// after StateData, and StateData never arrives when the server kicks
-					// before sending the map). Peek the raw bytes first so non-kick chat
-					// falls through with an untouched reader cursor.
-					const std::vector<char> data = r.GetData();
-					if (data.size() >= 3 &&
-						static_cast<uint8_t>(data[1]) == 255 &&
-						static_cast<uint8_t>(data[2]) == ChatTypeSystem) {
+					// before sending the map). Peek so non-kick chat falls through with
+					// an untouched reader cursor.
+					if (r.GetNumRemainingBytes() >= 2 &&
+						r.Peek(0) == 255 && r.Peek(1) == ChatTypeSystem) {
 						r.ReadByte(); // playerId
 						r.ReadByte(); // chat type
 						std::string msg = StripNewlines(TrimSpaces(r.ReadRemainingString()));
