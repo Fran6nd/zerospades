@@ -748,6 +748,27 @@ namespace spades {
 					}
 				}
 					return true;
+				case PacketTypeChatMessage: {
+					// KickReason v2: a system kick (playerId 255, ChatTypeSystem) may
+					// arrive at any connection stage. Consume it here so the Connecting
+					// branch doesn't SPRaise on "unexpected packet" and the ReceivingMap
+					// branch doesn't park it in savedPackets (which are only drained
+					// after StateData, and StateData never arrives when the server kicks
+					// before sending the map). Peek the raw bytes first so non-kick chat
+					// falls through with an untouched reader cursor.
+					const std::vector<char> data = r.GetData();
+					if (data.size() >= 3 &&
+						static_cast<uint8_t>(data[1]) == 255 &&
+						static_cast<uint8_t>(data[2]) == ChatTypeSystem) {
+						r.ReadByte(); // playerId
+						r.ReadByte(); // chat type
+						std::string msg = StripNewlines(TrimSpaces(r.ReadRemainingString()));
+						// Whole packet capped at 255 bytes; 3 bytes are type+playerId+chatType
+						customKickReasonString = msg.substr(0, 252);
+						return true;
+					}
+					return false;
+				}
 				default: return false;
 			}
 		}
@@ -1229,7 +1250,8 @@ namespace spades {
 
 					if (type == ChatTypeSystem) {
 						if (playerId == 255) {
-							customKickReasonString = msg.substr(0, 90);
+							// Whole packet capped at 255 bytes; 3 bytes are type+playerId+chatType
+							customKickReasonString = msg.substr(0, 252);
 							return;
 						}
 

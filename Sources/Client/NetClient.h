@@ -104,7 +104,7 @@ namespace spades {
 			  {ExtensionTypePlayerProperties, 1},
 			  {ExtensionTypePlayerLimit, 1},
 			  {ExtensionTypeMessageTypes, 1},
-			  {ExtensionTypeKickReason, 1}};
+			  {ExtensionTypeKickReason, 2}};
 
 			class BandwidthMonitor {
 				ENetHost* host;
