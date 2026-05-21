@@ -400,6 +400,7 @@ namespace spades {
 					case ClientCameraMode::ThirdPersonLocal:
 						if (localPlayerIsAlive)
 							break;
+						[[fallthrough]];
 					case ClientCameraMode::FirstPersonFollow:
 					case ClientCameraMode::ThirdPersonFollow:
 					case ClientCameraMode::Free: {

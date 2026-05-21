@@ -17,6 +17,15 @@ file(GLOB JSON_INCLUDE json/include/json/*.h)
 file(GLOB SCRIPTBINDING_FILES ScriptBindings/*.cpp ScriptBindings/*.h)
 file(GLOB UNZIP_FILES unzip/*.c unzip/*.h)
 
+if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang" OR CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+	set_source_files_properties(
+		${ENET_FILES} ${KISS_FILES} ${JSON_FILES} ${UNZIP_FILES}
+		PROPERTIES COMPILE_OPTIONS "-w")
+endif()
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
+	set_source_files_properties(Client/GunCasing.cpp PROPERTIES COMPILE_OPTIONS "-Wno-array-bounds")
+endif()
+
 if(APPLE)
 	file(GLOB PLATFORM_FILES Core/*.mm)
 endif()
@@ -24,6 +33,13 @@ endif()
 add_subdirectory(AngelScript/projects/cmake)
 add_subdirectory(AngelScript/projects/cmake_addons)
 set(ANGELSCRIPT_LIBS Angelscript Angelscript_addons)
+if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang" OR CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+	foreach(ANGELSCRIPT_TARGET Angelscript Angelscript_addons)
+		if(TARGET ${ANGELSCRIPT_TARGET})
+			target_compile_options(${ANGELSCRIPT_TARGET} PRIVATE -w)
+		endif()
+	endforeach()
+endif()
 
 include_directories(BEFORE ".")
 include_directories(BEFORE "json/include")
@@ -45,6 +61,15 @@ add_executable(ZeroSpades
 	${ENET_INCLUDE} ${GUI_FILES} ${IMPORTS_FILES} ${KISS_FILES}
 	${JSON_FILES} ${JSON_INCLUDE} ${UNZIP_FILES} ${SCRIPTBINDING_FILES}
 	${RESOURCE_FILES})
+
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+	target_compile_options(ZeroSpades PRIVATE
+		$<$<COMPILE_LANGUAGE:CXX>:-Wall -Wextra -Wno-unknown-pragmas -Wno-unused-parameter -Wno-cast-function-type>
+		$<$<COMPILE_LANGUAGE:C>:-Wall -Wextra -Wno-unknown-pragmas -Wno-unused-parameter>)
+endif()
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
+	target_compile_options(ZeroSpades PRIVATE $<$<COMPILE_LANGUAGE:CXX>:-Wno-sfinae-incomplete>)
+endif()
 
 set_target_properties(ZeroSpades PROPERTIES
 	LINKER_LANGUAGE CXX

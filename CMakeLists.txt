@@ -1,6 +1,10 @@
 cmake_minimum_required(VERSION 3.10)
 project(ZeroSpades)
 
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS ON)
+
 # OpenSpades client identity sent to AoS servers in the version handshake.
 # Do NOT change — frozen at 0.1.5 so servers continue to recognise us.
 set(OPENSPADES_VERSION_MAJOR 0)
@@ -119,6 +123,13 @@ if(USE_INTERNAL_OPENAL)
 	option(ALSOFT_INSTALL_EXAMPLES "Install example programs (alplay, alstream, ...)" OFF)
 	option(ALSOFT_INSTALL_UTILS "Install utility programs (openal-info, alsoft-config, ...)" OFF)
 	add_subdirectory(openal-soft)
+	if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang" OR CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+		foreach(OPENAL_TARGET OpenAL alsoft.common alsoft.fmt)
+			if(TARGET ${OPENAL_TARGET})
+				target_compile_options(${OPENAL_TARGET} PRIVATE -w)
+			endif()
+		endforeach()
+	endif()
 
 	# Use OpenAL Soft instead of system OpenAL
 	set(OPENAL_FOUND TRUE)
@@ -130,25 +141,7 @@ else()
 endif()
 
 if(CMAKE_COMPILER_IS_GNUCXX)
-	# GCC C++11 support
-	# from http://stackoverflow.com/questions/10984442/how-to-detect-c11-support-of-a-compiler-with-cmake
-	#
-	execute_process(COMMAND ${CMAKE_C_COMPILER} -dumpversion OUTPUT_VARIABLE GCC_VERSION)
-	if (GCC_VERSION VERSION_GREATER 4.7 OR GCC_VERSION VERSION_EQUAL 4.7)
-		message(STATUS "C++11 activated.")
-		add_definitions("-std=gnu++11")
-	elseif(GCC_VERSION VERSION_GREATER 4.3 OR GCC_VERSION VERSION_EQUAL 4.3)
-		message(WARNING "C++0x activated. If you get any errors update to a compiler which fully supports C++11")
-		add_definitions("-std=gnu++0x")
-	else ()
-		message(FATAL_ERROR "C++11 needed. Therefore a gcc compiler with a version higher than 4.3 is needed.")
-	endif()
-
-	add_definitions(
-		-Wall
-		-Wextra
-		-Wno-unknown-pragmas #learn_more: output is spammed like shit by all those #pragma mark items
-	)
+	message(STATUS "C++17 activated.")
 
 	if(CMAKE_BUILD_TYPE MATCHES "Release")
 		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3")
@@ -156,15 +149,6 @@ if(CMAKE_COMPILER_IS_GNUCXX)
 	endif()
 
 elseif (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-	# Clang C++11 support
-	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=gnu++11")
-
-	add_definitions(
-		-Wall
-		-Wextra
-		-Wno-unused-parameter
-	)
-
 	if(CMAKE_BUILD_TYPE MATCHES "Release")
 		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3")
 		set(CMAKE_EXE_LINKER_FLAGS "-s")
@@ -420,4 +404,3 @@ endif(WIN32 AND NOT UNIX)
 set(CPACK_PACKAGE_EXECUTABLES "zerospades" "Launch ZeroSpades")
 set(CPACK_INCLUDE_TOPLEVEL_DIRECTORY FALSE)		#everyone hates a dir inside a zip named exactly like the zip
 include(CPack)
-

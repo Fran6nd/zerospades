@@ -409,7 +409,7 @@ namespace spades {
 
 			RleData* lastRle;
 			{
-				auto ref = rle[(irx & w - 1) + ((iry & h - 1) * w)];
+				auto ref = rle[(irx & (w - 1)) + ((iry & (h - 1)) * w)];
 				lastRle = rleHeap.Dereference<RleData>(ref);
 			}
 
@@ -619,8 +619,8 @@ namespace spades {
 				// add walls
 				{
 					// by RLE map
-					auto ref = rle[static_cast<std::uint_fast32_t>(irx & w - 1) +
-					               static_cast<std::uint_fast32_t>(iry & h - 1) * w];
+					auto ref = rle[static_cast<std::uint_fast32_t>(irx & (w - 1)) +
+					               static_cast<std::uint_fast32_t>(iry & (h - 1)) * w];
 					RleData* rle = rleHeap.Dereference<RleData>(ref);
 					lastRle = rle;
 					auto* ptr = rle;

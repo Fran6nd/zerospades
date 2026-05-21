@@ -378,7 +378,8 @@ namespace spades {
 		World::WeaponRayCastResult World::WeaponRayCast(spades::Vector3 startPos,
 			spades::Vector3 dir, stmp::optional<int> excludePlayerId) {
 			WeaponRayCastResult result;
-			stmp::optional<int> hitPlayerId;
+			bool hasHitPlayer = false;
+			int hitPlayerId = 0;
 			float hitPlayerDist = 0.0F;
 			hitTag_t hitFlag = hit_None;
 
@@ -398,9 +399,10 @@ namespace spades {
 				Player::HitBoxes hb = p->GetHitBoxes(interp); // interpolated
 				if (hb.head.RayCast(startPos, dir, &hitPos)) {
 					float const dist = (hitPos - startPos).GetSquaredLength();
-					if (!hitPlayerId || dist < hitPlayerDist) {
-						if (hitPlayerId != i) {
+					if (!hasHitPlayer || dist < hitPlayerDist) {
+						if (!hasHitPlayer || hitPlayerId != i) {
 							hitPlayerId = i;
+							hasHitPlayer = true;
 							hitFlag = hit_None;
 						}
 
@@ -411,9 +413,10 @@ namespace spades {
 
 				if (hb.torso.RayCast(startPos, dir, &hitPos)) {
 					float const dist = (hitPos - startPos).GetSquaredLength();
-					if (!hitPlayerId || dist < hitPlayerDist) {
-						if (hitPlayerId != i) {
+					if (!hasHitPlayer || dist < hitPlayerDist) {
+						if (!hasHitPlayer || hitPlayerId != i) {
 							hitPlayerId = i;
+							hasHitPlayer = true;
 							hitFlag = hit_None;
 						}
 
@@ -425,9 +428,10 @@ namespace spades {
 				for (int j = 0; j < 3; j++) {
 					if (hb.limbs[j].RayCast(startPos, dir, &hitPos)) {
 						float const dist = (hitPos - startPos).GetSquaredLength();
-						if (!hitPlayerId || dist < hitPlayerDist) {
-							if (hitPlayerId != i) {
+						if (!hasHitPlayer || dist < hitPlayerDist) {
+							if (!hasHitPlayer || hitPlayerId != i) {
 								hitPlayerId = i;
+								hasHitPlayer = true;
 								hitFlag = hit_None;
 							}
 
@@ -445,13 +449,13 @@ namespace spades {
 			float hitBlockDist = (mapResult.hitPos - startPos).GetSquaredLength();
 
 			if (mapResult.hit && hitBlockDist <= FOG_DISTANCE_SQ &&
-			    (!hitPlayerId || hitBlockDist < hitPlayerDist)) {
+			    (!hasHitPlayer || hitBlockDist < hitPlayerDist)) {
 				result.hit = true;
 				result.startSolid = mapResult.startSolid;
 				result.blockPos = mapResult.hitBlock;
 				result.hitPos = mapResult.hitPos;
 				result.hitFlag = hit_None;
-			} else if (hitPlayerId) {
+			} else if (hasHitPlayer) {
 				result.hit = true;
 				result.startSolid = false; // FIXME: startSolid for player
 				result.playerId = hitPlayerId;

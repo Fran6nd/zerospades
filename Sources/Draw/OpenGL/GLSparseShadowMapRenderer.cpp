@@ -110,7 +110,7 @@ namespace spades {
 		struct Segment {
 			float low, high;
 			bool empty;
-			Segment() : empty(true) {}
+			Segment() : low(0.0F), high(0.0F), empty(true) {}
 			Segment(float l, float h) : low(std::min(l, h)), high(std::max(l, h)), empty(false) {}
 			void operator+=(const Segment& seg) {
 				if (seg.empty)

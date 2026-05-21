@@ -462,7 +462,7 @@ namespace spades {
 
 				auto rtype = GetRendererType();
 
-				Uint32 sdlFlags;
+				Uint32 sdlFlags = 0;
 				switch (rtype) {
 					case RendererType::GL:
 						sdlFlags = SDL_WINDOW_OPENGL;
