@@ -114,6 +114,7 @@ namespace spades {
 			INetClient* activeNet; // points to net.get() / demoNet.get() / localMapNet.get()
 			std::string demoFilePath;
 			std::string localMapFilePath;
+			bool localMapDirty = false; // local-map mode: set once the map has unsaved edits
 
 			// Seek-key hold state.
 			// While a seek key is held, SeekPreview() advances demoSeekPendingTime so
@@ -524,6 +525,8 @@ namespace spades {
 
 			bool IsDemoMode() const { return demoNet != nullptr; }
 			bool IsLocalMapMode() const { return localMapNet != nullptr; }
+			bool HasUnsavedLocalMapChanges() const { return localMapDirty; }
+			bool SaveLocalMap();
 			DemoNetClient* GetDemoNetClient() { return demoNet.get(); }
 			void ReloadDemo();
 

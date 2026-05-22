@@ -1632,6 +1632,8 @@ namespace spades {
 				return;
 			Player& p = maybe.value();
 
+			localMapDirty = true;
+
 			std::vector<IntVector3> cells;
 			if (type == BlockActionCreate) {
 				world->CreateBlock(v, p.GetBlockColor());
@@ -1682,6 +1684,8 @@ namespace spades {
 			if (!maybe)
 				return;
 			Player& p = maybe.value();
+
+			localMapDirty = true;
 
 			auto cells = world->CubeLine(v1, v2, 50);
 			for (const auto& c : cells) {

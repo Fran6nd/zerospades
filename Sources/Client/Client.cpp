@@ -31,6 +31,7 @@
 #include <Core/FileManager.h>
 #include <Core/IStream.h>
 #include <Core/Settings.h>
+#include <Core/StdStream.h>
 #include <Core/Strings.h>
 
 #include "IAudioChunk.h"
@@ -1039,6 +1040,37 @@ namespace spades {
 			}
 
 			SPRaise("No free file name");
+		}
+
+		bool Client::SaveLocalMap() {
+			if (!IsLocalMapMode() || localMapFilePath.empty())
+				return false;
+
+			try {
+				const Handle<GameMap>& map = GetWorld()->GetMap();
+				if (!map)
+					SPRaise("No map loaded");
+
+				FILE* f = std::fopen(localMapFilePath.c_str(), "wb");
+				if (!f)
+					SPRaise("Failed to open the map file for writing");
+
+				StdStream stream(f, true);
+				map->Save(&stream);
+
+				localMapDirty = false;
+				ShowAlert(_Tr("Client", "Map saved"), AlertType::Notice);
+				SPLog("Local map saved: %s", localMapFilePath.c_str());
+				return true;
+			} catch (const Exception& ex) {
+				ShowAlert(_Tr("Client", "Saving map failed: ") + ex.GetShortMessage(),
+				          AlertType::Error);
+				SPLog("Saving local map failed: %s", ex.what());
+			} catch (const std::exception& ex) {
+				ShowAlert(_Tr("Client", "Saving map failed: ") + ex.what(), AlertType::Error);
+				SPLog("Saving local map failed: %s", ex.what());
+			}
+			return false;
 		}
 
 #pragma mark - Chat Messages
