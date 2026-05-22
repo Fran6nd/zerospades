@@ -62,5 +62,19 @@ namespace spades {
 		bool ClientUIHelper::IsDemoMode() const {
 			return ui && ui->client && ui->client->IsDemoMode();
 		}
+
+		bool ClientUIHelper::IsLocalMapMode() const {
+			return ui && ui->client && ui->client->IsLocalMapMode();
+		}
+
+		bool ClientUIHelper::HasUnsavedMap() const {
+			return ui && ui->client && ui->client->HasUnsavedLocalMapChanges();
+		}
+
+		bool ClientUIHelper::SaveMap() {
+			if (!ui || !ui->client)
+				return false;
+			return ui->client->SaveLocalMap();
+		}
 	} // namespace client
 } // namespace spades

@@ -45,6 +45,9 @@ namespace spades {
 			void AlertError(const std::string&);
 
 			bool IsDemoMode() const;
+			bool IsLocalMapMode() const;
+			bool HasUnsavedMap() const;
+			bool SaveMap();
 		};
 	} // namespace client
 } // namespace spades

@@ -70,6 +70,18 @@ namespace spades {
 						  "ClientUIHelper", "bool IsDemoMode() const",
 						  asMETHOD(ClientUIHelper, IsDemoMode), asCALL_THISCALL);
 						manager->CheckError(r);
+						r = eng->RegisterObjectMethod(
+						  "ClientUIHelper", "bool IsLocalMapMode() const",
+						  asMETHOD(ClientUIHelper, IsLocalMapMode), asCALL_THISCALL);
+						manager->CheckError(r);
+						r = eng->RegisterObjectMethod(
+						  "ClientUIHelper", "bool HasUnsavedMap() const",
+						  asMETHOD(ClientUIHelper, HasUnsavedMap), asCALL_THISCALL);
+						manager->CheckError(r);
+						r = eng->RegisterObjectMethod(
+						  "ClientUIHelper", "bool SaveMap()",
+						  asMETHOD(ClientUIHelper, SaveMap), asCALL_THISCALL);
+						manager->CheckError(r);
 						break;
 					default: break;
 				}
