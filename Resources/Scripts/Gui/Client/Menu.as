@@ -19,8 +19,25 @@
  */
 
 #include "ClientUI.as"
+#include "../MessageBox.as"
 
 namespace spades {
+
+	// Confirmation shown when leaving the editor with unsaved map changes.
+	// Result indices: 0 = Save, 1 = Don't Save, 2 = Cancel.
+	class EditorExitScreen : MessageBoxScreen {
+		EditorExitScreen(spades::ui::UIElement@ owner, string text, string[]@ buttons, float height) {
+			super(owner, text, buttons, height);
+		}
+
+		void HotKey(string key) {
+			if (IsEnabled and key == "Escape") {
+				EndDialog(2); // Cancel
+			} else {
+				UIElement::HotKey(key);
+			}
+		}
+	}
 
 	class ClientMenu : spades::ui::UIElement {
 		private ClientUI@ ui;
@@ -30,6 +47,8 @@ namespace spades {
 			super(ui.manager);
 			@this.ui = ui;
 			@this.helper = ui.helper;
+
+			bool editing = helper.IsLocalMapMode();
 
 			float sw = Manager.ScreenWidth;
 			float sh = Manager.ScreenHeight;
@@ -44,19 +63,26 @@ namespace spades {
 				label.Bounds = AABB2(winX - 8.0F, winY - 8.0F, winW + 16.0F, winH + 16.0F);
 				AddChild(label);
 			}
-			
+
 			{
 				spades::ui::Button button(Manager);
-				button.Caption = _Tr("Client", "Back to Game");
+				button.Caption = editing
+					? _Tr("Client", "Back to Editor")
+					: _Tr("Client", "Back to Game");
 				button.Bounds = AABB2(winX, winY, winW, 30.0F);
 				@button.Activated = spades::ui::EventHandler(this.OnBackToGame);
 				AddChild(button);
 			}
 			{
 				spades::ui::Button button(Manager);
-				button.Caption = _Tr("Client", "Chat Log");
+				if (editing) {
+					button.Caption = _Tr("Client", "Save Map");
+					@button.Activated = spades::ui::EventHandler(this.OnSaveMap);
+				} else {
+					button.Caption = _Tr("Client", "Chat Log");
+					@button.Activated = spades::ui::EventHandler(this.OnChatLog);
+				}
 				button.Bounds = AABB2(winX, winY + 32.0F, winW, 30.0F);
-				@button.Activated = spades::ui::EventHandler(this.OnChatLog);
 				AddChild(button);
 			}
 			{
@@ -68,9 +94,12 @@ namespace spades {
 			}
 			{
 				spades::ui::Button button(Manager);
-				button.Caption = helper.IsDemoMode()
-					? _Tr("Client", "Exit Demo")
-					: _Tr("Client", "Disconnect");
+				if (editing)
+					button.Caption = _Tr("Client", "Exit Editor");
+				else if (helper.IsDemoMode())
+					button.Caption = _Tr("Client", "Exit Demo");
+				else
+					button.Caption = _Tr("Client", "Disconnect");
 				button.Bounds = AABB2(winX, winY + 96.0F, winW, 30.0F);
 				@button.Activated = spades::ui::EventHandler(this.OnDisconnect);
 				AddChild(button);
@@ -89,7 +118,41 @@ namespace spades {
 			@ui.ActiveUI = @ui.chatLogWindow;
 			ui.chatLogWindow.ScrollToEnd();
 		}
-		private void OnDisconnect(spades::ui::UIElement@ sender) { ui.shouldExit = true; }
+		private void OnSaveMap(spades::ui::UIElement@ sender) {
+			helper.SaveMap();
+			// Return to the editor so the save confirmation alert is visible.
+			@ui.ActiveUI = null;
+		}
+		private void OnDisconnect(spades::ui::UIElement@ sender) {
+			if (helper.IsLocalMapMode() and helper.HasUnsavedMap()) {
+				string[] buttons = {
+					_Tr("Client", "Save"),
+					_Tr("Client", "Don't Save"),
+					_Tr("Client", "Cancel")
+				};
+				EditorExitScreen dialog(this,
+					_Tr("Client", "You have unsaved changes to this map. Save before exiting?"),
+					buttons, 100.0F);
+				@dialog.Closed = spades::ui::EventHandler(this.OnExitConfirmed);
+				dialog.Run();
+				return;
+			}
+			ui.shouldExit = true;
+		}
+		private void OnExitConfirmed(spades::ui::UIElement@ sender) {
+			EditorExitScreen@ dialog = cast<EditorExitScreen>(sender);
+			if (dialog is null)
+				return;
+			if (dialog.ResultIndex == 0) { // Save
+				if (helper.SaveMap())
+					ui.shouldExit = true;
+				else
+					@ui.ActiveUI = null; // surface the error alert; the map keeps its changes
+			} else if (dialog.ResultIndex == 1) { // Don't Save
+				ui.shouldExit = true;
+			}
+			// Cancel (2) or dismissed: stay in the menu.
+		}
 
 		void HotKey(string key) {
 			if (IsEnabled and key == "Escape") {
