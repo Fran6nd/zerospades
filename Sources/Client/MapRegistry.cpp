@@ -79,7 +79,7 @@ namespace spades {
 		void MapRegistry::SetBaseDirectory(const std::string& dir) { s_baseDir = dir; }
 
 		std::string MapRegistry::GetMapsDirectory() {
-			return s_baseDir.empty() ? "Maps" : s_baseDir + "/Maps";
+			return s_baseDir.empty() ? "Mapshots" : s_baseDir + "/Mapshots";
 		}
 
 		std::vector<MapEntry> MapRegistry::ListMaps() {

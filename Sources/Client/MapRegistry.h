@@ -35,26 +35,27 @@ namespace spades {
 		};
 
 		/**
-		 * Enumerates user-provided .vxl maps found under <userResources>/Maps.
+		 * Enumerates .vxl maps found under <userResources>/Mapshots.
 		 *
-		 * The bundled Maps/ folder inside Resources/ is intentionally not scanned:
-		 * it holds menu-backdrop assets, not playable maps. Users drop .vxl files
-		 * into the per-user Maps directory alongside Demos/.
+		 * Mapshots/ is where the in-game mapshot feature saves .vxl snapshots of
+		 * the current map, so it accumulates playable maps automatically. Users
+		 * may also drop their own .vxl files there. The bundled Resources/Maps
+		 * folder holds menu-backdrop assets and is intentionally not scanned.
 		 */
 		class MapRegistry {
 		public:
 			/**
-			 * Sets the base directory under which the Maps/ subfolder lives.
+			 * Sets the base directory under which the Mapshots/ subfolder lives.
 			 * Must be called before ListMaps(). Defaults to the current working
 			 * directory if never called.
 			 */
 			static void SetBaseDirectory(const std::string& dir);
 
-			/** Returns the absolute path to the Maps directory. */
+			/** Returns the absolute path to the Mapshots directory. */
 			static std::string GetMapsDirectory();
 
 			/**
-			 * Returns all .vxl files in the Maps directory, sorted by display name
+			 * Returns all .vxl files in the Mapshots directory, sorted by display name
 			 * (case-insensitive). Missing directory yields an empty list.
 			 */
 			static std::vector<MapEntry> ListMaps();

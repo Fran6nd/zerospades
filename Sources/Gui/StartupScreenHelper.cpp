@@ -687,8 +687,8 @@ namespace spades {
 				return false;
 			}
 
-			// Ensure the Maps directory exists before trying to open it.
-			std::string path = base + "/Maps";
+			// Ensure the Mapshots directory exists before trying to open it.
+			std::string path = base + "/Mapshots";
 #ifdef WIN32
 			_mkdir(path.c_str());
 #else
