@@ -48,6 +48,8 @@ namespace spades {
 		private spades::ui::UIElement@ sayButton1;
 		private spades::ui::UIElement@ sayButton2;
 
+		private ConfigItem cg_keyGlobalChat("cg_keyGlobalChat");
+		private ConfigItem cg_keyTeamChat("cg_keyTeamChat");
 		private ConfigItem cg_keyChatLog("cg_keyChatLog");
 
 		ChatLogWindow(ClientUI@ ui) {
@@ -154,9 +156,9 @@ namespace spades {
 
 			if (IsEnabled and (EqualsIgnoringCase(key, cg_keyChatLog.StringValue) or key == "Escape"))
 				Close();
-			else if (IsEnabled and (key == "Y"))
+			else if (IsEnabled and EqualsIgnoringCase(key, cg_keyTeamChat.StringValue))
 				OnTeamChat(this);
-			else if (IsEnabled and (key == "T"))
+			else if (IsEnabled and EqualsIgnoringCase(key, cg_keyGlobalChat.StringValue))
 				OnGlobalChat(this);
 			else
 				UIElement::HotKey(key);
