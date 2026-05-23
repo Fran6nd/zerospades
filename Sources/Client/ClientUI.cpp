@@ -15,7 +15,7 @@
  GNU General Public License for more details.
 
  You should have received a copy of the GNU General Public License
- along with OpenSpades.  If not, see <http://www.gnu.org/licenses/>.
+ along with OpenSpades.	 If not, see <http://www.gnu.org/licenses/>.
 
  */
 
@@ -32,7 +32,7 @@
 namespace spades {
 	namespace client {
 		ClientUI::ClientUI(IRenderer* r, IAudioDevice* a, FontManager* fontManager, Client* client)
-		    : renderer(r), audioDevice(a), fontManager(fontManager), client(client) {
+			: renderer(r), audioDevice(a), fontManager(fontManager), client(client) {
 			SPADES_MARK_FUNCTION();
 			if (!renderer)
 				SPInvalidArgument("renderer");
@@ -260,6 +260,7 @@ namespace spades {
 			c->SetObject(&*ui);
 			c.ExecuteChecked();
 		}
+
 		void ClientUI::EnterGlobalChatWindow() {
 			SPADES_MARK_FUNCTION();
 			if (!ui)
@@ -271,6 +272,7 @@ namespace spades {
 			c->SetObject(&*ui);
 			c.ExecuteChecked();
 		}
+
 		void ClientUI::EnterTeamChatWindow() {
 			SPADES_MARK_FUNCTION();
 			if (!ui)
@@ -282,6 +284,19 @@ namespace spades {
 			c->SetObject(&*ui);
 			c.ExecuteChecked();
 		}
+
+		void ClientUI::EnterChatLogWindow() {
+			SPADES_MARK_FUNCTION();
+			if (!ui)
+				return;
+
+			ScopedPrivilegeEscalation privilege;
+			static ScriptFunction func("ClientUI", "void EnterChatLogWindow()");
+			ScriptContextHandle c = func.Prepare();
+			c->SetObject(&*ui);
+			c.ExecuteChecked();
+		}
+
 		void ClientUI::CloseUI() {
 			SPADES_MARK_FUNCTION();
 			if (!ui)

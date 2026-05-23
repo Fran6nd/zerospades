@@ -1858,6 +1858,7 @@ namespace spades {
 			layouter.AddControl(_Tr("Preferences", "Flashlight"), "cg_keyFlashlight");
 			layouter.AddControl(_Tr("Preferences", "Global Chat"), "cg_keyGlobalChat");
 			layouter.AddControl(_Tr("Preferences", "Team Chat"), "cg_keyTeamChat");
+			layouter.AddControl(_Tr("Preferences", "Chat Log"), "cg_keyChatLog");
 			layouter.AddControl(_Tr("Preferences", "Chat Zoom"), "cg_keyZoomChatLog");
 			layouter.AddControl(_Tr("Preferences", "Limbo Menu"), "cg_keyLimbo");
 			layouter.AddControl(_Tr("Preferences", "Save Map"), "cg_keySaveMap");
