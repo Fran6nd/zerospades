@@ -124,7 +124,7 @@ namespace spades {
 
 			{
 				if (old >= NEUTRAL_TEAM) {
-					msg = _Tr("Client", "{0} captured an Neutral Territory", teamName);
+					msg = _Tr("Client", "{0} captured a Neutral Territory", teamName);
 				} else {
 					msg = _Tr("Client", "{0} captured {1}'s Territory", teamName, oldTeamName);
 				}
@@ -135,7 +135,7 @@ namespace spades {
 			{
 				teamName = chatWindow->TeamColorMessage(teamName, teamId);
 				if (old >= NEUTRAL_TEAM) {
-					msg = _Tr("Client", "{0} captured an neutral territory", teamName);
+					msg = _Tr("Client", "{0} captured a neutral territory", teamName);
 				} else {
 					oldTeamName = chatWindow->TeamColorMessage(oldTeamName, old);
 					msg = _Tr("Client", "{0} captured {1}'s territory", teamName, oldTeamName);
