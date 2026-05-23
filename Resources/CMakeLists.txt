@@ -106,6 +106,7 @@ if(UNIX AND NOT APPLE)
 	file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/Icons)
 	add_custom_command(
 		TARGET ZeroSpades_Unix
+		POST_BUILD
 		COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/Icons/converticons.sh ${CMAKE_CURRENT_SOURCE_DIR}/Icons
 		WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/Icons)
 
@@ -118,11 +119,13 @@ if(UNIX AND NOT APPLE)
 
 	add_custom_command(
 		TARGET ZeroSpades_Unix
+		POST_BUILD
 		COMMAND sh -c \"gzip -9 -c ${CMAKE_CURRENT_SOURCE_DIR}/Unix/Debian/changelog > changelog.gz\"
 		WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/Unix/Debian
 	)
 	add_custom_command(
 		TARGET ZeroSpades_Unix
+		POST_BUILD
 		COMMAND sh -c \"gzip -9 -c ${CMAKE_CURRENT_BINARY_DIR}/Unix/Man/zerospades.6 > zerospades.6.gz\"
 		WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/Unix/Man
 	)

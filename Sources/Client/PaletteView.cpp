@@ -50,6 +50,7 @@ namespace spades {
 		}
 
 		PaletteView::PaletteView(Client* c) : client(c), renderer(c->GetRenderer()) {
+			extended = cg_extendedPalette;
 			UpdatePaletteSize();
 			ResetColors();
 			time = 0.0F;

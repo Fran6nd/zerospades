@@ -439,9 +439,9 @@ namespace spades {
 
 			// check collision
 			if (!cg_spectatorNoclip) {
-				GameMap::RayCastResult minResult;
+				GameMap::RayCastResult minResult{};
 				float minDist = 1.0E+10F;
-				Vector3 minShift;
+				Vector3 minShift = MakeVector3(0.0F, 0.0F, 0.0F);
 
 				const Vector3 dir = freeState.position - lastPos;
 				const Vector3 normDir = dir.Normalize();

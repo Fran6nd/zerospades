@@ -37,11 +37,9 @@ namespace spades {
 	}
 	CpuID::CpuID() : featureEcx(0), featureEdx(0), subfeature(0),
 					 featureXcr0Avx(false), featureXcr0Avx512(false) {
-		uint32_t maxStdLevel;
 		{
 			auto ar = cpuid(0);
 			char buf[13];
-			maxStdLevel = ar[0];
 			memcpy(&buf[0], &ar[1], 4);
 			memcpy(&buf[4], &ar[3], 4);
 			memcpy(&buf[8], &ar[2], 4);

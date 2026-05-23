@@ -924,8 +924,10 @@ tga_result tga_desaturate(tga_image* img, const int cr, const int cg, const int 
 	dest = img->image_data;
 	for (src = img->image_data; src < img->image_data + img->width * img->height * bpp;
 	     src += bpp) {
-		uint8_t b, g, r;
-		(void)tga_unpack_pixel(src, img->pixel_depth, &b, &g, &r, NULL);
+		uint8_t b = 0, g = 0, r = 0;
+		tga_result result = tga_unpack_pixel(src, img->pixel_depth, &b, &g, &r, NULL);
+		if (result != TGA_NOERR)
+			return result;
 
 		*dest = (uint8_t)(((int)b * cb + (int)g * cg + (int)r * cr) / dv);
 		dest++;
