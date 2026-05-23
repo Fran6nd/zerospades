@@ -163,6 +163,18 @@ msgctxt "Client"
 msgid "{0} joined {1} team"
 msgstr ""
 
+msgctxt "Client"
+msgid "You captured {0}'s Intel"
+msgstr ""
+
+msgctxt "Client"
+msgid "You picked up {0}'s Intel"
+msgstr ""
+
+msgctxt "Client"
+msgid "You dropped {0}'s Intel"
+msgstr ""
+
 #: Sources/Client/Client_NetHandler.cpp:294
 msgctxt "Client"
 msgid "{0} wins!"
@@ -1564,7 +1576,14 @@ msgctxt "Client"
 msgid "Welcome to the server, {0}!"
 msgstr ""
 
-#: Sources/Client/Client_Update.cpp:906
+msgctxt "Client"
+msgid "You are now a spectator"
+msgstr ""
+
+msgctxt "Client"
+msgid "You joined {0} team"
+msgstr ""
+
 msgctxt "Client"
 msgid "You have killed {0}"
 msgstr ""
