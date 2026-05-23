@@ -160,10 +160,13 @@ namespace spades {
 			std::string teamName = world->GetTeamName(otherTeamId);
 
 			{
-				msg = _Tr("Client", "{0} captured {1}'s Intel.", p.GetName(), teamName);
+				msg = _Tr("Client", "{0} captured {1}'s Intel", p.GetName(), teamName);
 				NetLog("%s", msg.c_str());
-				if (cg_centerMessage)
+				if (cg_centerMessage) {
+					if (p.IsLocalPlayer())
+						msg = _Tr("Client", "You captured {0}'s Intel", teamName);
 					centerMessageView->AddMessage(msg);
+				}
 			}
 			{
 				msg = _Tr("Client", "{0} captured {1}'s intel",
@@ -189,10 +192,13 @@ namespace spades {
 			std::string teamName = world->GetTeamName(otherTeamId);
 
 			{
-				msg = _Tr("Client", "{0} picked up {1}'s Intel.", p.GetName(), teamName);
+				msg = _Tr("Client", "{0} picked up {1}'s Intel", p.GetName(), teamName);
 				NetLog("%s", msg.c_str());
-				if (cg_centerMessage)
+				if (cg_centerMessage) {
+					if (p.IsLocalPlayer())
+						msg = _Tr("Client", "You picked up {0}'s Intel", teamName);
 					centerMessageView->AddMessage(msg);
+				}
 			}
 			{
 				msg = _Tr("Client", "{0} picked up {1}'s intel",
@@ -218,8 +224,11 @@ namespace spades {
 			{
 				msg = _Tr("Client", "{0} dropped {1}'s Intel", p.GetName(), teamName);
 				NetLog("%s", msg.c_str());
-				if (cg_centerMessage)
+				if (cg_centerMessage) {
+					if (p.IsLocalPlayer())
+						msg = _Tr("Client", "You dropped {0}'s Intel", teamName);
 					centerMessageView->AddMessage(msg);
+				}
 			}
 			{
 				msg = _Tr("Client", "{0} dropped {1}'s intel",

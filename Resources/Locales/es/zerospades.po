@@ -127,8 +127,8 @@ msgstr "{0} capturó la intel {1}"
 
 #: Sources/Client/Client_NetHandler.cpp:134
 msgctxt "Client"
-msgid "{0} captured {1}'s Intel."
-msgstr "{0} capturó la Intel {1}."
+msgid "{0} captured {1}'s Intel"
+msgstr "{0} capturó la Intel {1}"
 
 #: Sources/Client/Client_NetHandler.cpp:158
 msgctxt "Client"
@@ -137,8 +137,8 @@ msgstr "{0} tomó la intel {1}"
 
 #: Sources/Client/Client_NetHandler.cpp:165
 msgctxt "Client"
-msgid "{0} picked up {1}'s Intel."
-msgstr "{0} tomó la Intel {1}."
+msgid "{0} picked up {1}'s Intel"
+msgstr "{0} tomó la Intel {1}"
 
 #: Sources/Client/Client_NetHandler.cpp:183
 msgctxt "Client"
