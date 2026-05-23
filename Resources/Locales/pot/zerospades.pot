@@ -981,6 +981,10 @@ msgctxt "Preferences"
 msgid "Team Chat"
 msgstr ""
 
+msgctxt "Preferences"
+msgid "Chat Log"
+msgstr ""
+
 #: Resources/Scripts/Gui/Preferences.as:714
 msgctxt "Preferences"
 msgid "Limbo Menu"
@@ -1372,6 +1376,10 @@ msgid ""
 "4x"
 msgstr ""
 
+msgctxt "StartupScreen"
+msgid "Graphics Settings"
+msgstr ""
+
 #: Resources/Scripts/Gui/StartupScreen.as:1486
 msgctxt "StartupScreen"
 msgid "Audio Settings"
@@ -1601,11 +1609,6 @@ msgstr ""
 #: Resources/Scripts/Gui/MainScreen/MainMenu.as:250
 msgctxt "MainScreen"
 msgid "Ping"
-msgstr ""
-
-#: Resources/Scripts/Gui/Preferences.as:56
-msgctxt "Preferences"
-msgid "Graphics Settings"
 msgstr ""
 
 #: Resources/Scripts/Gui/Preferences.as:605

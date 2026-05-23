@@ -999,6 +999,10 @@ msgctxt "Preferences"
 msgid "Team Chat"
 msgstr "Chat de equipo"
 
+msgctxt "Preferences"
+msgid "Chat Log"
+msgstr "Registro del chat"
+
 #: Resources/Scripts/Gui/Preferences.as:714
 msgctxt "Preferences"
 msgid "Limbo Menu"
@@ -1426,6 +1430,10 @@ msgid ""
 msgstr ""
 "Modo Rápido:Reduce la resolución de la imagen para hacer un rendimiento mas "
 "rápido.|Apagado|2x|4x"
+
+msgctxt "StartupScreen"
+msgid "Graphics Settings"
+msgstr "Ajustes de gráficos"
 
 #: Resources/Scripts/Gui/StartupScreen.as:1486
 msgctxt "StartupScreen"
