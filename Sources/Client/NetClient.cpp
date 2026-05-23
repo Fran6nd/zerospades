@@ -1041,11 +1041,11 @@ namespace spades {
 						blockColor.z = Clamp((int)cg_defaultBlockColorB, 0, 255);
 						pRef.SetHeldBlockColor(blockColor);
 						SendHeldBlockColor(); // ensure block color is synchronized
-					} else {
-						if (savedPlayerTeam[pId] != team) {
-							client->PlayerJoinedTeam(pRef);
-							savedPlayerTeam[pId] = team;
-						}
+					}
+
+					if (savedPlayerTeam[pId] != team) {
+						client->PlayerJoinedTeam(pRef);
+						savedPlayerTeam[pId] = team;
 					}
 
 					client->PlayerSpawned(pRef);

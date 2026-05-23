@@ -350,7 +350,15 @@ namespace spades {
 			std::string msg;
 			std::string teamName = p.IsSpectator()
 				? _Tr("Client", "Spectator") : p.GetTeamName();
-
+			
+			if (p.IsLocalPlayer()) {
+				msg = p.IsSpectator()
+					? _Tr("Client", "You are now a spectator")
+					: _Tr("Client", "You joined {0} team", teamName);
+				centerMessageView->AddMessage(msg);
+				return;
+			}
+			
 			{
 				msg = _Tr("Client", "{0} joined {1} team", p.GetName(), teamName);
 				NetLog("%s", msg.c_str());

@@ -162,6 +162,18 @@ msgctxt "Client"
 msgid "{0} joined {1} team"
 msgstr "{0} se unio al equipo {1}"
 
+msgctxt "Client"
+msgid "You captured {0}'s Intel"
+msgstr "Has capturado la Intel {0}"
+
+msgctxt "Client"
+msgid "You picked up {0}'s Intel"
+msgstr "Has tomado la Intel {0}"
+
+msgctxt "Client"
+msgid "You dropped {0}'s Intel"
+msgstr "Has soltado la Intel {0}"
+
 #: Sources/Client/Client_NetHandler.cpp:294
 msgctxt "Client"
 msgid "{0} wins!"
@@ -1630,7 +1642,15 @@ msgstr "[{0}] Seleccionar Equipo/Arma"
 #: Sources/Client/Client_NetHandler.cpp:66
 msgctxt "Client"
 msgid "Welcome to the server, {0}!"
-msgstr "Bienvenido al servidor, {0}!"
+msgstr "¡Bienvenido al servidor, {0}!"
+
+msgctxt "Client"
+msgid "You are now a spectator"
+msgstr "Ahora eres un espectador"
+
+msgctxt "Client"
+msgid "You joined {0} team"
+msgstr "Te has unido al equipo {0}"
 
 #: Sources/Client/Client_Update.cpp:906
 msgctxt "Client"
