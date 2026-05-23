@@ -1379,10 +1379,10 @@ namespace spades {
 
 			float width = (FieldWidth - (labels.length - 1)) / labels.length;
 			for (uint i = 0; i < labels.length; ++i) {
-				ViewmodelPositionPresetButton btn(Parent.Manager, labels[i], caption, xs[i], ys[i], zs[i]);
-				btn.Bounds = AABB2(FieldX + float(i) * (width + 1.0F), 2.0F, width, 28.0F);
-				btn.Enable = enabled;
-				container.AddChild(btn);
+				ViewmodelPositionPresetButton button(Parent.Manager, labels[i], caption, xs[i], ys[i], zs[i]);
+				button.Bounds = AABB2(FieldX + float(i) * (width + 1.0F), 2.0F, width, 28.0F);
+				button.Enable = enabled;
+				container.AddChild(button);
 			}
 		}
 
@@ -1401,12 +1401,13 @@ namespace spades {
 						   array<int> = {1, -1, 0}, enabled);
 		}
 
-		void AddButtonField(string caption, string btnCaption, spades::ui::EventHandler@ handler) {
+		void AddButtonField(string caption, string btnCaption, spades::ui::EventHandler@ handler, bool enabled = true) {
 			spades::ui::UIElement@ container = CreateBasicLabel(caption);
 
 			spades::ui::SimpleButton button(Parent.Manager);
 			button.Caption = btnCaption;
 			button.Bounds = AABB2(FieldX, 4.0F, FieldWidth, 24.0F);
+			button.Enable = enabled;
 			@button.Activated = handler;
 			container.AddChild(button);
 		}
@@ -1609,7 +1610,7 @@ namespace spades {
 			layouter.AddRGBSlider(_Tr("Preferences", "Custom Color"),
 			array<string> = { "cg_hudColorR", "cg_hudColorG", "cg_hudColorB"});
 			layouter.AddButtonField(_Tr("Preferences", "HUD Edge Positions"),
-				_Tr("Preferences", "Edit"), spades::ui::EventHandler(this.OnEditHUDClicked));
+				_Tr("Preferences", "Edit"), spades::ui::EventHandler(this.OnEditHUDClicked), options.GameActive);
 			layouter.AddChoiceField(_Tr("Preferences", "HUD Ammo Style"), "cg_hudAmmoStyle",
 									array<string> = {_Tr("Preferences", "NORMAL"),
 													 _Tr("Preferences", "SIMPLE")},
