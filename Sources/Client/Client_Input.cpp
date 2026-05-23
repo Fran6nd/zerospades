@@ -377,6 +377,10 @@ namespace spades {
 				}
 
 				if (IsLimboViewActive()) {
+					if ((CheckKey(cg_keyLimbo, name) && down) && HasLocalPlayer()) {
+						inGameLimbo = false;
+						return;
+					}
 					if (down)
 						limbo->KeyEvent(name);
 					return;
