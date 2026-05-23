@@ -108,7 +108,7 @@ msgstr ""
 
 #: Sources/Client/Client_NetHandler.cpp:91
 msgctxt "Client"
-msgid "{0} captured an neutral territory"
+msgid "{0} captured a neutral territory"
 msgstr ""
 
 #: Sources/Client/Client_NetHandler.cpp:99
@@ -118,7 +118,7 @@ msgstr ""
 
 #: Sources/Client/Client_NetHandler.cpp:101
 msgctxt "Client"
-msgid "{0} captured an Neutral Territory"
+msgid "{0} captured a Neutral Territory"
 msgstr ""
 
 #: Sources/Client/Client_NetHandler.cpp:127
