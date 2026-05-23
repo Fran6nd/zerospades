@@ -88,6 +88,7 @@ DEFINE_SPADES_SETTING(cg_keySaveMap, "8");
 
 DEFINE_SPADES_SETTING(cg_switchToolByWheel, "1");
 DEFINE_SPADES_SETTING(cg_debugCorpse, "0");
+DEFINE_SPADES_SETTING(cg_keySpawnCorpse, "p");
 
 SPADES_SETTING(cg_manualFocus);
 DEFINE_SPADES_SETTING(cg_keyAutoFocus, "MiddleMouseButton");
@@ -480,7 +481,7 @@ namespace spades {
 								return;
 						}
 
-						if (name == "P" && down && cg_debugCorpse) {
+						if (CheckKey(cg_keySpawnCorpse, name) && down && cg_debugCorpse) {
 							auto corp = stmp::make_unique<Corpse>(*renderer, *map, p);
 							corp->AddImpulse(p.GetFront() * 32.0F);
 							corpses.emplace_back(std::move(corp));
