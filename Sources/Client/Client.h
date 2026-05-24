@@ -330,6 +330,15 @@ namespace spades {
 			} followAndFreeCameraState;
 
 			/**
+			 * Local-map editor: software cursor used while the large map is open.
+			 * Updated from mouse deltas (since SDL is in relative mode); look is frozen
+			 * during this time. `editorCursorVisible` mirrors `largeMapView->IsZoomed()`
+			 * to decide whether to draw and update the cursor.
+			 */
+			Vector2 editorCursorPos{0.0F, 0.0F};
+			bool editorCursorVisible = false;
+
+			/**
 			 * The ID of the player being followed (in a spectator mode, or when the local player is
 			 * dead). Must be valid as long as the follow cam is enabled.
 			 *

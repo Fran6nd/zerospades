@@ -1796,6 +1796,15 @@ namespace spades {
 					// large map view should come in front
 					if (largeMap)
 						largeMapView->Draw();
+
+					// Local-map editor: draw the software pointer over the map.
+					if (largeMap && editorCursorVisible) {
+						Handle<IImage> cursor =
+						  renderer->RegisterImage("Gfx/UI/Cursor.png");
+						renderer->SetColorAlphaPremultiplied(MakeVector4(1, 1, 1, 1));
+						renderer->DrawImage(cursor,
+						  AABB2(editorCursorPos.x - 8, editorCursorPos.y - 8, 32, 32));
+					}
 				} else if (AcceptsTextInput() || chatWindow->IsExpanded()) {
 					// chat bypass cg_hideHud
 					chatWindow->Draw();

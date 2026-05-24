@@ -155,6 +155,14 @@ namespace spades {
 				return;
 			}
 
+			if (editorCursorVisible) {
+				editorCursorPos.x = Clamp(editorCursorPos.x + x,
+				                          0.0F, renderer->ScreenWidth());
+				editorCursorPos.y = Clamp(editorCursorPos.y + y,
+				                          0.0F, renderer->ScreenHeight());
+				return;
+			}
+
 			if (pieMenuView && pieMenuView->IsOpen()) {
 				pieMenuView->HandleMouseDelta(x, y);
 				return;
@@ -956,6 +964,16 @@ namespace spades {
 							? audioDevice->RegisterSound("Sounds/Misc/OpenMap.opus")
 							: audioDevice->RegisterSound("Sounds/Misc/CloseMap.opus");
 						audioDevice->PlayLocal(c.GetPointerOrNull(), AudioParam());
+
+						// Local-map editor: arm/disarm the software cursor used for
+						// future in-map tools (e.g. biome painting).
+						if (IsLocalMapMode() && zoomed) {
+							editorCursorPos = MakeVector2(renderer->ScreenWidth() * 0.5F,
+							                              renderer->ScreenHeight() * 0.5F);
+							editorCursorVisible = true;
+						} else {
+							editorCursorVisible = false;
+						}
 					}
 				} else if (CheckKey(cg_keyScoreboard, name)) {
 					if (!IsLocalMapMode())

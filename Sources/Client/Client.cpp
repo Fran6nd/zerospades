@@ -195,6 +195,7 @@ namespace spades {
 			debugHitTestZoom = false;
 			spectatorZoom = false;
 			largeMapView->SetZoom(false);
+			editorCursorVisible = false;
 
 			clientPlayers.clear();
 

@@ -229,6 +229,7 @@ namespace spades {
 						weapInput.secondary = false;
 						playerInput = PlayerInput();
 						largeMapView->SetZoom(false);
+						editorCursorVisible = false;
 						chatWindow->SetExpanded(false);
 						scoreboardVisible = false;
 					}
