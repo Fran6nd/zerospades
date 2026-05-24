@@ -167,6 +167,82 @@ namespace spades {
 		void RecycleElement(spades::ui::UIElement@ elem) {}
 	}
 
+	// A Field that starts locked (non-interactive) and only enters edit mode
+	// when BeginEdit() is called from outside. Commits on Enter or focus loss,
+	// cancels on Escape (restoring the text it had at BeginEdit time).
+	class RenamableField : spades::ui::Field {
+		private bool editing = false;
+		private string originalText;
+
+		spades::ui::EventHandler@ CommitRequested;
+		spades::ui::EventHandler@ Cancelled;
+
+		RenamableField(spades::ui::UIManager@ manager) {
+			super(manager);
+			AcceptsFocus = false;
+			IsMouseInteractive = false;
+		}
+
+		bool IsEditing { get final { return editing; } }
+		string OriginalText { get final { return originalText; } }
+
+		void BeginEdit() {
+			if (editing)
+				return;
+			editing = true;
+			originalText = Text;
+			AcceptsFocus = true;
+			IsMouseInteractive = true;
+			@Manager.ActiveElement = this;
+			SelectAll();
+		}
+
+		void EndEdit() {
+			editing = false;
+			AcceptsFocus = false;
+			IsMouseInteractive = false;
+			if (Manager.ActiveElement is this)
+				@Manager.ActiveElement = null;
+		}
+
+		void Commit() {
+			if (!editing)
+				return;
+			EndEdit();
+			if (CommitRequested !is null)
+				CommitRequested(this);
+		}
+
+		void Cancel() {
+			if (!editing)
+				return;
+			Text = originalText;
+			EndEdit();
+			if (Cancelled !is null)
+				Cancelled(this);
+		}
+
+		void KeyDown(string key) {
+			if (editing) {
+				if (key == "Enter" or key == "Return" or key == "KeypadEnter") {
+					Commit();
+					return;
+				} else if (key == "Escape") {
+					Cancel();
+					return;
+				}
+			}
+			Field::KeyDown(key);
+		}
+
+		void Render() {
+			// Detect focus loss while editing: commit (matches Finder/Explorer rename).
+			if (editing and not IsFocused)
+				Commit();
+			Field::Render();
+		}
+	}
+
 	class MapListHeader : spades::ui::UIElement {
 		string Text;
 		MapListHeader(spades::ui::UIManager@ manager) { super(manager); }

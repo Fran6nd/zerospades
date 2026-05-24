@@ -110,9 +110,11 @@ namespace spades {
 		spades::ui::ListView@ mapList;
 		MapListModel@ currentMapListModel;
 		MainScreenMapItem@ selectedMap;
-		spades::ui::Field@ mapNameField;
+		RenamableField@ mapNameField;
 		spades::ui::Button@ mapEditButton;
 		spades::ui::Button@ mapDeleteButton;
+		spades::ui::Button@ mapDuplicateButton;
+		spades::ui::Button@ mapRenameButton;
 
 		// Map list column widths (pixels)
 		private float mapDateColWidth;
@@ -398,18 +400,34 @@ namespace spades {
 				}
 
 				// --- Map panel contents ---
+				// Right-aligned action buttons: Rename | Duplicate | Delete | Edit
+				// Widths 95/95/95/100 with 5-px gaps = 400-px strip on the right.
 				{
-					@mapNameField = spades::ui::Field(Manager);
-					mapNameField.Bounds = AABB2(contentsLeft, 200.0F, contentsWidth - 270.0F, 30.0F);
+					@mapNameField = RenamableField(Manager);
+					mapNameField.Bounds = AABB2(contentsLeft, 200.0F, contentsWidth - 405.0F, 30.0F);
 					mapNameField.Placeholder = _Tr("MainScreen", "Select a map");
-					mapNameField.AcceptsFocus = false;
-					mapNameField.IsMouseInteractive = false;
+					@mapNameField.CommitRequested = spades::ui::EventHandler(this.OnRenameCommit);
+					@mapNameField.Cancelled = spades::ui::EventHandler(this.OnRenameCancel);
 					mapPanel.AddChild(mapNameField);
+				}
+				{
+					@mapRenameButton = spades::ui::Button(Manager);
+					mapRenameButton.Caption = _Tr("MainScreen", "Rename");
+					mapRenameButton.Bounds = AABB2(contentsLeft + contentsWidth - 400.0F, 200.0F, 95.0F, 30.0F);
+					@mapRenameButton.Activated = spades::ui::EventHandler(this.OnRenameMapPressed);
+					mapPanel.AddChild(mapRenameButton);
+				}
+				{
+					@mapDuplicateButton = spades::ui::Button(Manager);
+					mapDuplicateButton.Caption = _Tr("MainScreen", "Duplicate");
+					mapDuplicateButton.Bounds = AABB2(contentsLeft + contentsWidth - 300.0F, 200.0F, 95.0F, 30.0F);
+					@mapDuplicateButton.Activated = spades::ui::EventHandler(this.OnDuplicateMapPressed);
+					mapPanel.AddChild(mapDuplicateButton);
 				}
 				{
 					@mapDeleteButton = spades::ui::Button(Manager);
 					mapDeleteButton.Caption = _Tr("MainScreen", "Delete");
-					mapDeleteButton.Bounds = AABB2(contentsLeft + contentsWidth - 270.0F, 200.0F, 110.0F, 30.0F);
+					mapDeleteButton.Bounds = AABB2(contentsLeft + contentsWidth - 200.0F, 200.0F, 95.0F, 30.0F);
 					@mapDeleteButton.Activated = spades::ui::EventHandler(this.OnDeleteMapPressed);
 					mapPanel.AddChild(mapDeleteButton);
 				}
@@ -417,7 +435,7 @@ namespace spades {
 					@mapEditButton = spades::ui::Button(Manager);
 					mapEditButton.Caption = _Tr("MainScreen", "Edit");
 					mapEditButton.HotKeyText = _Tr("Client", "[Enter]");
-					mapEditButton.Bounds = AABB2(contentsLeft + contentsWidth - 150.0F, 200.0F, 150.0F, 30.0F);
+					mapEditButton.Bounds = AABB2(contentsLeft + contentsWidth - 100.0F, 200.0F, 100.0F, 30.0F);
 					@mapEditButton.Activated = spades::ui::EventHandler(this.OnEditMapPressed);
 					mapPanel.AddChild(mapEditButton);
 				}
@@ -548,11 +566,16 @@ namespace spades {
 		}
 
 		void MapListItemActivated(MapListModel@ sender, MainScreenMapItem@ item) {
+			// Selecting another row while editing the name discards the edit.
+			if (mapNameField.IsEditing)
+				mapNameField.Cancel();
 			@selectedMap = item;
 			mapNameField.Text = item.DisplayName;
 		}
 
 		void MapListItemDoubleClicked(MapListModel@ sender, MainScreenMapItem@ item) {
+			if (mapNameField.IsEditing)
+				mapNameField.Cancel();
 			@selectedMap = item;
 			mapNameField.Text = item.DisplayName;
 			EditSelectedMap();
@@ -580,6 +603,67 @@ namespace spades {
 			@selectedMap = null;
 			mapNameField.Text = "";
 			LoadMapList();
+		}
+
+		private void OnRenameMapPressed(spades::ui::UIElement@ sender) {
+			if (selectedMap is null or mapNameField.IsEditing)
+				return;
+			mapNameField.BeginEdit();
+		}
+
+		private void OnRenameCommit(spades::ui::UIElement@ sender) {
+			if (selectedMap is null)
+				return;
+			string newName = mapNameField.Text;
+			// Unchanged or empty: revert the field, do nothing else.
+			if (newName.length == 0 or newName == selectedMap.DisplayName) {
+				mapNameField.Text = selectedMap.DisplayName;
+				return;
+			}
+			string newPath = helper.RenameMap(selectedMap.Path, newName);
+			if (newPath.length == 0) {
+				mapNameField.Text = selectedMap.DisplayName;
+				AlertScreen al(this, _Tr("MainScreen",
+					"Could not rename map. Name may already be in use or contain invalid characters."));
+				al.Run();
+				return;
+			}
+			LoadMapList();
+			SelectMapByPath(newPath);
+		}
+
+		private void OnRenameCancel(spades::ui::UIElement@ sender) {
+			// Field already restored its original text. Keep selection visuals in sync.
+			if (selectedMap !is null)
+				mapNameField.Text = selectedMap.DisplayName;
+		}
+
+		private void OnDuplicateMapPressed(spades::ui::UIElement@ sender) {
+			if (selectedMap is null)
+				return;
+			if (mapNameField.IsEditing)
+				mapNameField.Cancel();
+			string newPath = helper.DuplicateMap(selectedMap.Path);
+			if (newPath.length == 0) {
+				AlertScreen al(this, _Tr("MainScreen", "Could not duplicate map."));
+				al.Run();
+				return;
+			}
+			LoadMapList();
+			SelectMapByPath(newPath);
+		}
+
+		private void SelectMapByPath(string path) {
+			if (currentMapListModel is null)
+				return;
+			MainScreenMapItem@[]@ items = currentMapListModel.list;
+			for (uint i = 0; i < items.length; i++) {
+				if (items[i].Path == path) {
+					@selectedMap = items[i];
+					mapNameField.Text = items[i].DisplayName;
+					return;
+				}
+			}
 		}
 
 		void DemoListItemActivated(DemoListModel@ sender, string filename) {
