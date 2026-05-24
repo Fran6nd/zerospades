@@ -140,6 +140,8 @@ namespace spades {
 		CScriptArray *GetMapList();
 		std::string LoadMap(std::string filename);
 		bool DeleteMap(std::string filename);
+		std::string DuplicateMap(std::string filename);
+		std::string RenameMap(std::string oldPath, std::string newName);
 		};
 	}
 }

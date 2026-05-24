@@ -116,6 +116,14 @@ namespace spades {
 					                              asMETHOD(gui::MainScreenHelper, DeleteMap),
 					                              asCALL_THISCALL);
 					manager->CheckError(r);
+					r = eng->RegisterObjectMethod(
+					  "MainScreenHelper", "string DuplicateMap(string)",
+					  asMETHOD(gui::MainScreenHelper, DuplicateMap), asCALL_THISCALL);
+					manager->CheckError(r);
+					r = eng->RegisterObjectMethod(
+					  "MainScreenHelper", "string RenameMap(string, string)",
+					  asMETHOD(gui::MainScreenHelper, RenameMap), asCALL_THISCALL);
+					manager->CheckError(r);
 					r = eng->RegisterObjectBehaviour(
 					  "MainScreenServerItem", asBEHAVE_ADDREF, "void f()",
 					  asMETHOD(gui::MainScreenServerItem, AddRef), asCALL_THISCALL);

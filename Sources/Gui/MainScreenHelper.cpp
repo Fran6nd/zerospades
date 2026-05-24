@@ -24,7 +24,9 @@
 #include <cctype>
 #include <cstdio>
 #include <cstdint>
+#include <fstream>
 #include <memory>
+#include <string>
 #include <sys/stat.h>
 
 #include <curl/curl.h>
@@ -477,6 +479,109 @@ namespace spades {
 
 		bool MainScreenHelper::DeleteMap(std::string filename) {
 			return std::remove(filename.c_str()) == 0;
+		}
+
+		namespace {
+			constexpr const char *kVxlExtension = ".vxl";
+			constexpr size_t kVxlExtensionLen = 4;
+
+			bool EndsWithVxl(const std::string &name) {
+				if (name.size() <= kVxlExtensionLen)
+					return false;
+				const char *tail = name.c_str() + (name.size() - kVxlExtensionLen);
+				for (size_t i = 0; i < kVxlExtensionLen; ++i) {
+					if (std::tolower(static_cast<unsigned char>(tail[i])) != kVxlExtension[i])
+						return false;
+				}
+				return true;
+			}
+
+			bool PathExists(const std::string &p) {
+				struct stat st;
+				return stat(p.c_str(), &st) == 0;
+			}
+
+			bool CopyVxlFile(const std::string &src, const std::string &dst) {
+				std::ifstream in(src.c_str(), std::ios::binary);
+				if (!in)
+					return false;
+				std::ofstream out(dst.c_str(), std::ios::binary | std::ios::trunc);
+				if (!out)
+					return false;
+				out << in.rdbuf();
+				return in.good() && out.good();
+			}
+
+			std::string TrimWhitespace(const std::string &s) {
+				size_t begin = 0;
+				while (begin < s.size() && std::isspace(static_cast<unsigned char>(s[begin])))
+					++begin;
+				size_t end = s.size();
+				while (end > begin && std::isspace(static_cast<unsigned char>(s[end - 1])))
+					--end;
+				return s.substr(begin, end - begin);
+			}
+		} // namespace
+
+		std::string MainScreenHelper::DuplicateMap(std::string filename) {
+			if (!EndsWithVxl(filename))
+				return std::string();
+
+			std::string base = filename.substr(0, filename.size() - kVxlExtensionLen);
+			for (int n = 1; n <= 1000; ++n) {
+				std::string candidate = base + "_copy";
+				if (n > 1)
+					candidate += std::to_string(n);
+				candidate += kVxlExtension;
+				if (PathExists(candidate))
+					continue;
+				if (!CopyVxlFile(filename, candidate))
+					return std::string();
+				return candidate;
+			}
+			return std::string();
+		}
+
+		std::string MainScreenHelper::RenameMap(std::string oldPath, std::string newName) {
+			newName = TrimWhitespace(newName);
+			if (newName.empty() || newName.size() > 255)
+				return std::string();
+
+			// Strip a trailing ".vxl" the user may have typed.
+			if (EndsWithVxl(newName))
+				newName.resize(newName.size() - kVxlExtensionLen);
+			if (newName.empty())
+				return std::string();
+
+			// Reject path separators and traversal.
+			if (newName.find('/') != std::string::npos ||
+			    newName.find('\\') != std::string::npos ||
+			    newName.find('\0') != std::string::npos || newName == "." || newName == "..")
+				return std::string();
+
+			std::string dir = client::MapRegistry::GetMapsDirectory();
+			std::string newPath = dir + "/" + newName + kVxlExtension;
+
+			// No-op rename (same filename).
+			auto equalsCaseInsensitive = [](const std::string &a, const std::string &b) {
+				if (a.size() != b.size())
+					return false;
+				for (size_t i = 0; i < a.size(); ++i) {
+					if (std::tolower(static_cast<unsigned char>(a[i])) !=
+					    std::tolower(static_cast<unsigned char>(b[i])))
+						return false;
+				}
+				return true;
+			};
+			if (equalsCaseInsensitive(newPath, oldPath))
+				return oldPath;
+
+			if (PathExists(newPath))
+				return std::string();
+
+			if (std::rename(oldPath.c_str(), newPath.c_str()) != 0)
+				return std::string();
+			return newPath;
 		}
 
 		CScriptArray *MainScreenHelper::GetMapList() {
