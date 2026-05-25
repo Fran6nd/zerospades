@@ -72,7 +72,6 @@ void main() {
 	fragColor = vec4(vertexColor * (ambientLight * aoFactor + sun), pushConstants._pad);
 
 	fragColor.xyz = mix(fragColor.xyz, inFogColor, fogDensity);
-
-	// Gamma correct (see BasicModelVertexColor.frag for the rationale).
-	fragColor.xyz = sqrt(max(fragColor.xyz, 0.0));
+	fragColor.xyz = max(fragColor.xyz, 0.0);
+	// Write linear; the swapchain blit (UNORM->SRGB) encodes for display.
 }
