@@ -87,7 +87,7 @@ namespace spades {
 			{
 				spades::ui::RadioButton e(Manager);
 				e.Caption = _Tr("StartupScreen", "OpenGL");
-				e.Bounds = AABB2(110.0F, 30.0F, 140.0F, 24.0F);
+				e.Bounds = AABB2(110.0F, 30.0F, 90.0F, 24.0F);
 				e.GroupName = "driver";
 				HelpHandler(
 					helpView,
@@ -102,7 +102,7 @@ namespace spades {
 			{
 				spades::ui::RadioButton e(Manager);
 				e.Caption = _Tr("StartupScreen", "Vulkan");
-				e.Bounds = AABB2(260.0F, 30.0F, 140.0F, 24.0F);
+				e.Bounds = AABB2(205.0F, 30.0F, 90.0F, 24.0F);
 				e.GroupName = "driver";
 				HelpHandler(
 					helpView,
@@ -117,7 +117,7 @@ namespace spades {
 			{
 				spades::ui::RadioButton e(Manager);
 				e.Caption = _Tr("StartupScreen", "Software");
-				e.Bounds = AABB2(410.0F, 30.0F, 140.0F, 24.0F);
+				e.Bounds = AABB2(300.0F, 30.0F, 100.0F, 24.0F);
 				e.GroupName = "driver";
 				HelpHandler(
 					helpView,
@@ -419,6 +419,7 @@ namespace spades {
 		}
 		private void OnDriverVulkan(spades::ui::UIElement@) {
 			r_vulkan.IntValue = 1;
+			r_renderer.StringValue = "gl";
 			LoadConfig();
 		}
 		private void OnDriverSoftware(spades::ui::UIElement@) {
@@ -433,16 +434,18 @@ namespace spades {
 
 		void LoadConfig() {
 			resEdit.LoadConfig();
-			if (r_renderer.StringValue == "sw") {
-				driverSoftware.Check();
-				configViewGL.Visible = false;
-				configViewVulkan.Visible = false;
-				configViewSoftware.Visible = true;
-			} else if (r_vulkan.IntValue != 0 || r_renderer.StringValue == "vulkan") {
+			// r_vulkan overrides r_renderer at runtime (see SDLRunner::GetRendererType),
+			// so check it first to keep the UI consistent with what actually runs.
+			if (r_vulkan.IntValue != 0 || r_renderer.StringValue == "vulkan") {
 				driverVulkan.Check();
 				configViewGL.Visible = false;
 				configViewVulkan.Visible = true;
 				configViewSoftware.Visible = false;
+			} else if (r_renderer.StringValue == "sw") {
+				driverSoftware.Check();
+				configViewGL.Visible = false;
+				configViewVulkan.Visible = false;
+				configViewSoftware.Visible = true;
 			} else {
 				driverOpenGL.Check();
 				configViewGL.Visible = true;
