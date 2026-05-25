@@ -1472,7 +1472,7 @@ namespace spades {
 					int grenades = r.ReadByte();
 					int clip = r.ReadByte();
 					int reserve = r.ReadByte();
-					int score = r.ReadByte();
+					int score = r.ReadInt();
 
 					Player& p = GetPlayer(pId);
 					Weapon& w = p.GetWeapon();
