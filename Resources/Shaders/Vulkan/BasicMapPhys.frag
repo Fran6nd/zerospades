@@ -128,7 +128,11 @@ void main() {
 	radiosity = max(radiosity, 0.0) * 1.5;
 
 	float aoTerm = aoFactor * (0.8 - nrm.z * 0.2);
-	vec3 ambientColor = mix(inFogColor, vec3(1.0), 0.5);
+	// Ambient color matching GL GLShadowShader: fog * 0.5 with a minimum
+	// luminance floor of 0.35 (keeps things visible when the sky is near-black).
+	vec3 ambientColor = inFogColor * 0.5;
+	float ambL = (ambientColor.x + ambientColor.y + ambientColor.z) / 3.0;
+	ambientColor += ((ambientColor + 0.003) / (ambL + 0.003)) * max(0.35 - ambL, 0.0);
 
 	fragColor = vec4(color.xyz, 1.0);
 	vec3 diffuseShading = radiosity + aoTerm * ambientColor;

@@ -63,10 +63,14 @@ void main() {
 	vec3 vertexColor = vec3(colorAttribute) / 255.0;
 	vertexColor *= vertexColor;
 
-	// Ambient light (null radiosity formula)
+	// Ambient color matching GL GLShadowShader: fog * 0.5 with a minimum
+	// luminance floor of 0.35 so things stay visible even when the sky is
+	// near-black. (fogColor is already linearized in C++.)
 	float hemisphere = 1.0 - normalFloat.z * 0.2;
-	vec3 ambientColor = mix(pushConstants.fogColor, vec3(1.0), 0.5);
-	ambientLight = ambientColor * 0.5 * hemisphere;
+	vec3 ac = pushConstants.fogColor * 0.5;
+	float L = (ac.x + ac.y + ac.z) / 3.0;
+	ac += ((ac + 0.003) / (L + 0.003)) * max(0.35 - L, 0.0);
+	ambientLight = ac * hemisphere;
 
 	color = vec4(vertexColor, lambert);
 
