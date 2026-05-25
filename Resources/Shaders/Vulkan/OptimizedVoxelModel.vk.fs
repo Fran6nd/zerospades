@@ -105,11 +105,7 @@ void main() {
 
 	// apply fog fading
 	fragColor.xyz = mix(fragColor.xyz, model.fogColor, fogDensity);
-
-#if !LINEAR_FRAMEBUFFER
-	// gamma correct
-	fragColor.xyz = sqrt(fragColor.xyz);
-#endif
+	// Write linear; the swapchain blit (UNORM->SRGB) encodes for display.
 
 	// Only valid in the ghost pass - Blending is disabled for most models
 	fragColor.w = model.modelOpacity;

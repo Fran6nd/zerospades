@@ -69,9 +69,5 @@ void main() {
 
 	// apply fog fading
 	fragColor.xyz = mix(fragColor.xyz, fog.fogColor, fogDensity);
-
-#if !LINEAR_FRAMEBUFFER
-	// gamma correct
-	fragColor.xyz = sqrt(fragColor.xyz);
-#endif
+	// Write linear; the swapchain blit (UNORM->SRGB) encodes for display.
 }

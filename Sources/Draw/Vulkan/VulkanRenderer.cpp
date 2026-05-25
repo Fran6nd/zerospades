@@ -2706,12 +2706,16 @@ namespace spades {
 				float fovY;
 			} pushConstants;
 
-			// Sky should always use the actual fog color, not the shadow-modified color
-			// Don't linearize - the SRGB framebuffer handles gamma correction automatically
-
-			pushConstants.fogColor[0] = fogColor.x;
-			pushConstants.fogColor[1] = fogColor.y;
-			pushConstants.fogColor[2] = fogColor.z;
+			// Sky uses the actual fog color, not the shadow-modified one.
+			// Linearize so it matches the convention used by BasicMap/BasicModel
+			// (their C++ also squares fogColor before pushing). The offscreen
+			// target is linear UNORM and the swapchain blit applies sRGB
+			// encoding on output, so we must write linear values here too.
+			Vector3 skyFogColor = fogColor;
+			skyFogColor *= skyFogColor;
+			pushConstants.fogColor[0] = skyFogColor.x;
+			pushConstants.fogColor[1] = skyFogColor.y;
+			pushConstants.fogColor[2] = skyFogColor.z;
 
 			pushConstants.viewAxisFront[0] = sceneDef.viewAxis[2].x;
 			pushConstants.viewAxisFront[1] = sceneDef.viewAxis[2].y;
