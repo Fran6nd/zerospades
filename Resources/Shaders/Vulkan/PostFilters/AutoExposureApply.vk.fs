@@ -44,9 +44,6 @@ layout(location = 0) out vec4 outColor;
 
 void main() {
 	vec3 color = texture(sceneTexture, texCoord).rgb;
-	// Phase A.1 probe: hard-code gain=1 to isolate whether AutoExposure
-	// is the cause of crushed shadows. Restore via:
-	//   float gain = texture(gainTexture, vec2(0.5, 0.5)).r;
-	float gain = 1.0;
+	float gain = texture(gainTexture, vec2(0.5, 0.5)).r;
 	outColor = vec4(max(color * gain, 0.0), 1.0);
 }
