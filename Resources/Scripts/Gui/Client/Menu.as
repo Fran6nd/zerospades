@@ -25,6 +25,8 @@ namespace spades {
 	class ClientMenu : spades::ui::UIElement {
 		private ClientUI@ ui;
 		private ClientUIHelper@ helper;
+		// Lives for the session so reopening Setup lands on the same tab/row.
+		private PreferenceViewPersistedState@ preferenceState = PreferenceViewPersistedState();
 
 		ClientMenu(ClientUI@ ui) {
 			super(ui.manager);
@@ -81,6 +83,7 @@ namespace spades {
 		private void OnSetup(spades::ui::UIElement@ sender) {
 			PreferenceViewOptions opt;
 			opt.GameActive = true;
+			@opt.PersistedState = preferenceState;
 
 			PreferenceView al(this, opt, ui.fontManager);
 			al.Run();
