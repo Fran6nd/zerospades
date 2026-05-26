@@ -19,12 +19,18 @@
  */
 
 // Multiplies the scene colour by the exposure gain stored in the
-// persistent 1×1 accumulator, writing the result to the output image.
+// persistent 1×1 accumulator, then encodes the linear HDR colour for
+// display with pow(c, 1/r_vk_hdrGamma). Folds GL's AutoExposure +
+// GLNonlinearizeFilter into one fullscreen pass.
 
 #version 450
 
 layout(binding = 0) uniform sampler2D sceneTexture;
 layout(binding = 1) uniform sampler2D gainTexture;
+
+layout(push_constant) uniform Params {
+	float invGamma; // 1.0 / r_vk_hdrGamma  (default 2.2 → 0.4545)
+} pc;
 
 layout(location = 0) in  vec2 texCoord;
 layout(location = 0) out vec4 outColor;
@@ -32,5 +38,7 @@ layout(location = 0) out vec4 outColor;
 void main() {
 	vec3 color = texture(sceneTexture, texCoord).rgb;
 	float gain = texture(gainTexture, vec2(0.5, 0.5)).r;
-	outColor = vec4(color * gain, 1.0);
+	color = max(color * gain, 0.0);     // clamp negatives before pow
+	color = pow(color, vec3(pc.invGamma));
+	outColor = vec4(color, 1.0);
 }

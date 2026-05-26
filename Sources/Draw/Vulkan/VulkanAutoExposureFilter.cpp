@@ -37,6 +37,7 @@
 SPADES_SETTING(r_vk_hdrAutoExposureMin);
 SPADES_SETTING(r_vk_hdrAutoExposureMax);
 SPADES_SETTING(r_vk_hdrAutoExposureSpeed);
+SPADES_SETTING(r_vk_hdrGamma);
 
 namespace spades {
 	namespace draw {
@@ -302,10 +303,21 @@ namespace spades {
 					SPRaise("Failed to create compute-gain pipeline layout");
 			}
 			{
+				// Apply pass needs a single-float push constant: invGamma =
+				// 1.0 / r_vk_hdrGamma, used to encode the linear HDR scene for
+				// display (mirrors GL's GLNonlinearizeFilter, folded in here so
+				// it is one less full-screen pass).
+				VkPushConstantRange pcr{};
+				pcr.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+				pcr.offset     = 0;
+				pcr.size       = sizeof(float);
+
 				VkPipelineLayoutCreateInfo li{};
-				li.sType          = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-				li.setLayoutCount = 1;
-				li.pSetLayouts    = &dualSamplerDSL;
+				li.sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+				li.setLayoutCount         = 1;
+				li.pSetLayouts            = &dualSamplerDSL;
+				li.pushConstantRangeCount = 1;
+				li.pPushConstantRanges    = &pcr;
 				if (vkCreatePipelineLayout(dev, &li, nullptr, &applyLayout) != VK_SUCCESS)
 					SPRaise("Failed to create apply pipeline layout");
 			}
@@ -734,8 +746,43 @@ namespace spades {
 			                                       input->GetImageView(),
 			                                       exposureImageView);
 
-			DrawFullscreen(cmd, ppRenderPass, applyFB, rw, rh,
-			               applyPipeline, applyLayout, applyDS);
+			// Inline apply draw so we can push the invGamma constant between
+			// pipeline-bind and draw. invGamma = 1.0 / r_vk_hdrGamma, clamped
+			// to a safe range in case the cvar is set to an absurd value.
+			{
+				float gammaVal = static_cast<float>(r_vk_hdrGamma);
+				if (!(gammaVal > 0.01f && gammaVal < 100.0f))
+					gammaVal = 2.2f;
+				float invGamma = 1.0f / gammaVal;
+
+				VkClearValue cv{};
+				cv.color = {{0.0f, 0.0f, 0.0f, 0.0f}};
+
+				VkRenderPassBeginInfo rpBegin{};
+				rpBegin.sType             = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+				rpBegin.renderPass        = ppRenderPass;
+				rpBegin.framebuffer       = applyFB;
+				rpBegin.renderArea.extent = {rw, rh};
+				rpBegin.clearValueCount   = 1;
+				rpBegin.pClearValues      = &cv;
+
+				vkCmdBeginRenderPass(cmd, &rpBegin, VK_SUBPASS_CONTENTS_INLINE);
+
+				VkViewport viewport{0.0f, 0.0f, (float)rw, (float)rh, 0.0f, 1.0f};
+				VkRect2D   scissor{{0, 0}, {rw, rh}};
+				vkCmdSetViewport(cmd, 0, 1, &viewport);
+				vkCmdSetScissor(cmd, 0, 1, &scissor);
+
+				vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, applyPipeline);
+				vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
+				                        applyLayout, 0, 1, &applyDS, 0, nullptr);
+				vkCmdPushConstants(cmd, applyLayout,
+				                   VK_SHADER_STAGE_FRAGMENT_BIT, 0,
+				                   sizeof(invGamma), &invGamma);
+				vkCmdDraw(cmd, 3, 1, 0, 0);
+
+				vkCmdEndRenderPass(cmd);
+			}
 
 			// Return temporary downsample images to the pool.
 			for (auto& img : tempImages)
