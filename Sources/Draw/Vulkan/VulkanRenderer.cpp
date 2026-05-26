@@ -2118,15 +2118,13 @@ namespace spades {
 			}
 			VulkanImage* currentOutput = ppTempImage.GetPointerOrNull();
 
-			// Auto-exposure (HDR only)
-			if ((int)r_vk_hdr && autoExposureFilter && currentInput && currentOutput) {
-				autoExposureFilter->Filter(commandBuffer, currentInput, currentOutput, lastDt);
-				std::swap(currentInput, currentOutput);
-			}
-
-			// Order matches GL: Fog2 paints atmospheric in-scatter on the raw
-			// scene FIRST (so the in-scattered sky is what subsequent filters
-			// see), then DoF, then Bloom, then FXAA.
+			// Order matches GL (GLRenderer.cpp:922-1037):
+			//   Fog2 → DoF → Bloom → FXAA → AutoExposure(+tonemap)
+			// AutoExposure runs LAST so its histogram samples the fully painted
+			// scene (in-scattered sky, bloom, etc.). Running it first would
+			// sample the bare scene where the sky is still black (Sky.frag is
+			// skipped under r_vk_fogShadow>=1), causing the gain to clamp high
+			// and the whole frame to come out over-bright.
 
 			// Fog shadow / atmospheric in-scatter
 			if ((int)r_vk_fogShadow && fogFilter && mapShadowRenderer && currentInput && currentOutput) {
@@ -2152,6 +2150,13 @@ namespace spades {
 			// FXAA
 			if ((int)r_vk_fxaa && fxaaFilter && currentInput && currentOutput) {
 				fxaaFilter->Filter(commandBuffer, currentInput, currentOutput);
+				std::swap(currentInput, currentOutput);
+			}
+
+			// Auto-exposure + tonemap (HDR only) — runs LAST, sampling the
+			// fully composed scene to compute its gain.
+			if ((int)r_vk_hdr && autoExposureFilter && currentInput && currentOutput) {
+				autoExposureFilter->Filter(commandBuffer, currentInput, currentOutput, lastDt);
 				std::swap(currentInput, currentOutput);
 			}
 
