@@ -65,7 +65,7 @@ SPADES_SETTING(r_vk_depthOfField);
 SPADES_SETTING(r_vk_fxaa);
 SPADES_SETTING(r_vk_water);
 SPADES_SETTING(r_vk_softParticles);
-SPADES_SETTING(r_vk_outlines);
+SPADES_SETTING(r_outlines);
 SPADES_SETTING(r_vk_colorCorrection);
 
 namespace spades {
@@ -2197,7 +2197,7 @@ namespace spades {
 			// fog / soft-particle path already transitions to SHADER_READ_ONLY
 			// above; takes its own distance fade so it works whether or not
 			// the fog filter is enabled / correct.
-			if ((int)r_vk_outlines && cavityOutlineFilter && currentInput && currentOutput) {
+			if ((int)r_outlines && cavityOutlineFilter && currentInput && currentOutput) {
 				cavityOutlineFilter->Filter(commandBuffer, currentInput, currentOutput);
 				std::swap(currentInput, currentOutput);
 			}

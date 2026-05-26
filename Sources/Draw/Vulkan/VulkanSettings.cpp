@@ -44,7 +44,6 @@ DEFINE_SPADES_SETTING(r_vk_lensFlare,            "1");
 DEFINE_SPADES_SETTING(r_vk_lensFlareDynamic,     "0");
 DEFINE_SPADES_SETTING(r_vk_modelShadows,         "1");
 DEFINE_SPADES_SETTING(r_vk_multisamples,         "0");
-DEFINE_SPADES_SETTING(r_vk_outlines,             "0");
 DEFINE_SPADES_SETTING(r_vk_physicalLighting,     "0");
 DEFINE_SPADES_SETTING(r_vk_radiosity,            "1");
 DEFINE_SPADES_SETTING(r_vk_saturation,           "1");
