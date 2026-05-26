@@ -38,6 +38,7 @@ DEFINE_SPADES_SETTING(r_vk_hdr,                  "0");
 DEFINE_SPADES_SETTING(r_vk_hdrAutoExposureMax,   "0.5");
 DEFINE_SPADES_SETTING(r_vk_hdrAutoExposureMin,   "-1.5");
 DEFINE_SPADES_SETTING(r_vk_hdrAutoExposureSpeed, "1");
+DEFINE_SPADES_SETTING(r_vk_hdrGamma,             "2.2");
 DEFINE_SPADES_SETTING(r_vk_highPrec,             "1");
 DEFINE_SPADES_SETTING(r_vk_lensFlare,            "1");
 DEFINE_SPADES_SETTING(r_vk_lensFlareDynamic,     "0");
