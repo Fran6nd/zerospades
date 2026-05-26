@@ -1806,8 +1806,11 @@ namespace spades {
 
 			// Render the 3D scene
 
-			// Render sky gradient
-			RenderSky(commandBuffer);
+			// Sky is intentionally NOT drawn: the offscreen render pass already
+			// clears to GetFogColorForSolidPass() — black when r_vk_fogShadow
+			// is on (Fog2 then paints the sky atmospherically, like GL), or
+			// fogColor when fogShadow is off (flat sky, also like GL). A
+			// procedural Sky.frag pass would stack on top and over-saturate.
 
 			// Render map
 			if (!sceneDef.skipWorld && mapRenderer) {
