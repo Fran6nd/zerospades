@@ -161,11 +161,14 @@ namespace spades {
 			VulkanOptimizedVoxelModel::PreloadShaders(*this);
 			VulkanWaterRenderer::PreloadShaders(*this);
 
-			// Post-process filters
+			// Post-process filters. fogFilter is created unconditionally —
+			// the mapShadowRenderer it samples is created lazily on SetGameMap,
+			// which runs AFTER initialization; the runtime gate in the
+			// post-process chain still skips fogFilter->Filter() until
+			// mapShadowRenderer / AO / radiosity are all live.
 			autoExposureFilter = stmp::make_unique<VulkanAutoExposureFilter>(*this);
 			bloomFilter = stmp::make_unique<VulkanBloomFilter>(*this);
-			if (mapShadowRenderer)
-				fogFilter = stmp::make_unique<VulkanFogFilter>(*this);
+			fogFilter = stmp::make_unique<VulkanFogFilter>(*this);
 			depthOfFieldFilter = stmp::make_unique<VulkanDepthOfFieldFilter>(*this);
 			fxaaFilter = stmp::make_unique<VulkanFXAAFilter>(*this);
 			cavityOutlineFilter = stmp::make_unique<VulkanCavityOutlineFilter>(*this);
