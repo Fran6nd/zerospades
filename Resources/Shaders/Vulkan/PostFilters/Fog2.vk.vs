@@ -35,11 +35,12 @@
 #version 450
 
 layout(push_constant) uniform Params {
-    mat4 viewProjectionMatrixInv; // [0..63]  UV → view-centric world (VS+FS)
-    vec4 viewOriginFogDist;       // [64..79] xyz=viewOrigin, w=fogDistance (FS)
-    vec4 sunlightScale;           // [80..95] xyz (FS)
+    mat4 viewProjectionMatrixInv; // [0..63]   UV → view-centric world (VS+FS)
+    vec4 viewOriginFogDist;       // [64..79]  xyz=viewOrigin, w=fogDistance (FS)
+    vec4 sunlightScale;           // [80..95]  xyz (FS)
     vec4 ambientScale;            // [96..111] xyz (FS)
-    vec4 ditherFrame;             // [112..127] xy=per-frame noise seed (FS)
+    vec4 radiosityScale;          // [112..127] xyz (FS)
+    vec4 ditherFrame;             // [128..143] xy=per-frame noise seed (FS)
 } pc;
 
 layout(location = 0) out vec2 texCoord;
