@@ -61,6 +61,7 @@ namespace spades {
 		class VulkanDepthOfFieldFilter;
 		class VulkanFXAAFilter;
 		class VulkanCavityOutlineFilter;
+		class VulkanColorCorrectionFilter;
 		class VulkanAmbientShadowRenderer;
 		class VulkanRadiosityRenderer;
 
@@ -158,6 +159,7 @@ namespace spades {
 		std::unique_ptr<VulkanDepthOfFieldFilter> depthOfFieldFilter;
 		std::unique_ptr<VulkanFXAAFilter> fxaaFilter;
 		std::unique_ptr<VulkanCavityOutlineFilter> cavityOutlineFilter;
+		std::unique_ptr<VulkanColorCorrectionFilter> colorCorrectionFilter;
 
 			Handle<VulkanImage> whiteImage; // 1x1 white image for solid color rendering
 

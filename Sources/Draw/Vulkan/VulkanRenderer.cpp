@@ -44,6 +44,7 @@
 #include "VulkanDepthOfFieldFilter.h"
 #include "VulkanFXAAFilter.h"
 #include "VulkanCavityOutlineFilter.h"
+#include "VulkanColorCorrectionFilter.h"
 #include "VulkanAmbientShadowRenderer.h"
 #include "VulkanRadiosityRenderer.h"
 #include <Gui/SDLVulkanDevice.h>
@@ -65,6 +66,7 @@ SPADES_SETTING(r_vk_fxaa);
 SPADES_SETTING(r_vk_water);
 SPADES_SETTING(r_vk_softParticles);
 SPADES_SETTING(r_vk_outlines);
+SPADES_SETTING(r_vk_colorCorrection);
 
 namespace spades {
 	namespace draw {
@@ -172,6 +174,7 @@ namespace spades {
 			depthOfFieldFilter = stmp::make_unique<VulkanDepthOfFieldFilter>(*this);
 			fxaaFilter = stmp::make_unique<VulkanFXAAFilter>(*this);
 			cavityOutlineFilter = stmp::make_unique<VulkanCavityOutlineFilter>(*this);
+			colorCorrectionFilter = stmp::make_unique<VulkanColorCorrectionFilter>(*this);
 
 			inited = true;
 			lastSwapchainGeneration = device->GetSwapchainGeneration();
@@ -212,6 +215,7 @@ namespace spades {
 			ambientShadowRenderer.reset();
 			radiosityRenderer.reset();
 			mapShadowRenderer.reset();
+			colorCorrectionFilter.reset();
 			cavityOutlineFilter.reset();
 			fxaaFilter.reset();
 			depthOfFieldFilter.reset();
@@ -2174,6 +2178,16 @@ namespace spades {
 			// fully composed scene to compute its gain.
 			if ((int)r_vk_hdr && autoExposureFilter && currentInput && currentOutput) {
 				autoExposureFilter->Filter(commandBuffer, currentInput, currentOutput, lastDt);
+				std::swap(currentInput, currentOutput);
+			}
+
+			// Colour correction: white-balance tint, saturation desat,
+			// ACES filmic tonemap, enhancement smoothstep. Mirrors GL's
+			// GLColorCorrectionFilter and is the actual HDR compression
+			// step — without it the scene retains its full linear range
+			// and a saturated fog-tinted cast.
+			if ((int)r_vk_colorCorrection && colorCorrectionFilter && currentInput && currentOutput) {
+				colorCorrectionFilter->Filter(commandBuffer, currentInput, currentOutput);
 				std::swap(currentInput, currentOutput);
 			}
 
