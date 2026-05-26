@@ -1806,11 +1806,28 @@ namespace spades {
 
 			// Render the 3D scene
 
-			// Sky is intentionally NOT drawn: the offscreen render pass already
-			// clears to GetFogColorForSolidPass() — black when r_vk_fogShadow
-			// is on (Fog2 then paints the sky atmospherically, like GL), or
-			// fogColor when fogShadow is off (flat sky, also like GL). A
-			// procedural Sky.frag pass would stack on top and over-saturate.
+			// Render sky gradient.
+			//
+			// 5d85f8e7 dropped this on the theory that GL relies purely on the
+			// clear color + Fog2 in-scatter to paint the sky, so a flat
+			// Sky.frag pass was duplicating that work and over-saturating. In
+			// practice GL Fog2 integrates 16 in-scatter samples that, on a
+			// fogShadow≥1 black clear, sum to a bright pastel sky. The
+			// Vulkan Fog2 port produces a noticeably dimmer in-scatter (root
+			// cause still TBD: likely sunlight/ambient/radiosity scale push-
+			// constants are smaller than GL, or the integration weight curve
+			// differs), so a black clear left the sky almost black and any
+			// fogged geometry — the floating platform in particular — stood
+			// out sharply against it instead of dissolving into the fog.
+			//
+			// Restoring Sky.frag (a flat fogColor fill) gives Fog2 a
+			// fogColor-tinted base to add in-scatter on top of. Combined with
+			// the ACES tonemap + tint + saturation desat now applied by the
+			// color-correction post-pass, the over-saturation 5d85f8e7 worried
+			// about is no longer an issue: tonemap compresses the highlights
+			// and the tint pulls the cast toward neutral. End result matches
+			// reference fog occlusion behaviour (platform melts into fog).
+			RenderSky(commandBuffer);
 
 			// Render map
 			if (!sceneDef.skipWorld && mapRenderer) {
