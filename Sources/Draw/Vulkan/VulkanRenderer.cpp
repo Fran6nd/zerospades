@@ -2118,25 +2118,23 @@ namespace spades {
 			}
 			VulkanImage* currentOutput = ppTempImage.GetPointerOrNull();
 
-			// PP-1: Auto-exposure
+			// Auto-exposure (HDR only)
 			if ((int)r_vk_hdr && autoExposureFilter && currentInput && currentOutput) {
 				autoExposureFilter->Filter(commandBuffer, currentInput, currentOutput, lastDt);
 				std::swap(currentInput, currentOutput);
 			}
 
-			// PP-2: Bloom
-			if ((int)r_vk_bloom && bloomFilter && currentInput && currentOutput) {
-				bloomFilter->Filter(commandBuffer, currentInput, currentOutput);
-				std::swap(currentInput, currentOutput);
-			}
+			// Order matches GL: Fog2 paints atmospheric in-scatter on the raw
+			// scene FIRST (so the in-scattered sky is what subsequent filters
+			// see), then DoF, then Bloom, then FXAA.
 
-			// PP-3: Fog shadow
+			// Fog shadow / atmospheric in-scatter
 			if ((int)r_vk_fogShadow && fogFilter && mapShadowRenderer && currentInput && currentOutput) {
 				fogFilter->Filter(commandBuffer, currentInput, currentOutput);
 				std::swap(currentInput, currentOutput);
 			}
 
-			// PP-4: Depth of Field
+			// Depth of Field
 			if ((int)r_vk_depthOfField && depthOfFieldFilter && currentInput && currentOutput) {
 				const client::SceneDefinition& def = GetSceneDef();
 				if (def.depthOfFieldFocalLength > 0.0f || def.blurVignette > 0.0f) {
@@ -2145,7 +2143,13 @@ namespace spades {
 				}
 			}
 
-			// PP-5: FXAA
+			// Bloom
+			if ((int)r_vk_bloom && bloomFilter && currentInput && currentOutput) {
+				bloomFilter->Filter(commandBuffer, currentInput, currentOutput);
+				std::swap(currentInput, currentOutput);
+			}
+
+			// FXAA
 			if ((int)r_vk_fxaa && fxaaFilter && currentInput && currentOutput) {
 				fxaaFilter->Filter(commandBuffer, currentInput, currentOutput);
 				std::swap(currentInput, currentOutput);
