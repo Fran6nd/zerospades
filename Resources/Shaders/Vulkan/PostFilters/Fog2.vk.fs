@@ -20,33 +20,44 @@
 
 // Fog2 filter fragment shader.
 // Port of OpenGL/PostFilters/Fog2.fs.
-// Raymarches 16 samples along the view ray to accumulate in-scattered
-// sunlight and ambient light from the shadow map.
+// Raymarches 16 samples along the view ray and accumulates in-scattered
+// sunlight, ambient (per-block AO) and indirect bounce (radiosity) light.
 //
-// Differences from the GL version:
+// Differences from the GL version that still apply:
 //   - No separate dither/noise textures; per-frame noise is generated
 //     analytically from gl_FragCoord and pc.ditherFrame.
-//   - No ambient shadow (sampler3D) or radiosity (sampler3D) textures —
-//     ambient term is approximated as full coverage (ambientFactor = weight
-//     at every step) until those renderers are added to the Vulkan back-end.
+//   - The Vulkan radiosity backend always uses the high-precision
+//     A2R10G10B10_UNORM_PACK32 format, so DecodeRadiosityValue uses
+//     the GL `r_radiosity >= 2` (linear) decode branch only.
 //
 // Descriptor set layout (set 0):
-//   binding 0 — colorTexture    (sampler2D)
-//   binding 1 — depthTexture    (sampler2D, depth aspect, SHADER_READ_ONLY)
-//   binding 2 — shadowMapTexture (sampler2D)
+//   binding 0 — colorTexture         (sampler2D)
+//   binding 1 — depthTexture         (sampler2D, depth aspect, SHADER_READ_ONLY)
+//   binding 2 — shadowMapTexture     (sampler2D)
+//   binding 3 — ambientShadowTexture (sampler3D, R32G32_SFLOAT)
+//   binding 4 — radiosityTextureFlat (sampler3D, A2R10G10B10_UNORM_PACK32)
+//   binding 5 — radiosityTextureX    (sampler3D)
+//   binding 6 — radiosityTextureY    (sampler3D)
+//   binding 7 — radiosityTextureZ    (sampler3D)
 
 #version 450
 
 layout(binding = 0) uniform sampler2D colorTexture;
 layout(binding = 1) uniform sampler2D depthTexture;
 layout(binding = 2) uniform sampler2D shadowMapTexture;
+layout(binding = 3) uniform sampler3D ambientShadowTexture;
+layout(binding = 4) uniform sampler3D radiosityTextureFlat;
+layout(binding = 5) uniform sampler3D radiosityTextureX;
+layout(binding = 6) uniform sampler3D radiosityTextureY;
+layout(binding = 7) uniform sampler3D radiosityTextureZ;
 
 layout(push_constant) uniform Params {
-    mat4 viewProjectionMatrixInv; // [0..63]  UV → view-centric world
-    vec4 viewOriginFogDist;       // [64..79] xyz=viewOrigin, w=fogDistance
-    vec4 sunlightScale;           // [80..95] xyz
+    mat4 viewProjectionMatrixInv; // [0..63]   UV → view-centric world
+    vec4 viewOriginFogDist;       // [64..79]  xyz=viewOrigin, w=fogDistance
+    vec4 sunlightScale;           // [80..95]  xyz
     vec4 ambientScale;            // [96..111] xyz
-    vec4 ditherFrame;             // [112..127] xy=per-frame noise seed
+    vec4 radiosityScale;          // [112..127] xyz
+    vec4 ditherFrame;             // [128..143] xy=per-frame noise seed
 } pc;
 
 layout(location = 0) in  vec2 texCoord;
@@ -57,6 +68,14 @@ vec3 transformToShadow(vec3 v) {
     v.y -= v.z;
     v *= vec3(1.0 / 512.0, 1.0 / 512.0, 1.0 / 255.0);
     return v;
+}
+
+// Linear (10-10-10-2) decode. Vulkan port stores radiosity values in
+// A2R10G10B10_UNORM_PACK32 always — no low-precision branch needed.
+vec3 DecodeRadiosityValue(vec3 val) {
+    val *= 1023.0 / 1022.0;
+    val = (val * 2.0) - 1.0;
+    return val;
 }
 
 void main() {
@@ -90,37 +109,65 @@ void main() {
 
     float weight = 1.0 - weightDelta * dither;
 
+    // Shadow map sampling.
     vec3 currentShadowPos = transformToShadow(viewOrigin);
     vec3 shadowDelta      = transformToShadow(worldPos.xyz / float(numSamples));
     currentShadowPos     += shadowDelta * dither;
 
-    float sunlightFactor = 0.0;
-    float ambientFactor  = 0.0;
+    // Radiosity 3D-texture coords (matches GL MapRadiosity.vs).
+    vec3 currentRadCoord = viewOrigin / vec3(512.0, 512.0, 64.0);
+    vec3 radCoordDelta   = (worldPos.xyz / float(numSamples)) / vec3(512.0, 512.0, 64.0);
+    currentRadCoord     += radCoordDelta * dither;
+
+    // Ambient-shadow 3D-texture coords (matches GL Fog2.fs and BasicMap.vert).
+    vec3 currentAOCoord = (viewOrigin + vec3(0.0, 0.0, 1.0)) / vec3(512.0, 512.0, 65.0);
+    vec3 aoCoordDelta   = (worldPos.xyz / float(numSamples)) / vec3(512.0, 512.0, 65.0);
+    // Above z=0 (sky-bound rays), the radiosity texture has no data, so fade
+    // its contribution out using the same z-cutoff as GL Fog2.fs.
+    float radCutoff       = currentAOCoord.z * 10.0 + 1.0;
+    float radCutoffDelta  = aoCoordDelta.z * 10.0;
+    currentAOCoord       += aoCoordDelta * dither;
+
+    float sunlightFactor   = 0.0;
+    float ambientFactor    = 0.0;
+    vec3  radiosityFactor  = vec3(0.0);
 
     for (int i = 0; i < numSamples; ++i) {
-        // Shadow map: .w channel = normalised height of highest opaque voxel.
+        // Sunlight shadow.
         float shadowHeight = texture(shadowMapTexture, currentShadowPos.xy).w;
         float lit          = step(currentShadowPos.z, shadowHeight);
+        sunlightFactor += lit * weight;
 
-        sunlightFactor += lit    * weight;
-        ambientFactor  += weight;  // full ambient (no ambientShadowTexture yet)
+        // Per-block ambient occlusion: .x = AO sample, .y = sample weight.
+        float aoSample = max(texture(ambientShadowTexture, currentAOCoord).x, 0.0);
+        ambientFactor += aoSample * weight;
+
+        // Indirect radiosity bounce.
+        vec3 r = DecodeRadiosityValue(texture(radiosityTextureFlat, currentRadCoord).xyz);
+        radiosityFactor += r * (weight * clamp(radCutoff, 0.0, 1.0));
 
         currentShadowPos += shadowDelta;
+        currentRadCoord  += radCoordDelta;
+        currentAOCoord   += aoCoordDelta;
+        radCutoff        += radCutoffDelta;
         weightSum        += weight;
         weight           -= weightDelta;
     }
 
     // Rescale to the desired fog density.
-    vec3 scale         = vec3(goalFogFactor) / (weightSum + 1.0e-4);
-    vec3 sunlightContrib = sunlightFactor * pc.sunlightScale.xyz * scale;
-    vec3 ambientContrib  = ambientFactor  * pc.ambientScale.xyz  * scale;
+    vec3 scale            = vec3(goalFogFactor) / (weightSum + 1.0e-4);
+    vec3 sunlightContrib  = sunlightFactor   * pc.sunlightScale.xyz  * scale;
+    vec3 ambientContrib   = ambientFactor    * pc.ambientScale.xyz   * scale;
+    vec3 radiosityContrib = radiosityFactor                          * scale
+                          * pc.radiosityScale.xyz;
 
     // Directional brightness gradient (sun at (0, -1, -1)).
     vec3  sunDir = normalize(vec3(0.0, -1.0, -1.0));
     float bright = dot(sunDir, normalize(worldPos.xyz));
-    sunlightContrib *= bright * 0.5 + 1.0;
-    ambientContrib  *= bright * 0.5 + 1.0;
+    sunlightContrib  *= bright * 0.5 + 1.0;
+    ambientContrib   *= bright * 0.5 + 1.0;
+    // (Radiosity already encodes direction; no gradient term in GL Fog2 either.)
 
     outColor      = texture(colorTexture, texCoord);
-    outColor.xyz += sunlightContrib + ambientContrib;
+    outColor.xyz += sunlightContrib + ambientContrib + radiosityContrib;
 }

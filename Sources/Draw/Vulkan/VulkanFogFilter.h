@@ -57,7 +57,8 @@ namespace spades {
 
 			VkRenderPass ppRenderPass;
 
-			VkDescriptorSetLayout triSamplerDSL; // bindings 0, 1, 2
+			VkDescriptorSetLayout triSamplerDSL; // bindings 0, 1, 2 (Fog1)
+			VkDescriptorSetLayout fog2DSL;       // bindings 0..7 (Fog2: +AO+4 radiosity)
 
 			// Fog2 (default, r_fogShadow == 2)
 			VkPipelineLayout fogLayout;
@@ -88,6 +89,23 @@ namespace spades {
 			                             VkSampler   depthSampler,
 			                             VkImageView shadowView,
 			                             VkSampler   shadowSampler);
+
+			// Fog2 variant — also binds the per-block AO and radiosity 3D
+			// textures so the post-pass can integrate atmospheric scattering
+			// from indirect light, matching GLFogFilter2.
+			VkDescriptorSet BindTexturesFog2(int frameSlot,
+			                                  VkImageView colorView,
+			                                  VkImageView depthView,
+			                                  VkSampler   depthSampler,
+			                                  VkImageView shadowView,
+			                                  VkSampler   shadowSampler,
+			                                  VkImageView aoView,
+			                                  VkSampler   aoSampler,
+			                                  VkImageView radFlat,
+			                                  VkImageView radX,
+			                                  VkImageView radY,
+			                                  VkImageView radZ,
+			                                  VkSampler   radSampler);
 
 			void CreatePipeline() override {}
 			void CreateRenderPass() override {}

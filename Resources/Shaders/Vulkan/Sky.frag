@@ -38,22 +38,9 @@ layout(location = 0) in vec3 viewDir;
 layout(location = 0) out vec4 fragColor;
 
 void main() {
-	// Sun direction matches OpenGL: (0, -1, -1) normalized
-	vec3 sunDir = normalize(vec3(0.0, -1.0, -1.0));
-
-	// Compute brightness based on view direction dot product with sun direction
-	float bright = dot(sunDir, normalize(viewDir));
-
-	// Apply gradient similar to OpenGL fog shader
-	// Base brightness adjustment
-	float gradientFactor = 0.8 + bright * 0.3;
-
-	// Sun glow effect (exponential falloff)
-	float sunGlow = exp2(bright * 16.0 - 15.0);
-	gradientFactor *= (sunGlow + 1.0);
-
-	// Apply to fog color
-	vec3 skyColor = pushConstants.fogColor * gradientFactor;
-
-	fragColor = vec4(skyColor, 1.0);
+	// Match GL: the sky has no procedural shading on the scene pass. It is
+	// drawn flat in the linearised fog color and the Fog2 post-pass then
+	// adds the directional sunlight, ambient (per-block AO), and radiosity
+	// in-scattering — that is what gives the GL sky its pastel gradient.
+	fragColor = vec4(pushConstants.fogColor, 1.0);
 }

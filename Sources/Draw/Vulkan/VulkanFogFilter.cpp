@@ -19,9 +19,11 @@
  */
 
 #include "VulkanFogFilter.h"
+#include "VulkanAmbientShadowRenderer.h"
 #include "VulkanFramebufferManager.h"
 #include "VulkanImage.h"
 #include "VulkanMapShadowRenderer.h"
+#include "VulkanRadiosityRenderer.h"
 #include "VulkanRenderer.h"
 #include "VulkanRenderPassUtils.h"
 #include "VulkanTemporaryImagePool.h"
@@ -40,15 +42,16 @@ SPADES_SETTING(r_vk_fogShadow);
 namespace spades {
 	namespace draw {
 
-		// Push constants for Fog2.vk.vs + Fog2.vk.fs (total = 128 bytes).
+		// Push constants for Fog2.vk.vs + Fog2.vk.fs (total = 144 bytes).
 		struct Fog2PushConstants {
-			float viewProjInv[16];     // [0..63]  mat4 viewProjectionMatrixInv
-			float viewOriginFogDist[4]; // [64..79] xyz=viewOrigin, w=fogDistance
-			float sunlightScale[4];    // [80..95] xyz used
-			float ambientScale[4];     // [96..111] xyz used
-			float ditherFrame[4];      // [112..127] xy=per-frame noise seed
+			float viewProjInv[16];      // [0..63]   mat4 viewProjectionMatrixInv
+			float viewOriginFogDist[4]; // [64..79]  xyz=viewOrigin, w=fogDistance
+			float sunlightScale[4];     // [80..95]  xyz used
+			float ambientScale[4];      // [96..111] xyz used
+			float radiosityScale[4];    // [112..127] xyz used
+			float ditherFrame[4];       // [128..143] xy=per-frame noise seed
 		};
-		static_assert(sizeof(Fog2PushConstants) == 128, "Fog2PushConstants must be 128 bytes");
+		static_assert(sizeof(Fog2PushConstants) == 144, "Fog2PushConstants must be 144 bytes");
 
 		// Push constants for Fog.vk.vs + Fog.vk.fs (total = 96 bytes).
 		struct FogClassicPushConstants {
@@ -75,6 +78,7 @@ namespace spades {
 		      colorSampler(VK_NULL_HANDLE),
 		      ppRenderPass(VK_NULL_HANDLE),
 		      triSamplerDSL(VK_NULL_HANDLE),
+		      fog2DSL(VK_NULL_HANDLE),
 		      fogLayout(VK_NULL_HANDLE),
 		      fogPipeline(VK_NULL_HANDLE),
 		      fogClassicLayout(VK_NULL_HANDLE),
@@ -108,6 +112,7 @@ namespace spades {
 			if (fogClassicLayout   != VK_NULL_HANDLE) vkDestroyPipelineLayout(dev, fogClassicLayout, nullptr);
 			if (fogPipeline   != VK_NULL_HANDLE) vkDestroyPipeline(dev, fogPipeline, nullptr);
 			if (fogLayout     != VK_NULL_HANDLE) vkDestroyPipelineLayout(dev, fogLayout, nullptr);
+			if (fog2DSL       != VK_NULL_HANDLE) vkDestroyDescriptorSetLayout(dev, fog2DSL, nullptr);
 			if (triSamplerDSL != VK_NULL_HANDLE) vkDestroyDescriptorSetLayout(dev, triSamplerDSL, nullptr);
 			if (colorSampler  != VK_NULL_HANDLE) vkDestroySampler(dev, colorSampler, nullptr);
 			if (ppRenderPass  != VK_NULL_HANDLE) vkDestroyRenderPass(dev, ppRenderPass, nullptr);
@@ -156,6 +161,7 @@ namespace spades {
 		void VulkanFogFilter::InitDescriptorSetLayout() {
 			VkDevice dev = device->GetDevice();
 
+			// Fog1 layout: 3 bindings (color, depth, shadow map).
 			VkDescriptorSetLayoutBinding bindings[3]{};
 			for (int i = 0; i < 3; ++i) {
 				bindings[i].binding         = static_cast<uint32_t>(i);
@@ -171,6 +177,31 @@ namespace spades {
 
 			if (vkCreateDescriptorSetLayout(dev, &info, nullptr, &triSamplerDSL) != VK_SUCCESS)
 				SPRaise("Failed to create fog filter descriptor set layout");
+
+			// Fog2 layout: 8 bindings.
+			//   0 colorTexture        (sampler2D)
+			//   1 depthTexture        (sampler2D)
+			//   2 shadowMapTexture    (sampler2D)
+			//   3 ambientShadowTexture (sampler3D)
+			//   4 radiosityTextureFlat (sampler3D)
+			//   5 radiosityTextureX    (sampler3D)
+			//   6 radiosityTextureY    (sampler3D)
+			//   7 radiosityTextureZ    (sampler3D)
+			VkDescriptorSetLayoutBinding bindings2[8]{};
+			for (int i = 0; i < 8; ++i) {
+				bindings2[i].binding         = static_cast<uint32_t>(i);
+				bindings2[i].descriptorCount = 1;
+				bindings2[i].descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+				bindings2[i].stageFlags      = VK_SHADER_STAGE_FRAGMENT_BIT;
+			}
+
+			VkDescriptorSetLayoutCreateInfo info2{};
+			info2.sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+			info2.bindingCount = 8;
+			info2.pBindings    = bindings2;
+
+			if (vkCreateDescriptorSetLayout(dev, &info2, nullptr, &fog2DSL) != VK_SUCCESS)
+				SPRaise("Failed to create fog2 descriptor set layout");
 		}
 
 		VkShaderModule VulkanFogFilter::LoadSPIRV(const char* path) {
@@ -235,8 +266,9 @@ namespace spades {
 			blend.attachmentCount = 1;
 			blend.pAttachments    = &noBlend;
 
-			// Build one pipeline + matching pipeline layout for a (vs, fs, pcSize) triple.
+			// Build one pipeline + matching pipeline layout for a (vs, fs, pcSize, dsl) tuple.
 			auto buildVariant = [&](const char* vsPath, const char* fsPath, uint32_t pcSize,
+			                        VkDescriptorSetLayout dsl,
 			                        VkPipelineLayout* outLayout, VkPipeline* outPipeline,
 			                        const char* errLabel) {
 				VkShaderModule vs = LoadSPIRV(vsPath);
@@ -250,7 +282,7 @@ namespace spades {
 				VkPipelineLayoutCreateInfo li{};
 				li.sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
 				li.setLayoutCount         = 1;
-				li.pSetLayouts            = &triSamplerDSL;
+				li.pSetLayouts            = &dsl;
 				li.pushConstantRangeCount = 1;
 				li.pPushConstantRanges    = &pcr;
 				if (vkCreatePipelineLayout(dev, &li, nullptr, outLayout) != VK_SUCCESS)
@@ -287,20 +319,21 @@ namespace spades {
 
 			buildVariant("Shaders/Vulkan/PostFilters/Fog2.vk.vs.spv",
 			             "Shaders/Vulkan/PostFilters/Fog2.vk.fs.spv",
-			             sizeof(Fog2PushConstants),
+			             sizeof(Fog2PushConstants), fog2DSL,
 			             &fogLayout, &fogPipeline, "fog2");
 
 			buildVariant("Shaders/Vulkan/PostFilters/Fog.vk.vs.spv",
 			             "Shaders/Vulkan/PostFilters/Fog.vk.fs.spv",
-			             sizeof(FogClassicPushConstants),
+			             sizeof(FogClassicPushConstants), triSamplerDSL,
 			             &fogClassicLayout, &fogClassicPipeline, "fog");
 		}
 
 		void VulkanFogFilter::InitDescriptorPools() {
 			VkDevice dev = device->GetDevice();
 
-			// One descriptor set per frame, 3 combined-image-sampler bindings each.
-			VkDescriptorPoolSize size{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 8};
+			// Up to one set per frame slot; Fog2 needs 8 samplers, Fog1 needs 3.
+			// Budget 16 samplers (2× Fog2 worst case) per pool and 4 sets total.
+			VkDescriptorPoolSize size{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 16};
 			VkDescriptorPoolCreateInfo info{};
 			info.sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
 			info.poolSizeCount = 1;
@@ -365,6 +398,51 @@ namespace spades {
 				writes[i].pImageInfo      = &imgs[i];
 			}
 			vkUpdateDescriptorSets(device->GetDevice(), 3, writes, 0, nullptr);
+			return set;
+		}
+
+		VkDescriptorSet VulkanFogFilter::BindTexturesFog2(int           frameSlot,
+		                                                  VkImageView   colorView,
+		                                                  VkImageView   depthView,
+		                                                  VkSampler     depthSampler,
+		                                                  VkImageView   shadowView,
+		                                                  VkSampler     shadowSampler,
+		                                                  VkImageView   aoView,
+		                                                  VkSampler     aoSampler,
+		                                                  VkImageView   radFlat,
+		                                                  VkImageView   radX,
+		                                                  VkImageView   radY,
+		                                                  VkImageView   radZ,
+		                                                  VkSampler     radSampler) {
+			VkDescriptorSetAllocateInfo ai{};
+			ai.sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+			ai.descriptorPool     = perFrameDescPool[frameSlot];
+			ai.descriptorSetCount = 1;
+			ai.pSetLayouts        = &fog2DSL;
+			VkDescriptorSet set;
+			if (vkAllocateDescriptorSets(device->GetDevice(), &ai, &set) != VK_SUCCESS)
+				SPRaise("Failed to allocate fog2 descriptor set");
+
+			VkDescriptorImageInfo imgs[8]{
+			    {colorSampler,  colorView,  VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL},
+			    {depthSampler,  depthView,  VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL},
+			    {shadowSampler, shadowView, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL},
+			    {aoSampler,     aoView,     VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL},
+			    {radSampler,    radFlat,    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL},
+			    {radSampler,    radX,       VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL},
+			    {radSampler,    radY,       VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL},
+			    {radSampler,    radZ,       VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL},
+			};
+			VkWriteDescriptorSet writes[8]{};
+			for (int i = 0; i < 8; ++i) {
+				writes[i].sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+				writes[i].dstSet          = set;
+				writes[i].dstBinding      = static_cast<uint32_t>(i);
+				writes[i].descriptorCount = 1;
+				writes[i].descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+				writes[i].pImageInfo      = &imgs[i];
+			}
+			vkUpdateDescriptorSets(device->GetDevice(), 8, writes, 0, nullptr);
 			return set;
 		}
 
@@ -461,8 +539,10 @@ namespace spades {
 
 				Matrix4 vpInv = vp.Inversed();
 
-				constexpr float sunlightBrightness = 0.6F;
-				constexpr float ambientBrightness  = 1.0F;
+				constexpr float sunlightBrightness   = 0.6F;
+				constexpr float ambientBrightness    = 1.0F;
+				constexpr float radiosityBrightness  = 1.0F;
+				constexpr float radiosityOffset      = 0.2F;
 
 				auto fogTransmission1 = [&](float f) {
 					return f / (sunlightBrightness + ambientBrightness * f + 1.0e-6F);
@@ -486,6 +566,11 @@ namespace spades {
 				pc2.ambientScale[1] = ft.y * fogCol.y * ambientBrightness;
 				pc2.ambientScale[2] = ft.z * fogCol.z * ambientBrightness;
 
+				// Matches GLFogFilter2: radiosityScale = ft * 1.0 + 0.2
+				pc2.radiosityScale[0] = ft.x * radiosityBrightness + radiosityOffset;
+				pc2.radiosityScale[1] = ft.y * radiosityBrightness + radiosityOffset;
+				pc2.radiosityScale[2] = ft.z * radiosityBrightness + radiosityOffset;
+
 				std::uint32_t frame = frameCounter++ % 4;
 				pc2.ditherFrame[0] = (float)(frame & 1) * 0.5F;
 				pc2.ditherFrame[1] = (float)((frame >> 1) & 1) * 0.5F;
@@ -499,10 +584,38 @@ namespace spades {
 			Handle<VulkanImage> depthImg  = renderer.GetFramebufferManager()->GetDepthImage();
 			VulkanImage*        shadowImg = renderer.GetMapShadowRenderer()->GetShadowImage();
 
-			VkDescriptorSet ds = BindTextures(frameSlot,
-			    input->GetImageView(),
-			    depthImg->GetImageView(), depthImg->GetSampler(),
-			    shadowImg->GetImageView(), shadowImg->GetSampler());
+			VkDescriptorSet ds;
+			if (useClassic) {
+				ds = BindTextures(frameSlot,
+				    input->GetImageView(),
+				    depthImg->GetImageView(), depthImg->GetSampler(),
+				    shadowImg->GetImageView(), shadowImg->GetSampler());
+			} else {
+				// Fog2 also samples per-block AO and radiosity 3D textures so it
+				// can integrate atmospheric indirect light along the view ray
+				// (matches GLFogFilter2). Both subsystems may be null very early
+				// during map load — fall back to the 3-binding path in that case.
+				VulkanAmbientShadowRenderer* aoR  = renderer.GetAmbientShadowRenderer();
+				VulkanRadiosityRenderer*     radR = renderer.GetRadiosityRenderer();
+				if (aoR && radR) {
+					ds = BindTexturesFog2(frameSlot,
+					    input->GetImageView(),
+					    depthImg->GetImageView(), depthImg->GetSampler(),
+					    shadowImg->GetImageView(), shadowImg->GetSampler(),
+					    aoR->GetImageView(),       aoR->GetSampler(),
+					    radR->GetImageViewFlat(),
+					    radR->GetImageViewX(),
+					    radR->GetImageViewY(),
+					    radR->GetImageViewZ(),
+					    radR->GetSampler());
+				} else {
+					// Filter is technically unsafe to run without the extra
+					// textures bound (Fog2 pipeline expects 8 bindings). Skip
+					// the post-pass entirely; the world still renders, just
+					// without atmospheric scattering this frame.
+					return;
+				}
+			}
 
 			// ── Record draw ───────────────────────────────────────────────────────
 
