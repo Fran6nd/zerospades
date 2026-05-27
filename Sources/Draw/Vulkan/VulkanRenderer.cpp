@@ -1402,17 +1402,46 @@ namespace spades {
 			uint32_t* pixels = bmp->GetPixels();
 			const int count = renderWidth * renderHeight;
 
+			// IEC 61966-2-1 sRGB transfer function. The offscreen colour
+			// buffer holds linear values; the swapchain blit applies this
+			// encoding on present, so the screenshot capture must replicate
+			// it or the saved image (interpreted as sRGB by every viewer)
+			// reads back darker than what the player sees on screen.
+			auto linearToSRGBu8 = [](float c) -> uint8_t {
+				if (c < 0.0f) c = 0.0f;
+				if (c > 1.0f) c = 1.0f;
+				float e = (c <= 0.0031308f) ? (12.92f * c)
+				                            : (1.055f * std::pow(c, 1.0f / 2.4f) - 0.055f);
+				return static_cast<uint8_t>(e * 255.0f + 0.5f);
+			};
+
 			switch (fmt) {
-				case VK_FORMAT_R8G8B8A8_UNORM:
 				case VK_FORMAT_R8G8B8A8_SRGB:
+					// The format itself already stores sRGB-encoded bytes —
+					// blit-to-swapchain is identity, so a raw copy is correct.
 					std::memcpy(pixels, raw, (size_t)count * 4);
 					break;
 
+				case VK_FORMAT_R8G8B8A8_UNORM: {
+					// Linear bytes → sRGB-encoded bytes to match what the
+					// swapchain blit shows on screen.
+					const uint8_t* src = reinterpret_cast<const uint8_t*>(raw);
+					for (int i = 0; i < count; i++) {
+						uint8_t r = linearToSRGBu8(src[i * 4 + 0] / 255.0f);
+						uint8_t g = linearToSRGBu8(src[i * 4 + 1] / 255.0f);
+						uint8_t b = linearToSRGBu8(src[i * 4 + 2] / 255.0f);
+						uint8_t a = src[i * 4 + 3];
+						pixels[i] = r | (uint32_t(g) << 8) | (uint32_t(b) << 16) |
+						            (uint32_t(a) << 24);
+					}
+					break;
+				}
+
 				case VK_FORMAT_R16G16B16A16_SFLOAT: {
-					// Half-float → uint8 with clamping.
+					// HDR half-float → linear float → sRGB-encoded uint8.
 					const uint16_t* src = reinterpret_cast<const uint16_t*>(raw);
 					// Standard half→float via IEEE 754 bit manipulation (bias offset 127-15=112).
-					auto halfToU8 = [](uint16_t h) -> uint8_t {
+					auto halfToFloat = [](uint16_t h) -> float {
 						uint32_t s = (h >> 15) & 1;
 						uint32_t e = (h >> 10) & 0x1f;
 						uint32_t m = h & 0x3ff;
@@ -1426,15 +1455,16 @@ namespace spades {
 						}
 						float f;
 						std::memcpy(&f, &bits, 4);
-						if (f < 0.0f) f = 0.0f;
-						if (f > 1.0f) f = 1.0f;
-						return static_cast<uint8_t>(f * 255.0f + 0.5f);
+						return f;
 					};
 					for (int i = 0; i < count; i++) {
-						uint8_t r = halfToU8(src[i * 4 + 0]);
-						uint8_t g = halfToU8(src[i * 4 + 1]);
-						uint8_t b = halfToU8(src[i * 4 + 2]);
-						uint8_t a = halfToU8(src[i * 4 + 3]);
+						uint8_t r = linearToSRGBu8(halfToFloat(src[i * 4 + 0]));
+						uint8_t g = linearToSRGBu8(halfToFloat(src[i * 4 + 1]));
+						uint8_t b = linearToSRGBu8(halfToFloat(src[i * 4 + 2]));
+						float aF = halfToFloat(src[i * 4 + 3]);
+						if (aF < 0.0f) aF = 0.0f;
+						if (aF > 1.0f) aF = 1.0f;
+						uint8_t a = static_cast<uint8_t>(aF * 255.0f + 0.5f);
 						pixels[i] = r | (uint32_t(g) << 8) | (uint32_t(b) << 16) |
 						            (uint32_t(a) << 24);
 					}
@@ -1442,13 +1472,14 @@ namespace spades {
 				}
 
 				case VK_FORMAT_A2B10G10R10_UNORM_PACK32: {
-					// Bits: [31:30]=A [29:20]=B [19:10]=G [9:0]=R
+					// Bits: [31:30]=A [29:20]=B [19:10]=G [9:0]=R; values
+					// are linear UNORM, so encode to sRGB on the way out.
 					const uint32_t* src = reinterpret_cast<const uint32_t*>(raw);
 					for (int i = 0; i < count; i++) {
 						uint32_t p = src[i];
-						uint8_t r = static_cast<uint8_t>(((p >> 0) & 0x3ff) * 255 / 1023);
-						uint8_t g = static_cast<uint8_t>(((p >> 10) & 0x3ff) * 255 / 1023);
-						uint8_t b = static_cast<uint8_t>(((p >> 20) & 0x3ff) * 255 / 1023);
+						uint8_t r = linearToSRGBu8(((p >> 0) & 0x3ff) / 1023.0f);
+						uint8_t g = linearToSRGBu8(((p >> 10) & 0x3ff) / 1023.0f);
+						uint8_t b = linearToSRGBu8(((p >> 20) & 0x3ff) / 1023.0f);
 						uint8_t a = static_cast<uint8_t>(((p >> 30) & 0x3) * 255 / 3);
 						pixels[i] = r | (uint32_t(g) << 8) | (uint32_t(b) << 16) |
 						            (uint32_t(a) << 24);
