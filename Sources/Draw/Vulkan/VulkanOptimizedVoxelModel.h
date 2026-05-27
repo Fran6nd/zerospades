@@ -39,16 +39,16 @@ namespace spades {
 		class VulkanOptimizedVoxelModel : public VulkanModel {
 			struct Vertex {
 				uint8_t x, y, z;
-				uint8_t padding;
+				uint8_t aoX;          // 2D AO atlas coord (tile_x*16 + corner)
 
 				// color
 				uint8_t colorR, colorG, colorB;
-				uint8_t padding2;
+				uint8_t aoY;          // 2D AO atlas coord (tile_y*16 + corner)
 
 				// normal
 				int8_t nx, ny, nz;
 
-				uint8_t padding3;
+				uint8_t padding;
 			};
 
 			// Shared pipeline cache across all model instances

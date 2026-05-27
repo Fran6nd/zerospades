@@ -33,6 +33,8 @@ layout(push_constant) uniform PushConstants {
 layout(location = 0) in uvec3 positionAttribute;
 layout(location = 1) in uvec3 colorAttribute;  // RGB color stored in u,v as (R, G, B)
 layout(location = 2) in ivec3 normalAttribute;
+layout(location = 3) in uint aoXAttribute;     // per-face AO atlas u (0..255)
+layout(location = 4) in uint aoYAttribute;     // per-face AO atlas v (0..255)
 
 layout(location = 0) out vec4 color;           // xyz = vertexColor, w = sun lambert
 layout(location = 1) out vec3 ambientLight;    // hemisphere ambient fallback
@@ -43,6 +45,7 @@ layout(location = 5) out vec3 outFogColor;
 layout(location = 6) out vec3 aoCoord;          // 3D coords into AO texture
 layout(location = 7) out vec3 radiosityTextureCoord; // 3D coords into radiosity textures
 layout(location = 8) out vec3 normalVarying;    // world-space surface normal
+layout(location = 9) out vec2 ambientOcclusionCoord; // 2D coords into AO atlas
 
 void main() {
 	// Convert uint8 position to float
@@ -87,4 +90,8 @@ void main() {
 	// Radiosity 3D-texture coords (matches GL MapRadiosity.vs).
 	radiosityTextureCoord = worldPos / vec3(512.0, 512.0, 64.0);
 	normalVarying = normalFloat;
+
+	// 2D AO atlas coords (matches GL OptimizedVoxelModel.fs).  aoX/aoY are the
+	// 256-pixel-space tile + corner offsets baked per-face in EmitFace.
+	ambientOcclusionCoord = (vec2(aoXAttribute, aoYAttribute) + 0.5) * (1.0 / 256.0);
 }

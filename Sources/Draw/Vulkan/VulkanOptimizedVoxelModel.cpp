@@ -282,7 +282,14 @@ namespace spades {
 			int h = m->GetHeight();
 			int d = m->GetDepth();
 
-			// Helper lambda to emit a face with vertex colors
+			// Helper lambda to emit a face with vertex colors.
+			//
+			// For each exposed face we bake the same per-face aoID byte that GL's
+			// `OptimizedVoxelModel.fs` uses, then store per-vertex (aoX, aoY) atlas
+			// coords so the no-radiosity fragment shader can sample the 2D AO atlas
+			// (Gfx/AmbientOcclusion.png). Each face vertex sits at one of the four
+			// 16×16-tile corners; v[0,1,2,3] wind CCW around the quad so the corners
+			// in AO space are (lo,lo)→(hi,lo)→(hi,hi)→(lo,hi).
 			auto EmitFace = [&](int x, int y, int z, int nx, int ny, int nz, uint32_t color) {
 				uint32_t idx = (uint32_t)vertices.size();
 
@@ -301,40 +308,65 @@ namespace spades {
 					v[i].colorG = g;
 					v[i].colorB = b;
 					v[i].padding = 0;
-					v[i].padding2 = 0;
 				}
 
+				// Per-face geometry + AO sample axes (u along v[0]→v[1], v along v[0]→v[3]).
+				int aoSampleX = x, aoSampleY = y, aoSampleZ = z;
+				int ux = 0, uy = 0, uz = 0;
+				int vx = 0, vy = 0, vz = 0;
+
 				if (nx == 1) { // +X face
-					v[0].x = x + 1; v[0].y = y; v[0].z = z;
+					v[0].x = x + 1; v[0].y = y;     v[0].z = z;
 					v[1].x = x + 1; v[1].y = y + 1; v[1].z = z;
 					v[2].x = x + 1; v[2].y = y + 1; v[2].z = z + 1;
-					v[3].x = x + 1; v[3].y = y; v[3].z = z + 1;
+					v[3].x = x + 1; v[3].y = y;     v[3].z = z + 1;
+					aoSampleX = x + 1;
+					uy = 1; vz = 1;
 				} else if (nx == -1) { // -X face
-					v[0].x = x; v[0].y = y; v[0].z = z;
-					v[1].x = x; v[1].y = y; v[1].z = z + 1;
+					v[0].x = x; v[0].y = y;     v[0].z = z;
+					v[1].x = x; v[1].y = y;     v[1].z = z + 1;
 					v[2].x = x; v[2].y = y + 1; v[2].z = z + 1;
 					v[3].x = x; v[3].y = y + 1; v[3].z = z;
+					aoSampleX = x - 1;
+					uz = 1; vy = 1;
 				} else if (ny == 1) { // +Y face
-					v[0].x = x; v[0].y = y + 1; v[0].z = z;
-					v[1].x = x; v[1].y = y + 1; v[1].z = z + 1;
+					v[0].x = x;     v[0].y = y + 1; v[0].z = z;
+					v[1].x = x;     v[1].y = y + 1; v[1].z = z + 1;
 					v[2].x = x + 1; v[2].y = y + 1; v[2].z = z + 1;
 					v[3].x = x + 1; v[3].y = y + 1; v[3].z = z;
+					aoSampleY = y + 1;
+					uz = 1; vx = 1;
 				} else if (ny == -1) { // -Y face
-					v[0].x = x; v[0].y = y; v[0].z = z;
+					v[0].x = x;     v[0].y = y; v[0].z = z;
 					v[1].x = x + 1; v[1].y = y; v[1].z = z;
 					v[2].x = x + 1; v[2].y = y; v[2].z = z + 1;
-					v[3].x = x; v[3].y = y; v[3].z = z + 1;
+					v[3].x = x;     v[3].y = y; v[3].z = z + 1;
+					aoSampleY = y - 1;
+					ux = 1; vz = 1;
 				} else if (nz == 1) { // +Z face
-					v[0].x = x; v[0].y = y; v[0].z = z + 1;
-					v[1].x = x + 1; v[1].y = y; v[1].z = z + 1;
+					v[0].x = x;     v[0].y = y;     v[0].z = z + 1;
+					v[1].x = x + 1; v[1].y = y;     v[1].z = z + 1;
 					v[2].x = x + 1; v[2].y = y + 1; v[2].z = z + 1;
-					v[3].x = x; v[3].y = y + 1; v[3].z = z + 1;
+					v[3].x = x;     v[3].y = y + 1; v[3].z = z + 1;
+					aoSampleZ = z + 1;
+					ux = 1; vy = 1;
 				} else { // -Z face (nz == -1)
-					v[0].x = x; v[0].y = y; v[0].z = z;
-					v[1].x = x; v[1].y = y + 1; v[1].z = z;
+					v[0].x = x;     v[0].y = y;     v[0].z = z;
+					v[1].x = x;     v[1].y = y + 1; v[1].z = z;
 					v[2].x = x + 1; v[2].y = y + 1; v[2].z = z;
-					v[3].x = x + 1; v[3].y = y; v[3].z = z;
+					v[3].x = x + 1; v[3].y = y;     v[3].z = z;
+					aoSampleZ = z - 1;
+					uy = 1; vx = 1;
 				}
+
+				uint8_t aoID = calcAOID(m, aoSampleX, aoSampleY, aoSampleZ,
+				                        ux, uy, uz, vx, vy, vz);
+				uint8_t aoTexX = static_cast<uint8_t>((aoID & 15) * 16);
+				uint8_t aoTexY = static_cast<uint8_t>((aoID >> 4) * 16);
+				v[0].aoX = aoTexX;       v[0].aoY = aoTexY;
+				v[1].aoX = aoTexX + 15;  v[1].aoY = aoTexY;
+				v[2].aoX = aoTexX + 15;  v[2].aoY = aoTexY + 15;
+				v[3].aoX = aoTexX;       v[3].aoY = aoTexY + 15;
 
 				// Add vertices
 				for (int i = 0; i < 4; i++) {
@@ -880,6 +912,24 @@ namespace spades {
 			fragShaderStageInfo.module = fragShaderModule;
 			fragShaderStageInfo.pName = "main";
 
+			// Specialization constant: USE_RADIOSITY for BasicModelVertexColor.frag —
+			// picks the MapRadiosityNull-style 2D-AO ambient when r_radiosity == 0,
+			// the radiosity-style 3D-ambient branch otherwise.  Mirrors the map renderer.
+			SPADES_SETTING(r_radiosity);
+			int32_t useRadiosity = (int)r_radiosity != 0 ? 1 : 0;
+			VkSpecializationMapEntry specEntry{};
+			specEntry.constantID = 0;
+			specEntry.offset = 0;
+			specEntry.size = sizeof(int32_t);
+			VkSpecializationInfo specInfo{};
+			specInfo.mapEntryCount = 1;
+			specInfo.pMapEntries = &specEntry;
+			specInfo.dataSize = sizeof(int32_t);
+			specInfo.pData = &useRadiosity;
+			if (!sharedPipeline.physicalLighting) {
+				fragShaderStageInfo.pSpecializationInfo = &specInfo;
+			}
+
 			VkPipelineShaderStageCreateInfo shaderStages[] = {vertShaderStageInfo, fragShaderStageInfo};
 
 			// Vertex input state
@@ -888,7 +938,7 @@ namespace spades {
 			bindingDescription.stride = sizeof(Vertex);
 			bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 
-			std::array<VkVertexInputAttributeDescription, 3> attributeDescriptions{};
+			std::array<VkVertexInputAttributeDescription, 5> attributeDescriptions{};
 
 			// Position (location 0)
 			attributeDescriptions[0].binding = 0;
@@ -907,6 +957,20 @@ namespace spades {
 			attributeDescriptions[2].location = 2;
 			attributeDescriptions[2].format = VK_FORMAT_R8G8B8_SINT;
 			attributeDescriptions[2].offset = offsetof(Vertex, nx);
+
+			// aoX (location 3) and aoY (location 4) are sub-byte fields in the
+			// otherwise-padded spaces after position and color. They live on
+			// separate non-adjacent offsets so we bind them as two R8_UINT
+			// attributes rather than one packed R8G8.
+			attributeDescriptions[3].binding = 0;
+			attributeDescriptions[3].location = 3;
+			attributeDescriptions[3].format = VK_FORMAT_R8_UINT;
+			attributeDescriptions[3].offset = offsetof(Vertex, aoX);
+
+			attributeDescriptions[4].binding = 0;
+			attributeDescriptions[4].location = 4;
+			attributeDescriptions[4].format = VK_FORMAT_R8_UINT;
+			attributeDescriptions[4].offset = offsetof(Vertex, aoY);
 
 			VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
 			vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
@@ -988,8 +1052,11 @@ namespace spades {
 			//   binding 4 — radiosity Y 3D texture
 			//   binding 5 — radiosity Z 3D texture
 			{
-				VkDescriptorSetLayoutBinding bindings[6]{};
-				for (uint32_t i = 0; i < 6; ++i) {
+				// Mirrors VulkanMapRenderer's 7-binding shadow descriptor set
+				// (the model binds the map renderer's set at draw time, so the
+				// layouts must match).  Binding 6 is the 2D AO atlas.
+				VkDescriptorSetLayoutBinding bindings[7]{};
+				for (uint32_t i = 0; i < 7; ++i) {
 					bindings[i].binding = i;
 					bindings[i].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 					bindings[i].descriptorCount = 1;
@@ -998,7 +1065,7 @@ namespace spades {
 
 				VkDescriptorSetLayoutCreateInfo descriptorLayoutInfo{};
 				descriptorLayoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-				descriptorLayoutInfo.bindingCount = 6;
+				descriptorLayoutInfo.bindingCount = 7;
 				descriptorLayoutInfo.pBindings = bindings;
 
 				result = vkCreateDescriptorSetLayout(vkDevice, &descriptorLayoutInfo, nullptr, &sharedPipeline.descriptorSetLayout);
