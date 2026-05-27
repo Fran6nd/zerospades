@@ -20,8 +20,10 @@
 
 // Fog filter (Fog1 style) fragment shader.
 // Port of OpenGL/PostFilters/Fog.fs.
-// Uses 32 fine-level shadow-map steps (the GL version used up to 64×64
-// coarse+fine steps, which is impractical on GPU without the coarse map).
+// Pure fine-level DDA — matches the GL non-coarse fallback (`USE_COARSE_
+// SHADOWMAP 0`) with 512 max steps so distant occluders (e.g. the floating
+// block) actually contribute a visible shadow shaft. The GL renderer
+// achieves the same effective coverage via a coarse+fine traversal.
 // Depth is reconstructed from the hardware depth buffer.
 //
 // Descriptor set layout (set 0):
@@ -101,7 +103,7 @@ void main() {
 
     const vec2 voxels     = vec2(512.0);
     const vec2 voxelSize  = 1.0 / voxels;
-    const int  maxSteps   = 32;
+    const int  maxSteps   = 512;
 
     vec3  pos             = startPos + dir * 0.0001;
     vec2  voxelIndex      = floor(pos.xy);
