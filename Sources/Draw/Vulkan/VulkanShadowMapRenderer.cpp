@@ -34,7 +34,7 @@
 #include <cstring>
 #include <vector>
 
-SPADES_SETTING(r_vk_shadowMapSize);
+SPADES_SETTING(r_shadowMapSize);
 
 namespace spades {
 	namespace draw {
@@ -49,7 +49,7 @@ namespace spades {
 		  descriptorPool(VK_NULL_HANDLE) {
 			SPADES_MARK_FUNCTION();
 
-			textureSize = (int)r_vk_shadowMapSize;
+			textureSize = (int)r_shadowMapSize;
 			if (textureSize < 128) textureSize = 128;
 			if (textureSize > 4096) textureSize = 4096;
 

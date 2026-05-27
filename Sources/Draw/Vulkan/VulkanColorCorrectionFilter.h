@@ -36,7 +36,7 @@ namespace spades {
 		//   - smoothstep enhancement
 		//
 		// Tint and saturation are recomputed every frame from the live
-		// fogColor and r_vk_saturation cvar, matching GLRenderer.cpp:1040+.
+		// fogColor and r_saturation cvar, matching GLRenderer.cpp:1040+.
 		//
 		// Call Filter(cmd, input, output). input must be in
 		// SHADER_READ_ONLY_OPTIMAL; output ends up in SHADER_READ_ONLY_OPTIMAL.

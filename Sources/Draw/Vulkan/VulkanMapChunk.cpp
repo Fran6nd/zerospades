@@ -32,7 +32,7 @@
 #include <Core/Debug.h>
 #include <Core/Settings.h>
 
-SPADES_SETTING(r_vk_water);
+SPADES_SETTING(r_water);
 
 namespace spades {
 	namespace draw {
@@ -200,7 +200,7 @@ namespace spades {
 				return false;
 			if (z >= 64)
 				return true;
-			if ((int)r_vk_water > 0 && z >= 63)
+			if ((int)r_water > 0 && z >= 63)
 				return false;
 
 			x = ((x % map->Width()) + map->Width()) % map->Width();

@@ -33,11 +33,11 @@
 #include <cmath>
 #include <cstring>
 
-SPADES_SETTING(r_vk_colorCorrection);
-SPADES_SETTING(r_vk_saturation);
-SPADES_SETTING(r_vk_hdr);
-SPADES_SETTING(r_vk_bloom);
-SPADES_SETTING(r_vk_exposureValue);
+SPADES_SETTING(r_colorCorrection);
+SPADES_SETTING(r_saturation);
+SPADES_SETTING(r_hdr);
+SPADES_SETTING(r_bloom);
+SPADES_SETTING(r_exposureValue);
 
 namespace spades {
 	namespace draw {
@@ -318,16 +318,16 @@ namespace spades {
 			if (tmin > 1e-4f)
 				tint *= 1.0f / tmin;
 
-			float exposure = std::pow(2.0f, (float)r_vk_exposureValue * 0.5f);
+			float exposure = std::pow(2.0f, (float)r_exposureValue * 0.5f);
 			tint *= exposure;
 
-			// Saturation matches GL: 0.8 * r_vk_saturation when bloom+HDR are on.
+			// Saturation matches GL: 0.8 * r_saturation when bloom+HDR are on.
 			// Match GLColorCorrectionFilter.cpp:114-133.
-			float satCvar = (float)r_vk_saturation;
+			float satCvar = (float)r_saturation;
 			float enhancement;
 			float saturation;
-			if ((int)r_vk_hdr) {
-				if ((int)r_vk_bloom) {
+			if ((int)r_hdr) {
+				if ((int)r_bloom) {
 					saturation  = 0.8f * satCvar;
 					enhancement = 0.1f;
 				} else {
@@ -335,7 +335,7 @@ namespace spades {
 					enhancement = 0.0f;
 				}
 			} else {
-				if ((int)r_vk_bloom) {
+				if ((int)r_bloom) {
 					saturation  = 0.85f * satCvar;
 					enhancement = 0.7f;
 				} else {

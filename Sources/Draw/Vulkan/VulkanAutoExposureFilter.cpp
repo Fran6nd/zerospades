@@ -34,10 +34,10 @@
 #include <cmath>
 #include <cstring>
 
-SPADES_SETTING(r_vk_hdrAutoExposureMin);
-SPADES_SETTING(r_vk_hdrAutoExposureMax);
-SPADES_SETTING(r_vk_hdrAutoExposureSpeed);
-SPADES_SETTING(r_vk_hdrGamma);
+SPADES_SETTING(r_hdrAutoExposureMin);
+SPADES_SETTING(r_hdrAutoExposureMax);
+SPADES_SETTING(r_hdrAutoExposureSpeed);
+SPADES_SETTING(r_hdrGamma);
 
 namespace spades {
 	namespace draw {
@@ -304,7 +304,7 @@ namespace spades {
 			}
 			{
 				// Apply pass needs a single-float push constant: invGamma =
-				// 1.0 / r_vk_hdrGamma, used to encode the linear HDR scene for
+				// 1.0 / r_hdrGamma, used to encode the linear HDR scene for
 				// display (mirrors GL's GLNonlinearizeFilter, folded in here so
 				// it is one less full-screen pass).
 				VkPushConstantRange pcr{};
@@ -645,9 +645,9 @@ namespace spades {
 			// Blend the 1×1 brightness into the persistent exposure accumulator
 			// using temporal smoothing.  The blend rate is carried in alpha.
 
-			float minExp = std::min(std::max((float)r_vk_hdrAutoExposureMin, -10.0f), 10.0f);
-			float maxExp = std::min(std::max((float)r_vk_hdrAutoExposureMax, minExp),  10.0f);
-			float speed  = std::max((float)r_vk_hdrAutoExposureSpeed, 0.0f);
+			float minExp = std::min(std::max((float)r_hdrAutoExposureMin, -10.0f), 10.0f);
+			float maxExp = std::min(std::max((float)r_hdrAutoExposureMax, minExp),  10.0f);
+			float speed  = std::max((float)r_hdrAutoExposureSpeed, 0.0f);
 			float rate   = 1.0f - std::pow(0.01f, dt * speed);
 
 			struct GainParams { float minGain, maxGain, rate; } gainPC{
@@ -747,10 +747,10 @@ namespace spades {
 			                                       exposureImageView);
 
 			// Inline apply draw so we can push the invGamma constant between
-			// pipeline-bind and draw. invGamma = 1.0 / r_vk_hdrGamma, clamped
+			// pipeline-bind and draw. invGamma = 1.0 / r_hdrGamma, clamped
 			// to a safe range in case the cvar is set to an absurd value.
 			{
-				float gammaVal = static_cast<float>(r_vk_hdrGamma);
+				float gammaVal = static_cast<float>(r_hdrGamma);
 				if (!(gammaVal > 0.01f && gammaVal < 100.0f))
 					gammaVal = 2.2f;
 				float invGamma = 1.0f / gammaVal;

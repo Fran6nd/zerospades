@@ -272,13 +272,13 @@ namespace spades {
 				@configViewGL = cfg;
 			}
 
-			// Vulkan config view: same as GL but without Shader Effects (r_water is always 0
-			// in the Vulkan renderer and the block would mislead the user).
+			// Vulkan config view: same cvars as the OpenGL view (they share r_*),
+			// so the two tabs expose identical buttons and editing one updates the other.
 			{
 				StartupScreenConfigView cfg(Manager);
 
 				cfg.AddRow(StartupScreenConfigSelectItemEditor(
-					ui, StartupScreenVulkanAntialiasConfig(ui), "0|2|4|fxaa",
+					ui, StartupScreenGraphicsAntialiasConfig(ui), "0|2|4|fxaa",
 					_Tr("StartupScreen",
 						"Antialiasing:Enables a technique to improve the appearance of high-contrast edges.\n\n"
 						"MSAA: Performs antialiasing by generating an intermediate high-resolution image. "
@@ -287,13 +287,13 @@ namespace spades {
 						"Off|MSAA 2x|4x|FXAA")));
 
 				cfg.AddRow(StartupScreenConfigCheckItemEditor(
-					ui, StartupScreenConfig(ui, "r_vk_radiosity"), "0", "1",
+					ui, StartupScreenConfig(ui, "r_radiosity"), "0", "1",
 					_Tr("StartupScreen", "Global Illumination"),
 					_Tr("StartupScreen",
 						"Enables a physically based simulation of light path for more realistic lighting.")));
 
 				cfg.AddRow(StartupScreenConfigCheckItemEditor(
-					ui, StartupScreenConfig(ui, "r_vk_hdr"), "0", "1",
+					ui, StartupScreenConfig(ui, "r_hdr"), "0", "1",
 					_Tr("StartupScreen", "Linear HDR Rendering"),
 					_Tr("StartupScreen", "Uses a number representation which allows wider dynamic range during rendering process. "
 						"Additionally, this allows color calculation whose value is in linear correspondence with actual energy, "
@@ -307,31 +307,31 @@ namespace spades {
 				{
 					StartupScreenComplexConfig cplx;
 					cplx.AddEditor(StartupScreenConfigCheckItemEditor(
-						ui, StartupScreenConfig(ui, "r_vk_cameraBlur"), "0", "1",
+						ui, StartupScreenConfig(ui, "r_cameraBlur"), "0", "1",
 						_Tr("StartupScreen", "Camera Blur"),
 						_Tr("StartupScreen", "Blurs the screen when you turn quickly.")));
 					cplx.AddEditor(StartupScreenConfigCheckItemEditor(
-						ui, StartupScreenConfig(ui, "r_vk_bloom"), "0", "1",
+						ui, StartupScreenConfig(ui, "r_bloom"), "0", "1",
 						_Tr("StartupScreen", "Lens Scattering Filter"),
 						_Tr("StartupScreen", "Simulates light being scattered by dust on the camera lens.")));
 					cplx.AddEditor(StartupScreenConfigCheckItemEditor(
-						ui, StartupScreenConfig(ui, "r_vk_lensFlare"), "0", "1",
+						ui, StartupScreenConfig(ui, "r_lensFlare"), "0", "1",
 						_Tr("StartupScreen", "Lens Flare"),
 						_Tr("StartupScreen", "The Sun causes lens flare.")));
 					cplx.AddEditor(StartupScreenConfigCheckItemEditor(
-						ui, StartupScreenConfig(ui, "r_vk_lensFlareDynamic"), "0", "1",
+						ui, StartupScreenConfig(ui, "r_lensFlareDynamic"), "0", "1",
 						_Tr("StartupScreen", "Flares for Dynamic Lights."),
 						_Tr("StartupScreen", "Enables lens flare for light sources other than the Sun.")));
 					cplx.AddEditor(StartupScreenConfigCheckItemEditor(
-						ui, StartupScreenConfig(ui, "r_vk_colorCorrection"), "0", "1",
+						ui, StartupScreenConfig(ui, "r_colorCorrection"), "0", "1",
 						_Tr("StartupScreen", "Color Correction"),
 						_Tr("StartupScreen", "Applies cinematic color correction to make the image look better.")));
 					cplx.AddEditor(StartupScreenConfigCheckItemEditor(
-						ui, StartupScreenConfig(ui, "r_vk_depthOfField"), "0", "1",
+						ui, StartupScreenConfig(ui, "r_depthOfField"), "0", "1",
 						_Tr("StartupScreen", "Depth of Field"),
 						_Tr("StartupScreen", "Blurs out-of-focus objects.")));
 					cplx.AddEditor(StartupScreenConfigCheckItemEditor(
-						ui, StartupScreenConfig(ui, "r_vk_ssao"), "0", "1",
+						ui, StartupScreenConfig(ui, "r_ssao"), "0", "1",
 						_Tr("StartupScreen", "Screen Space Ambient Occlusion"),
 						_Tr("StartupScreen", "Simulates soft shadows that occur between nearby objects.")));
 
@@ -346,7 +346,7 @@ namespace spades {
 				}
 
 				cfg.AddRow(StartupScreenConfigSelectItemEditor(
-					ui, StartupScreenConfig(ui, "r_vk_softParticles"), "0|1|2",
+					ui, StartupScreenConfig(ui, "r_softParticles"), "0|1|2",
 					_Tr("StartupScreen",
 						"Particle Quality|"
 						"Low:Artifact occurs when a particle intersects other objects.|"
@@ -354,7 +354,7 @@ namespace spades {
 						"High:Particle intersects objects smoothly, and some objects casts " "their shadow to particles.")));
 
 				cfg.AddRow(StartupScreenConfigSelectItemEditor(
-					ui, StartupScreenConfig(ui, "r_vk_fogShadow"), "0|1|2",
+					ui, StartupScreenConfig(ui, "r_fogShadow"), "0|1|2",
 					_Tr("StartupScreen", "Volumetric Fog") + "|" +
 					_Tr("StartupScreen", "None") + ":" +
 					_Tr("StartupScreen", "Disables the volumetric fog effect.") + "|" +
@@ -367,15 +367,15 @@ namespace spades {
 				{
 					StartupScreenComplexConfig cplx;
 					cplx.AddEditor(StartupScreenConfigCheckItemEditor(
-						ui, StartupScreenConfig(ui, "r_vk_dlights"), "0", "1",
+						ui, StartupScreenConfig(ui, "r_dlights"), "0", "1",
 						_Tr("StartupScreen", "Dynamic Lights"),
 						_Tr("StartupScreen", "Gives some objects an ability to emit light to give them " "an energy-emitting impression.")));
 					cplx.AddEditor(StartupScreenConfigCheckItemEditor(
-						ui, StartupScreenConfig(ui, "r_vk_modelShadows"), "0", "1",
+						ui, StartupScreenConfig(ui, "r_modelShadows"), "0", "1",
 						_Tr("StartupScreen", "Shadows"),
 						_Tr("StartupScreen", "Non-static object casts a shadow.")));
 					cplx.AddEditor(StartupScreenConfigCheckItemEditor(
-						ui, StartupScreenConfig(ui, "r_vk_physicalLighting"), "0", "1",
+						ui, StartupScreenConfig(ui, "r_physicalLighting"), "0", "1",
 						_Tr("StartupScreen", "Physically Based Lighting"),
 						_Tr("StartupScreen", "Uses more accurate approximation techniques to decide the brightness of objects.")));
 
@@ -386,6 +386,24 @@ namespace spades {
 					cfg.AddRow(StartupScreenConfigComplexItemEditor(
 						ui, cplx, _Tr("StartupScreen", "Direct Lights"),
 						_Tr("StartupScreen", "Controls how light encounting a material and atmosphere directly " "affects its appearance.")));
+				}
+
+				{
+					StartupScreenComplexConfig cplx;
+
+					cplx.AddEditor(StartupScreenConfigSelectItemEditor(
+						ui, StartupScreenConfig(ui, "r_water"), "0|1|2|3",
+						_Tr("StartupScreen",
+							"Water Shader|" "None:Water is rendered in the same way that normal blocks are done.|" "Level 1:Refraction and the reflected Sun are simulated.|" "Level 2:Waving water is simulated as well as reflection and refraction.|" "Level 3:Reflections and refractions are rendered at the highest quality using screen-space techniques.")));
+
+					cplx.AddPreset(StartupScreenComplexConfigPreset(_Tr("StartupScreen", "Low"), "0"));
+					cplx.AddPreset(StartupScreenComplexConfigPreset(_Tr("StartupScreen", "Med"), "1"));
+					cplx.AddPreset(StartupScreenComplexConfigPreset(_Tr("StartupScreen", "High"), "2"));
+					cplx.AddPreset(StartupScreenComplexConfigPreset(_Tr("StartupScreen", "Ultra"), "3"));
+
+					cfg.AddRow(StartupScreenConfigComplexItemEditor(
+						ui, cplx, _Tr("StartupScreen", "Shader Effects"),
+						_Tr("StartupScreen", "Special effects.")));
 				}
 
 				cfg.Finalize();
@@ -597,52 +615,6 @@ namespace spades {
 			} else {
 				return ui.helper.CheckConfigCapability("r_multisamples", v) +
 					ui.helper.CheckConfigCapability("r_fxaa", "0");
-			}
-		}
-	}
-
-	class StartupScreenVulkanAntialiasConfig : StartupScreenGenericConfig {
-		private StartupScreenUI@ ui;
-		private ConfigItem@ msaaConfig;
-		private ConfigItem@ fxaaConfig;
-		StartupScreenVulkanAntialiasConfig(StartupScreenUI@ ui) {
-			@this.ui = ui;
-			@msaaConfig = ConfigItem("r_vk_multisamples");
-			@fxaaConfig = ConfigItem("r_vk_fxaa");
-		}
-		string GetValue() {
-			if (fxaaConfig.IntValue != 0) {
-				return "fxaa";
-			} else {
-				int v = msaaConfig.IntValue;
-				if (v < 2)
-					return "0";
-				else
-					return msaaConfig.StringValue;
-			}
-		}
-		void SetValue(string v) {
-			if (v == "fxaa") {
-				msaaConfig.StringValue = "0";
-				fxaaConfig.StringValue = "1";
-			} else if (v == "0" || v == "1") {
-				msaaConfig.StringValue = "0";
-				fxaaConfig.StringValue = "0";
-			} else {
-				msaaConfig.StringValue = v;
-				fxaaConfig.StringValue = "0";
-			}
-		}
-		string CheckValueCapability(string v) {
-			if (v == "fxaa") {
-				return ui.helper.CheckConfigCapability("r_vk_multisamples", "0") +
-					ui.helper.CheckConfigCapability("r_vk_fxaa", "1");
-			} else if (v == "0" || v == "1") {
-				return ui.helper.CheckConfigCapability("r_vk_multisamples", "0") +
-					ui.helper.CheckConfigCapability("r_vk_fxaa", "0");
-			} else {
-				return ui.helper.CheckConfigCapability("r_vk_multisamples", v) +
-					ui.helper.CheckConfigCapability("r_vk_fxaa", "0");
 			}
 		}
 	}
