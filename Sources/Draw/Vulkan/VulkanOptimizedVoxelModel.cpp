@@ -570,7 +570,10 @@ namespace spades {
 			// Get projection-view matrix from renderer
 			const Matrix4& projectionViewMatrix = renderer.GetProjectionViewMatrix();
 			const auto& eye = renderer.GetSceneDef().viewOrigin;
-			Vector3 fogCol = renderer.GetFogColor();
+			// GetFogColorForSolidPass returns BLACK when r_fogShadow is on, so
+			// distant models fade to black and the fog post-process can paint
+			// the lit/shadow directional shafts back in. Matches GL.
+			Vector3 fogCol = renderer.GetFogColorForSolidPass();
 			fogCol *= fogCol; // linearize
 			float fogDist = renderer.GetFogDistance();
 

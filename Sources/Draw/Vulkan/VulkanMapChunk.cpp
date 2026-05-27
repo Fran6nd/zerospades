@@ -385,8 +385,14 @@ namespace spades {
 					return;
 			}
 
-			// Set up push constants (MVP matrix + model origin + fog data)
-			Vector3 fogCol = renderer.renderer.GetFogColor();
+			// Set up push constants (MVP matrix + model origin + fog data).
+			// Matches GLMapRenderer: when r_fogShadow is on, the solid pass
+			// must fade distant blocks to BLACK (not fog colour) so the
+			// fog post-process can re-add the in-scattered light with
+			// the directional shadow shafts on top. Using the full fog
+			// colour here washes out the post-process contribution and
+			// the shaft becomes invisible.
+			Vector3 fogCol = renderer.renderer.GetFogColorForSolidPass();
 			fogCol *= fogCol; // linearize
 
 			if (renderer.physicalLighting) {
