@@ -119,18 +119,18 @@ scene-pass fading — those are correct as-is.
 ### `BasicMap.frag` (non-physical) shader differences
 
 [Resources/Shaders/Vulkan/BasicMap.frag](../../../Resources/Shaders/Vulkan/BasicMap.frag)
-ports `BasicBlock.fs` + the `*shadow*` permutation but doesn't honour
-`r_radiosity` the way GL does:
+ports `BasicBlock.fs` + the `*shadow*` permutation. Permutation now
+selected by a `USE_RADIOSITY` specialization constant driven by
+`r_radiosity` at pipeline-creation time.
 
-- [ ] Always samples four 3D radiosity textures (`radiosityTextureFlat/X/Y/Z`)
-      even when `r_radiosity == 0`. GL selects `MapRadiosityNull.fs`
-      in that case and computes ambient purely from
+- [x] ~~Always samples four 3D radiosity textures even when
+      `r_radiosity == 0`.~~ Done: `r_radiosity=0` branch uses GL's
+      `MapRadiosityNull.fs` formula —
       `mix(fogColor, vec3(1.0), 0.5) * 0.5 * ao * hemisphere`.
-- [ ] Uses the 3D `ambientShadowTexture` (the volumetric AO used by
-      Fog2), whereas GL `BasicBlock.fs` reads the per-chunk 2D
-      `ambientOcclusionTexture` baked into vertex attributes. The
-      3D AO gives flatter detail at voxel corners — visible on
-      tree foliage and block crevices.
+- [x] ~~Uses the 3D `ambientShadowTexture` instead of the per-chunk
+      2D atlas for voxel-corner AO.~~ Done: no-radiosity branch
+      samples `Gfx/AmbientOcclusion.png` (binding 6) using per-vertex
+      `aoCoordAttribute`, matching GL `BasicBlock.fs`.
 - [ ] Missing terminal gamma encoding. GL `BasicBlock.fs:47` does
       `sqrt(gl_FragColor.xyz)` when `!LINEAR_FRAMEBUFFER`. Vulkan's
       offscreen colour is `A2B10G10R10_UNORM` (linear) when
@@ -139,10 +139,6 @@ ports `BasicBlock.fs` + the `*shadow*` permutation but doesn't honour
       linear-light values would be stored as if sRGB and the scene
       would come out ~2× too bright. Either branch on the FB format
       or always render to a linear-precision FB.
-
-Cleanest port is two `BasicMap` permutations selected by
-`r_radiosity`, matching the `*shadow*` macro expansion in
-`GLShadowShader::RegisterShader`.
 
 ### Other items
 
