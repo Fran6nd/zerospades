@@ -478,6 +478,23 @@ namespace spades {
 			fragShaderStageInfo.module = fragShaderModule;
 			fragShaderStageInfo.pName = "main";
 
+			// Specialization constant: USE_RADIOSITY (BasicMap.frag) — picks
+			// the MapRadiosityNull vs MapRadiosity ambient permutation.
+			SPADES_SETTING(r_radiosity);
+			int32_t useRadiosity = (int)r_radiosity != 0 ? 1 : 0;
+			VkSpecializationMapEntry specEntry{};
+			specEntry.constantID = 0;
+			specEntry.offset = 0;
+			specEntry.size = sizeof(int32_t);
+			VkSpecializationInfo specInfo{};
+			specInfo.mapEntryCount = 1;
+			specInfo.pMapEntries = &specEntry;
+			specInfo.dataSize = sizeof(int32_t);
+			specInfo.pData = &useRadiosity;
+			if (!physicalLighting) {
+				fragShaderStageInfo.pSpecializationInfo = &specInfo;
+			}
+
 			VkPipelineShaderStageCreateInfo shaderStages[] = {vertShaderStageInfo, fragShaderStageInfo};
 
 			// Vertex input state - matches VulkanMapChunk::Vertex

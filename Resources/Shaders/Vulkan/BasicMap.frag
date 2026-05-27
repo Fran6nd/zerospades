@@ -20,6 +20,11 @@
 
 #version 450
 
+// Selects the radiosity-on permutation (matches GL MapRadiosity.fs) vs the
+// no-radiosity permutation (matches GL MapRadiosityNull.fs + BasicBlock.fs).
+// Driven by r_radiosity at pipeline-creation time.
+layout(constant_id = 0) const int USE_RADIOSITY = 0;
+
 layout(set = 0, binding = 0) uniform sampler2D mapShadowTexture;
 layout(set = 0, binding = 1) uniform sampler3D ambientShadowTexture;
 layout(set = 0, binding = 2) uniform sampler3D radiosityTextureFlat;
@@ -48,37 +53,49 @@ vec3 DecodeRadiosityValue(vec3 val) {
 }
 
 void main() {
-	// Evaluate map shadow (matching OpenGL Map.fs: EvaluateMapShadow)
+	// Map shadow (matches GL Map.fs: EvaluateMapShadow)
 	float shadowVal = texture(mapShadowTexture, shadowCoord.xy).w;
 	float shadow = (shadowVal < shadowCoord.z - 0.0001) ? 0.0 : 1.0;
 
-	// Per-block ambient occlusion (matching GL MapRadiosity.fs).
+	vec3 nrm = normalize(normalVarying);
+	vec3 vertexColor = color.xyz;
+	float sunLambert = color.w;
+
+	// Sun contribution — matches GL Common.fs EvaluateSunLight() * color.w
+	vec3 sun = vec3(0.6) * sunLambert * shadow;
+
+	// Per-block ambient occlusion (sampled from 3D ambient shadow texture).
 	// .x = AO accumulation, .y = sample weight (1 in air, 0 in solids).
 	vec2 ambTexVal = texture(ambientShadowTexture, aoCoord).xy;
 	float aoFactor = max(ambTexVal.x / max(ambTexVal.y, 0.25), 0.0);
 
-	// Directional radiosity (port of GL MapRadiosity.fs EvaluateRadiosity)
-	vec3 radiosity = DecodeRadiosityValue(texture(radiosityTextureFlat, radiosityTextureCoord).xyz);
-	vec3 nrm = normalize(normalVarying);
-	radiosity += nrm.x * DecodeRadiosityValue(texture(radiosityTextureX, radiosityTextureCoord).xyz);
-	radiosity += nrm.y * DecodeRadiosityValue(texture(radiosityTextureY, radiosityTextureCoord).xyz);
-	radiosity += nrm.z * DecodeRadiosityValue(texture(radiosityTextureZ, radiosityTextureCoord).xyz);
-	radiosity = max(radiosity, 0.0) * 1.5;
+	vec3 diffuse;
+	if (USE_RADIOSITY != 0) {
+		// MapRadiosity.fs path — directional radiosity + ambient·skyAmbient.
+		vec3 radiosity = DecodeRadiosityValue(texture(radiosityTextureFlat, radiosityTextureCoord).xyz);
+		radiosity += nrm.x * DecodeRadiosityValue(texture(radiosityTextureX, radiosityTextureCoord).xyz);
+		radiosity += nrm.y * DecodeRadiosityValue(texture(radiosityTextureY, radiosityTextureCoord).xyz);
+		radiosity += nrm.z * DecodeRadiosityValue(texture(radiosityTextureZ, radiosityTextureCoord).xyz);
+		radiosity = max(radiosity, 0.0) * 1.5;
 
-	// AO modulates the sky/fog ambient (mirrors GL: amb *= 0.8 - normal.z * 0.2)
-	float aoTerm = aoFactor * (0.8 - nrm.z * 0.2);
-	// Ambient color matching GL GLShadowShader: fog * 0.5 with a minimum
-	// luminance floor of 0.35 (keeps things visible when the sky is near-black).
-	vec3 ambientColor = inFogColor * 0.5;
-	float ambL = (ambientColor.x + ambientColor.y + ambientColor.z) / 3.0;
-	ambientColor += ((ambientColor + 0.003) / (ambL + 0.003)) * max(0.35 - ambL, 0.0);
+		// Ambient color matches GL GLShadowShader: fog * 0.5 with a min-luminance
+		// floor of 0.35 (keeps things visible when the sky is near-black).
+		float aoTerm = aoFactor * (0.8 - nrm.z * 0.2);
+		vec3 ambientColor = inFogColor * 0.5;
+		float ambL = (ambientColor.x + ambientColor.y + ambientColor.z) / 3.0;
+		ambientColor += ((ambientColor + 0.003) / (ambL + 0.003)) * max(0.35 - ambL, 0.0);
 
-	// Combine lighting: directional radiosity + AO·skyAmbient + sun · shadow
-	vec3 vertexColor = color.xyz;
-	float sunLambert = color.w;
-	vec3 sun = vec3(0.6) * sunLambert * shadow;
-	fragColor = vec4(vertexColor * (radiosity + aoTerm * ambientColor + sun), 1.0);
+		diffuse = radiosity + aoTerm * ambientColor + sun;
+	} else {
+		// MapRadiosityNull.fs path — ambient = mix(fog, white, 0.5) * 0.5 * ao * hemisphere.
+		// Hemisphere is (1 - normal.z * 0.2), not the radiosity path's (0.8 - normal.z * 0.2).
+		float hemisphere = 1.0 - nrm.z * 0.2;
+		vec3 ambientColor = mix(inFogColor, vec3(1.0), 0.5);
+		diffuse = ambientColor * (0.5 * aoFactor * hemisphere) + sun;
+	}
 
-	// Apply fog fading
+	fragColor = vec4(vertexColor * diffuse, 1.0);
+
+	// Fog fade
 	fragColor.xyz = mix(fragColor.xyz, inFogColor, fogDensity);
 }
