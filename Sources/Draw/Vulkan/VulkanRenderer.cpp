@@ -61,6 +61,7 @@ SPADES_SETTING(r_dlights);
 SPADES_SETTING(r_hdr);
 SPADES_SETTING(r_bloom);
 SPADES_SETTING(r_fogShadow);
+SPADES_SETTING(r_radiosity);
 SPADES_SETTING(r_depthOfField);
 SPADES_SETTING(r_fxaa);
 SPADES_SETTING(r_water);
@@ -1843,26 +1844,23 @@ namespace spades {
 
 			// Render sky gradient.
 			//
-			// 5d85f8e7 dropped this on the theory that GL relies purely on the
-			// clear color + Fog2 in-scatter to paint the sky, so a flat
-			// Sky.frag pass was duplicating that work and over-saturating. In
-			// practice GL Fog2 integrates 16 in-scatter samples that, on a
-			// fogShadow≥1 black clear, sum to a bright pastel sky. The
-			// Vulkan Fog2 port produces a noticeably dimmer in-scatter (root
-			// cause still TBD: likely sunlight/ambient/radiosity scale push-
-			// constants are smaller than GL, or the integration weight curve
-			// differs), so a black clear left the sky almost black and any
-			// fogged geometry — the floating platform in particular — stood
-			// out sharply against it instead of dissolving into the fog.
+			// GL never runs a flat sky pass when the volumetric fog filter is
+			// active: the black FB clear leaves sky pixels at zero, then the
+			// Fog post-process paints them entirely from `total * fogColor`,
+			// which preserves the directional shadow shafts that occluders
+			// cast through the in-scattered sunlight. Drawing a flat
+			// fogColor sky here would double-tint sky pixels and erase that
+			// shaft contrast.
 			//
-			// Restoring Sky.frag (a flat fogColor fill) gives Fog2 a
-			// fogColor-tinted base to add in-scatter on top of. Combined with
-			// the ACES tonemap + tint + saturation desat now applied by the
-			// color-correction post-pass, the over-saturation 5d85f8e7 worried
-			// about is no longer an issue: tonemap compresses the highlights
-			// and the tint pulls the cast toward neutral. End result matches
-			// reference fog occlusion behaviour (platform melts into fog).
-			RenderSky(commandBuffer);
+			// Sky.frag is kept as a workaround for the Vulkan Fog2 port,
+			// which produces dimmer in-scatter than GL and leaves a near-
+			// black sky on a black clear. We only suppress Sky.frag when
+			// Fog1 is what actually runs (the variant selection mirrors
+			// VulkanFogFilter's): r_fogShadow != 0 AND not (Fog2 active).
+			const bool useFog2Pass = ((int)r_fogShadow == 2 && (int)r_radiosity != 0);
+			const bool useFog1Pass = ((int)r_fogShadow != 0) && !useFog2Pass;
+			if (!useFog1Pass)
+				RenderSky(commandBuffer);
 
 			// Render map
 			if (!sceneDef.skipWorld && mapRenderer) {
