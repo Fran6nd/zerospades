@@ -31,6 +31,7 @@ layout(set = 0, binding = 2) uniform sampler3D radiosityTextureFlat;
 layout(set = 0, binding = 3) uniform sampler3D radiosityTextureX;
 layout(set = 0, binding = 4) uniform sampler3D radiosityTextureY;
 layout(set = 0, binding = 5) uniform sampler3D radiosityTextureZ;
+layout(set = 0, binding = 6) uniform sampler2D ambientOcclusionAtlas; // Gfx/AmbientOcclusion.png
 
 layout(location = 0) in vec4 color;           // xyz = linearized vertex color, w = sun lambert
 layout(location = 1) in vec3 ambientLight;     // hemisphere ambient fallback (unused, kept for VS↔FS compat)
@@ -40,6 +41,7 @@ layout(location = 4) in vec3 shadowCoord;      // shadow map coordinates
 layout(location = 5) in vec3 aoCoord;          // 3D coords into AO texture
 layout(location = 6) in vec3 radiosityTextureCoord; // 3D coords into radiosity textures
 layout(location = 7) in vec3 normalVarying;    // surface normal in world space
+layout(location = 8) in vec2 ambientOcclusionCoord; // 2D coords into AO atlas
 
 layout(location = 0) out vec4 fragColor;
 
@@ -89,9 +91,13 @@ void main() {
 	} else {
 		// MapRadiosityNull.fs path — ambient = mix(fog, white, 0.5) * 0.5 * ao * hemisphere.
 		// Hemisphere is (1 - normal.z * 0.2), not the radiosity path's (0.8 - normal.z * 0.2).
+		// AO is sampled from the 2D AmbientOcclusion atlas (per-vertex tile coord),
+		// matching GL BasicBlock.fs — gives crisper voxel-corner AO than the
+		// 3D ambientShadowTexture used in the radiosity branch.
+		float ao = texture(ambientOcclusionAtlas, ambientOcclusionCoord).x;
 		float hemisphere = 1.0 - nrm.z * 0.2;
 		vec3 ambientColor = mix(inFogColor, vec3(1.0), 0.5);
-		diffuse = ambientColor * (0.5 * aoFactor * hemisphere) + sun;
+		diffuse = ambientColor * (0.5 * ao * hemisphere) + sun;
 	}
 
 	fragColor = vec4(vertexColor * diffuse, 1.0);

@@ -42,6 +42,7 @@ layout(location = 4) out vec3 shadowCoord;     // shadow map coordinates
 layout(location = 5) out vec3 aoCoord;         // 3D coords into ambient-occlusion texture
 layout(location = 6) out vec3 radiosityTextureCoord; // 3D coords into radiosity textures
 layout(location = 7) out vec3 normalVarying;   // per-face normal in world space
+layout(location = 8) out vec2 ambientOcclusionCoord; // 2D coords into Gfx/AmbientOcclusion atlas
 
 void main() {
 	// Convert uint8 position to float
@@ -90,6 +91,11 @@ void main() {
 	// "below ground" guard plane), divided by texture extent. Map dimensions
 	// are 512x512x64 in this game, so the texture is 512x512x65.
 	aoCoord = (worldPos.xyz + vec3(0.0, 0.0, 1.0)) / vec3(512.0, 512.0, 65.0);
+
+	// 2D AO atlas coords (matches GL BasicBlock.vs). The atlas is 256x256 with
+	// 16x16 precomputed AO tiles; aoCoordAttribute holds tile_x*16 + corner
+	// offset on each axis (range 0..255). +0.5 centres the sample.
+	ambientOcclusionCoord = (vec2(aoCoordAttribute) + 0.5) * (1.0 / 256.0);
 
 	// Radiosity 3D-texture coords (matches GL MapRadiosity.vs).
 	radiosityTextureCoord = worldPos.xyz / vec3(512.0, 512.0, 64.0);

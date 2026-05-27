@@ -117,11 +117,14 @@ namespace spades {
 
 			// Writes the per-frame texture descriptor set:
 			//   binding 0 = map (heightmap) shadow 2D texture
-			//   binding 1 = per-block ambient occlusion 3D texture
+			//   binding 1 = per-block ambient occlusion 3D texture (radiosity path AO)
 			//   binding 2 = radiosity flat (directional GI base) 3D texture
 			//   binding 3 = radiosity X (per-axis directional GI) 3D texture
 			//   binding 4 = radiosity Y (per-axis directional GI) 3D texture
 			//   binding 5 = radiosity Z (per-axis directional GI) 3D texture
+			//   binding 6 = 2D AmbientOcclusion atlas (no-radiosity path AO, GL parity)
+			//               — sourced from Gfx/AmbientOcclusion.png via the cached
+			//               aoImage member; not a parameter.
 			void UpdateShadowDescriptor(VulkanImage* shadowImage,
 			                            VkImageView aoView, VkSampler aoSampler,
 			                            VkImageView radFlatView, VkImageView radXView,

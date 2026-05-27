@@ -23,6 +23,7 @@
 #include "VulkanRenderer.h"
 #include "VulkanBuffer.h"
 #include "VulkanImage.h"
+#include "VulkanImageWrapper.h"
 #include <Gui/SDLVulkanDevice.h>
 #include <Client/GameMap.h>
 #include <Core/Debug.h>
@@ -598,13 +599,14 @@ namespace spades {
 
 			// Descriptor set layout:
 			//   binding 0 — heightmap shadow 2D texture
-			//   binding 1 — per-block ambient occlusion 3D texture
+			//   binding 1 — per-block ambient occlusion 3D texture (radiosity path AO)
 			//   binding 2 — radiosity flat (directional GI base) 3D texture
 			//   binding 3 — radiosity X 3D texture
 			//   binding 4 — radiosity Y 3D texture
 			//   binding 5 — radiosity Z 3D texture
-			VkDescriptorSetLayoutBinding bindings[6]{};
-			for (uint32_t i = 0; i < 6; ++i) {
+			//   binding 6 — 2D AmbientOcclusion atlas (no-radiosity path AO, GL parity)
+			VkDescriptorSetLayoutBinding bindings[7]{};
+			for (uint32_t i = 0; i < 7; ++i) {
 				bindings[i].binding = i;
 				bindings[i].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 				bindings[i].descriptorCount = 1;
@@ -613,7 +615,7 @@ namespace spades {
 
 			VkDescriptorSetLayoutCreateInfo descriptorLayoutInfo{};
 			descriptorLayoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-			descriptorLayoutInfo.bindingCount = 6;
+			descriptorLayoutInfo.bindingCount = 7;
 			descriptorLayoutInfo.pBindings = bindings;
 
 			result = vkCreateDescriptorSetLayout(vkDevice, &descriptorLayoutInfo, nullptr, &descriptorSetLayout);
@@ -623,7 +625,7 @@ namespace spades {
 
 			VkDescriptorPoolSize poolSize{};
 			poolSize.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-			poolSize.descriptorCount = 6;
+			poolSize.descriptorCount = 7;
 
 			VkDescriptorPoolCreateInfo poolInfo{};
 			poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
@@ -701,7 +703,18 @@ namespace spades {
 				SPRaise("Failed to create graphics pipeline (error code: %d)", result);
 			}
 
-			// No descriptor sets needed for BasicMap shader - it renders voxels with vertex colors
+			// Load the 2D AO atlas (Gfx/AmbientOcclusion.png) once. Same texture
+			// GL uses in BasicBlock.fs — 256×256 image of 16×16 precomputed
+			// ambient-occlusion tiles, indexed by per-vertex aoCoord.
+			if (!aoImage) {
+				Handle<client::IImage> img = renderer.RegisterImage("Gfx/AmbientOcclusion.png");
+				VulkanImageWrapper* wrapper = dynamic_cast<VulkanImageWrapper*>(img.GetPointerOrNull());
+				if (wrapper && wrapper->GetVulkanImage()) {
+					aoImage = Handle<VulkanImage>(wrapper->GetVulkanImage());
+				} else {
+					SPLog("Warning: failed to load Gfx/AmbientOcclusion.png for map AO");
+				}
+			}
 
 			SPLog("Map renderer pipeline created successfully");
 
@@ -898,7 +911,20 @@ namespace spades {
 				radInfos[i].sampler = radSampler;
 			}
 
-			VkWriteDescriptorSet writes[6]{};
+			// Binding 6 — 2D ambient-occlusion atlas (no-radiosity GL parity path).
+			// Falls back to the 3D AO view if the atlas image isn't available so
+			// the descriptor write doesn't reference an invalid image.
+			VkDescriptorImageInfo aoAtlasInfo{};
+			aoAtlasInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+			if (aoImage) {
+				aoAtlasInfo.imageView = aoImage->GetImageView();
+				aoAtlasInfo.sampler = aoImage->GetSampler();
+			} else {
+				aoAtlasInfo.imageView = aoView;
+				aoAtlasInfo.sampler = aoSampler;
+			}
+
+			VkWriteDescriptorSet writes[7]{};
 			writes[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 			writes[0].dstSet = textureDescriptorSet;
 			writes[0].dstBinding = 0;
@@ -919,8 +945,14 @@ namespace spades {
 				writes[2 + i].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 				writes[2 + i].pImageInfo = &radInfos[i];
 			}
+			writes[6].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+			writes[6].dstSet = textureDescriptorSet;
+			writes[6].dstBinding = 6;
+			writes[6].descriptorCount = 1;
+			writes[6].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+			writes[6].pImageInfo = &aoAtlasInfo;
 
-			vkUpdateDescriptorSets(device->GetDevice(), 6, writes, 0, nullptr);
+			vkUpdateDescriptorSets(device->GetDevice(), 7, writes, 0, nullptr);
 		}
 
 	} // namespace draw
