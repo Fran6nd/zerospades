@@ -2291,6 +2291,55 @@ namespace spades {
 				device->GetSwapchainImage(imageIndex), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
 				1, &blitRegion, VK_FILTER_LINEAR);
 
+			// Mirror the final post-process result into renderColorImage so
+			// ReadBitmap (screenshot capture) sees what the player sees. The
+			// post-process chain ping-pongs between offscreenColor and a temp
+			// image; with an odd number of filters (e.g. only Fog), the final
+			// frame lives in the temp image and renderColorImage still holds
+			// the pre-post-process scene. Skip this copy if no filter ran.
+			if (currentInput != offscreenColor.GetPointerOrNull()) {
+				VkImageMemoryBarrier toDst{};
+				toDst.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+				toDst.oldLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+				toDst.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+				toDst.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+				toDst.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+				toDst.image = offscreenColor->GetImage();
+				toDst.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
+				toDst.srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
+				toDst.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+				vkCmdPipelineBarrier(commandBuffer,
+					VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+					VK_PIPELINE_STAGE_TRANSFER_BIT,
+					0, 0, nullptr, 0, nullptr, 1, &toDst);
+
+				VkImageCopy copyRegion{};
+				copyRegion.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+				copyRegion.srcSubresource.layerCount = 1;
+				copyRegion.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+				copyRegion.dstSubresource.layerCount = 1;
+				copyRegion.extent = {(uint32_t)renderWidth, (uint32_t)renderHeight, 1};
+				vkCmdCopyImage(commandBuffer,
+					currentInput->GetImage(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+					offscreenColor->GetImage(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+					1, &copyRegion);
+
+				VkImageMemoryBarrier toRead{};
+				toRead.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+				toRead.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+				toRead.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+				toRead.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+				toRead.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+				toRead.image = offscreenColor->GetImage();
+				toRead.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
+				toRead.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+				toRead.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+				vkCmdPipelineBarrier(commandBuffer,
+					VK_PIPELINE_STAGE_TRANSFER_BIT,
+					VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+					0, 0, nullptr, 0, nullptr, 1, &toRead);
+			}
+
 			// Transition currentInput back to SHADER_READ_ONLY for next frame
 			barrier1.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
 			barrier1.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
