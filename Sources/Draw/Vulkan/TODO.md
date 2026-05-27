@@ -154,10 +154,12 @@ Cleanest port is two `BasicMap` permutations selected by
       integration curve match GL, drop the workaround so Fog2 also
       goes through the GL-equivalent code path
       (no flat sky → post-process paints everything).
-- [ ] **Fog1 has 512-step uncached DDA.** Matches the GL non-coarse
-      fallback. GL itself uses a coarse+fine traversal (`USE_COARSE_SHADOWMAP`,
-      8×8 mip min/max shadow map) for the same visual result at a
-      fraction of the per-pixel cost. Port if it shows up in profiling.
+- [x] ~~**Fog1 has 512-step uncached DDA.**~~ Done: coarse 8×8 min/max
+      companion shadow map (`VulkanMapShadowRenderer::coarseShadowImage`)
+      drives a coarse+fine traversal in [Fog.vk.fs](../../../Resources/Shaders/Vulkan/PostFilters/Fog.vk.fs),
+      matching GL's `USE_COARSE_SHADOWMAP` path. Removes the sun-axis
+      vanishing-point cross artifact that the brute-force 512-fine
+      march produced.
 - [ ] **Fog filter view ray breaks down looking straight down.**
       Reported visible glitch when the camera is at top-centre of the
       map looking perfectly down. Likely the `if (length(dir.xy) <

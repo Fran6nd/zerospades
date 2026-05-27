@@ -162,9 +162,9 @@ namespace spades {
 		void VulkanFogFilter::InitDescriptorSetLayout() {
 			VkDevice dev = device->GetDevice();
 
-			// Fog1 layout: 3 bindings (color, depth, shadow map).
-			VkDescriptorSetLayoutBinding bindings[3]{};
-			for (int i = 0; i < 3; ++i) {
+			// Fog1 layout: 4 bindings (color, depth, fine shadow, coarse shadow).
+			VkDescriptorSetLayoutBinding bindings[4]{};
+			for (int i = 0; i < 4; ++i) {
 				bindings[i].binding         = static_cast<uint32_t>(i);
 				bindings[i].descriptorCount = 1;
 				bindings[i].descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
@@ -173,7 +173,7 @@ namespace spades {
 
 			VkDescriptorSetLayoutCreateInfo info{};
 			info.sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-			info.bindingCount = 3;
+			info.bindingCount = 4;
 			info.pBindings    = bindings;
 
 			if (vkCreateDescriptorSetLayout(dev, &info, nullptr, &triSamplerDSL) != VK_SUCCESS)
@@ -374,7 +374,9 @@ namespace spades {
 		                                               VkImageView   depthView,
 		                                               VkSampler     depthSampler,
 		                                               VkImageView   shadowView,
-		                                               VkSampler     shadowSampler) {
+		                                               VkSampler     shadowSampler,
+		                                               VkImageView   coarseShadowView,
+		                                               VkSampler     coarseShadowSampler) {
 			VkDescriptorSetAllocateInfo ai{};
 			ai.sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
 			ai.descriptorPool     = perFrameDescPool[frameSlot];
@@ -384,13 +386,14 @@ namespace spades {
 			if (vkAllocateDescriptorSets(device->GetDevice(), &ai, &set) != VK_SUCCESS)
 				SPRaise("Failed to allocate fog descriptor set");
 
-			VkDescriptorImageInfo imgs[3]{
-			    {colorSampler,  colorView,  VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL},
-			    {depthSampler,  depthView,  VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL},
-			    {shadowSampler, shadowView, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL},
+			VkDescriptorImageInfo imgs[4]{
+			    {colorSampler,         colorView,        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL},
+			    {depthSampler,         depthView,        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL},
+			    {shadowSampler,        shadowView,       VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL},
+			    {coarseShadowSampler,  coarseShadowView, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL},
 			};
-			VkWriteDescriptorSet writes[3]{};
-			for (int i = 0; i < 3; ++i) {
+			VkWriteDescriptorSet writes[4]{};
+			for (int i = 0; i < 4; ++i) {
 				writes[i].sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 				writes[i].dstSet          = set;
 				writes[i].dstBinding      = static_cast<uint32_t>(i);
@@ -398,7 +401,7 @@ namespace spades {
 				writes[i].descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 				writes[i].pImageInfo      = &imgs[i];
 			}
-			vkUpdateDescriptorSets(device->GetDevice(), 3, writes, 0, nullptr);
+			vkUpdateDescriptorSets(device->GetDevice(), 4, writes, 0, nullptr);
 			return set;
 		}
 
@@ -587,14 +590,16 @@ namespace spades {
 			// ── Gather image views ────────────────────────────────────────────────
 
 			Handle<VulkanImage> depthImg  = renderer.GetFramebufferManager()->GetDepthImage();
-			VulkanImage*        shadowImg = renderer.GetMapShadowRenderer()->GetShadowImage();
+			VulkanImage*        shadowImg       = renderer.GetMapShadowRenderer()->GetShadowImage();
+			VulkanImage*        coarseShadowImg = renderer.GetMapShadowRenderer()->GetCoarseShadowImage();
 
 			VkDescriptorSet ds;
 			if (useClassic) {
 				ds = BindTextures(frameSlot,
 				    input->GetImageView(),
 				    depthImg->GetImageView(), depthImg->GetSampler(),
-				    shadowImg->GetImageView(), shadowImg->GetSampler());
+				    shadowImg->GetImageView(), shadowImg->GetSampler(),
+				    coarseShadowImg->GetImageView(), coarseShadowImg->GetSampler());
 			} else {
 				// Fog2 also samples per-block AO and radiosity 3D textures so it
 				// can integrate atmospheric indirect light along the view ray

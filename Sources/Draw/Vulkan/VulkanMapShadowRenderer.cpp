@@ -80,6 +80,26 @@ namespace spades {
 				VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
 				VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
+			// Coarse min/max shadow companion (64×64 for a 512×512 fine map).
+			int cw = w >> CoarseBits;
+			int ch = h >> CoarseBits;
+			coarseBitmap.resize(cw * ch);
+			coarseUpdateBitmap.resize(cw * ch, 1u);
+
+			coarseShadowImage = Handle<VulkanImage>::New(
+				device, (uint32_t)cw, (uint32_t)ch,
+				VK_FORMAT_R8G8B8A8_UNORM,
+				VK_IMAGE_TILING_OPTIMAL,
+				VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+				VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+			coarseShadowImage->CreateSampler(VK_FILTER_NEAREST, VK_FILTER_NEAREST,
+			                                 VK_SAMPLER_ADDRESS_MODE_REPEAT, false);
+
+			coarseStagingBuffer = Handle<VulkanBuffer>::New(
+				device, (size_t)cw * ch * 4,
+				VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+				VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+
 			// Generate all pixels immediately
 			for (int y = 0; y < h; y++) {
 				for (int x = 0; x < w; x++) {
@@ -88,8 +108,17 @@ namespace spades {
 			}
 			std::fill(updateBitmap.begin(), updateBitmap.end(), 0);
 
+			// Build the coarse min/max texture from the fresh fine bitmap.
+			for (int cy = 0; cy < ch; cy++) {
+				for (int cx = 0; cx < cw; cx++) {
+					RegenerateCoarseCell(cx, cy);
+				}
+			}
+			std::fill(coarseUpdateBitmap.begin(), coarseUpdateBitmap.end(), 0u);
+
 			// Upload initial data via one-time command buffer
 			stagingBuffer->UpdateData(bitmap.data(), w * h * 4);
+			coarseStagingBuffer->UpdateData(coarseBitmap.data(), (size_t)cw * ch * 4);
 
 			VkCommandBufferAllocateInfo allocInfo{};
 			allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
@@ -114,6 +143,14 @@ namespace spades {
 			shadowImage->CopyFromBuffer(commandBuffer, stagingBuffer->GetBuffer());
 
 			shadowImage->TransitionLayout(commandBuffer, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+				VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT,
+				VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+
+			coarseShadowImage->TransitionLayout(commandBuffer, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+				0, VK_ACCESS_TRANSFER_WRITE_BIT,
+				VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
+			coarseShadowImage->CopyFromBuffer(commandBuffer, coarseStagingBuffer->GetBuffer());
+			coarseShadowImage->TransitionLayout(commandBuffer, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
 				VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT,
 				VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
 
@@ -161,11 +198,43 @@ namespace spades {
 			x &= w - 1;
 			y &= h - 1;
 			updateBitmap[(x >> 5) + y * updateBitmapPitch] |= 1UL << (x & 31);
+			// Coarse companion needs to be re-derived for the cell that
+			// owns this fine texel.
+			int cw = w >> CoarseBits;
+			int cy = y >> CoarseBits;
+			int cx = x >> CoarseBits;
+			coarseUpdateBitmap[cx + cy * cw] = 1u;
 		}
 
 		void VulkanMapShadowRenderer::GameMapChanged(int x, int y, int z, client::GameMap* m) {
 			MarkUpdate(x, y - z);
 			MarkUpdate(x, y - z - 1);
+		}
+
+		void VulkanMapShadowRenderer::RegenerateCoarseCell(int cx, int cy) {
+			int cw = w >> CoarseBits;
+			int x0 = cx << CoarseBits;
+			int y0 = cy << CoarseBits;
+			int minDepth = -1, maxDepth = 0;
+			for (int yy = 0; yy < CoarseSize; yy++) {
+				const uint32_t* row = bitmap.data() + (y0 + yy) * w + x0;
+				for (int xx = 0; xx < CoarseSize; xx++) {
+					int depth = (int)(row[xx] >> 24);
+					if (minDepth < 0) {
+						minDepth = maxDepth = depth;
+					} else {
+						if (depth < minDepth) minDepth = depth;
+						if (depth > maxDepth) maxDepth = depth;
+					}
+				}
+			}
+			// GL packs (min << 16) | (max << 8) and uploads as BGRA, so the
+			// fragment shader sees (R, G) = (min, max) / 255. Match that:
+			// for an R8G8B8A8_UNORM upload, write byte-0 = min, byte-1 = max,
+			// then sample as (.r, .g) = (min, max).
+			uint32_t packed = ((uint32_t)minDepth & 0xff) |
+			                  (((uint32_t)maxDepth & 0xff) << 8);
+			coarseBitmap[cx + cy * cw] = packed;
 		}
 
 		void VulkanMapShadowRenderer::Update(VkCommandBuffer commandBuffer) {
@@ -207,6 +276,30 @@ namespace spades {
 			shadowImage->TransitionLayout(commandBuffer, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
 				VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT,
 				VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+
+			// Refresh the affected coarse cells and re-upload the coarse map.
+			int cw = w >> CoarseBits;
+			int ch = h >> CoarseBits;
+			bool coarseDirty = false;
+			for (int cy = 0; cy < ch; cy++) {
+				for (int cx = 0; cx < cw; cx++) {
+					if (!coarseUpdateBitmap[cx + cy * cw])
+						continue;
+					RegenerateCoarseCell(cx, cy);
+					coarseUpdateBitmap[cx + cy * cw] = 0u;
+					coarseDirty = true;
+				}
+			}
+			if (coarseDirty) {
+				coarseStagingBuffer->UpdateData(coarseBitmap.data(), (size_t)cw * ch * 4);
+				coarseShadowImage->TransitionLayout(commandBuffer, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+					VK_ACCESS_SHADER_READ_BIT, VK_ACCESS_TRANSFER_WRITE_BIT,
+					VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
+				coarseShadowImage->CopyFromBuffer(commandBuffer, coarseStagingBuffer->GetBuffer());
+				coarseShadowImage->TransitionLayout(commandBuffer, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+					VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT,
+					VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+			}
 		}
 
 	} // namespace draw

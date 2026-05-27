@@ -46,6 +46,20 @@ namespace spades {
 			Handle<VulkanImage> shadowImage;
 			Handle<VulkanBuffer> stagingBuffer;
 
+			// 8×8 downsampled min/max shadow map (matches GLMapShadowRenderer's
+			// coarseTexture). For each 8×8 cell of the fine shadow map, stores
+			//   .x = minimum first-solid depth in the cell
+			//   .y = maximum first-solid depth in the cell
+			// (channels 0..255 / 255). The volumetric fog filter's coarse+fine
+			// DDA uses this to skip cells that are fully lit or fully shadowed
+			// without doing a per-voxel shadow lookup.
+			static constexpr int CoarseBits = 3;            // 1 << 3 = 8
+			static constexpr int CoarseSize = 1 << CoarseBits;
+			Handle<VulkanImage> coarseShadowImage;
+			Handle<VulkanBuffer> coarseStagingBuffer;
+			std::vector<uint32_t> coarseBitmap;
+			std::vector<uint32_t> coarseUpdateBitmap;
+
 			int w, h, d;
 
 			size_t updateBitmapPitch;
@@ -56,6 +70,7 @@ namespace spades {
 
 			uint32_t GeneratePixel(int x, int y);
 			void MarkUpdate(int x, int y);
+			void RegenerateCoarseCell(int cx, int cy);
 
 		public:
 			VulkanMapShadowRenderer(VulkanRenderer& renderer, client::GameMap* map);
@@ -65,6 +80,7 @@ namespace spades {
 			void Update(VkCommandBuffer commandBuffer);
 
 			VulkanImage* GetShadowImage() { return shadowImage.GetPointerOrNull(); }
+			VulkanImage* GetCoarseShadowImage() { return coarseShadowImage.GetPointerOrNull(); }
 
 			// Read access to the CPU-side shadow column bitmap. Each pixel
 			// is encoded as in GLMapShadowRenderer: alpha=depth(0..63), low

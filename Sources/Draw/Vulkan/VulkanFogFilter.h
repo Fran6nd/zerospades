@@ -38,10 +38,10 @@ namespace spades {
 		//                            textures that the Vulkan back-end does not yet
 		//                            have)
 		//
-		// Descriptor bindings (set 0, shared between variants):
-		//   0 — colorTexture     (combined sampler, SHADER_READ_ONLY)
-		//   1 — depthTexture     (combined sampler, SHADER_READ_ONLY, depth aspect)
-		//   2 — shadowMapTexture (combined sampler, SHADER_READ_ONLY)
+		// Descriptor bindings (set 0):
+		//   Fog1: 0=color, 1=depth, 2=shadowMap (fine), 3=coarseShadowMap (8×8
+		//         min/max companion, used by the coarse+fine traversal)
+		//   Fog2: 0=color, 1=depth, 2=shadowMap, 3=ambientShadow3D, 4..7=radiosity{,X,Y,Z}
 		//
 		// Push-constant blocks differ between the two variants, so each pipeline
 		// gets its own VkPipelineLayout.
@@ -57,7 +57,7 @@ namespace spades {
 
 			VkRenderPass ppRenderPass;
 
-			VkDescriptorSetLayout triSamplerDSL; // bindings 0, 1, 2 (Fog1)
+			VkDescriptorSetLayout triSamplerDSL; // bindings 0..3 (Fog1, +coarse shadow)
 			VkDescriptorSetLayout fog2DSL;       // bindings 0..7 (Fog2: +AO+4 radiosity)
 
 			// Fog2 (default, r_fogShadow == 2)
@@ -88,7 +88,9 @@ namespace spades {
 			                             VkImageView depthView,
 			                             VkSampler   depthSampler,
 			                             VkImageView shadowView,
-			                             VkSampler   shadowSampler);
+			                             VkSampler   shadowSampler,
+			                             VkImageView coarseShadowView,
+			                             VkSampler   coarseShadowSampler);
 
 			// Fog2 variant — also binds the per-block AO and radiosity 3D
 			// textures so the post-pass can integrate atmospheric scattering

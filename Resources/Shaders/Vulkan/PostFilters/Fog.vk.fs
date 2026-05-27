@@ -20,22 +20,25 @@
 
 // Fog filter (Fog1 style) fragment shader.
 // Port of OpenGL/PostFilters/Fog.fs.
-// Pure fine-level DDA — matches the GL non-coarse fallback (`USE_COARSE_
-// SHADOWMAP 0`) with 512 max steps so distant occluders (e.g. the floating
-// block) actually contribute a visible shadow shaft. The GL renderer
-// achieves the same effective coverage via a coarse+fine traversal.
-// Depth is reconstructed from the hardware depth buffer.
+// Coarse + fine DDA: marches an 8×8-downsampled min/max shadow map, and
+// only drops to per-voxel shadow lookups for cells that are neither fully
+// lit nor fully shadowed. Same algorithm as the GL Fog.fs USE_COARSE_
+// SHADOWMAP path; without it the pure 512-step fine DDA picks up every
+// thin pole's shadow shaft over the full fog distance and prints a sharp
+// black cross at the sun-direction vanishing point.
 //
 // Descriptor set layout (set 0):
-//   binding 0 — colorTexture   (sampler2D)
-//   binding 1 — depthTexture   (sampler2D, depth aspect)
-//   binding 2 — shadowMapTexture (sampler2D)
+//   binding 0 — colorTexture            (sampler2D)
+//   binding 1 — depthTexture            (sampler2D, depth aspect)
+//   binding 2 — shadowMapTexture        (sampler2D, 512×512, .w = depth)
+//   binding 3 — coarseShadowMapTexture  (sampler2D, 64×64, .x = min depth, .y = max depth)
 
 #version 450
 
 layout(binding = 0) uniform sampler2D colorTexture;
 layout(binding = 1) uniform sampler2D depthTexture;
 layout(binding = 2) uniform sampler2D shadowMapTexture;
+layout(binding = 3) uniform sampler2D coarseShadowMapTexture;
 
 layout(push_constant) uniform Params {
     vec4 viewOriginPad;  // xyz = viewOrigin
@@ -69,11 +72,18 @@ void main() {
     float voxelDistanceFactor = length(shadowRayDirection) / length(viewTan);
     voxelDistanceFactor *= length(viewDir.xy) / length(viewDir); // remove vertical fog
 
-    float w             = texture(depthTexture, texCoord).r;
-    float screenDepth   = decodeDepth(w, zNear, zFar);
+    float w              = texture(depthTexture, texCoord).r;
+    float screenDepth    = decodeDepth(w, zNear, zFar);
     float screenDistance = screenDepth * length(viewTan);
-    screenDistance = min(screenDistance, fogDistance);
+    screenDistance       = min(screenDistance, fogDistance);
     float screenVoxelDistance = screenDistance * voxelDistanceFactor;
+
+    const vec2  voxels       = vec2(512.0);
+    const vec2  voxelSize    = 1.0 / voxels;
+    const float coarseLevel    = 8.0;
+    const float coarseLevelInv = 1.0 / coarseLevel;
+    const vec2  coarseVoxels    = voxels / coarseLevel;
+    const vec2  coarseVoxelSize = voxelSize * coarseLevel;
 
     float fogDistanceTime = fogDistance * voxelDistanceFactor;
     float zMaxTime        = min(screenVoxelDistance, fogDistanceTime);
@@ -92,62 +102,132 @@ void main() {
         maxTime  = min(maxTime, ceilTime);
     }
 
+    vec2 dirSign  = sign(dir.xy);
+    vec2 dirSign2 = dirSign * 0.5 + 0.5; // 0 or 1
+
     float time  = 0.0;
     float total = 0.0;
 
+    // Mirror-pass clip: if the camera sits above z = 63 (true z-axis sign
+    // flipped via reflected viewMatrix), skip past it before marching.
     if (startPos.z > (63.0 / 255.0) && dir.z < 0.0) {
         time   = ((63.0 / 255.0) - startPos.z) / dir.z;
         total += fogDensFunc(time);
         startPos += time * dir;
     }
 
-    const vec2 voxels     = vec2(512.0);
-    const vec2 voxelSize  = 1.0 / voxels;
-    const int  maxSteps   = 512;
-
-    vec3  pos             = startPos + dir * 0.0001;
-    vec2  voxelIndex      = floor(pos.xy);
+    vec3 pos        = startPos + dir * 0.0001;
+    vec2 voxelIndex = floor(pos.xy);
     if (pos.xy == voxelIndex) pos += 0.001;
 
-    vec2 dirSign              = sign(dir.xy);
-    vec2 dirSign2             = dirSign * 0.5 + 0.5; // 0 or 1
-    vec2 timePerVoxel         = 1.0 / dir.xy;
-    vec2 timePerVoxelAbs      = abs(timePerVoxel);
-    vec2 timeToNextVoxel      = (voxelIndex + dirSign2 - pos.xy) * timePerVoxel;
+    vec2 timePerVoxel    = 1.0 / dir.xy;
+    vec2 timePerVoxelAbs = abs(timePerVoxel);
+    vec2 timeToNextVoxel = (voxelIndex + dirSign2 - pos.xy) * timePerVoxel;
 
     if (ceilTime <= 0.0) {
         total = fogDensFunc(zMaxTime);
     } else {
-        for (int i = 0; i < maxSteps; ++i) {
-            float val      = texture(shadowMapTexture, voxelIndex * voxelSize).w;
-            val            = step(pos.z, val);
-            float diffTime = min(timeToNextVoxel.x, timeToNextVoxel.y);
+        // Coarse traversal: walk the 64×64 cell grid, fetching min/max
+        // depths for each cell. Skip "all lit" / "all shadow" cells with
+        // one branch; drop to the fine DDA only for ambiguous cells.
+        vec3 coarseDir = dir * vec3(coarseLevelInv, coarseLevelInv, 1.0);
+        vec3 coarsePos = pos * vec3(coarseLevelInv, coarseLevelInv, 1.0);
+        vec2 coarseVoxelIndex = floor(coarsePos.xy);
+        if (coarsePos.xy == coarseVoxelIndex) coarsePos += 0.0001;
 
-            if (timeToNextVoxel.x < timeToNextVoxel.y) {
-                voxelIndex.x         += dirSign.x;
-                timeToNextVoxel.y    -= diffTime;
-                timeToNextVoxel.x     = timePerVoxelAbs.x;
+        vec2 coarseTimePerVoxel    = timePerVoxel    * coarseLevel;
+        vec2 coarseTimePerVoxelAbs = timePerVoxelAbs * coarseLevel;
+        vec2 coarseTimeToNextVoxel = (coarseVoxelIndex + dirSign2 - coarsePos.xy)
+                                     * coarseTimePerVoxel;
+
+        const int maxCoarseSteps = 64;
+        const int maxFineSteps   = 64;
+        for (int ci = 0; ci < maxCoarseSteps; ++ci) {
+            // .x = min depth, .y = max depth in the 8×8 cell (0..1).
+            vec2 coarseVal = texture(coarseShadowMapTexture,
+                                     coarseVoxelIndex * coarseVoxelSize).xy;
+
+            float coarseDiffTime = min(coarseTimeToNextVoxel.x,
+                                       coarseTimeToNextVoxel.y);
+            float coarseNextTime = min(time + coarseDiffTime, maxTime);
+            float limitedDiffTime = coarseNextTime - time;
+
+            // Range of pos.z over this cell.
+            vec2 passingZ = vec2(coarsePos.z);
+            passingZ.y += limitedDiffTime * coarseDir.z;
+
+            bvec2 stat = bvec2(min(passingZ.x, passingZ.y) > coarseVal.y,
+                               max(passingZ.x, passingZ.y) < coarseVal.x);
+
+            vec2 oldCoarseVoxelIndex = coarseVoxelIndex;
+            vec3 nextCoarsePos = coarsePos + coarseDiffTime * coarseDir;
+            // Advance to next coarse cell.
+            if (coarseTimeToNextVoxel.x < coarseTimeToNextVoxel.y) {
+                coarseVoxelIndex.x   += dirSign.x;
+                coarseTimeToNextVoxel.y -= coarseDiffTime;
+                coarseTimeToNextVoxel.x  = coarseTimePerVoxelAbs.x;
             } else {
-                voxelIndex.y         += dirSign.y;
-                timeToNextVoxel.x    -= diffTime;
-                timeToNextVoxel.y     = timePerVoxelAbs.y;
+                coarseVoxelIndex.y   += dirSign.y;
+                coarseTimeToNextVoxel.x -= coarseDiffTime;
+                coarseTimeToNextVoxel.y  = coarseTimePerVoxelAbs.y;
             }
 
-            pos += dir * diffTime;
-            float nextTime  = min(time + diffTime, maxTime);
-            float diffDens  = fogDensFunc(nextTime) - fogDensFunc(time);
-            diffTime        = nextTime - time;
-            time            = nextTime;
+            if (any(stat)) {
+                if (stat.y) {
+                    // Always lit cell.
+                    float diffDens = fogDensFunc(coarseNextTime) - fogDensFunc(time);
+                    total += diffDens;
+                }
+                // Else: stat.x — always in shadow, contribute nothing.
+                time = coarseNextTime;
+            } else if (limitedDiffTime < 1.0e-9) {
+                time = coarseNextTime;
+            } else {
+                // Ambiguous coarse cell — drop to per-voxel DDA inside it.
+                pos        = coarsePos * vec3(coarseLevel, coarseLevel, 1.0);
+                voxelIndex = floor(pos.xy);
+                if (pos.xy == voxelIndex) pos += 0.001;
+                timeToNextVoxel = (voxelIndex + dirSign2 - pos.xy) * timePerVoxel;
 
-            total += val * diffDens;
+                for (int fi = 0; fi < maxFineSteps; ++fi) {
+                    float v = texture(shadowMapTexture, voxelIndex * voxelSize).w;
+                    float val = step(pos.z, v);
 
-            if (diffTime <= 0.0) {
-                if (nextTime >= ceilTime) {
-                    diffDens = fogDensFunc(zMaxTime) - fogDensFunc(time);
-                    total   += val * max(diffDens, 0.0);
+                    float diffTime = min(timeToNextVoxel.x, timeToNextVoxel.y);
+                    if (timeToNextVoxel.x < timeToNextVoxel.y) {
+                        voxelIndex.x       += dirSign.x;
+                        timeToNextVoxel.y  -= diffTime;
+                        timeToNextVoxel.x   = timePerVoxelAbs.x;
+                    } else {
+                        voxelIndex.y       += dirSign.y;
+                        timeToNextVoxel.x  -= diffTime;
+                        timeToNextVoxel.y   = timePerVoxelAbs.y;
+                    }
+
+                    pos += dir * diffTime;
+                    float nextTime  = min(time + diffTime, maxTime);
+                    float diffDens  = fogDensFunc(nextTime) - fogDensFunc(time);
+                    time            = nextTime;
+                    total          += val * diffDens;
+
+                    if (time >= maxTime) break;
+                    // Leaving the current coarse cell — hand control back
+                    // to the outer coarse traversal so we don't double-
+                    // count cells.
+                    if (floor((voxelIndex.xy + 0.5) * coarseLevelInv) != oldCoarseVoxelIndex)
+                        break;
+                }
+            }
+
+            if (time >= maxTime) {
+                if (coarseNextTime >= ceilTime) {
+                    float diffDens = fogDensFunc(zMaxTime) - fogDensFunc(time);
+                    total += max(diffDens, 0.0);
                 }
                 break;
             }
+
+            coarsePos = nextCoarsePos;
         }
     }
 
