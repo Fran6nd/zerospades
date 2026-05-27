@@ -78,8 +78,10 @@ namespace spades {
 			VkSampler sampler;
 
 			// Staging ring large enough to fit dataFlat+X+Y+Z for one chunk
-			// per slot. 16 slots × (4 × 16³ × 4 B) = 1 MiB.
-			static constexpr int kStagingSlotCount = 16;
+			// per slot. 128 slots × (4 × 16³ × 4 B) = 8 MiB. Sized to match
+			// the bumped UpdateDirtyChunks per-dispatch budget so the GPU
+			// upload doesn't bottleneck the convergence rate.
+			static constexpr int kStagingSlotCount = 128;
 			VkBuffer stagingBuffer;
 			VmaAllocation stagingAllocation;
 			void* stagingMapped;

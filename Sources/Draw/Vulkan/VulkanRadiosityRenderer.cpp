@@ -592,7 +592,13 @@ namespace spades {
 				}
 			}
 
-			for (int i = 0; i < 8; i++) {
+			// GL processes 8 chunks per dispatch and the menu/post-spawn
+			// scene visibly brightens for ~10 s as the radiosity texture
+			// converges. We bump this to 128 per dispatch (still on the
+			// background thread, so it doesn't block rendering) to bring
+			// convergence under 1 s, eliminating the "scene changes while
+			// I'm standing still" artefact.
+			for (int i = 0; i < 128; i++) {
 				if (numDirtyChunks <= 0) break;
 				std::size_t idx = SampleRandomInt(std::size_t{0}, numDirtyChunks - 1);
 				Chunk& c = chunks[dirtyChunkIds[idx]];
