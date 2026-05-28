@@ -22,6 +22,8 @@
 #include <Gui/ModsScreenHelper.h>
 
 namespace spades {
+	static gui::ModsScreenHelper* CreateModsScreenHelper() { return new gui::ModsScreenHelper(); }
+
 	class ModsScreenHelperRegistrar : public ScriptObjectRegistrar {
 	public:
 		ModsScreenHelperRegistrar() : ScriptObjectRegistrar("ModsScreenHelper") {}
@@ -36,6 +38,10 @@ namespace spades {
 					manager->CheckError(r);
 					break;
 				case PhaseObjectMember:
+					r = eng->RegisterObjectBehaviour(
+					  "ModsScreenHelper", asBEHAVE_FACTORY, "ModsScreenHelper@ f()",
+					  asFUNCTION(CreateModsScreenHelper), asCALL_CDECL);
+					manager->CheckError(r);
 					r = eng->RegisterObjectBehaviour(
 					  "ModsScreenHelper", asBEHAVE_ADDREF, "void f()",
 					  asMETHOD(gui::ModsScreenHelper, AddRef), asCALL_THISCALL);

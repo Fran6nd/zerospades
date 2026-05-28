@@ -21,6 +21,7 @@
 #include "CreateProfileScreen.as"
 #include "ServerList.as"
 #include "DemoList.as"
+#include "ModList.as"
 
 namespace spades {
 
@@ -104,6 +105,19 @@ namespace spades {
 		private float demoSizeColWidth;
 		private float demoContentsWidth;
 
+		// Mods tab state
+		ModsScreenHelper@ modsHelper;
+		TabPanel@ modsPanel;
+		spades::ui::ListView@ modsList;
+		spades::ui::Button@ modsDownloadButton;
+		spades::ui::Button@ modsResetButton;
+		spades::ui::Label@ modsStatusLabel;
+		bool modsDownloading = false;
+		bool modsDirty = false; // any merge/reset happened this session
+		private float modsNameColWidth;
+		private float modsCountColWidth;
+		private float modsSizeColWidth;
+
 		private ConfigItem cg_protocolVersion("cg_protocolVersion", "3");
 		private ConfigItem cg_lastQuickConnectHost("cg_lastQuickConnectHost", "127.0.0.1");
 		private ConfigItem cg_serverlistSort("cg_serverlistSort", "16385");
@@ -118,6 +132,11 @@ namespace spades {
 			demoModeColWidth = 85.0F;
 			demoMapColWidth  = 185.0F;
 			demoSizeColWidth = 70.0F;
+
+			modsNameColWidth  = 320.0F;
+			modsCountColWidth = 80.0F;
+			modsSizeColWidth  = 100.0F;
+			@modsHelper = ModsScreenHelper();
 
 			float sw = Manager.ScreenWidth;
 			float sh = Manager.ScreenHeight;
@@ -151,6 +170,10 @@ namespace spades {
 				@demoPanel = TabPanel(Manager);
 				demoPanel.Bounds = AABB2(0.0F, 0.0F, sw, sh);
 				demoPanel.Visible = false;
+
+				@modsPanel = TabPanel(Manager);
+				modsPanel.Bounds = AABB2(0.0F, 0.0F, sw, sh);
+				modsPanel.Visible = false;
 
 				// --- Server panel contents ---
 				{
@@ -376,8 +399,59 @@ namespace spades {
 					demoPanel.AddChild(demoList);
 				}
 
+				// --- Mods panel contents ---
+				{
+					@modsDownloadButton = spades::ui::Button(Manager);
+					modsDownloadButton.Caption = _Tr("MainScreen", "Download official mods");
+					modsDownloadButton.Bounds = AABB2(contentsLeft, 200.0F, 240.0F, 30.0F);
+					@modsDownloadButton.Activated = spades::ui::EventHandler(this.OnDownloadModsPressed);
+					modsPanel.AddChild(modsDownloadButton);
+				}
+				{
+					@modsResetButton = spades::ui::Button(Manager);
+					modsResetButton.Caption = _Tr("MainScreen", "Reset user_mods");
+					modsResetButton.Bounds = AABB2(contentsLeft + contentsWidth - 160.0F, 200.0F, 160.0F, 30.0F);
+					@modsResetButton.Activated = spades::ui::EventHandler(this.OnResetModsPressed);
+					modsPanel.AddChild(modsResetButton);
+				}
+				{
+					@modsStatusLabel = spades::ui::Label(Manager);
+					modsStatusLabel.Bounds = AABB2(contentsLeft, footerPos - 30.0F, contentsWidth, 24.0F);
+					modsStatusLabel.Text = "";
+					modsPanel.AddChild(modsStatusLabel);
+				}
+				{
+					float x = contentsLeft;
+					{
+						ModListHeader header(Manager);
+						header.Bounds = AABB2(x, headerPos, modsNameColWidth, headerHeight);
+						header.Text = _Tr("MainScreen", "Mod");
+						modsPanel.AddChild(header);
+						x += modsNameColWidth;
+					}
+					{
+						ModListHeader header(Manager);
+						header.Bounds = AABB2(x, headerPos, modsCountColWidth, headerHeight);
+						header.Text = _Tr("MainScreen", "Paks");
+						modsPanel.AddChild(header);
+						x += modsCountColWidth;
+					}
+					{
+						ModListHeader header(Manager);
+						header.Bounds = AABB2(x, headerPos, modsSizeColWidth, headerHeight);
+						header.Text = _Tr("MainScreen", "Size");
+						modsPanel.AddChild(header);
+					}
+				}
+				{
+					@modsList = spades::ui::ListView(Manager);
+					modsList.Bounds = AABB2(contentsLeft, listPos, contentsWidth, footerPos - listPos - 44.0F);
+					modsPanel.AddChild(modsList);
+				}
+
 				AddChild(serverPanel);
 				AddChild(demoPanel);
+				AddChild(modsPanel);
 
 				// Tab strip
 				{
@@ -386,6 +460,7 @@ namespace spades {
 					AddChild(tabStrip);
 					tabStrip.AddItem(_Tr("MainScreen", "Servers"), serverPanel);
 					tabStrip.AddItem(_Tr("MainScreen", "Demos"), demoPanel);
+					tabStrip.AddItem(_Tr("MainScreen", "Mods"), modsPanel);
 					@tabStrip.Changed = spades::ui::EventHandler(this.OnTabChanged);
 				}
 			}
@@ -450,6 +525,108 @@ namespace spades {
 			// Refresh demo list when switching to demos tab
 			if (demoPanel.Visible)
 				LoadDemoList();
+			if (modsPanel.Visible)
+				LoadModList();
+		}
+
+		void LoadModList() {
+			string[]@ names = modsHelper.GetModNames();
+			if (names is null) {
+				@modsList.Model = spades::ui::ListViewModel();
+				UpdateModsStatus();
+				return;
+			}
+			ModListModel model(Manager, modsHelper, names, modsNameColWidth, modsCountColWidth, modsSizeColWidth);
+			@modsList.Model = model;
+			@model.ItemActivated = ModListItemEventHandler(this.OnModListItemActivated);
+			UpdateModsStatus();
+		}
+
+		private void UpdateModsStatus() {
+			if (modsDownloading) {
+				modsStatusLabel.Text = _Tr("MainScreen", "Downloading…");
+				return;
+			}
+			string msg = modsHelper.GetRefreshMessage();
+			if (msg.length > 0) {
+				modsStatusLabel.Text = msg;
+				return;
+			}
+			if (modsDirty) {
+				modsStatusLabel.Text = _Tr("MainScreen", "Restart required to apply changes");
+				return;
+			}
+			modsStatusLabel.Text = "";
+		}
+
+		private void OnDownloadModsPressed(spades::ui::UIElement@ sender) {
+			if (modsDownloading)
+				return;
+			modsDownloading = true;
+			modsHelper.StartRefresh();
+			UpdateModsStatus();
+		}
+
+		private void OnResetModsPressed(spades::ui::UIElement@ sender) {
+			ConfirmScreen cs(this, _Tr("MainScreen", "Reset user_mods? All merged mods will be removed and the base paks restored on next launch."));
+			@cs.Closed = spades::ui::EventHandler(this.OnResetConfirmed);
+			cs.Run();
+		}
+
+		private void OnResetConfirmed(spades::ui::UIElement@ sender) {
+			ConfirmScreen@ cs = cast<ConfirmScreen>(sender);
+			if (cs is null or !cs.Result)
+				return;
+			string err = modsHelper.ResetUserMods();
+			if (err.length > 0) {
+				AlertScreen al(this, err);
+				al.Run();
+				return;
+			}
+			modsDirty = true;
+			UpdateModsStatus();
+		}
+
+		private string pendingMergeModName;
+
+		private void OnModListItemActivated(string modName) {
+			string[]@ contents = modsHelper.GetModContents(modName);
+			string body = _Tr("MainScreen", "Merge \"{0}\" into user_mods?", modName) + "\n\n";
+			if (contents is null or contents.length == 0) {
+				body += _Tr("MainScreen", "(empty mod)");
+			} else {
+				for (uint i = 0; i < contents.length; i++)
+					body += contents[i] + "\n";
+			}
+			pendingMergeModName = modName;
+			ConfirmScreen cs(this, body, Min(500.0F, Manager.ScreenHeight - 100.0F));
+			@cs.Closed = spades::ui::EventHandler(this.OnMergeConfirmed);
+			cs.Run();
+		}
+
+		private void OnMergeConfirmed(spades::ui::UIElement@ sender) {
+			ConfirmScreen@ cs = cast<ConfirmScreen>(sender);
+			string modName = pendingMergeModName;
+			pendingMergeModName = "";
+			if (cs is null or !cs.Result or modName.length == 0)
+				return;
+			string err = modsHelper.MergeMod(modName);
+			if (err.length > 0) {
+				AlertScreen al(this, err);
+				al.Run();
+				return;
+			}
+			modsDirty = true;
+			UpdateModsStatus();
+		}
+
+		private void CheckModsRefresh() {
+			if (!modsDownloading)
+				return;
+			if (modsHelper.PollRefreshState()) {
+				modsDownloading = false;
+				LoadModList();
+			}
 		}
 
 		void DemoListItemActivated(DemoListModel@ sender, string filename) {
@@ -698,6 +875,7 @@ namespace spades {
 
 		void Render() {
 			CheckServerList();
+			CheckModsRefresh();
 			UIElement::Render();
 
 			// check for client error message.
