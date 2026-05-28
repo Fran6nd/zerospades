@@ -108,29 +108,13 @@ void main() {
 	vec2 disp = wave.xy * 0.1;
 	scrPos += disp * scale * waterPC.displaceScale * 4.0;
 
-	// check envelope length.
-	// if the displaced location points the out of the water,
-	// reset to the original pos.
-	float depth = depthAt(scrPos);
-
-	// convert to view coord
-	vec3 sampledViewCoord = vec3(mix(waterPC.fovTan.zw, waterPC.fovTan.xy, scrPos), 1.0) * -depth;
-	float planeDistance = dot(vec4(sampledViewCoord, 1.0), waterPC.waterPlane);
- 	if (planeDistance < 0.0) {
-		// reset!
-		// original pos must be in the water.
-		scrPos = origScrPos;
-		depth = depthAt(scrPos);
-		if (depth + v_viewPosition.z < 0.0) {
-			// if the pixel is obscured by a object,
-			// this fragment of water is not visible
-			//discard; done by early-Z test
-		}
-	} else {
-		depth = planeDistance / dot(waterPC.waterPlane, vec4(0.0, 0.0, 1.0, 0.0));
-		depth = abs(depth);
-		depth -= v_viewPosition.z;
-	}
+	// Depth sampling: always at the UNDISPLACED scrPos. GL has a wave-perturbed
+	// if/else branch on planeDistance that switches between depthAt() and a
+	// plane-intersection depth — but the branch boundary is wave-modulated and
+	// MoltenVK's depth precision makes that boundary visible as a wavy line.
+	// Using the undisplaced sample for depth removes the discontinuity entirely
+	// while keeping the wave displacement on scrPos itself (for refraction).
+	float depth = depthAt(origScrPos);
 
 	float envelope = clamp((depth + v_viewPosition.z), 0.0, 1.0);
 	envelope = 1.0 - (1.0 - envelope) * (1.0 - envelope);
