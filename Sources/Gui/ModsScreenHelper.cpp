@@ -22,7 +22,9 @@
 
 #include <algorithm>
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
+#include <map>
 #include <set>
 #include <sys/stat.h>
 
@@ -508,63 +510,159 @@ namespace spades {
 			std::string userModsAbs = UserModsRootAbs();
 			EnsureDir(userModsAbs);
 
+			// Set of install-side pak files. Anything in user_mods/ outside
+			// this set is a legacy per-mod pak from older code that we'll
+			// delete after the merge.
+			std::set<std::string> installPaks;
+			for (const std::string& name : FileManager::EnumFiles("")) {
+				if (EndsWithPak(name))
+					installPaks.insert(name);
+			}
+
+			// Load the mod's content into memory: path -> bytes. ZipFileSystem
+			// lowercases keys, so the same normalization will apply when we
+			// walk the base paks — equal-path lookups are consistent.
+			std::map<std::string, std::string> modBytes;
 			for (const std::string& pak : m->paks) {
 				std::string overlayPath = m->isFolder
 				    ? ("Mods/" + m->name + "/" + pak)
 				    : ("Mods/" + pak);
-				std::string targetRel = std::string(kUserModsDir) + "/" + pak;
-				std::string targetAbs = userModsAbs + "/" + pak;
-				std::string partialAbs = targetAbs + ".partial";
-
-				// Collect overlay entries.
-				std::vector<std::string> overlayKeys;
 				try {
 					auto in = FileManager::OpenForReading(overlayPath.c_str());
 					ZipFileSystem zfs(in.release());
-					overlayKeys = zfs.GetAllFiles();
+					for (const std::string& key : zfs.GetAllFiles()) {
+						auto es = zfs.OpenForReading(key.c_str());
+						modBytes[key] = es->ReadAllBytes();
+					}
 				} catch (const std::exception& ex) {
-					return Format("Read overlay '{0}': {1}", pak, ex.what());
+					return Format("Read mod '{0}': {1}", pak, ex.what());
 				}
-				std::set<std::string> overlaySet(overlayKeys.begin(), overlayKeys.end());
+			}
 
+			// Enumerate the numbered base paks (pakNNNN-*.pak) sitting in
+			// user_mods/. Other install files like font-unifont.pak are not
+			// merge targets.
+			struct BasePak {
+				std::string filename;
+				std::string relPath;
+				std::string absPath;
+				int pakId = 0;
+			};
+			std::vector<BasePak> basePaks;
+			for (const std::string& name : installPaks) {
+				if (name.size() < 4 || name[0] != 'p' || name[1] != 'a' ||
+				    name[2] != 'k' || name[3] < '0' || name[3] > '9')
+					continue;
+				std::string relPath = std::string(kUserModsDir) + "/" + name;
+				if (!FileManager::FileExists(relPath.c_str()))
+					continue;
+				BasePak bp;
+				bp.filename = name;
+				bp.relPath = relPath;
+				bp.absPath = userModsAbs + "/" + name;
+				bp.pakId = std::atoi(name.c_str() + 3);
+				basePaks.push_back(std::move(bp));
+			}
+			if (basePaks.empty())
+				return "No base paks in user_mods/ to merge into";
+			std::sort(basePaks.begin(), basePaks.end(),
+			          [](const BasePak& a, const BasePak& b) { return a.pakId < b.pakId; });
+
+			// Rewrite every base pak: each entry the mod also provides is
+			// replaced with the mod's bytes; the rest is carried over
+			// untouched. A path may live in several base paks at once
+			// (pak000 and pak010 both ship shotgun assets, for example) —
+			// they all get the new bytes, so no stale copy can show through.
+			std::set<std::string> placed;
+			for (const BasePak& bp : basePaks) {
+				std::vector<std::string> baseKeys;
+				try {
+					auto stream = FileManager::OpenForReading(bp.relPath.c_str());
+					ZipFileSystem zfs(stream.release());
+					baseKeys = zfs.GetAllFiles();
+				} catch (...) {
+					continue;
+				}
+				bool touches = false;
+				for (const std::string& key : baseKeys) {
+					if (modBytes.count(key)) {
+						touches = true;
+						break;
+					}
+				}
+				if (!touches)
+					continue;
+
+				std::string partialAbs = bp.absPath + ".partial";
 				try {
 					ZipWriter writer(partialAbs);
-
-					// 1. Carry over existing entries from the target pak that the
-					//    overlay does not replace.
-					if (FileManager::FileExists(targetRel.c_str())) {
-						auto stream = FileManager::OpenForReading(targetRel.c_str());
-						ZipFileSystem zbase(stream.release());
-						for (const std::string& key : zbase.GetAllFiles()) {
-							if (overlaySet.count(key))
-								continue;
-							auto entryStream = zbase.OpenForReading(key.c_str());
-							std::string bytes = entryStream->ReadAllBytes();
+					auto stream = FileManager::OpenForReading(bp.relPath.c_str());
+					ZipFileSystem zbase(stream.release());
+					for (const std::string& key : baseKeys) {
+						auto mit = modBytes.find(key);
+						if (mit != modBytes.end()) {
+							writer.AddEntry(key, mit->second.data(), mit->second.size());
+							placed.insert(key);
+						} else {
+							auto es = zbase.OpenForReading(key.c_str());
+							std::string bytes = es->ReadAllBytes();
 							writer.AddEntry(key, bytes.data(), bytes.size());
 						}
 					}
-
-					// 2. Now copy overlay entries (overlay wins on shared paths).
-					auto stream2 = FileManager::OpenForReading(overlayPath.c_str());
-					ZipFileSystem zover(stream2.release());
-					for (const std::string& key : zover.GetAllFiles()) {
-						auto entryStream = zover.OpenForReading(key.c_str());
-						std::string bytes = entryStream->ReadAllBytes();
-						writer.AddEntry(key, bytes.data(), bytes.size());
-					}
-
 					writer.Close();
 				} catch (const std::exception& ex) {
 					std::remove(partialAbs.c_str());
-					return Format("Write '{0}': {1}", pak, ex.what());
+					return Format("Write '{0}': {1}", bp.filename, ex.what());
 				}
-
-				std::remove(targetAbs.c_str());
-				if (std::rename(partialAbs.c_str(), targetAbs.c_str()) != 0) {
+				std::remove(bp.absPath.c_str());
+				if (std::rename(partialAbs.c_str(), bp.absPath.c_str()) != 0) {
 					std::remove(partialAbs.c_str());
-					return Format("Rename failed for '{0}'", pak);
+					return Format("Rename failed for '{0}'", bp.filename);
 				}
 			}
+
+			// Mod entries with no match anywhere — files the mod is adding
+			// rather than replacing. Append them to the highest-ID base pak.
+			std::vector<std::pair<std::string, const std::string*>> leftovers;
+			for (const auto& kv : modBytes) {
+				if (!placed.count(kv.first))
+					leftovers.emplace_back(kv.first, &kv.second);
+			}
+			if (!leftovers.empty()) {
+				const BasePak& tgt = basePaks.back();
+				std::string partialAbs = tgt.absPath + ".partial";
+				try {
+					ZipWriter writer(partialAbs);
+					auto stream = FileManager::OpenForReading(tgt.relPath.c_str());
+					ZipFileSystem zbase(stream.release());
+					for (const std::string& key : zbase.GetAllFiles()) {
+						auto es = zbase.OpenForReading(key.c_str());
+						std::string bytes = es->ReadAllBytes();
+						writer.AddEntry(key, bytes.data(), bytes.size());
+					}
+					for (const auto& kv : leftovers)
+						writer.AddEntry(kv.first, kv.second->data(), kv.second->size());
+					writer.Close();
+				} catch (const std::exception& ex) {
+					std::remove(partialAbs.c_str());
+					return Format("Append '{0}': {1}", tgt.filename, ex.what());
+				}
+				std::remove(tgt.absPath.c_str());
+				if (std::rename(partialAbs.c_str(), tgt.absPath.c_str()) != 0) {
+					std::remove(partialAbs.c_str());
+					return Format("Rename failed for '{0}'", tgt.filename);
+				}
+			}
+
+			// Delete legacy per-mod paks left in user_mods/ by older code.
+			for (const std::string& name : ListDir(userModsAbs)) {
+				if (!EndsWithPak(name))
+					continue;
+				if (installPaks.count(name))
+					continue;
+				std::remove((userModsAbs + "/" + name).c_str());
+			}
+
 			return std::string{};
 		}
 

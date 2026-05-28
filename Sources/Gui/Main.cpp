@@ -623,9 +623,10 @@ int main(int argc, char** argv) {
 
 		// Bootstrap user_mods/: the engine loads paks only from this
 		// subdirectory of userdata. Copy each install-side base pak in if
-		// missing, and re-copy if the install pak's size differs from the
-		// stored copy (i.e. the game was updated). Re-seeding loses any
-		// previously-merged mods for that pak — Reset by another name.
+		// missing. We deliberately do NOT re-seed when an install pak's
+		// size differs from the user copy — merges now rewrite the base
+		// paks in user_mods/, so a size-based reseed would clobber every
+		// applied mod on restart. Use Reset to pull pristine base paks.
 		{
 			std::vector<std::string> rootFiles = spades::FileManager::EnumFiles("");
 			for (const std::string& name : rootFiles) {
@@ -636,24 +637,7 @@ int main(int argc, char** argv) {
 					continue;
 				std::string target = "user_mods/" + name;
 
-				bool needsCopy = true;
-				const char* reason = "missing";
-				try {
-					auto src = spades::FileManager::OpenForReading(name.c_str());
-					std::uint64_t srcLen = src->GetLength();
-					if (spades::FileManager::FileExists(target.c_str())) {
-						auto cur = spades::FileManager::OpenForReading(target.c_str());
-						if (cur->GetLength() == srcLen) {
-							needsCopy = false;
-						} else {
-							reason = "size mismatch";
-						}
-					}
-				} catch (const std::exception& ex) {
-					SPLog("user_mods: check %s failed: %s", name.c_str(), ex.what());
-					continue;
-				}
-				if (!needsCopy)
+				if (spades::FileManager::FileExists(target.c_str()))
 					continue;
 				try {
 					auto in = spades::FileManager::OpenForReading(name.c_str());
@@ -662,7 +646,7 @@ int main(int argc, char** argv) {
 					size_t rd;
 					while ((rd = in->Read(buf.data(), buf.size())) > 0)
 						out->Write(buf.data(), rd);
-					SPLog("user_mods: seeded %s (%s)", name.c_str(), reason);
+					SPLog("user_mods: seeded %s", name.c_str());
 				} catch (const std::exception& ex) {
 					SPLog("user_mods: failed to seed %s: %s", name.c_str(), ex.what());
 				}
