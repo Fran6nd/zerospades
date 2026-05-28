@@ -470,6 +470,13 @@ namespace spades {
 					tabStrip.AddItem(_Tr("MainScreen", "Mods"), modsPanel);
 					@tabStrip.Changed = spades::ui::EventHandler(this.OnTabChanged);
 				}
+
+				// Coming back from a merge-triggered relaunch — open the Mods tab.
+				if (helper.ShouldOpenModsTab()) {
+					serverPanel.Visible = false;
+					demoPanel.Visible = false;
+					modsPanel.Visible = true;
+				}
 			}
 
 			// Footer buttons (always visible, outside panels)
@@ -498,6 +505,9 @@ namespace spades {
 
 			LoadServerList();
 			LoadDemoList();
+
+			if (helper.ShouldOpenModsTab())
+				LoadModList();
 		}
 
 		void LoadServerList() {
@@ -637,8 +647,9 @@ namespace spades {
 				al.Run();
 				return;
 			}
-			modsDirty = true;
-			UpdateModsStatus();
+			// Relaunch the program so the freshly-merged paks are picked up.
+			// The new process skips the startup window and reopens this tab.
+			helper.RelaunchForMods();
 		}
 
 		private void CheckModsRefresh() {

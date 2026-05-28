@@ -30,6 +30,7 @@
 #include <curl/curl.h>
 #include <json/json.h>
 
+#include "Main.h"
 #include "MainScreen.h"
 #include "MainScreenHelper.h"
 #include <Client/DemoRecorder.h>
@@ -467,6 +468,9 @@ namespace spades {
 		bool MainScreenHelper::DeleteDemo(std::string filename) {
 			return std::remove(filename.c_str()) == 0;
 		}
+
+		bool MainScreenHelper::ShouldOpenModsTab() { return spades::g_openModsTab; }
+		void MainScreenHelper::RelaunchForMods() { spades::RelaunchForMods(); }
 
 		std::string MainScreenHelper::GetPendingErrorMessage() {
 			std::string s = errorMessage;

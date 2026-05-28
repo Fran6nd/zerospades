@@ -101,6 +101,14 @@ namespace spades {
 					                              asMETHOD(gui::MainScreenHelper, DeleteDemo),
 					                              asCALL_THISCALL);
 					manager->CheckError(r);
+					r = eng->RegisterObjectMethod("MainScreenHelper", "bool ShouldOpenModsTab()",
+					                              asMETHOD(gui::MainScreenHelper, ShouldOpenModsTab),
+					                              asCALL_THISCALL);
+					manager->CheckError(r);
+					r = eng->RegisterObjectMethod("MainScreenHelper", "void RelaunchForMods()",
+					                              asMETHOD(gui::MainScreenHelper, RelaunchForMods),
+					                              asCALL_THISCALL);
+					manager->CheckError(r);
 					r = eng->RegisterObjectBehaviour(
 					  "MainScreenServerItem", asBEHAVE_ADDREF, "void f()",
 					  asMETHOD(gui::MainScreenServerItem, AddRef), asCALL_THISCALL);
