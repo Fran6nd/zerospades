@@ -99,8 +99,9 @@ void main() {
 	wave.z = (1.0 / 128.0);
 	wave.xyz = normalize(wave.xyz);
 
+	// Vertex shader already encoded ((gl.x+gl.w)*0.5, (gl.w-gl.y)*0.5, gl.w),
+	// so the divide below yields a [0,1] tex coord directly. No further remap.
 	vec2 origScrPos = v_screenPosition.xy / v_screenPosition.z;
-	origScrPos = origScrPos * 0.5 + 0.5;
 	vec2 scrPos = origScrPos;
 
 	float scale = 1.0 / v_viewPosition.z;
@@ -146,6 +147,9 @@ void main() {
 	vec2 subCoord = 1.0 - clamp((vec2(0.5) - startPos) / diffPos, 0.0, 1.0);
 	vec2 sampCoord = integralCoord + subCoord * blurDirSign;
 	vec3 waterColor = texture(mainTexture, sampCoord / 512.0).xyz;
+	vec3 diffuseShading = EvaluateAmbientLight(1.0);
+	vec3 sunlightForColor = EvaluateSunLight();
+	waterColor *= sunlightForColor + diffuseShading;
 
 	// underwater object color
 	fragColor = texture(screenTexture, scrPos);
@@ -172,10 +176,10 @@ void main() {
 	reflective *= reflective;
 	reflective += 0.03;
 
-	// fresnel reflection to sky
+	// fresnel reflection of the sky
 	fragColor.xyz = mix(fragColor.xyz,
 		mix(waterPC.skyColor.xyz * reflective * 0.6,
-			waterPC.fogColor.xyz, v_fogDensity), reflective * att);
+			waterPC.fogColor.xyz, v_fogDensity), reflective * 0.6 * att);
 
 	// specular reflection
 	if (dot(sunlight, vec3(1.0)) > 0.0001) {
@@ -199,7 +203,4 @@ void main() {
 #endif
 
 	fragColor.w = 1.0;
-
-	// Bias depth slightly to prevent Z-fighting with underwater blocks
-	gl_FragDepth = gl_FragCoord.z - 0.00005;
 }

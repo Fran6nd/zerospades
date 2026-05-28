@@ -46,10 +46,12 @@ vec4 ComputeFogDensity(float poweredLength) {
 void main() {
 	vec4 vertexPos = vec4(positionAttribute.xy, 0.0, 1.0);
 
+	// projectionViewModelMatrix and viewModelMatrix already include M, so
+	// apply them to object-space vertexPos (matches GL Water.vs).
 	v_worldPosition = (waterMat.modelMatrix * vertexPos).xyz;
-	v_viewPosition = (waterMat.viewModelMatrix * vec4(v_worldPosition, 1.0)).xyz;
+	v_viewPosition = (waterMat.viewModelMatrix * vertexPos).xyz;
 
-	gl_Position = waterMat.projectionViewModelMatrix * vec4(v_worldPosition, 1.0);
+	gl_Position = waterMat.projectionViewModelMatrix * vertexPos;
 	v_screenPosition = gl_Position.xyw;
 	// Vulkan texture coordinates: y=0 at top, y=1 at bottom (opposite of OpenGL)
 	v_screenPosition.x = (v_screenPosition.x + v_screenPosition.z) * 0.5;
