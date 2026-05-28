@@ -20,8 +20,10 @@
 
 #pragma once
 
+#include <atomic>
 #include <cstdint>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <vector>
 
@@ -44,6 +46,11 @@ namespace spades {
 			bool PollRefreshState();
 			std::string GetRefreshMessage();
 
+			// Live progress while a refresh is running.
+			int GetRefreshTotal();
+			int GetRefreshDone();
+			std::string GetRefreshCurrentItem();
+
 			CScriptArray* GetModNames();
 			int GetModPakCount(std::string modName);
 			int64_t GetModTotalSize(std::string modName);
@@ -61,6 +68,7 @@ namespace spades {
 
 			struct ModEntry {
 				std::string name;
+				bool isFolder = false; // true: Mods/<name>/*.pak; false: Mods/<name> (single pak)
 				std::vector<std::string> paks;
 				std::int64_t totalSize = 0;
 			};
@@ -70,6 +78,11 @@ namespace spades {
 			std::string lastMessage;
 			std::vector<ModEntry> mods;
 			bool modsCached;
+
+			std::atomic<int> progressTotal;
+			std::atomic<int> progressDone;
+			std::mutex progressMutex;
+			std::string progressItem;
 
 			void RebuildModsCache();
 			const ModEntry* FindMod(const std::string& name) const;

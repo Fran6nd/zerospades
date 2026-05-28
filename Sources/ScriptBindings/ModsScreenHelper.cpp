@@ -63,6 +63,18 @@ namespace spades {
 					  asMETHOD(gui::ModsScreenHelper, GetRefreshMessage), asCALL_THISCALL);
 					manager->CheckError(r);
 					r = eng->RegisterObjectMethod(
+					  "ModsScreenHelper", "int GetRefreshTotal()",
+					  asMETHOD(gui::ModsScreenHelper, GetRefreshTotal), asCALL_THISCALL);
+					manager->CheckError(r);
+					r = eng->RegisterObjectMethod(
+					  "ModsScreenHelper", "int GetRefreshDone()",
+					  asMETHOD(gui::ModsScreenHelper, GetRefreshDone), asCALL_THISCALL);
+					manager->CheckError(r);
+					r = eng->RegisterObjectMethod(
+					  "ModsScreenHelper", "string GetRefreshCurrentItem()",
+					  asMETHOD(gui::ModsScreenHelper, GetRefreshCurrentItem), asCALL_THISCALL);
+					manager->CheckError(r);
+					r = eng->RegisterObjectMethod(
 					  "ModsScreenHelper", "array<string>@ GetModNames()",
 					  asMETHOD(gui::ModsScreenHelper, GetModNames), asCALL_THISCALL);
 					manager->CheckError(r);

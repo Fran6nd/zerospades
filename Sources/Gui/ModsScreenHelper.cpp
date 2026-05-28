@@ -222,50 +222,46 @@ namespace spades {
 				owner = nullptr;
 			}
 
-			// Downloads every .pak entry under the given Contents-API URL into
-			// dirAbs. Folders found in the listing recurse. Returns "" on success.
-			std::string FetchInto(const std::string& url, const std::string& modName,
-			                       const std::string& dirAbs) {
-				std::string body;
-				std::string err = HttpGetText(url, body);
-				if (!err.empty())
-					return Format("List '{0}': {1}", url, err);
+			void SetCurrent(const std::string& s) {
+				std::lock_guard<std::mutex> lk(owner->progressMutex);
+				owner->progressItem = s;
+			}
 
-				Json::Reader reader;
-				Json::Value root;
-				if (!reader.parse(body, root, false))
-					return Format("Parse '{0}': invalid JSON", url);
+			// Two-pass: first walk the listing to count downloadable items, then
+			// walk again to actually download. Lets the UI show a real fraction.
+			void CountInto(const Json::Value& root, int& counter) {
 				if (!root.isArray())
-					return Format("List '{0}': expected array", url);
-
-				EnsureDir(dirAbs);
-
+					return;
 				for (const auto& entry : root) {
 					std::string type = entry.get("type", "").asString();
 					std::string name = entry.get("name", "").asString();
-					if (type == "file" && EndsWithPak(name)) {
-						std::string dl = entry.get("download_url", "").asString();
-						if (dl.empty())
-							continue;
-						std::string partial = dirAbs + "/" + name + ".partial";
-						std::string final = dirAbs + "/" + name;
-						std::string e = HttpDownloadToFile(dl, partial);
-						if (!e.empty())
-							return Format("Download '{0}': {1}", name, e);
-						std::remove(final.c_str());
-						if (std::rename(partial.c_str(), final.c_str()) != 0) {
-							std::remove(partial.c_str());
-							return Format("Rename '{0}' failed", name);
-						}
-					} else if (type == "dir") {
-						// Recurse one level: anything inside this folder is part of `modName`.
-						std::string subUrl = entry.get("url", "").asString();
-						if (subUrl.empty() || !modName.empty())
-							continue;
-						std::string e = FetchInto(subUrl, name, ModsRootAbs() + "/" + name);
-						if (!e.empty())
-							return e;
+					if (type == "file" && EndsWithPak(name))
+						++counter;
+				}
+			}
+
+			std::string FetchOneLevel(const Json::Value& root, const std::string& dirAbs) {
+				EnsureDir(dirAbs);
+				for (const auto& entry : root) {
+					std::string type = entry.get("type", "").asString();
+					std::string name = entry.get("name", "").asString();
+					if (type != "file" || !EndsWithPak(name))
+						continue;
+					std::string dl = entry.get("download_url", "").asString();
+					if (dl.empty())
+						continue;
+					SetCurrent(name);
+					std::string partial = dirAbs + "/" + name + ".partial";
+					std::string finalPath = dirAbs + "/" + name;
+					std::string e = HttpDownloadToFile(dl, partial);
+					if (!e.empty())
+						return Format("Download '{0}': {1}", name, e);
+					std::remove(finalPath.c_str());
+					if (std::rename(partial.c_str(), finalPath.c_str()) != 0) {
+						std::remove(partial.c_str());
+						return Format("Rename '{0}' failed", name);
 					}
+					++owner->progressDone;
 				}
 				return std::string{};
 			}
@@ -275,9 +271,75 @@ namespace spades {
 
 			void Run() override {
 				try {
+					owner->progressTotal.store(0);
+					owner->progressDone.store(0);
+					SetCurrent("");
 					EnsureDir(ModsRootAbs());
-					std::string err = FetchInto(cl_modsIndexUrl.CString(), "", ModsRootAbs());
-					Done(err);
+
+					// Fetch and parse the root listing.
+					std::string body;
+					std::string err = HttpGetText(cl_modsIndexUrl.CString(), body);
+					if (!err.empty()) {
+						Done(Format("List '{0}': {1}", std::string(cl_modsIndexUrl.CString()), err));
+						return;
+					}
+					Json::Reader reader;
+					Json::Value root;
+					if (!reader.parse(body, root, false) || !root.isArray()) {
+						Done("Index parse failed (expected JSON array)");
+						return;
+					}
+
+					// First, collect sub-listings (folder mods) and count
+					// everything that will be downloaded so progressTotal is
+					// correct from the start.
+					struct SubListing {
+						std::string name;
+						Json::Value items;
+					};
+					std::vector<SubListing> subs;
+					int total = 0;
+					CountInto(root, total);
+					for (const auto& entry : root) {
+						if (entry.get("type", "").asString() != "dir")
+							continue;
+						std::string url = entry.get("url", "").asString();
+						std::string name = entry.get("name", "").asString();
+						if (url.empty() || name.empty())
+							continue;
+						std::string sb;
+						std::string e = HttpGetText(url, sb);
+						if (!e.empty()) {
+							Done(Format("List '{0}': {1}", name, e));
+							return;
+						}
+						Json::Value sroot;
+						if (!reader.parse(sb, sroot, false) || !sroot.isArray())
+							continue;
+						SubListing s;
+						s.name = name;
+						s.items = sroot;
+						CountInto(sroot, total);
+						subs.push_back(std::move(s));
+					}
+					owner->progressTotal.store(total);
+
+					// Now actually download. Loose paks land at Mods/<name>;
+					// folder mods land at Mods/<folder>/<name>.
+					std::string e = FetchOneLevel(root, ModsRootAbs());
+					if (!e.empty()) {
+						Done(e);
+						return;
+					}
+					for (const auto& s : subs) {
+						std::string sub = ModsRootAbs() + "/" + s.name;
+						e = FetchOneLevel(s.items, sub);
+						if (!e.empty()) {
+							Done(e);
+							return;
+						}
+					}
+					Done(std::string{});
 				} catch (const std::exception& ex) {
 					Done(ex.what());
 				} catch (...) {
@@ -286,8 +348,16 @@ namespace spades {
 			}
 		};
 
-		ModsScreenHelper::ModsScreenHelper() : query(nullptr), modsCached(false) {
+		ModsScreenHelper::ModsScreenHelper()
+		    : query(nullptr), modsCached(false), progressTotal(0), progressDone(0) {
 			SPADES_MARK_FUNCTION();
+		}
+
+		int ModsScreenHelper::GetRefreshTotal() { return progressTotal.load(); }
+		int ModsScreenHelper::GetRefreshDone() { return progressDone.load(); }
+		std::string ModsScreenHelper::GetRefreshCurrentItem() {
+			std::lock_guard<std::mutex> lk(progressMutex);
+			return progressItem;
 		}
 
 		ModsScreenHelper::~ModsScreenHelper() {
@@ -330,21 +400,34 @@ namespace spades {
 			}
 			for (const std::string& entry : ListDir(root)) {
 				std::string abs = root + "/" + entry;
-				if (!IsDirAbs(abs))
-					continue;
-				ModEntry m;
-				m.name = entry;
-				for (const std::string& f : ListDir(abs)) {
-					if (!EndsWithPak(f))
-						continue;
-					m.paks.push_back(f);
-					std::int64_t sz = FileSizeAbs(abs + "/" + f);
+				if (IsDirAbs(abs)) {
+					// Multi-pak mod: a folder containing one or more .pak files.
+					ModEntry m;
+					m.name = entry;
+					m.isFolder = true;
+					for (const std::string& f : ListDir(abs)) {
+						if (!EndsWithPak(f))
+							continue;
+						m.paks.push_back(f);
+						std::int64_t sz = FileSizeAbs(abs + "/" + f);
+						if (sz > 0)
+							m.totalSize += sz;
+					}
+					std::sort(m.paks.begin(), m.paks.end());
+					if (!m.paks.empty())
+						mods.push_back(std::move(m));
+				} else if (EndsWithPak(entry)) {
+					// Loose pak at the root: treat as a single-pak mod named
+					// after the file (extension included for clarity).
+					ModEntry m;
+					m.name = entry;
+					m.isFolder = false;
+					m.paks.push_back(entry);
+					std::int64_t sz = FileSizeAbs(abs);
 					if (sz > 0)
-						m.totalSize += sz;
-				}
-				std::sort(m.paks.begin(), m.paks.end());
-				if (!m.paks.empty())
+						m.totalSize = sz;
 					mods.push_back(std::move(m));
+				}
 			}
 			std::sort(mods.begin(), mods.end(),
 			          [](const ModEntry& a, const ModEntry& b) { return a.name < b.name; });
@@ -391,12 +474,12 @@ namespace spades {
 			std::vector<std::string> out;
 			const ModEntry* m = FindMod(modName);
 			if (m) {
-				std::string dir = ModsRootAbs() + "/" + m->name;
 				for (const std::string& pak : m->paks) {
-					std::string abs = dir + "/" + pak;
+					std::string overlayPath = m->isFolder
+					    ? ("Mods/" + m->name + "/" + pak)
+					    : ("Mods/" + pak);
 					try {
-						auto stream = FileManager::OpenForReading(
-						  ("Mods/" + m->name + "/" + pak).c_str());
+						auto stream = FileManager::OpenForReading(overlayPath.c_str());
 						ZipFileSystem zfs(stream.release());
 						for (const std::string& f : zfs.GetAllFiles())
 							out.push_back(pak + ": " + f);
@@ -425,10 +508,10 @@ namespace spades {
 			std::string userModsAbs = UserModsRootAbs();
 			EnsureDir(userModsAbs);
 
-			std::string modDirAbs = ModsRootAbs() + "/" + m->name;
-
 			for (const std::string& pak : m->paks) {
-				std::string overlayPath = "Mods/" + m->name + "/" + pak;
+				std::string overlayPath = m->isFolder
+				    ? ("Mods/" + m->name + "/" + pak)
+				    : ("Mods/" + pak);
 				std::string targetRel = std::string(kUserModsDir) + "/" + pak;
 				std::string targetAbs = userModsAbs + "/" + pak;
 				std::string partialAbs = targetAbs + ".partial";

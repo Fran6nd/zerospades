@@ -112,6 +112,7 @@ namespace spades {
 		spades::ui::Button@ modsDownloadButton;
 		spades::ui::Button@ modsResetButton;
 		spades::ui::Label@ modsStatusLabel;
+		ModsProgressBar@ modsProgressBar;
 		bool modsDownloading = false;
 		bool modsDirty = false; // any merge/reset happened this session
 		private float modsNameColWidth;
@@ -421,6 +422,12 @@ namespace spades {
 					modsPanel.AddChild(modsStatusLabel);
 				}
 				{
+					@modsProgressBar = ModsProgressBar(Manager);
+					modsProgressBar.Bounds = AABB2(contentsLeft, footerPos - 12.0F, contentsWidth, 6.0F);
+					modsProgressBar.Visible = false;
+					modsPanel.AddChild(modsProgressBar);
+				}
+				{
 					float x = contentsLeft;
 					{
 						ModListHeader header(Manager);
@@ -544,9 +551,23 @@ namespace spades {
 
 		private void UpdateModsStatus() {
 			if (modsDownloading) {
-				modsStatusLabel.Text = _Tr("MainScreen", "Downloading…");
+				int done = modsHelper.GetRefreshDone();
+				int total = modsHelper.GetRefreshTotal();
+				string item = modsHelper.GetRefreshCurrentItem();
+				if (total <= 0) {
+					modsStatusLabel.Text = _Tr("MainScreen", "Fetching mod list…");
+					modsProgressBar.Fraction = 0.0F;
+				} else {
+					string label = "" + done + " / " + total;
+					if (item.length > 0)
+						label += "  —  " + item;
+					modsStatusLabel.Text = label;
+					modsProgressBar.Fraction = float(done) / float(total);
+				}
+				modsProgressBar.Visible = true;
 				return;
 			}
+			modsProgressBar.Visible = false;
 			string msg = modsHelper.GetRefreshMessage();
 			if (msg.length > 0) {
 				modsStatusLabel.Text = msg;
@@ -626,7 +647,9 @@ namespace spades {
 			if (modsHelper.PollRefreshState()) {
 				modsDownloading = false;
 				LoadModList();
+				return;
 			}
+			UpdateModsStatus();
 		}
 
 		void DemoListItemActivated(DemoListModel@ sender, string filename) {

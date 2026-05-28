@@ -130,4 +130,27 @@ namespace spades {
 			          Vector4(1.0F, 1.0F, 1.0F, 1.0F));
 		}
 	}
+
+	// Simple fill-bar progress indicator. Fraction is clamped to [0, 1].
+	class ModsProgressBar : spades::ui::UIElement {
+		float Fraction = 0.0F;
+
+		ModsProgressBar(spades::ui::UIManager@ manager) { super(manager); }
+
+		void Render() {
+			Renderer@ r = Manager.Renderer;
+			Vector2 pos = ScreenPosition;
+			Vector2 size = Size;
+
+			float f = Fraction;
+			if (f < 0.0F) f = 0.0F;
+			if (f > 1.0F) f = 1.0F;
+
+			r.ColorNP = Vector4(1.0F, 1.0F, 1.0F, 0.12F);
+			r.DrawImage(null, AABB2(pos.x, pos.y, size.x, size.y));
+
+			r.ColorNP = Vector4(1.0F, 1.0F, 1.0F, 0.55F);
+			r.DrawImage(null, AABB2(pos.x, pos.y, size.x * f, size.y));
+		}
+	}
 }
