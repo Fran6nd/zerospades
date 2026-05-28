@@ -616,7 +616,7 @@ namespace spades {
 		}
 
 		private void OnResetModsPressed(spades::ui::UIElement@ sender) {
-			ConfirmScreen cs(this, _Tr("MainScreen", "Reset user_mods? All merged mods will be removed and the base paks restored on next launch."));
+			ConfirmScreen cs(this, _Tr("MainScreen", "Reset user_mods? All merged mods will be removed and the base paks restored immediately."));
 			@cs.Closed = spades::ui::EventHandler(this.OnResetConfirmed);
 			cs.Run();
 		}

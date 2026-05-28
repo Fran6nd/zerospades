@@ -668,14 +668,37 @@ namespace spades {
 
 		std::string ModsScreenHelper::ResetUserMods() {
 			std::string userModsAbs = UserModsRootAbs();
-			if (!IsDirAbs(userModsAbs))
-				return std::string{};
+			EnsureDir(userModsAbs);
+
+			// Wipe every pak/zip in user_mods/.
 			for (const std::string& name : ListDir(userModsAbs)) {
 				if (!EndsWithPak(name))
 					continue;
 				std::string abs = userModsAbs + "/" + name;
 				if (std::remove(abs.c_str()) != 0)
 					return Format("Failed to remove '{0}'", name);
+			}
+
+			// Immediately re-seed the install's base paks so the next merge
+			// has targets to write into — the bootstrap in Main.cpp only
+			// runs at startup, and forcing a relaunch between Reset and a
+			// merge would defeat the point.
+			for (const std::string& name : FileManager::EnumFiles("")) {
+				if (!EndsWithPak(name))
+					continue;
+				std::string targetRel = std::string(kUserModsDir) + "/" + name;
+				std::string targetAbs = userModsAbs + "/" + name;
+				try {
+					auto in = FileManager::OpenForReading(name.c_str());
+					auto out = FileManager::OpenForWriting(targetRel.c_str());
+					std::vector<char> buf(64 * 1024);
+					std::size_t rd;
+					while ((rd = in->Read(buf.data(), buf.size())) > 0)
+						out->Write(buf.data(), rd);
+				} catch (const std::exception& ex) {
+					std::remove(targetAbs.c_str());
+					return Format("Re-seed '{0}': {1}", name, ex.what());
+				}
 			}
 			return std::string{};
 		}
