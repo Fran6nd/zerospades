@@ -46,10 +46,14 @@ namespace spades {
 				y *= scale;
 				z *= scale;
 
+				// GL packs as [z,y,x,h] in memory and uploads BGRA→RGBA8 (swap),
+				// so the texture ends up R=x, G=y, B=z, A=h. Vulkan uploads bytes
+				// verbatim into R8G8B8A8_UNORM, so we need to pre-swap to
+				// [x,y,z,h] to land in the same channels.
 				uint32_t out;
-				out = Encode8bit(z);
+				out = Encode8bit(x);
 				out |= Encode8bit(y) << 8;
-				out |= Encode8bit(x) << 16;
+				out |= Encode8bit(z) << 16;
 				out |= Encode8bit(h * -10.0F) << 24;
 				return out;
 			}
@@ -410,6 +414,11 @@ namespace spades {
 				VK_IMAGE_TILING_OPTIMAL,
 				VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
 				VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+			// VulkanImage's constructor only creates the view; sampler stays VK_NULL_HANDLE
+			// until we call CreateSampler. Skipping this binds a null sampler in the water
+			// descriptor set, and the shader reads zero from mainTexture/waveTexture.
+			textureImage->CreateSampler(VK_FILTER_LINEAR, VK_FILTER_LINEAR,
+				VK_SAMPLER_ADDRESS_MODE_REPEAT, false);
 
 			// Create wave tanks using FFT solver for realistic waves
 			size_t numLayers = ((int)r_water >= 2) ? 3 : 1;
@@ -434,6 +443,8 @@ namespace spades {
 						VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_OPTIMAL,
 						VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
 						VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+					waveImage->CreateSampler(VK_FILTER_LINEAR, VK_FILTER_LINEAR,
+						VK_SAMPLER_ADDRESS_MODE_REPEAT, true);
 				} else {
 					// Multiple layers - use 2D array texture with mipmaps
 					waveImageArray = Handle<VulkanImage>::New(device, size, size,
@@ -441,6 +452,8 @@ namespace spades {
 						VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_OPTIMAL,
 						VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
 						VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+					waveImageArray->CreateSampler(VK_FILTER_LINEAR, VK_FILTER_LINEAR,
+						VK_SAMPLER_ADDRESS_MODE_REPEAT, true);
 				}
 
 				// Pre-allocate staging buffers for wave uploads
@@ -552,6 +565,17 @@ namespace spades {
 	void VulkanWaterRenderer::SetGameMap(client::GameMap* map) {
 		SPADES_MARK_FUNCTION();
 
+		// Mark mainTexture dirty whenever we're given a (potentially new) map,
+		// but only when the destination map is non-null AND our textures exist.
+		// Demo replays decode their block data into the SAME GameMap that was
+		// already wired up here, so without re-marking we'd keep the pre-decode
+		// dirt-defaults. Conversely, doing this with map==nullptr (shutdown) or
+		// before the textures/bitmap have been allocated would leave a dirty
+		// updateBitmap that triggers GetColor on a stale pointer next frame.
+		if (map && !updateBitmap.empty()) {
+			std::fill(updateBitmap.begin(), updateBitmap.end(), 0xffffffffUL);
+		}
+
 		if (gameMap == map)
 			return;
 
@@ -572,6 +596,8 @@ namespace spades {
 				VK_IMAGE_TILING_OPTIMAL,
 				VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
 				VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+			textureImage->CreateSampler(VK_FILTER_LINEAR, VK_FILTER_LINEAR,
+				VK_SAMPLER_ADDRESS_MODE_REPEAT, false);
 
 			// Create wave tanks using FFT solver for realistic waves
 			size_t numLayers = ((int)r_water >= 2) ? 3 : 1;
@@ -606,6 +632,8 @@ namespace spades {
 						VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_OPTIMAL,
 						VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
 						VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+					waveImage->CreateSampler(VK_FILTER_LINEAR, VK_FILTER_LINEAR,
+						VK_SAMPLER_ADDRESS_MODE_REPEAT, true);
 				} else {
 					// Multiple layers - use 2D array texture with mipmaps
 					waveImageArray = Handle<VulkanImage>::New(device, size, size,
@@ -613,6 +641,8 @@ namespace spades {
 						VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_OPTIMAL,
 						VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
 						VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+					waveImageArray->CreateSampler(VK_FILTER_LINEAR, VK_FILTER_LINEAR,
+						VK_SAMPLER_ADDRESS_MODE_REPEAT, true);
 				}
 
 				// Pre-allocate staging buffers for wave uploads
@@ -649,6 +679,8 @@ namespace spades {
 				VK_IMAGE_TILING_OPTIMAL,
 				VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
 				VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+			textureImage->CreateSampler(VK_FILTER_LINEAR, VK_FILTER_LINEAR,
+				VK_SAMPLER_ADDRESS_MODE_REPEAT, false);
 
 			// Create wave tanks using FFT solver for realistic waves
 			size_t numLayers = ((int)r_water >= 2) ? 3 : 1;
@@ -673,6 +705,8 @@ namespace spades {
 						VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_OPTIMAL,
 						VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
 						VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+					waveImage->CreateSampler(VK_FILTER_LINEAR, VK_FILTER_LINEAR,
+						VK_SAMPLER_ADDRESS_MODE_REPEAT, true);
 				} else {
 					// Multiple layers - use 2D array texture with mipmaps
 					waveImageArray = Handle<VulkanImage>::New(device, size, size,
@@ -680,6 +714,8 @@ namespace spades {
 						VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_OPTIMAL,
 						VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
 						VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+					waveImageArray->CreateSampler(VK_FILTER_LINEAR, VK_FILTER_LINEAR,
+						VK_SAMPLER_ADDRESS_MODE_REPEAT, true);
 				}
 
 				// Pre-allocate staging buffers for wave uploads
@@ -781,6 +817,10 @@ namespace spades {
 
 		cfg.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
 		cfg.frontFace = VK_FRONT_FACE_CLOCKWISE; // Account for negative viewport height (Y-flip)
+		// GL disables CullFace before drawing water (GLRenderer.cpp), so render the
+		// water surface double-sided here too. Otherwise back-face culling can drop
+		// the whole plane depending on view direction / mesh winding.
+		cfg.cullMode = VK_CULL_MODE_NONE;
 		cfg.blendEnable = VK_TRUE;
 		cfg.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
 		cfg.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
@@ -789,6 +829,12 @@ namespace spades {
 
 		cfg.depthTestEnable = VK_TRUE;
 		cfg.depthWriteEnable = VK_FALSE; // transparent water
+		// GL uses DepthFunc(Less), but with our IsSolid hack mirroring GL's,
+		// the z=63 water-surface blocks land at the exact same projected depth
+		// as the water plane. LESS would strictly fail for equal depths and
+		// the water plane would never tint those blocks, leaving the bare
+		// (often dirt-default) z=63 block colors showing through. Use LEQUAL
+		// so the water plane always draws on top in that tie.
 		cfg.depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
 
 		// Create descriptor resources
@@ -830,7 +876,11 @@ namespace spades {
 			return;
 		}
 
-		// Check occlusion query result from previous frame
+		// Check occlusion query result from previous frame (informational only).
+		// GL never gates the water draw itself on occlusion (only the mirror pass
+		// at r_water>=2 uses it). Gating the draw here causes a permanent lockout:
+		// if any frame ever reports 0 samples passed, the next frame skips the draw,
+		// which means no new query is issued, so lastOcclusionResult stays 0 forever.
 		if (occlusionQueryPool != VK_NULL_HANDLE && occlusionQueryActive) {
 			uint64_t result = 0;
 			VkResult queryResult = vkGetQueryPoolResults(device->GetDevice(), occlusionQueryPool,
@@ -841,10 +891,6 @@ namespace spades {
 				occlusionQueryActive = false;
 			}
 		}
-
-		// Skip water rendering if no samples passed in previous frame
-		if (lastOcclusionResult == 0)
-			return;
 
 		// Get current frame index for proper double/triple buffering
 		uint32_t frameIndex = renderer.GetCurrentFrameIndex();
@@ -1115,7 +1161,12 @@ namespace spades {
 				targetImage->GenerateMipmaps(commandBuffer);
 			}
 
-			// Update water color texture from map
+			// Update water color texture from map. Bail out if we don't have a
+			// valid map yet — without this a dirty updateBitmap left over from
+			// SetGameMap before resources existed would deref a stale pointer.
+			if (!gameMap || !textureImage || bitmap.empty())
+				return;
+
 			bool fullUpdate = true;
 			for (size_t i = 0; i < updateBitmap.size(); i++) {
 				if (updateBitmap[i] == 0) {
@@ -1140,14 +1191,17 @@ namespace spades {
 						y++;
 					}
 
-					// Linearize color as GL does
+					// Linearize color as GL does. GL packs [B,G,R,A] in memory
+					// and uploads BGRA→RGBA8 (driver swaps). Vulkan textureImage
+					// is R8G8B8A8_UNORM with no swizzle on copy, so we pack the
+					// bytes as [R,G,B,A] directly.
 					int r = (uint8_t)(col);
 					int g = (uint8_t)(col >> 8);
 					int b = (uint8_t)(col >> 16);
 					r = (r * r + 128) >> 8;
 					g = (g * g + 128) >> 8;
 					b = (b * b + 128) >> 8;
-					uint32_t lin = b | (g << 8) | (r << 16);
+					uint32_t lin = r | (g << 8) | (b << 16);
 
 					if (*pixels != lin)
 						modified = true;
@@ -1204,7 +1258,7 @@ namespace spades {
 						r = (r * r + 128) >> 8;
 						g = (g * g + 128) >> 8;
 						b = (b * b + 128) >> 8;
-						uint32_t lin = b | (g << 8) | (r << 16);
+						uint32_t lin = r | (g << 8) | (b << 16);
 
 						if (pixels[j] != lin) modified = true;
 						pixels[j] = lin;
