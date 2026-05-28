@@ -110,6 +110,7 @@ namespace spades {
 		TabPanel@ modsPanel;
 		spades::ui::ListView@ modsList;
 		spades::ui::Button@ modsDownloadButton;
+		spades::ui::Button@ modsApplyButton;
 		spades::ui::Button@ modsResetButton;
 		spades::ui::Label@ modsStatusLabel;
 		ModsProgressBar@ modsProgressBar;
@@ -409,6 +410,14 @@ namespace spades {
 					modsPanel.AddChild(modsDownloadButton);
 				}
 				{
+					@modsApplyButton = spades::ui::Button(Manager);
+					modsApplyButton.Caption = _Tr("MainScreen", "Apply changes");
+					modsApplyButton.Bounds = AABB2(contentsLeft + 250.0F, 200.0F, 140.0F, 30.0F);
+					@modsApplyButton.Activated = spades::ui::EventHandler(this.OnApplyModsPressed);
+					modsApplyButton.Enable = false;
+					modsPanel.AddChild(modsApplyButton);
+				}
+				{
 					@modsResetButton = spades::ui::Button(Manager);
 					modsResetButton.Caption = _Tr("MainScreen", "Reset user_mods");
 					modsResetButton.Bounds = AABB2(contentsLeft + contentsWidth - 160.0F, 200.0F, 160.0F, 30.0F);
@@ -560,6 +569,8 @@ namespace spades {
 		}
 
 		private void UpdateModsStatus() {
+			if (modsApplyButton !is null)
+				modsApplyButton.Enable = modsDirty and not modsDownloading;
 			if (modsDownloading) {
 				int done = modsHelper.GetRefreshDone();
 				int total = modsHelper.GetRefreshTotal();
@@ -584,7 +595,7 @@ namespace spades {
 				return;
 			}
 			if (modsDirty) {
-				modsStatusLabel.Text = _Tr("MainScreen", "Restart required to apply changes");
+				modsStatusLabel.Text = _Tr("MainScreen", "Restart required — press Apply changes");
 				return;
 			}
 			modsStatusLabel.Text = "";
@@ -596,6 +607,12 @@ namespace spades {
 			modsDownloading = true;
 			modsHelper.StartRefresh();
 			UpdateModsStatus();
+		}
+
+		private void OnApplyModsPressed(spades::ui::UIElement@ sender) {
+			if (!modsDirty or modsDownloading)
+				return;
+			helper.RelaunchForMods();
 		}
 
 		private void OnResetModsPressed(spades::ui::UIElement@ sender) {
@@ -647,9 +664,8 @@ namespace spades {
 				al.Run();
 				return;
 			}
-			// Relaunch the program so the freshly-merged paks are picked up.
-			// The new process skips the startup window and reopens this tab.
-			helper.RelaunchForMods();
+			modsDirty = true;
+			UpdateModsStatus();
 		}
 
 		private void CheckModsRefresh() {
