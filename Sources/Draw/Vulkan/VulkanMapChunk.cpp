@@ -200,13 +200,15 @@ namespace spades {
 				return false;
 			if (z >= 64)
 				return true;
-			if ((int)r_water > 0 && z >= 63)
-				return false;
 
 			x = ((x % map->Width()) + map->Width()) % map->Width();
 			y = ((y % map->Height()) + map->Height()) % map->Height();
 
-			return map->IsSolid(x, y, z);
+			// Mirror GL's GLMapChunk hack: z=63 queries look up z=62 instead
+			// when water is on, so coastal "water-surface" voxels get rendered
+			// (their above-water neighbor counts as solid) and pure-water
+			// columns drop out.
+			return map->IsSolid(x, y, (z == 63 && (int)r_water > 0) ? 62 : z);
 		}
 
 		void VulkanMapChunk::Update() {
