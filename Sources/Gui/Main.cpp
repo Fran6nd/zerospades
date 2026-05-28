@@ -546,12 +546,43 @@ int main(int argc, char** argv) {
 		spades::FileManager::AddFileSystem(new spades::DirectoryFileSystem(RESDIR, false));
 #endif
 
-		// search current file system for .pak files
+		// Bootstrap user_mods/: the engine loads paks only from this
+		// subdirectory of userdata. On first launch (or whenever a base pak
+		// is missing from user_mods/), copy it in. Mods are merged into the
+		// copies, not the originals, so the install folder stays pristine.
+		{
+			std::vector<std::string> rootFiles = spades::FileManager::EnumFiles("");
+			for (const std::string& name : rootFiles) {
+				if (name.size() < 4)
+					continue;
+				if (name.rfind(".pak") != name.size() - 4 &&
+					name.rfind(".zip") != name.size() - 4)
+					continue;
+				std::string target = "user_mods/" + name;
+				if (spades::FileManager::FileExists(target.c_str()))
+					continue;
+				try {
+					auto in = spades::FileManager::OpenForReading(name.c_str());
+					auto out = spades::FileManager::OpenForWriting(target.c_str());
+					std::vector<char> buf(64 * 1024);
+					size_t rd;
+					while ((rd = in->Read(buf.data(), buf.size())) > 0)
+						out->Write(buf.data(), rd);
+					SPLog("user_mods: seeded %s", name.c_str());
+				} catch (const std::exception& ex) {
+					SPLog("user_mods: failed to seed %s: %s", name.c_str(), ex.what());
+				}
+			}
+		}
+
+		// Mount paks from user_mods/. The engine sees only these — never the
+		// shipped install paks directly — so merges into the user copies
+		// take effect without touching the original files.
 		{
 			std::vector<spades::IFileSystem*> fss;
 			std::vector<spades::IFileSystem*> fssImportant;
 
-			std::vector<std::string> files = spades::FileManager::EnumFiles("");
+			std::vector<std::string> files = spades::FileManager::EnumFiles("user_mods");
 
 			struct Comparator {
 				static int GetPakId(const std::string& str) {
@@ -581,23 +612,24 @@ int main(int argc, char** argv) {
 				// check extension
 				if (name.size() < 4 || (name.rfind(".pak") != name.size() - 4 &&
 										name.rfind(".zip") != name.size() - 4)) {
-					SPLog("Ignored loose file: %s", name.c_str());
+					SPLog("Ignored loose file in user_mods/: %s", name.c_str());
 					continue;
 				}
 
-				if (spades::FileManager::FileExists(name.c_str())) {
-					auto stream = spades::FileManager::OpenForReading(name.c_str());
+				std::string path = "user_mods/" + name;
+				if (spades::FileManager::FileExists(path.c_str())) {
+					auto stream = spades::FileManager::OpenForReading(path.c_str());
 					uLong crc = computeCrc32ForStream(stream.get());
 
 					stream->SetPosition(0);
 
 					spades::ZipFileSystem* fs = new spades::ZipFileSystem(stream.release());
 					if (name[0] == '_' && false) { // last resort for #198
-						SPLog("Pak registered: %s: %08lx (marked as 'important')", name.c_str(),
+						SPLog("Pak registered: %s: %08lx (marked as 'important')", path.c_str(),
 							  static_cast<unsigned long>(crc));
 						fssImportant.push_back(fs);
 					} else {
-						SPLog("Pak registered: %s: %08lx", name.c_str(),
+						SPLog("Pak registered: %s: %08lx", path.c_str(),
 							  static_cast<unsigned long>(crc));
 						fss.push_back(fs);
 					}
