@@ -259,44 +259,28 @@ namespace spades {
 		}
 
 		void Client::DrawDemoPlaybackHUD() {
-			if (!IsDemoMode() || !demoNet)
+			if (!IsDemoMode())
 				return;
 
 			float sw = renderer->ScreenWidth();
 			float sh = renderer->ScreenHeight();
 
-			float duration = demoNet->GetDuration();
-			float cur = demoNet->GetTime();
-			float progress = (duration > 0.0f) ? (cur / duration) : 0.0f;
+			const float duration = demoNet->GetDuration();
+			const float demoTime = demoNet->GetTime();
+			const float demoSpeed = demoNet->GetSpeed();
+			const float progress = (duration > 0.0F) ? (demoTime / duration) : 0.0F;
 
-			IFont& font = fontManager->GetGuiFont();
-
-			// --- progress bar geometry ---
-			// Reserve a strip below the bar so it sits above the bottom-anchored
-			// FPS/stats line (DrawStats with cg_stats == 1) instead of overlapping it.
-			// When cg_hudPlayerCount == 2 the alive-count team bar also anchors at the
-			// bottom-center, so lift the demo HUD above it as well.
-			const float barH = 4.0F;
-			const float margin = 8.0F;
-			float bottomReserve = font.Measure("X").y + 4.0F;
-			if ((int)cg_hudPlayerCount == 2)
-				bottomReserve += 48.0F; // clears the 40px team bar plus padding
-			const float barY = sh - margin - barH - bottomReserve;
-			const float barW = sw - 2.0F * margin;
-
-			// background
-			renderer->SetColorAlphaPremultiplied(MakeVector4(0, 0, 0, 0.5F));
-			renderer->DrawFilledRect(margin, barY, margin + barW, barY + barH);
-
-			// filled portion
 			bool isPaused = demoNet->IsPaused();
+
+			Vector4 white = MakeVector4(1, 1, 1, 1);
+			Vector4 shadow = MakeVector4(0, 0, 0, 0.5F);
+
 			Vector4 barColor = isPaused
 				? MakeVector4(0.7F, 0.7F, 0.7F, 1)
 				: MakeVector4(0.2F, 0.8F, 1.0F, 1);
-			renderer->SetColorAlphaPremultiplied(barColor);
-			renderer->DrawFilledRect(margin, barY, margin + barW * progress, barY + barH);
+			Vector4 barBackgroundColor = MakeVector4(0, 0, 0, 1) * 0.6F;
+			Vector4 barOutlineColor = MakeVector4(1, 1, 1, 1) * 0.1F;
 
-			// --- time labels ---
 			auto fmtTime = [](float t) -> std::string {
 				int mins = static_cast<int>(t) / 60;
 				int secs = static_cast<int>(t) % 60;
@@ -305,34 +289,79 @@ namespace spades {
 				return buf;
 			};
 
-			std::string curStr = fmtTime(cur);
-			std::string durStr = fmtTime(duration);
+			const std::string curStr = fmtTime(demoTime);
+			const std::string durStr = fmtTime(duration);
 
-			Vector4 white = MakeVector4(1, 1, 1, 1);
-			Vector4 shadow = MakeVector4(0, 0, 0, 0.5F);
+			char spdBuf[16];
+			snprintf(spdBuf, sizeof(spdBuf), (demoSpeed == 1.0F) ? "%.0fx" : "%.2gx", demoSpeed);
 
-			float textY = barY - font.Measure(curStr).y - 4.0F;
+			IFont& font = fontManager->GetGuiFont();
 
-			// current time (left)
-			font.DrawShadow(curStr, MakeVector2(margin, textY), 1.0F, white, shadow);
+			const Vector2 curSize = font.Measure(curStr);
+			const Vector2 durSize = font.Measure(durStr);
+			const Vector2 spdSize = font.Measure(spdBuf);
 
-			// duration (right)
-			Vector2 durSize = font.Measure(durStr);
-			font.DrawShadow(durStr, MakeVector2(margin + barW - durSize.x, textY), 1.0F, white, shadow);
+			const float statusIconSize = 16.0F;
+			const float edgeMargin = 8.0F;
+			const float labelGap = 8.0F;
+			const float barGap = 6.0F;
 
-			// speed indicator (center)
-			char speedBuf[16];
-			float spd = demoNet->GetSpeed();
-			if (spd == 1.0f)
-				snprintf(speedBuf, sizeof(speedBuf), "%.0fx", spd);
-			else
-				snprintf(speedBuf, sizeof(speedBuf), "%.2gx", spd);
-			std::string speedStr = isPaused
-				? std::string("|| ") + speedBuf
-				: std::string("> ") + speedBuf;
-			Vector2 speedSize = font.Measure(speedStr);
-			font.DrawShadow(speedStr, MakeVector2((sw - speedSize.x) * 0.5F, textY), 1.0F,
-				isPaused ? MakeVector4(0.8F, 0.8F, 0.8F, 1) : white, shadow);
+			const float statusX = edgeMargin;
+			const float speedFixedW = font.Measure("0.00x").x;
+			const float controlsW = statusIconSize + labelGap + speedFixedW;
+			const float timelineX = edgeMargin + controlsW + labelGap;
+			const float speedX = statusX + statusIconSize + labelGap;
+
+			const float barH = 8.0F;
+			const float barX = timelineX + curSize.x + barGap;
+			const float barY = (sh - edgeMargin) - barH;
+			const float barW = (sw - edgeMargin) - durSize.x - barGap - barX;
+			const float progressBarW = barW * progress;
+
+			const float textY = barY + (barH - curSize.y) * 0.5F;
+
+			// draw bar background
+			renderer->SetColorAlphaPremultiplied(barBackgroundColor);
+			renderer->DrawFilledRect(0, barY - edgeMargin, sw, sh);
+			renderer->SetColorAlphaPremultiplied(barOutlineColor);
+			renderer->DrawFilledRect(0, barY - edgeMargin - 1, sw, barY - edgeMargin);
+
+			// draw bar
+			renderer->SetColorAlphaPremultiplied(shadow);
+			renderer->DrawFilledRect(barX, barY, barX + barW, barY + barH);
+
+			// draw progress bar
+			renderer->SetColorAlphaPremultiplied(barColor);
+			renderer->DrawFilledRect(barX, barY, barX + progressBarW, barY + barH);
+
+			// draw bar outline
+			renderer->SetColorAlphaPremultiplied(barOutlineColor);
+			renderer->DrawOutlinedRect(barX - 1, barY - 1, barX + barW + 1, barY + barH + 1);
+
+			// draw bar playhead
+			const float lineW = 4.0F;
+			const float lineH = 1.0F;
+			const float lineX = barX + progressBarW - lineW * 0.5F;
+			renderer->SetColorAlphaPremultiplied(barColor * MakeVector4(0.7F, 0.7F, 0.7F, 1));
+			renderer->DrawFilledRect(lineX, barY - lineH, lineX + lineW, barY + barH + lineH);
+			renderer->SetColorAlphaPremultiplied(shadow);
+			renderer->DrawOutlinedRect(lineX - 1, barY - lineH - 1, lineX + lineW + 1, barY + barH + lineH + 1);
+
+			// draw status playing/paused
+			Handle<IImage> playIcon = renderer->RegisterImage("Gfx/Demo/Play.png");
+			Handle<IImage> pauseIcon = renderer->RegisterImage("Gfx/Demo/Pause.png");
+			const float iconX = statusX;
+			const float iconY = barY + (barH - statusIconSize) * 0.5F;
+			renderer->SetColorAlphaPremultiplied(white);
+			renderer->DrawImage(isPaused ? pauseIcon : playIcon, AABB2(iconX, iconY, statusIconSize, statusIconSize));
+
+			// draw playback speed
+			const float speedTextX = speedX + (speedFixedW - spdSize.x) * 0.5F;
+			font.DrawShadow(spdBuf, MakeVector2(speedTextX, textY), 1.0F, white, shadow);
+
+			// draw time labels
+			font.DrawShadow(curStr, MakeVector2(timelineX, textY), 1.0F, white, shadow);
+			font.DrawShadow(durStr, MakeVector2((sw - edgeMargin) - durSize.x, textY), 1.0F, white, shadow);
 		}
 
 		void Client::DrawRecordingIndicator() {
@@ -341,37 +370,46 @@ namespace spades {
 
 			float sw = renderer->ScreenWidth();
 
-			float recTime = net->GetDemoRecordingTime();
-			int mins = static_cast<int>(recTime) / 60;
-			int secs = static_cast<int>(recTime) % 60;
+			int recTime = static_cast<int>(net->GetDemoRecordingTime());
 			char timeBuf[16];
-			snprintf(timeBuf, sizeof(timeBuf), "%d:%02d", mins, secs);
+			snprintf(timeBuf, sizeof(timeBuf), "%d:%02d", recTime / 60, recTime % 60);
+
+			const std::string recStr = "REC";
 
 			IFont& font = fontManager->GetGuiFont();
 
-			// Blinking red dot: visible 0.6 s, hidden 0.4 s
-			bool dotVisible = fmodf(time, 1.0F) < 0.6F;
+			const Vector2 recSize = font.Measure(recStr);
+			const float timeFixedW = font.Measure("00:00").x;
 
-			std::string label = std::string(dotVisible ? "\xe2\x97\x8f " : "  ") + "REC " + timeBuf;
+			const float iconSize = 16.0F;
+			const float iconTextOffset = iconSize - 4.0F;
+			const float labelGap = 6.0F;
+			const float totalW = iconTextOffset + labelGap + recSize.x + labelGap + timeFixedW;
 
-			Vector2 size = font.Measure(label);
-
-			// Place top-right, just below the minimap, to avoid overlapping it or
-			// the centered playing-time clock. Mirror the minimap's y offset for
-			// the stats bar, then add the minimap height and a gap.
-			const float margin = 8.0F;
-			float minimapY = margin;
+			float minimapY = 8.0F;
 			const int statsMode = cg_stats;
 			if (statsMode == 2 || (statsMode >= 3 && scoreboardVisible))
 				minimapY += cg_statsSmallFont ? 10.0F : 20.0F;
 			float minimapSize = Clamp((float)cg_minimapSize, 32.0F, 256.0F);
-			// Align with the minimap top, placed to its left
-			float y = minimapY;
-			float x = sw - margin - minimapSize - margin - size.x;
+
+			const float x = (sw - 8.0F) - minimapSize - totalW;
+			const float y = minimapY;
 
 			Vector4 red = MakeVector4(1, 0.15F, 0.15F, 1);
 			Vector4 shadow = MakeVector4(0, 0, 0, 0.5F);
-			font.DrawShadow(label, MakeVector2(x, y), 1.0F, red, shadow);
+
+			Handle<IImage> recIcon = renderer->RegisterImage("Gfx/Demo/Recording.png");
+			bool dotVisible = fmodf(time, 1.0F) < 0.6F;
+			if (dotVisible) {
+				renderer->SetColorAlphaPremultiplied(red);
+				renderer->DrawImage(recIcon, AABB2(x, y, iconSize, iconSize));
+			}
+
+			float textX = x + iconTextOffset + labelGap;
+			float textY = y + (iconSize - recSize.y) * 0.5F;
+
+			font.DrawShadow(recStr, MakeVector2(textX, textY), 1.0F, red, shadow);
+			font.DrawShadow(timeBuf, MakeVector2(textX + recSize.x + labelGap, textY), 1.0F, red, shadow);
 		}
 
 		void Client::DrawPlayingTime() {

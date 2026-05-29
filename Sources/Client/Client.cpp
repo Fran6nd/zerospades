@@ -287,6 +287,7 @@ namespace spades {
 				net->Disconnect();
 				net.reset();
 			}
+
 			if (demoNet) {
 				SPLog("Closing demo playback");
 				demoNet.reset();
@@ -327,6 +328,9 @@ namespace spades {
 			renderer->RegisterImage("Gfx/Bullet/7.62mm.png");
 			renderer->RegisterImage("Gfx/Bullet/9mm.png");
 			renderer->RegisterImage("Gfx/Bullet/12gauge.png");
+			renderer->RegisterImage("Gfx/Demo/Pause.png");
+			renderer->RegisterImage("Gfx/Demo/Play.png");
+			renderer->RegisterImage("Gfx/Demo/Recording.png");
 			renderer->RegisterImage("Gfx/Hotbar/Block.png");
 			renderer->RegisterImage("Gfx/Hotbar/Grenade.png");
 			renderer->RegisterImage("Gfx/Hotbar/Spade.png");
