@@ -604,6 +604,22 @@ namespace spades {
 		private void OnDownloadModsPressed(spades::ui::UIElement@ sender) {
 			if (modsDownloading)
 				return;
+			string body = _Tr("MainScreen", "Download the official ZeroSpades mod pack?") + "\n\n";
+			body += _Tr("MainScreen", "These are mods reviewed and hosted by the ZeroSpades team.") + "\n\n";
+			body += _Tr("MainScreen", "Source") + ": " + modsHelper.GetModsIndexUrl() + "\n";
+			body += _Tr("MainScreen", "Saved to") + ": " + modsHelper.GetModsDirAbs() + "\n\n";
+			body += _Tr("MainScreen", "Existing files in that folder will be overwritten with the latest versions.");
+			ConfirmScreen cs(this, body, Min(500.0F, Manager.ScreenHeight - 100.0F));
+			@cs.Closed = spades::ui::EventHandler(this.OnDownloadConfirmed);
+			cs.Run();
+		}
+
+		private void OnDownloadConfirmed(spades::ui::UIElement@ sender) {
+			ConfirmScreen@ cs = cast<ConfirmScreen>(sender);
+			if (cs is null or !cs.Result)
+				return;
+			if (modsDownloading)
+				return;
 			modsDownloading = true;
 			modsHelper.StartRefresh();
 			UpdateModsStatus();
