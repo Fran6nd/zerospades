@@ -404,25 +404,25 @@ namespace spades {
 				// --- Mods panel contents ---
 				{
 					@modsDownloadButton = spades::ui::Button(Manager);
-					modsDownloadButton.Caption = _Tr("MainScreen", "Download official mods");
+					modsDownloadButton.Caption = _Tr("MainScreen", "Download official mods…");
 					modsDownloadButton.Bounds = AABB2(contentsLeft, 200.0F, 240.0F, 30.0F);
 					@modsDownloadButton.Activated = spades::ui::EventHandler(this.OnDownloadModsPressed);
 					modsPanel.AddChild(modsDownloadButton);
 				}
 				{
+					@modsResetButton = spades::ui::Button(Manager);
+					modsResetButton.Caption = _Tr("MainScreen", "Reset");
+					modsResetButton.Bounds = AABB2(contentsLeft + contentsWidth - 210.0F, 200.0F, 100.0F, 30.0F);
+					@modsResetButton.Activated = spades::ui::EventHandler(this.OnResetModsPressed);
+					modsPanel.AddChild(modsResetButton);
+				}
+				{
 					@modsApplyButton = spades::ui::Button(Manager);
-					modsApplyButton.Caption = _Tr("MainScreen", "Apply changes");
-					modsApplyButton.Bounds = AABB2(contentsLeft + 250.0F, 200.0F, 140.0F, 30.0F);
+					modsApplyButton.Caption = _Tr("MainScreen", "Apply");
+					modsApplyButton.Bounds = AABB2(contentsLeft + contentsWidth - 100.0F, 200.0F, 100.0F, 30.0F);
 					@modsApplyButton.Activated = spades::ui::EventHandler(this.OnApplyModsPressed);
 					modsApplyButton.Enable = false;
 					modsPanel.AddChild(modsApplyButton);
-				}
-				{
-					@modsResetButton = spades::ui::Button(Manager);
-					modsResetButton.Caption = _Tr("MainScreen", "Reset user_mods");
-					modsResetButton.Bounds = AABB2(contentsLeft + contentsWidth - 160.0F, 200.0F, 160.0F, 30.0F);
-					@modsResetButton.Activated = spades::ui::EventHandler(this.OnResetModsPressed);
-					modsPanel.AddChild(modsResetButton);
 				}
 				{
 					@modsStatusLabel = spades::ui::Label(Manager);
