@@ -108,6 +108,7 @@ DEFINE_SPADES_SETTING(cg_keyDemoSeekBackward, "Left");
 DEFINE_SPADES_SETTING(cg_keyDemoRecord, "F9");
 DEFINE_SPADES_SETTING(cg_keyDemoSpeedUp, ".");
 DEFINE_SPADES_SETTING(cg_keyDemoSlowDown, ",");
+DEFINE_SPADES_SETTING(cg_keyDemoToggleHud, "b");
 SPADES_SETTING(cg_demoMaxFiles);
 SPADES_SETTING(cg_demoAutoPrune);
 
@@ -653,6 +654,12 @@ namespace spades {
 						scriptedUI->SetIgnored(name);
 					} else if (CheckKey(cg_keyZoomChatLog, name)) {
 						chatWindow->SetExpanded(down);
+					} else if (CheckKey(cg_keyDemoToggleHud, name) && down) {
+						demoHudVisible = !demoHudVisible;
+
+						Handle<IAudioChunk> c =
+						  audioDevice->RegisterSound("Sounds/Player/Flashlight.opus");
+						audioDevice->PlayLocal(c.GetPointerOrNull(), AudioParam());
 					}
 					return;
 				} // end of demo input
