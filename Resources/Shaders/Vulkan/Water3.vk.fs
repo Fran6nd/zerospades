@@ -20,6 +20,42 @@
 
  */
 
+// =============================================================================
+// Level 3 water (r_water 3). Diff vs. level 2 (Water2.vk.fs):
+//
+//   • Refraction is screen-space ray-marched. From the water vertex, compute
+//     a refracted view direction (Snell's law, IOR 1.5) and march along it in
+//     screen space against the scene's depth texture in 16 steps with a per-
+//     fragment dither. The hit produces refractTargetSS — the screen coord
+//     where the refracted ray actually exits the water — instead of just
+//     sampling at origScrPos like level 1/2.
+//
+//   • envelope is distance-based: how far the refracted ray travelled before
+//     hitting something, not the simple depth+viewZ. Underwater detail dims
+//     with travel distance rather than scene depth alone.
+//
+//   • Reflection also gets a ray-march. First pass samples the mirror image
+//     (mirrorTexture / mirrorDepthTexture); if planeDistance > 0 says the
+//     mirror sample is actually a valid above-water hit, use it. Otherwise
+//     fall back to an SSR ray-march on the regular scene to find what the
+//     reflected ray would have seen. This gives reflections of things outside
+//     the mirror render's frustum (e.g. nearby geometry behind the camera).
+//
+//   • reflectedSky tracks whether the chosen reflection sample landed at the
+//     far plane (depth > 0.99999). The specular sun term only fires when the
+//     reflection is sky — looking at an actual reflected wall, you shouldn't
+//     also get a sun glint through it.
+//
+//   • Wave parameters retuned for the bigger surface: half-frequency wave
+//     coords (0.04 vs 0.08, 0.08704 vs 0.15704, 0.00844 vs 0.02344) with
+//     correspondingly larger amplitudes, and wave.z = (1/256)/4 → smaller-Z,
+//     more horizontal bend → sharper distortion on the refracted ray.
+//
+// Everything else (mirror-reflection tap with wave-displaced scrPos, Fresnel
+// LOD rolloff, GGX specular shape, envelope guard at sky pixels, sqrt for
+// sRGB) is structurally the same as level 2.
+// =============================================================================
+
 // Vulkan uses SRGB framebuffer
 #define LINEAR_FRAMEBUFFER 1
 

@@ -20,6 +20,33 @@
 
  */
 
+// =============================================================================
+// Level 2 water (r_water 2). Diff vs. level 1 (Water.vk.fs):
+//
+//   • Wave normal comes from a sampler2DArray (3 layers) instead of a single
+//     2D texture — each octave reads its own layer with its own amplitude/
+//     frequency. The constants are also smaller (wave.xy *= 0.08*0.4 etc.),
+//     and wave.z = (1/128)/4 → a more pronounced surface bend.
+//
+//   • Real mirror reflection: samples a mirrorTexture (the scene rendered
+//     from the reflected camera) at a wave-displaced screen position scrPos2.
+//     scrPos2 uses |disp.y| forced negative so the reflection is "pulled
+//     down" along the wave — the classic stretched water-reflection look.
+//     The mirror sample uses textureLod with a distance-based lodBias so
+//     far-water reflections are softer than near-water ones.
+//
+//   • Reflection mix uses a Fresnel-ish curve (reflective^4 then attenuated
+//     toward orig_reflective*0.6 at grazing horizon LOD) instead of the
+//     fixed 0.6 of level 1.
+//
+//   • Specular swap: GGX distribution with Kelemen geometric shadowing and
+//     reflective-modulated Fresnel, capped at 50 to avoid eyeball-melting
+//     spikes. Much more physically motivated than level 1's pow ramp.
+//
+// Everything else (refraction lookup at origScrPos, envelope guard at sky
+// pixels, waterColor integral, fog, sqrt for sRGB) is identical to level 1.
+// =============================================================================
+
 // Vulkan uses SRGB framebuffer
 #define LINEAR_FRAMEBUFFER 1
 

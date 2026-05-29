@@ -20,6 +20,32 @@
 
  */
 
+// =============================================================================
+// Level 1 water (r_water 1). The "low" shader: cheap, no real reflection.
+//
+// Per-fragment:
+//   1. Sample a single 2D wave texture three times at different scales (broad,
+//      detail, rough) and blend into a tiny normal-vector wobble. wave.z is
+//      fixed at 1/128, then normalize → the surface normal is essentially
+//      pointing up with a small per-pixel wave bend.
+//   2. Get the screen-space coord of this water vertex (origScrPos) and read
+//      the pre-water depth there. envelope = how opaque the water layer is
+//      vs. what's behind it (refraction). At sky-background pixels we force
+//      envelope to 1 so the screenTexture lookup (which is a LINEAR sample
+//      that can drag wall/sky colours across sharp edges) can't bleed.
+//   3. waterColor: sample a per-cube blue gradient (mainTexture) with a
+//      blur-direction integral; modulate by sunlight + ambient. Apply fog.
+//   4. Mix refraction (screenTexture at origScrPos) with waterColor by
+//      envelope.
+//   5. Reflection at this level is *flat*: just skyColor * reflective * 0.6,
+//      mixed in by reflective * 0.6 * att. No mirror texture, no real scene
+//      reflection.
+//   6. Specular: simple power-of-2 ramp on dot(reflectDir, sunDir) ^1024,
+//      multiplied by 1000 → a tiny sharp sun glint when the angle lines up.
+//   7. (sRGB sqrt at the end if the framebuffer is linear UNORM, otherwise
+//      no-op because LINEAR_FRAMEBUFFER=1 here.)
+// =============================================================================
+
 // Vulkan uses SRGB framebuffer
 #define LINEAR_FRAMEBUFFER 1
 
