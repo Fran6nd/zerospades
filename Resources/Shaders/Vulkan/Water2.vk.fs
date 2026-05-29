@@ -110,18 +110,27 @@ void main() {
 
 	float scale = 1.0 / v_viewPosition.z;
 	vec2 disp = wave.xy * 0.1;
-	scrPos += disp * scale * waterPC.displaceScale * 4.0;
+	// At level 2, *don't* wave-displace scrPos for the refraction lookup —
+	// the wave wobble crosses sharp scene edges (wall/sky boundaries) and
+	// bleeds the wrong surface color into the water. The wave normal still
+	// drives the sky-tint and the mirror-reflection samples below, so the
+	// surface stays animated; only the underwater refraction lookup is
+	// stabilised.
+	// scrPos += disp * scale * waterPC.displaceScale * 4.0;
 
-	// Depth sampling: always at the UNDISPLACED scrPos. GL has a wave-perturbed
-	// if/else branch on planeDistance that switches between depthAt() and a
-	// plane-intersection depth — but the branch boundary is wave-modulated and
-	// MoltenVK's depth precision makes that boundary visible as a wavy line.
-	// Using the undisplaced sample for depth removes the discontinuity entirely
-	// while keeping the wave displacement on scrPos itself (for refraction).
 	float depth = depthAt(origScrPos);
 
 	float envelope = clamp((depth + v_viewPosition.z), 0.0, 1.0);
 	envelope = 1.0 - (1.0 - envelope) * (1.0 - envelope);
+
+	// Vulkan-specific guard: at sky-background pixels (raw depth at the far
+	// plane), force envelope to 1.0 so the screenTexture sample can't bleed
+	// the cyan sky color through into the water. Tested at origScrPos so
+	// there's no wave modulation in the test result.
+	float rawDepth = texture(depthTexture, origScrPos).x;
+	if (rawDepth >= 0.9999) {
+		envelope = 1.0;
+	}
 
 	vec3 sunlight = EvaluateSunLight();
 
