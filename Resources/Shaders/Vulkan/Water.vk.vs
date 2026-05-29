@@ -25,6 +25,8 @@ layout(std140, binding = 5) uniform WaterMatricesUBO {
 	mat4 modelMatrix;
 	mat4 viewModelMatrix;
 	mat4 viewMatrix; // For Water3 SSR
+	mat4 projectionViewMatrix; // Used by Water2/3 only; declared here so the
+	                           // shared UBO layout stays in sync.
 	vec4 viewOriginVector; // use .xyz
 	float fogDistance;
 	vec3 _pad0;

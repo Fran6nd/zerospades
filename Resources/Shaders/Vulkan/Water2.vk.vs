@@ -25,6 +25,9 @@ layout(std140, binding = 5) uniform WaterMatricesUBO {
 	mat4 modelMatrix;
 	mat4 viewModelMatrix;
 	mat4 viewMatrix; // For Water3 SSR
+	// PV (without model). v_worldPosition is already world-space here, so
+	// applying projectionViewModelMatrix would re-apply the model matrix.
+	mat4 projectionViewMatrix;
 	vec4 viewOriginVector; // use .xyz
 	float fogDistance;
 	vec3 _pad0;
@@ -76,9 +79,9 @@ void main() {
 	v_worldPosition = (waterMat.modelMatrix * vertexPos).xyz;
 	v_worldPositionOriginal = v_worldPosition.xy;
 	v_worldPosition += DisplaceWater(v_worldPositionOriginal);
-	v_viewPosition = (waterMat.viewModelMatrix * vec4(v_worldPosition, 1.0)).xyz;
+	v_viewPosition = (waterMat.viewMatrix * vec4(v_worldPosition, 1.0)).xyz;
 
-	gl_Position = waterMat.projectionViewModelMatrix * vec4(v_worldPosition, 1.0);
+	gl_Position = waterMat.projectionViewMatrix * vec4(v_worldPosition, 1.0);
 	v_screenPosition = gl_Position.xyw;
 	// Vulkan texture coordinates: y=0 at top, y=1 at bottom (opposite of OpenGL)
 	v_screenPosition.x = (v_screenPosition.x + v_screenPosition.z) * 0.5;

@@ -1327,8 +1327,10 @@ namespace spades {
 		uint32_t frameCount = 3;
 		waterMatricesUBOs.resize(frameCount);
 
-		// WaterMatricesUBO size: 4*4*16 + 4*4 + 4 + 3*4 = 276 bytes -> pad to 288
-		size_t waterMatricesUBOSize = 288;
+		// 5 mat4 + vec4 + float + 3*float pad = 5*64 + 16 + 4 + 12 = 352 bytes.
+		// std140 lays out the trailing vec3 _pad0 with 16-byte alignment, so
+		// round up to 368 to satisfy validation of the shader-side size.
+		size_t waterMatricesUBOSize = 368;
 
 		for (uint32_t i = 0; i < frameCount; i++) {
 			waterMatricesUBOs[i] = Handle<VulkanBuffer>::New(device, waterMatricesUBOSize,
@@ -1448,24 +1450,32 @@ void VulkanWaterRenderer::UpdateUniformBuffers(uint32_t frameIndex) {
 		Matrix4 viewMatrix = renderer.GetViewMatrix();
 		Matrix4 projectionViewMatrix = renderer.GetProjectionViewMatrix();
 
-		// Update WaterMatricesUBO (binding 5)
+		// Update WaterMatricesUBO (binding 5). Keep all mat4 fields contiguous
+		// at the top — std140 pads a trailing vec3 to 16 bytes while C++
+		// doesn't, so inserting a mat4 after `_pad0` would silently shift
+		// its offset between the two sides and the shader would sample
+		// garbage in place of the matrix.
 		struct WaterMatricesUBO {
 			Matrix4 projectionViewModelMatrix;
 			Matrix4 modelMatrix;
 			Matrix4 viewModelMatrix;
 			Matrix4 viewMatrix; // Added for Water3 SSR
+			// PV (no model). Water2/3 use this with the displaced world-space
+			// position so the model matrix isn't applied a second time.
+			Matrix4 projectionViewMatrix;
 			Vector4 viewOriginVector;
 			float fogDistance;
 			float _pad0[3];
 		} waterMatricesData;
 
-		// Shaders transform vertices to world space via modelMatrix, then use these
-		// matrices on the world-space position. So we pass PV and V (not PV*M, V*M)
-		// to avoid double-applying the model matrix.
+		// Water.vk.vs multiplies projectionViewModelMatrix by the local-space
+		// vertex, so we keep that as PV*M. Water2/3 transform the vertex to
+		// world space themselves and use projectionViewMatrix/viewMatrix.
 		waterMatricesData.projectionViewModelMatrix = projectionViewMatrix * modelMatrix;
 		waterMatricesData.modelMatrix = modelMatrix;
 		waterMatricesData.viewModelMatrix = viewMatrix * modelMatrix;
 		waterMatricesData.viewMatrix = viewMatrix;
+		waterMatricesData.projectionViewMatrix = projectionViewMatrix;
 		waterMatricesData.viewOriginVector = MakeVector4(sceneDef.viewOrigin.x, sceneDef.viewOrigin.y, sceneDef.viewOrigin.z, 0.0f);
 		waterMatricesData.fogDistance = fogDist;
 

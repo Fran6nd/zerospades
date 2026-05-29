@@ -55,6 +55,7 @@ layout(std140, binding = 5) uniform WaterMatricesUBO {
 	mat4 modelMatrix;
 	mat4 viewModelMatrix;
 	mat4 viewMatrix;
+	mat4 projectionViewMatrix;
 	vec4 viewOriginVector;
 	float fogDistance;
 	vec3 _pad2;
