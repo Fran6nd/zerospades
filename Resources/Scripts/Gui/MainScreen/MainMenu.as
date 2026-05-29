@@ -412,7 +412,7 @@ namespace spades {
 				{
 					@modsResetButton = spades::ui::Button(Manager);
 					modsResetButton.Caption = _Tr("MainScreen", "Reset");
-					modsResetButton.Bounds = AABB2(contentsLeft + contentsWidth - 210.0F, 200.0F, 100.0F, 30.0F);
+					modsResetButton.Bounds = AABB2(contentsLeft + contentsWidth - 200.0F, 200.0F, 100.0F, 30.0F);
 					@modsResetButton.Activated = spades::ui::EventHandler(this.OnResetModsPressed);
 					modsPanel.AddChild(modsResetButton);
 				}
