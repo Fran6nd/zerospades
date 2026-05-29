@@ -102,7 +102,7 @@ DEFINE_SPADES_SETTING(cg_keyAutoFocus, "MiddleMouseButton");
 DEFINE_SPADES_SETTING(cg_keyToggleSpectatorNames, "z");
 DEFINE_SPADES_SETTING(cg_keySpectatorZoom, "e");
 DEFINE_SPADES_SETTING(cg_keyStaffSpectating, "f5");
-DEFINE_SPADES_SETTING(cg_keyDemoPlayPause, "P");
+DEFINE_SPADES_SETTING(cg_keyDemoPlayPause, "p");
 DEFINE_SPADES_SETTING(cg_keyDemoSeekForward, "Right");
 DEFINE_SPADES_SETTING(cg_keyDemoSeekBackward, "Left");
 DEFINE_SPADES_SETTING(cg_keyDemoRecord, "F9");
@@ -381,6 +381,8 @@ namespace spades {
 					}
 				}
 			} else if (world) {
+				stmp::optional<Player&> maybePlayer = world->GetLocalPlayer();
+
 				// volume control
 				if ((CheckKey(cg_keyVolumeDown, name) || CheckKey(cg_keyVolumeUp, name)) && down) {
 					int volume = s_volume;
@@ -395,7 +397,7 @@ namespace spades {
 				}
 
 				if (IsLimboViewActive()) {
-					if ((CheckKey(cg_keyLimbo, name) && down) && HasLocalPlayer()) {
+					if ((CheckKey(cg_keyLimbo, name) && down) && maybePlayer) {
 						inGameLimbo = false;
 						return;
 					}
@@ -406,44 +408,33 @@ namespace spades {
 
 				auto cameraMode = GetCameraMode();
 
-				stmp::optional<Player&> maybePlayer = world->GetLocalPlayer();
-
 				// In demo mode, we're always spectating without a local player
-				if (IsDemoMode()) {
+				bool demoMode = IsDemoMode();
+				if (demoMode) {
 					// Allow screenshot / mapshot keys during playback — they don't
 					// require a local player and are commonly used to capture demos.
 					if (CheckKey(cg_keySceneshot, name) && down) {
 						TakeScreenShot(true);
 						return;
-					}
-					if (CheckKey(cg_keyScreenshot, name) && down) {
+					} else if (CheckKey(cg_keyScreenshot, name) && down) {
 						TakeScreenShot(false);
 						return;
-					}
-					if (CheckKey(cg_keySaveMap, name) && down) {
+					} else if (CheckKey(cg_keySaveMap, name) && down) {
 						TakeMapShot();
 						return;
-					}
-
-					// Toggle ESP boxes (same surface as the staff-spectate toggle in live).
-					if (CheckKey(cg_keyStaffSpectating, name) && down) {
+					} else if (CheckKey(cg_keyStaffSpectating, name) && down) {
 						staffSpectating = !staffSpectating;
 						Handle<IAudioChunk> c =
 						  audioDevice->RegisterSound("Sounds/Player/Flashlight.opus");
 						audioDevice->PlayLocal(c.GetPointerOrNull(), AudioParam());
 						return;
-					}
-
-					// Handle demo playback controls (play/pause)
-					if (CheckKey(cg_keyDemoPlayPause, name) && down) {
-						if (demoNet) {
-							if (demoNet->IsFinished()) {
-								// Demo finished - reload from file to reset world state
-								ReloadDemo();
-							} else {
-								// Toggle pause
-								demoNet->TogglePause();
-							}
+					} else if (CheckKey(cg_keyDemoPlayPause, name) && down) {
+						if (demoNet->IsFinished()) {
+							// Demo finished - reload from file to reset world state
+							ReloadDemo();
+						} else {
+							// Toggle pause
+							demoNet->TogglePause();
 						}
 						return;
 					}
@@ -456,64 +447,56 @@ namespace spades {
 					// which resets and replays the world — fires once on key release so the
 					// expensive operation happens at most once per key press.
 					if (CheckKey(cg_keyDemoSeekForward, name)) {
-						if (demoNet) {
-							if (down) {
-								float duration = demoNet->GetDuration();
-								float target = std::min(duration, demoNet->GetTime() + 5.0f);
-								if (target > demoNet->GetTime()) {
-									demoSeekForwardHeld = true;
-									demoSeekRepeatTimer = 0.0f;
-									demoSeekPendingTime = target;
-									demoNet->SeekPreview(demoSeekPendingTime);
-								}
-							} else {
-								demoSeekForwardHeld = false;
-								demoNet->Seek(demoSeekPendingTime);
+						if (down) {
+							float demoTime = demoNet->GetTime();
+							float duration = demoNet->GetDuration();
+							float target = std::min(duration, demoTime + 5.0F);
+							if (target > demoTime) {
+								demoSeekForwardHeld = true;
+								demoSeekRepeatTimer = 0.0F;
+								demoSeekPendingTime = target;
+								demoNet->SeekPreview(demoSeekPendingTime);
 							}
+						} else {
+							demoSeekForwardHeld = false;
+							demoNet->Seek(demoSeekPendingTime);
 						}
 						return;
-					}
-					if (CheckKey(cg_keyDemoSeekBackward, name)) {
-						if (demoNet) {
-							if (down) {
-								float target = std::max(0.0f, demoNet->GetTime() - 5.0f);
-								if (target < demoNet->GetTime()) {
-									demoSeekBackwardHeld = true;
-									demoSeekRepeatTimer = 0.0f;
-									demoSeekPendingTime = target;
-									demoNet->SeekPreview(demoSeekPendingTime);
-								}
-							} else {
-								demoSeekBackwardHeld = false;
-								demoNet->Seek(demoSeekPendingTime);
+					} else if (CheckKey(cg_keyDemoSeekBackward, name)) {
+						if (down) {
+							float demoTime = demoNet->GetTime();
+							float target = std::max(0.0F, demoTime - 5.0F);
+							if (target < demoTime) {
+								demoSeekBackwardHeld = true;
+								demoSeekRepeatTimer = 0.0F;
+								demoSeekPendingTime = target;
+								demoNet->SeekPreview(demoSeekPendingTime);
 							}
+						} else {
+							demoSeekBackwardHeld = false;
+							demoNet->Seek(demoSeekPendingTime);
 						}
 						return;
 					}
 
 					// Speed control: step through preset multipliers
-					static const float speedSteps[] = {0.25f, 0.5f, 1.0f, 2.0f, 4.0f};
+					static const float speedSteps[] = {0.25F, 0.5F, 1.0F, 2.0F, 4.0F};
 					static const int numSpeedSteps = 5;
 					if (CheckKey(cg_keyDemoSpeedUp, name) && down) {
-						if (demoNet) {
-							float cur = demoNet->GetSpeed();
-							for (int i = 0; i < numSpeedSteps - 1; i++) {
-								if (cur < speedSteps[i] * 1.1f) {
-									demoNet->SetSpeed(speedSteps[i + 1]);
-									break;
-								}
+						float cur = demoNet->GetSpeed();
+						for (int i = 0; i < numSpeedSteps - 1; i++) {
+							if (cur < speedSteps[i] * 1.1F) {
+								demoNet->SetSpeed(speedSteps[i + 1]);
+								break;
 							}
 						}
 						return;
-					}
-					if (CheckKey(cg_keyDemoSlowDown, name) && down) {
-						if (demoNet) {
-							float cur = demoNet->GetSpeed();
-							for (int i = numSpeedSteps - 1; i > 0; i--) {
-								if (cur > speedSteps[i] * 0.9f) {
-									demoNet->SetSpeed(speedSteps[i - 1]);
-									break;
-								}
+					} else if (CheckKey(cg_keyDemoSlowDown, name) && down) {
+						float cur = demoNet->GetSpeed();
+						for (int i = numSpeedSteps - 1; i > 0; i--) {
+							if (cur > speedSteps[i] * 0.9F) {
+								demoNet->SetSpeed(speedSteps[i - 1]);
+								break;
 							}
 						}
 						return;
@@ -529,8 +512,7 @@ namespace spades {
 									spectatorZoomState = 0.0F;
 								}
 								// Start following the recorded player
-								if (demoNet)
-									followedPlayerId = demoNet->GetRecordedLocalPlayerId();
+								followedPlayerId = demoNet->GetRecordedLocalPlayerId();
 								FollowNextPlayer(false);
 							}
 							return;
@@ -542,8 +524,7 @@ namespace spades {
 									spectatorZoomState = 0.0F;
 								}
 								// Start following the recorded player
-								if (demoNet)
-									followedPlayerId = demoNet->GetRecordedLocalPlayerId();
+								followedPlayerId = demoNet->GetRecordedLocalPlayerId();
 								FollowNextPlayer(true);
 							}
 							return;
@@ -651,11 +632,30 @@ namespace spades {
 						}
 					} else if (CheckKey(cg_keyScoreboard, name)) {
 						scoreboardVisible = down;
+					} else if (CheckKey(cg_keyToggleHud, name) && down) {
+						if (cg_hideHud) {
+							cg_hideHud = 0;
+							hudVisible = true;
+						} else {
+							hudVisible = !hudVisible;
+						}
+
+						if (!hudVisible) {
+							ShowAlert(_Tr("Client", "Press [{0}] to enable HUD",
+								_Tr("Client", ToUpperCase(name))), AlertType::Notice);
+						}
+
+						Handle<IAudioChunk> c =
+						  audioDevice->RegisterSound("Sounds/Player/Flashlight.opus");
+						audioDevice->PlayLocal(c.GetPointerOrNull(), AudioParam());
+					} else if (CheckKey(cg_keyChatLog, name) && down) {
+						scriptedUI->EnterChatLogWindow();
+						scriptedUI->SetIgnored(name);
 					} else if (CheckKey(cg_keyZoomChatLog, name)) {
 						chatWindow->SetExpanded(down);
 					}
 					return;
-				}
+				} // end of demo input
 
 				if (!maybePlayer)
 					return;
@@ -774,8 +774,8 @@ namespace spades {
 					}
 				}
 
-				// demo record toggle â accessible for both players and spectators
-				if (CheckKey(cg_keyDemoRecord, name) && down && !IsDemoMode()) {
+				// demo record toggle accessible for both players and spectators
+				if (CheckKey(cg_keyDemoRecord, name) && down && !demoMode) {
 					if (net->IsDemoRecording()) {
 						net->StopDemoRecording();
 						ShowAlert(_Tr("Client", "Recording stopped"), AlertType::Notice);
@@ -789,8 +789,7 @@ namespace spades {
 							SPLog("Demo recording started: %s", net->GetDemoFilename().c_str());
 							ShowAlert(_Tr("Client", "Recording demo"), AlertType::Notice);
 						} else {
-							ShowAlert(_Tr("Client", "Failed to start demo recording"),
-							          AlertType::Error);
+							ShowAlert(_Tr("Client", "Failed to start demo recording"), AlertType::Error);
 						}
 					}
 					return;
