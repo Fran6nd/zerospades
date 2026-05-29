@@ -106,18 +106,38 @@ void main() {
 
 	float scale = 1.0 / v_viewPosition.z;
 	vec2 disp = wave.xy * 0.1;
-	scrPos += disp * scale * waterPC.displaceScale * 4.0;
+	// At level 1, *don't* wave-displace scrPos for the refraction lookup.
+	// The wave displacement is what crosses sharp scene edges (wall/sky
+	// boundaries) and bleeds the wrong surface color into the water. The
+	// wave normal still drives the sky-reflection term below so the
+	// surface stays animated — we just sample refraction at the
+	// undisplaced screen position to avoid edge-crossing leaks.
+	// scrPos += disp * scale * waterPC.displaceScale * 4.0;
 
-	// Depth sampling: always at the UNDISPLACED scrPos. GL has a wave-perturbed
-	// if/else branch on planeDistance that switches between depthAt() and a
-	// plane-intersection depth — but the branch boundary is wave-modulated and
-	// MoltenVK's depth precision makes that boundary visible as a wavy line.
-	// Using the undisplaced sample for depth removes the discontinuity entirely
-	// while keeping the wave displacement on scrPos itself (for refraction).
+	// GL has an if/else `planeDistance < 0` branch here whose boundary is
+	// wave-modulated and shows as a wavy line on MoltenVK; any equivalent
+	// per-pixel test against the wave-displaced scrPos suffers the same
+	// fate. Pragmatic Vulkan path: sample depth at the undisplaced position
+	// (stable, no wave modulation) and rely on a floored envelope below so
+	// underwater pixels at sharp depth edges (wall meeting sky) can never
+	// bleed through more than a clamped fraction. Underwater detail is
+	// proportionally muted, but the result is clean.
 	float depth = depthAt(origScrPos);
 
 	float envelope = clamp((depth + v_viewPosition.z), 0.0, 1.0);
 	envelope = 1.0 - (1.0 - envelope) * (1.0 - envelope);
+
+	// Vulkan-specific guard: at sky-background pixels (raw depth at the far
+	// plane), force envelope to 1.0 so the screenTexture sample (which is
+	// LINEAR-filtered and can blend wall/sky colors across the wall edge,
+	// and whose decoded `depth + v_viewPosition.z` falls below 1 when the
+	// water vertex is farther than the closest opaque sample) can't bleed
+	// the cyan sky color through into the water. Tests at origScrPos —
+	// no wave modulation, no wavy-line precision artifact.
+	float rawDepth = texture(depthTexture, origScrPos).x;
+	if (rawDepth >= 0.9999) {
+		envelope = 1.0;
+	}
 
 	// water color
 	// TODO: correct integral
