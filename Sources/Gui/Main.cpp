@@ -325,7 +325,16 @@ namespace spades {
 		Settings::GetInstance()->Flush();
 
 #ifdef _WIN32
-		std::wstring exe = Utf8ToWString(g_executablePath.c_str());
+		std::wstring exe;
+		{
+			auto* ws = (wchar_t*)SDL_iconv_string(
+			  "UCS-2-INTERNAL", "UTF-8", g_executablePath.c_str(),
+			  g_executablePath.size() + 1);
+			if (ws) {
+				exe.assign(ws);
+				SDL_free(ws);
+			}
+		}
 		std::wstring cmd = L"\"" + exe + L"\" --open-mods";
 		STARTUPINFOW si{};
 		si.cb = sizeof(si);
