@@ -180,6 +180,14 @@ void main() {
 	float envelope = min(distance(v_viewPosition * vec3(-1.0, 1.0, 1.0), sampledViewCoord) * 0.8, 1.0);
 	envelope = 1.0 - (1.0 - envelope) * (1.0 - envelope);
 
+	// Vulkan-specific guard: at sky-background pixels (raw depth at the far
+	// plane), force envelope to 1.0 so the screenTexture sample can't bleed
+	// the cyan sky color through. Same approach as Water/Water2.vk.fs.
+	float rawDepth = texture(depthTexture, origScrPos).x;
+	if (rawDepth >= 0.9999) {
+		envelope = 1.0;
+	}
+
 	vec3 sunlight = EvaluateSunLight();
 
 	// Blend the water color
