@@ -124,7 +124,6 @@ void main() {
 	wave.xyz = normalize(wave.xyz);
 
 	vec2 origScrPos = v_screenPosition.xy / v_screenPosition.z;
-	vec2 scrPos = origScrPos;
 
 	/* ------- Refraction -------- */
 
@@ -142,9 +141,11 @@ void main() {
 		encodeDepth(refractTargetVS.z, waterPC.zNearFar.x, waterPC.zNearFar.y)
 	);
 
+	// disp and scale used below for the reflection-tap displacement (scrPos2
+	// in the reflection block); the SSR refraction loop drives refractTargetSS
+	// from refractTargetNDC, no wave displacement on the lookup itself.
 	float scale = 1.0 / v_viewPosition.z;
 	vec2 disp = wave.xy * 0.1;
-	scrPos += disp * scale * waterPC.displaceScale * 4.0;
 
 	vec2 refractTargetSS = refractTargetNDC.xy * vec2(-0.5, -0.5) + 0.5;
 

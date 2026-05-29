@@ -100,28 +100,12 @@ void main() {
 	wave.xyz = normalize(wave.xyz);
 
 	// Vertex shader already encoded ((gl.x+gl.w)*0.5, (gl.w-gl.y)*0.5, gl.w),
-	// so the divide below yields a [0,1] tex coord directly. No further remap.
+	// so the divide below yields a [0,1] tex coord directly.
 	vec2 origScrPos = v_screenPosition.xy / v_screenPosition.z;
-	vec2 scrPos = origScrPos;
 
-	float scale = 1.0 / v_viewPosition.z;
-	vec2 disp = wave.xy * 0.1;
-	// At level 1, *don't* wave-displace scrPos for the refraction lookup.
-	// The wave displacement is what crosses sharp scene edges (wall/sky
-	// boundaries) and bleeds the wrong surface color into the water. The
-	// wave normal still drives the sky-reflection term below so the
-	// surface stays animated — we just sample refraction at the
-	// undisplaced screen position to avoid edge-crossing leaks.
-	// scrPos += disp * scale * waterPC.displaceScale * 4.0;
-
-	// GL has an if/else `planeDistance < 0` branch here whose boundary is
-	// wave-modulated and shows as a wavy line on MoltenVK; any equivalent
-	// per-pixel test against the wave-displaced scrPos suffers the same
-	// fate. Pragmatic Vulkan path: sample depth at the undisplaced position
-	// (stable, no wave modulation) and rely on a floored envelope below so
-	// underwater pixels at sharp depth edges (wall meeting sky) can never
-	// bleed through more than a clamped fraction. Underwater detail is
-	// proportionally muted, but the result is clean.
+	// Sample depth at origScrPos. GL has a planeDistance branch here that
+	// flickers on MoltenVK; the wave-displaced refraction lookup has been
+	// removed for the same reason (it bled the wall edge into the water).
 	float depth = depthAt(origScrPos);
 
 	float envelope = clamp((depth + v_viewPosition.z), 0.0, 1.0);
@@ -156,7 +140,7 @@ void main() {
 	waterColor *= sunlightForColor + diffuseShading;
 
 	// underwater object color
-	fragColor = texture(screenTexture, scrPos);
+	fragColor = texture(screenTexture, origScrPos);
 #if !LINEAR_FRAMEBUFFER
 	fragColor.xyz *= fragColor.xyz; // screen color to linear
 #endif

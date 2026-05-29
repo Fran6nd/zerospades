@@ -106,17 +106,12 @@ void main() {
 	wave.xyz = normalize(wave.xyz);
 
 	vec2 origScrPos = v_screenPosition.xy / v_screenPosition.z;
-	vec2 scrPos = origScrPos;
 
+	// disp and scale are still used below for the mirror-reflection sample
+	// (scrPos2). The refraction lookup is undisplaced: wave-displacing it
+	// here bled wall/sky pixels into the water on MoltenVK.
 	float scale = 1.0 / v_viewPosition.z;
 	vec2 disp = wave.xy * 0.1;
-	// At level 2, *don't* wave-displace scrPos for the refraction lookup —
-	// the wave wobble crosses sharp scene edges (wall/sky boundaries) and
-	// bleeds the wrong surface color into the water. The wave normal still
-	// drives the sky-tint and the mirror-reflection samples below, so the
-	// surface stays animated; only the underwater refraction lookup is
-	// stabilised.
-	// scrPos += disp * scale * waterPC.displaceScale * 4.0;
 
 	float depth = depthAt(origScrPos);
 
@@ -149,7 +144,7 @@ void main() {
 	waterColor *= sunlight + EvaluateAmbientLight(1.0);
 
 	// underwater object color
-	fragColor = texture(screenTexture, scrPos);
+	fragColor = texture(screenTexture, origScrPos);
 #if !LINEAR_FRAMEBUFFER
 	fragColor.xyz *= fragColor.xyz; // screen color to linear
 #endif
