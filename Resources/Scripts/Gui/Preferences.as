@@ -1760,9 +1760,6 @@ namespace spades {
 			@layouter.HeadingNav = nav;
 
 			layouter.AddHeading(_Tr("Preferences", "General"));
-			ConfigSlider@ fpsSlider = layouter.AddSliderField(_Tr("Preferences", "FPS Limit"), "cl_fps",
-			0, 300, 1, ConfigFPSFormatter());
-			@fpsSlider.mapper = FPSValueMapper();
 			layouter.AddSliderField(_Tr("Preferences", "Render Scale"), "r_scale",
 			0.2, 1, 0.01, ConfigNumberFormatter(0, "%", "", 100));
 			layouter.AddSliderField(_Tr("Preferences", "Render Scaling Filter"), "r_scaleFilter",
@@ -1831,7 +1828,6 @@ namespace spades {
 			layouter.AddControl(_Tr("Preferences", "Equip Grenade"), "cg_keyToolGrenade");
 			layouter.AddControl(_Tr("Preferences", "Last Used Tool"), "cg_keyLastTool");
 			layouter.AddPlusMinusField(_Tr("Preferences", "Switch Tools by Wheel"), "cg_switchToolByWheel");
-			layouter.AddControl(_Tr("Preferences", "Pie Menu"), "cg_keyPieMenu");
 
 			layouter.AddHeading(_Tr("Preferences", "Movement"));
 			layouter.AddControl(_Tr("Preferences", "Move Forward"), "cg_keyMoveForward");
@@ -1861,6 +1857,7 @@ namespace spades {
 			layouter.AddControl(_Tr("Preferences", "Team Chat"), "cg_keyTeamChat");
 			layouter.AddControl(_Tr("Preferences", "Chat Log"), "cg_keyChatLog");
 			layouter.AddControl(_Tr("Preferences", "Chat Zoom"), "cg_keyZoomChatLog");
+			layouter.AddControl(_Tr("Preferences", "Pie Menu"), "cg_keyPieMenu");
 			layouter.AddControl(_Tr("Preferences", "Limbo Menu"), "cg_keyLimbo");
 			layouter.AddControl(_Tr("Preferences", "Save Map"), "cg_keySaveMap");
 			layouter.AddControl(_Tr("Preferences", "Save Sceneshot"), "cg_keySceneshot");
@@ -1868,7 +1865,6 @@ namespace spades {
 			layouter.AddControl(_Tr("Preferences", "Master Volume Up"), "cg_keyVolumeUp");
 			layouter.AddControl(_Tr("Preferences", "Master Volume Down"), "cg_keyVolumeDown");
 			layouter.AddControl(_Tr("Preferences", "Force Spectator Mode"), "cg_keyStaffSpectating");
-			layouter.AddControl(_Tr("Preferences", "Toggle Demo Recording"), "cg_keyDemoRecord");
 
 			layouter.FinishLayout();
 		}
@@ -1884,18 +1880,34 @@ namespace spades {
 			@layouter.HeadingNav = nav;
 
 			layouter.AddHeading(_Tr("Preferences", "General"));
-			ConfigField@ urlField = layouter.AddInputField(_Tr("Preferences", "Server List URL"), "cl_serverListUrl", true, true);
-			layouter.AddToggleField(_Tr("Preferences", "Allow Unicode"), "cg_unicode");
+			ConfigSlider@ fpsSlider = layouter.AddSliderField(_Tr("Preferences", "FPS Limit"), "cl_fps",
+			0, 300, 1, ConfigFPSFormatter());
+			@fpsSlider.mapper = FPSValueMapper();
 			layouter.AddSliderField(_Tr("Preferences", "Console Scrollback Lines"), "cl_consoleScrollbackLines",
 			100, 2000, 100, ConfigNumberFormatter(0, ""));
+			ConfigField@ urlField = layouter.AddInputField(_Tr("Preferences", "Server List URL"), "cl_serverListUrl", true, true);
+			layouter.AddToggleField(_Tr("Preferences", "Allow Unicode"), "cg_unicode");
 			layouter.AddChoiceStringField(_Tr("Preferences", "Screenshot Format"), "cg_screenshotFormat",
 					 array<string> = { "PNG", "JPEG", "TGA" },
 					 array<string> = { "png", "jpeg", "tga" });
 			layouter.AddSliderField(_Tr("Preferences", "JPEG Quality"), "core_jpegQuality",
 			1, 100, 1, ConfigNumberFormatter(0, "%"));
-
-			layouter.AddHeading(_Tr("Preferences", "Startup"));
 			layouter.AddToggleField(_Tr("Preferences", "Enable Startup Window"), "cl_showStartupWindow");
+
+			layouter.AddHeading(_Tr("Preferences", "Demo Recording"));
+			layouter.AddControl(_Tr("Preferences", "Start/Stop Recording"), "cg_keyDemoRecord");
+			layouter.AddToggleField(_Tr("Preferences", "Auto Record"), "cg_demoAutoRecord");
+			layouter.AddToggleField(_Tr("Preferences", "Auto Delete Old Demos"), "cg_demoAutoPrune");
+			layouter.AddSliderField(_Tr("Preferences", "Max Stored Demos"), "cg_demoMaxFiles",
+				1, 256, 1, ConfigNumberFormatter(0, ""));
+
+			layouter.AddHeading(_Tr("Preferences", "Demo Playback"));
+			layouter.AddControl(_Tr("Preferences", "Pause/Resume"), "cg_keyDemoPlayPause");
+			layouter.AddControl(_Tr("Preferences", "Speed Up"), "cg_keyDemoSpeedUp");
+			layouter.AddControl(_Tr("Preferences", "Slow Down"), "cg_keyDemoSlowDown");
+			layouter.AddControl(_Tr("Preferences", "Seek Forward"), "cg_keyDemoSeekForward");
+			layouter.AddControl(_Tr("Preferences", "Seek Backward"), "cg_keyDemoSeekBackward");
+			layouter.AddControl(_Tr("Preferences", "Toggle Demo HUD"), "cg_keyDemoToggleHud");
 
 			layouter.FinishLayout();
 		}
