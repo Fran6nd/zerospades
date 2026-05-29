@@ -267,7 +267,7 @@ namespace spades {
 			stmp::optional<Player&> focusPlayerPtr;
 			Vector3 focusPlayerPos;
 			float focusPlayerAngle;
-	
+
 			if (isFollowing) {
 				int targetId = client->GetCameraTargetPlayerId();
 				auto maybeTarget = world->GetPlayer(targetId);
@@ -290,12 +290,12 @@ namespace spades {
 			// The local player (this is important for access control)
 			// In demo mode, there's no local player - treat as spectator
 			stmp::optional<Player&> maybePlayer = world->GetLocalPlayer();
-			bool localPlayerIsSpectator = client->IsDemoMode() ||
-				(maybePlayer && maybePlayer->IsSpectator());
+			bool demoMode = client->IsDemoMode();
+			bool localPlayerIsSpectator = demoMode || (maybePlayer && maybePlayer->IsSpectator());
 			bool localPlayerIsSpectating = localPlayerIsSpectator || client->staffSpectating;
 
 			// Need either a local player or demo mode to continue
-			if (!maybePlayer && !client->IsDemoMode())
+			if (!maybePlayer && !demoMode)
 				return;
 
 			// Pointers for safe access (may be null in demo mode)
@@ -354,7 +354,7 @@ namespace spades {
 
 			if (!largeMap) {
 				const int statsMode = cg_stats;
-				if (statsMode == 2 || (statsMode >= 3 && client->IsScoreboardVisible()))
+				if ((statsMode == 2 || (statsMode >= 3 && client->IsScoreboardVisible())) && !demoMode)
 					winY += cg_statsSmallFont ? 10.0F : 20.0F;
 			}
 
