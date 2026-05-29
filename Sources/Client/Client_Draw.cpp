@@ -71,6 +71,7 @@ SPADES_SETTING(cg_keyDemoSeekBackward);
 SPADES_SETTING(cg_keyDemoRecord);
 SPADES_SETTING(cg_keyDemoSpeedUp);
 SPADES_SETTING(cg_keyDemoSlowDown);
+SPADES_SETTING(cg_keyDemoToggleHud);
 DEFINE_SPADES_SETTING(cg_screenshotFormat, "jpeg");
 DEFINE_SPADES_SETTING(cg_stats, "0");
 DEFINE_SPADES_SETTING(cg_statsSmallFont, "0");
@@ -280,6 +281,16 @@ namespace spades {
 				: MakeVector4(0.2F, 0.8F, 1.0F, 1);
 			Vector4 barBackgroundColor = MakeVector4(0, 0, 0, 1) * 0.6F;
 			Vector4 barOutlineColor = MakeVector4(1, 1, 1, 1) * 0.1F;
+
+			// minimal HUD: just a 2px progress bar at the bottom
+			if (!demoHudVisible) {
+				const float barH = 2.0F;
+				renderer->SetColorAlphaPremultiplied(MakeVector4(0, 0, 0, 0.4F));
+				renderer->DrawFilledRect(0, sh - barH, sw, sh);
+				renderer->SetColorAlphaPremultiplied(barColor);
+				renderer->DrawFilledRect(0, sh - barH, sw * progress, sh);
+				return;
+			}
 
 			auto fmtTime = [](float t) -> std::string {
 				int mins = static_cast<int>(t) / 60;
@@ -1577,30 +1588,28 @@ namespace spades {
 					TrKey(cg_keyJump), TrKey(cg_keyCrouch)));
 
 			if (localPlayerIsSpectator) {
-				addLine(_Tr("Client", "[{0}] Toggle player names",
-					TrKey(cg_keyToggleSpectatorNames)));
+				addLine(_Tr("Client", "[{0}] Toggle player names", TrKey(cg_keyToggleSpectatorNames)));
+
 				bool isStaff = activeNet && activeNet->GetGameProperties()->isStaff;
-				if (isStaff || IsDemoMode())
-					addLine(_Tr("Client", "[{0}] Toggle ESP",
-						TrKey(cg_keyStaffSpectating)));
+				if (isStaff || demoNet)
+					addLine(_Tr("Client", "[{0}] Toggle ESP", TrKey(cg_keyStaffSpectating)));
 			}
 
 			y += lh * 0.5F;
 
 			if (IsDemoMode()) {
 				// Demo playback controls
-				std::string pauseLabel = (demoNet && demoNet->IsPaused())
+				addLine(demoNet->IsPaused()
 					? _Tr("Client", "[{0}] Resume", TrKey(cg_keyDemoPlayPause))
-					: _Tr("Client", "[{0}] Pause", TrKey(cg_keyDemoPlayPause));
-				addLine(pauseLabel);
+					: _Tr("Client", "[{0}] Pause", TrKey(cg_keyDemoPlayPause)));
 				addLine(_Tr("Client", "[{0}/{1}] Seek +/-5s",
 					TrKey(cg_keyDemoSeekForward), TrKey(cg_keyDemoSeekBackward)));
 
 				char speedBuf[16];
-				float spd = demoNet ? demoNet->GetSpeed() : 1.0f;
-				snprintf(speedBuf, sizeof(speedBuf), "%.2gx", spd);
-				addLine(_Tr("Client", "[{0}/{1}] Speed: {2}",
+				snprintf(speedBuf, sizeof(speedBuf), "%.2g", demoNet->GetSpeed());
+				addLine(_Tr("Client", "[{0}/{1}] Speed: {2}x",
 					TrKey(cg_keyDemoSlowDown), TrKey(cg_keyDemoSpeedUp), std::string(speedBuf)));
+				addLine(_Tr("Client", "[{0}] Toggle Demo HUD", TrKey(cg_keyDemoToggleHud)));
 			} else if (!inGameLimbo) {
 				addLine(_Tr("Client", "[{0}] Select Team/Weapon", TrKey(cg_keyLimbo)));
 			}
@@ -1888,8 +1897,10 @@ namespace spades {
 			if (cg_stats && shouldDrawHUD)
 				DrawStats();
 
-			DrawDemoPlaybackHUD();
-			DrawRecordingIndicator();
+			if (shouldDrawHUD) {
+				DrawDemoPlaybackHUD();
+				DrawRecordingIndicator();
+			}
 
 			// draw limbo view (above everything)
 			if (IsLimboViewActive() && !scriptedUI->NeedsInput())

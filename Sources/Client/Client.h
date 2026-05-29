@@ -118,8 +118,10 @@ namespace spades {
 			// key release, avoiding one expensive reset/replay per repeat tick.
 			bool demoSeekForwardHeld = false;
 			bool demoSeekBackwardHeld = false;
-			float demoSeekRepeatTimer = 0.0f;   // accumulates dt between preview steps
-			float demoSeekPendingTime = 0.0f;   // target time to commit on key release
+			float demoSeekRepeatTimer = 0.0F;   // accumulates dt between preview steps
+			float demoSeekPendingTime = 0.0F;   // target time to commit on key release
+			bool demoHudVisible = true;
+
 			std::string playerName;
 			std::unique_ptr<IStream> logStream;
 
@@ -469,6 +471,7 @@ namespace spades {
 
 			bool staffSpectating;
 			bool spectatorPlayerNames;
+
 			Vector4 GetPlayerColor(Player&);
 			void DrawPlayerBox(Player&, const Vector4&);
 			void DrawPlayerName(Player&, const Vector4&);
