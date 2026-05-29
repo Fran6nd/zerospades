@@ -170,23 +170,12 @@ void main() {
 	// convert to linear Z
 	depth = decodeDepth(depth, waterPC.zNearFar.x, waterPC.zNearFar.y);
 
-	// make sure the sampled point is above the water plane.
-	// convert to view coord
+	// GL has a `if (planeDistance < 0) { reset to origScrPos }` here. On
+	// MoltenVK the planeDistance=0 boundary is wave-modulated and shows as
+	// a thin animated wavy line inside the rendered water. Dropping the
+	// branch — same fix as Water/Water2.vk.fs — and using the SSR-marched
+	// refractTargetSS/depth as-is removes the discontinuity entirely.
 	vec3 sampledViewCoord = vec3(mix(waterPC.fovTan.zw, waterPC.fovTan.xy, refractTargetSS), 1.0) * -depth;
-	float planeDistance = dot(vec4(sampledViewCoord, 1.0), waterPC.waterPlane);
- 	if (planeDistance < 0.0) {
-		// reset!
-		// original pos must be in the water.
-		refractTargetSS = origScrPos;
-		depth = depthAt(refractTargetSS);
-		if (depth + v_viewPosition.z < 0.0) {
-			// if the pixel is obscured by a object,
-			// this fragment of water is not visible
-			//discard; done by early-Z test
-		}
-
-		sampledViewCoord = vec3(mix(waterPC.fovTan.zw, waterPC.fovTan.xy, refractTargetSS), 1.0) * -depth;
-	}
 
 	float envelope = min(distance(v_viewPosition * vec3(-1.0, 1.0, 1.0), sampledViewCoord) * 0.8, 1.0);
 	envelope = 1.0 - (1.0 - envelope) * (1.0 - envelope);
@@ -263,7 +252,7 @@ void main() {
 
 	// make sure the reflection is from the above the water plane
 	sampledViewCoord = vec3(mix(waterPC.fovTan.zw, waterPC.fovTan.xy, reflectTargetSS), 1.0) * -depth;
-	planeDistance = dot(vec4(sampledViewCoord, 1.0), waterPC.waterPlane);
+	float planeDistance = dot(vec4(sampledViewCoord, 1.0), waterPC.waterPlane);
 	bool validReflection = planeDistance > 0.0;
 
 	vec3 reflected = texture(mirrorTexture, reflectTargetSS).xyz;
