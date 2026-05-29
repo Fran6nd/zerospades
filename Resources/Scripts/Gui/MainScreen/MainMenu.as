@@ -115,7 +115,7 @@ namespace spades {
 			@this.Font = ui.fontManager.GuiFont;
 
 			demoDateColWidth = 130.0F;
-			demoModeColWidth = 85.0F;
+			demoModeColWidth = 125.0F;
 			demoMapColWidth  = 185.0F;
 			demoSizeColWidth = 70.0F;
 

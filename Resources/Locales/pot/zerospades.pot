@@ -427,6 +427,158 @@ msgctxt "Client"
 msgid "Disconnect"
 msgstr ""
 
+msgctxt "Client"
+msgid "Exit Demo"
+msgstr ""
+
+msgctxt "StartupScreen"
+msgid "Demo Recording"
+msgstr ""
+
+msgctxt "StartupScreen"
+msgid "Max stored demos"
+msgstr ""
+
+msgctxt "StartupScreen"
+msgid "Automatically record every game"
+msgstr ""
+
+msgctxt "StartupScreen"
+msgid "Delete oldest demos when limit is reached"
+msgstr ""
+
+msgctxt "StartupScreen"
+msgid "Demos Folder"
+msgstr ""
+
+msgctxt "StartupScreen"
+msgid "Open Demos Folder in Explorer"
+msgstr ""
+
+msgctxt "StartupScreen"
+msgid "Reveal Demos Folder in Finder"
+msgstr ""
+
+msgctxt "StartupScreen"
+msgid "Browse Demos Folder"
+msgstr ""
+
+msgctxt "MainScreen"
+msgid "Servers"
+msgstr ""
+
+msgctxt "MainScreen"
+msgid "Demos"
+msgstr ""
+
+msgctxt "MainScreen"
+msgid "Select a demo"
+msgstr ""
+
+msgctxt "MainScreen"
+msgid "Delete"
+msgstr ""
+
+msgctxt "MainScreen"
+msgid "Play"
+msgstr ""
+
+msgctxt "MainScreen"
+msgid "Server"
+msgstr ""
+
+msgctxt "MainScreen"
+msgid "Map"
+msgstr ""
+
+msgctxt "MainScreen"
+msgid "Game Mode"
+msgstr ""
+
+msgctxt "MainScreen"
+msgid "Timestamp"
+msgstr ""
+
+msgctxt "MainScreen"
+msgid "Size"
+msgstr ""
+
+msgctxt "Preferences"
+msgid "Demo Recording"
+msgstr ""
+
+msgctxt "Preferences"
+msgid "Start/Stop Recording"
+msgstr ""
+
+msgctxt "Preferences"
+msgid "Auto Record"
+msgstr ""
+
+msgctxt "Preferences"
+msgid "Auto Delete Old Demos"
+msgstr ""
+
+msgctxt "Preferences"
+msgid "Max Stored Demos"
+msgstr ""
+
+msgctxt "Preferences"
+msgid "Pause/Resume"
+msgstr ""
+
+msgctxt "Preferences"
+msgid "Speed Up"
+msgstr ""
+
+msgctxt "Preferences"
+msgid "Slow Down"
+msgstr ""
+
+msgctxt "Preferences"
+msgid "Seek Forward"
+msgstr ""
+
+msgctxt "Preferences"
+msgid "Seek Backward"
+msgstr ""
+
+msgctxt "Preferences"
+msgid "Toggle Demo HUD"
+msgstr ""
+
+msgctxt "NetClient"
+msgid "Loading demo"
+msgstr ""
+
+msgctxt "Client"
+msgid "[{0}] Toggle player names"
+msgstr ""
+
+msgctxt "Client"
+msgid "[{0}] Toggle ESP"
+msgstr ""
+
+msgctxt "Client"
+msgid "[{0}] Pause"
+msgstr ""
+
+msgctxt "Client"
+msgid "[{0}] Resume"
+msgstr ""
+
+msgctxt "Client"
+msgid "[{0}/{1}] Seek +/-5s"
+msgstr ""
+
+msgctxt "Client"
+msgid "[{0}/{1}] Speed: {2}x"
+msgstr ""
+
+msgctxt "Client"
+msgid "[{0}] Toggle Demo HUD"
+msgstr ""
+
 #: Resources/Scripts/Gui/ClientUI.as:484
 msgctxt "Client"
 msgid "Send"
@@ -2411,6 +2563,10 @@ msgctxt "Preferences"
 msgid "Scoreboard"
 msgstr ""
 
+msgctxt "Preferences"
+msgid "Pie Menu"
+msgstr ""
+
 #: Resources/Scripts/Gui/Preferences.as:1439
 msgctxt "Preferences"
 msgid "Chat Zoom"
@@ -2542,11 +2698,6 @@ msgstr ""
 #: Resources/Scripts/Gui/StartupScreen/MainMenu.as:127
 msgctxt "StartupScreen"
 msgid "An unknown error has occurred while opening this url."
-msgstr ""
-
-#: Sources/Client/Client_Draw.cpp:965
-msgctxt "Client"
-msgid "[{0}] Toggle player names"
 msgstr ""
 
 #: Resources/Scripts/Gui/Preferences.as:1211
