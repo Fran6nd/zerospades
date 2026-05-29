@@ -60,9 +60,6 @@ namespace spades {
 			std::string MergeMod(std::string modName);
 			std::string ResetUserMods();
 
-			std::string GetModsIndexUrl();
-			std::string GetModsDirAbs();
-
 		protected:
 			~ModsScreenHelper();
 

@@ -98,14 +98,6 @@ namespace spades {
 					  "ModsScreenHelper", "string ResetUserMods()",
 					  asMETHOD(gui::ModsScreenHelper, ResetUserMods), asCALL_THISCALL);
 					manager->CheckError(r);
-					r = eng->RegisterObjectMethod(
-					  "ModsScreenHelper", "string GetModsIndexUrl()",
-					  asMETHOD(gui::ModsScreenHelper, GetModsIndexUrl), asCALL_THISCALL);
-					manager->CheckError(r);
-					r = eng->RegisterObjectMethod(
-					  "ModsScreenHelper", "string GetModsDirAbs()",
-					  asMETHOD(gui::ModsScreenHelper, GetModsDirAbs), asCALL_THISCALL);
-					manager->CheckError(r);
 					break;
 				default: break;
 			}

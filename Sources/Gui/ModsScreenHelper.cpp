@@ -666,12 +666,6 @@ namespace spades {
 			return std::string{};
 		}
 
-		std::string ModsScreenHelper::GetModsIndexUrl() {
-			return std::string(cl_modsIndexUrl.CString());
-		}
-
-		std::string ModsScreenHelper::GetModsDirAbs() { return ModsRootAbs(); }
-
 		std::string ModsScreenHelper::ResetUserMods() {
 			std::string userModsAbs = UserModsRootAbs();
 			EnsureDir(userModsAbs);
