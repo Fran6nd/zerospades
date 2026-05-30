@@ -45,6 +45,7 @@
 #include "VulkanFXAAFilter.h"
 #include "VulkanCavityOutlineFilter.h"
 #include "VulkanColorCorrectionFilter.h"
+#include "VulkanLensFlareFilter.h"
 #include "VulkanAmbientShadowRenderer.h"
 #include "VulkanRadiosityRenderer.h"
 #include <Gui/SDLVulkanDevice.h>
@@ -68,6 +69,7 @@ SPADES_SETTING(r_water);
 SPADES_SETTING(r_softParticles);
 SPADES_SETTING(r_outlines);
 SPADES_SETTING(r_colorCorrection);
+SPADES_SETTING(r_lensFlare);
 
 namespace spades {
 	namespace draw {
@@ -176,6 +178,7 @@ namespace spades {
 			fxaaFilter = stmp::make_unique<VulkanFXAAFilter>(*this);
 			cavityOutlineFilter = stmp::make_unique<VulkanCavityOutlineFilter>(*this);
 			colorCorrectionFilter = stmp::make_unique<VulkanColorCorrectionFilter>(*this);
+			lensFlareFilter = stmp::make_unique<VulkanLensFlareFilter>(*this);
 
 			inited = true;
 			lastSwapchainGeneration = device->GetSwapchainGeneration();
@@ -216,6 +219,7 @@ namespace spades {
 			ambientShadowRenderer.reset();
 			radiosityRenderer.reset();
 			mapShadowRenderer.reset();
+			lensFlareFilter.reset();
 			colorCorrectionFilter.reset();
 			cavityOutlineFilter.reset();
 			fxaaFilter.reset();
@@ -2169,11 +2173,11 @@ namespace spades {
 			VulkanImage* currentOutput = ppTempImage.GetPointerOrNull();
 
 			// Order matches GL (GLRenderer.cpp:922-1037):
-			//   Fog2 → DoF → Bloom → FXAA → AutoExposure(+tonemap)
+			//   Fog2 → DoF → Bloom → FXAA → LensFlare → AutoExposure(+tonemap)
 			// AutoExposure runs LAST so its histogram samples the fully painted
-			// scene (in-scattered sky, bloom, etc.). Running it first would
-			// sample the bare scene where the sky is still black (Sky.frag is
-			// skipped under r_fogShadow>=1), causing the gain to clamp high
+			// scene (in-scattered sky, bloom, sun glare, etc.). Running it first
+			// would sample the bare scene where the sky is still black (Sky.frag
+			// is skipped under r_fogShadow>=1), causing the gain to clamp high
 			// and the whole frame to come out over-bright.
 
 			// Fog shadow / atmospheric in-scatter
@@ -2200,6 +2204,14 @@ namespace spades {
 			// FXAA
 			if ((int)r_fxaa && fxaaFilter && currentInput && currentOutput) {
 				fxaaFilter->Filter(commandBuffer, currentInput, currentOutput);
+				std::swap(currentInput, currentOutput);
+			}
+
+			// Sun lens flare. Runs after FXAA (so the flare quads aren't
+			// smeared by anti-aliasing) and before auto-exposure (so the
+			// bright sun contributes to the histogram, mirroring GL).
+			if ((int)r_lensFlare && lensFlareFilter && currentInput && currentOutput) {
+				lensFlareFilter->Filter(commandBuffer, currentInput, currentOutput);
 				std::swap(currentInput, currentOutput);
 			}
 
