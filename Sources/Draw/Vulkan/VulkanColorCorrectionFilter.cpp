@@ -23,6 +23,7 @@
 #include "VulkanImage.h"
 #include "VulkanRenderer.h"
 #include "VulkanRenderPassUtils.h"
+#include <Client/SceneDefinition.h>
 #include <Core/Debug.h>
 #include <Core/Exception.h>
 #include <Core/FileManager.h>
@@ -308,8 +309,12 @@ namespace spades {
 
 			// Compute tint and saturation per-frame to track live fog colour.
 			// Mirrors GLRenderer.cpp:1040-1059.
+			//
+			// fogColor is used HERE in encoded (perceptual) space exactly like
+			// GL. Squaring it ("linearize") makes a bluish fog much darker,
+			// which inverts to a stronger warm bias in `tint`, and the whole
+			// scene ends up shifted toward red/purple. Match GL: no linearize.
 			Vector3 fogCol = renderer.GetFogColor();
-			fogCol *= fogCol; // linearize
 
 			Vector3 tint = fogCol + MakeVector3(0.5f, 0.5f, 0.5f);
 			tint = MakeVector3(1.0f, 1.0f, 1.0f) / tint;
@@ -321,9 +326,11 @@ namespace spades {
 			float exposure = std::pow(2.0f, (float)r_exposureValue * 0.5f);
 			tint *= exposure;
 
-			// Saturation matches GL: 0.8 * r_saturation when bloom+HDR are on.
-			// Match GLColorCorrectionFilter.cpp:114-133.
-			float satCvar = (float)r_saturation;
+			// Saturation matches GL: per-scene def.saturation × r_saturation,
+			// with a coefficient that depends on HDR/Bloom (see
+			// GLColorCorrectionFilter.cpp:114-133).
+			const client::SceneDefinition& def = renderer.GetSceneDef();
+			float satCvar = (float)r_saturation * def.saturation;
 			float enhancement;
 			float saturation;
 			if ((int)r_hdr) {
@@ -344,9 +351,14 @@ namespace spades {
 				}
 			}
 
+			// satAndHdr.y is the runtime gate for the ACES branch in the
+			// shader (ACES is calibrated for HDR; running it on a non-HDR
+			// [0, 1] image shifts blues to purple).
+			float useHdr = (int)r_hdr ? 1.0f : 0.0f;
+
 			float pc[8] = {
 			    tint.x, tint.y, tint.z, enhancement,
-			    saturation, 0.0f, 0.0f, 0.0f
+			    saturation, useHdr, 0.0f, 0.0f
 			};
 
 			uint32_t w = static_cast<uint32_t>(output->GetWidth());

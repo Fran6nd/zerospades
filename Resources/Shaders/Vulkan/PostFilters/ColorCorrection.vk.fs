@@ -20,19 +20,20 @@
 
 // Port of OpenGL/PostFilters/ColorCorrection.fs.
 //
-// GL applies, in this order on a sRGB-encoded input (post-Nonlinearize):
+// GL applies, in this order on a sRGB-encoded input:
 //   1. tint multiply  (white-balance — cancels fog cast)
 //   2. saturation desat (mix toward gray)
-//   3. linearize (square)
-//   4. ACES filmic tonemap
-//   5. delinearize (sqrt)
-//   6. enhancement smoothstep
+//   3. (HDR only) linearize → ACES filmic tonemap → delinearize
+//   4. enhancement smoothstep
+// All operations happen in encoded (perceptual) space; the HDR linearize
+// roundtrip is the only deviation from that. Critically, ACES is GATED
+// on the `USE_HDR` define — applying it in non-HDR mode shifts blues to
+// purple and reds toward orange, since ACES is calibrated for true HDR.
 //
-// Vulkan input is LINEAR (no Nonlinearize stage; sRGB encoding happens at
-// the swapchain blit). We sqrt the input first to match GL's "operates on
-// encoded values" semantics for tint+saturation, then linearize back for
-// ACES, and output linear [0,1] so the sRGB blit can do the final
-// encoding for display.
+// Vulkan input is LINEAR (the scene shaders write linear values to the
+// UNORM/A2B10G10R10 offscreen buffer, and the swapchain blit does the
+// sRGB encoding for display). We sqrt the input first to recover GL's
+// "operates on encoded values" semantics, then square back at the end.
 
 #version 450
 
@@ -40,7 +41,7 @@ layout(binding = 0) uniform sampler2D sceneTexture;
 
 layout(push_constant) uniform Params {
     vec4 tintAndEnhancement;  // xyz = tint, w = enhancement
-    vec4 saturationPad;       // x = saturation, y/z/w = unused
+    vec4 satAndHdr;           // x = saturation, y = useHdr (0 or 1), z/w = unused
 } pc;
 
 layout(location = 0) in  vec2 texCoord;
@@ -62,19 +63,22 @@ void main() {
 
     // Saturation: mix toward perceptual gray.
     vec3 gray = vec3(dot(color, vec3(1.0 / 3.0)));
-    float saturation = pc.saturationPad.x;
+    float saturation = pc.satAndHdr.x;
     color = mix(gray, color, saturation);
 
-    // Back to linear for ACES tonemap.
-    color = color * color;
-    color = acesToneMapping(color * 0.8);
+    // ACES tonemap only when r_hdr is on. In non-HDR mode the input is
+    // already a properly-balanced [0, 1] image and ACES would shift its
+    // primaries (notably crushing blues toward purple).
+    if (pc.satAndHdr.y > 0.5) {
+        vec3 lin = color * color;          // encoded → linear for ACES
+        lin = acesToneMapping(lin * 0.8);
+        color = sqrt(lin);                 // back to encoded
+    }
 
     // Enhancement smoothstep — operates on encoded values per GL.
-    vec3 enc = sqrt(color);
     float enhancement = pc.tintAndEnhancement.w;
-    enc = mix(enc, smoothstep(0.0, 1.0, enc), enhancement);
-    color = enc * enc;
+    color = mix(color, smoothstep(0.0, 1.0, color), enhancement);
 
     // Output linear; sRGB swapchain blit will encode for display.
-    outColor = vec4(color, 1.0);
+    outColor = vec4(color * color, 1.0);
 }
