@@ -65,6 +65,99 @@ namespace spades {
 		void Render() { UIElement::Render(); }
 	}
 
+	class RenameScreen : spades::ui::UIElement {
+		spades::ui::EventHandler@ Closed;
+		bool Result = false;
+		string NewName;
+
+		private spades::ui::UIElement@ owner;
+		private spades::ui::Field@ nameField;
+
+		RenameScreen(spades::ui::UIElement@ owner, string currentName) {
+			super(owner.Manager);
+			@this.owner = owner;
+			@Font = Manager.RootElement.Font;
+			Bounds = owner.Bounds;
+
+			float sw = Manager.ScreenWidth;
+			float sh = Manager.ScreenHeight;
+			float w = Min(sw - 16.0F, 500.0F);
+			float h = 160.0F;
+			float x = (sw - w) * 0.5F;
+			float y = (sh - h) * 0.5F;
+
+			// Background
+			{
+				spades::ui::Label bg(Manager);
+				bg.BackgroundColor = Vector4(0.0F, 0.0F, 0.0F, 0.9F);
+				bg.Bounds = AABB2(0.0F, y - 13.0F, Size.x, h + 27.0F);
+				AddChild(bg);
+			}
+			{
+				spades::ui::Label label(Manager);
+				label.Text = _Tr("MainScreen", "Rename Demo");
+				label.Bounds = AABB2(x, y, w, 30.0F);
+				label.Alignment = Vector2(0.0F, 0.5F);
+				AddChild(label);
+			}
+			{
+				@nameField = spades::ui::Field(Manager);
+				nameField.Bounds = AABB2(x, y + 40.0F, w, 30.0F);
+				nameField.Text = currentName;
+				nameField.SelectAll();
+				AddChild(nameField);
+			}
+			{
+				spades::ui::Button btn(Manager);
+				btn.Caption = _Tr("MainScreen", "Rename");
+				btn.Bounds = AABB2(x + w - 320.0F, y + 90.0F, 150.0F, 30.0F);
+				@btn.Activated = spades::ui::EventHandler(this.OnConfirm);
+				AddChild(btn);
+			}
+			{
+				spades::ui::Button btn(Manager);
+				btn.Caption = _Tr("MainScreen", "Cancel");
+				btn.Bounds = AABB2(x + w - 160.0F, y + 90.0F, 150.0F, 30.0F);
+				@btn.Activated = spades::ui::EventHandler(this.OnCancel);
+				AddChild(btn);
+			}
+		}
+
+		void OnConfirm(spades::ui::UIElement@ sender) {
+			NewName = nameField.Text;
+			Result = true;
+			Close();
+		}
+
+		void OnCancel(spades::ui::UIElement@ sender) {
+			Result = false;
+			Close();
+		}
+
+		void Close() {
+			owner.Enable = true;
+			owner.Parent.RemoveChild(this);
+			if (Closed !is null)
+				Closed(this);
+		}
+
+		void Run() {
+			owner.Enable = false;
+			owner.Parent.AddChild(this);
+			@Manager.ActiveElement = nameField;
+		}
+
+		void HotKey(string key) {
+			if (IsEnabled and key == "Enter") {
+				OnConfirm(this);
+			} else if (IsEnabled and key == "Escape") {
+				OnCancel(this);
+			} else {
+				UIElement::HotKey(key);
+			}
+		}
+	}
+
 	class MainScreenMainMenu : spades::ui::UIElement {
 		MainScreenUI@ ui;
 		MainScreenHelper@ helper;
@@ -96,6 +189,7 @@ namespace spades {
 		spades::ui::Field@ demoNameField;
 		spades::ui::Button@ demoPlayButton;
 		spades::ui::Button@ demoDeleteButton;
+		spades::ui::Button@ demoRenameButton;
 
 		// Demo list column widths (pixels)
 		private float demoDateColWidth;
@@ -116,7 +210,7 @@ namespace spades {
 
 			demoDateColWidth = 130.0F;
 			demoModeColWidth = 125.0F;
-			demoMapColWidth  = 185.0F;
+			demoMapColWidth	 = 185.0F;
 			demoSizeColWidth = 70.0F;
 
 			float sw = Manager.ScreenWidth;
@@ -308,7 +402,7 @@ namespace spades {
 				{
 					// Selected demo name display (mirrors the server address field)
 					@demoNameField = spades::ui::Field(Manager);
-					demoNameField.Bounds = AABB2(contentsLeft, 200.0F, contentsWidth - 270.0F, 30.0F);
+					demoNameField.Bounds = AABB2(contentsLeft, 200.0F, contentsWidth - 320.0F, 30.0F);
 					demoNameField.Placeholder = _Tr("MainScreen", "Select a demo");
 					demoNameField.AcceptsFocus = false;
 					demoNameField.IsMouseInteractive = false;
@@ -317,9 +411,16 @@ namespace spades {
 				{
 					@demoDeleteButton = spades::ui::Button(Manager);
 					demoDeleteButton.Caption = _Tr("MainScreen", "Delete");
-					demoDeleteButton.Bounds = AABB2(contentsLeft + contentsWidth - 270.0F, 200.0F, 110.0F, 30.0F);
+					demoDeleteButton.Bounds = AABB2(contentsLeft + contentsWidth - 320.0F, 200.0F, 80.0F, 30.0F);
 					@demoDeleteButton.Activated = spades::ui::EventHandler(this.OnDeleteDemoPressed);
 					demoPanel.AddChild(demoDeleteButton);
+				}
+				{
+					@demoRenameButton = spades::ui::Button(Manager);
+					demoRenameButton.Caption = _Tr("MainScreen", "Rename");
+					demoRenameButton.Bounds = AABB2(contentsLeft + contentsWidth - 240.0F, 200.0F, 90.0F, 30.0F);
+					@demoRenameButton.Activated = spades::ui::EventHandler(this.OnRenameDemoPressed);
+					demoPanel.AddChild(demoRenameButton);
 				}
 				{
 					@demoPlayButton = spades::ui::Button(Manager);
@@ -494,6 +595,34 @@ namespace spades {
 				return;
 			selectedDemoPath = "";
 			demoNameField.Text = "";
+			LoadDemoList();
+		}
+
+		private void OnRenameDemoPressed(spades::ui::UIElement@ sender) {
+			if (selectedDemoPath.length == 0)
+				return;
+			RenameScreen rename(this, StripDemoPath(selectedDemoPath));
+			@rename.Closed = spades::ui::EventHandler(this.OnRenameScreenClosed);
+			rename.Run();
+		}
+
+		private void OnRenameScreenClosed(spades::ui::UIElement@ sender) {
+			RenameScreen@ rename = cast<RenameScreen@>(sender);
+			if (!rename.Result)
+				return;
+			string newName = rename.NewName;
+			if (newName.length >= 4 and newName.substr(newName.length - 4) == ".dem")
+				newName = newName.substr(0, newName.length - 4);
+			if (newName.length == 0)
+				return;
+			string newPath = "Demos/" + newName + ".dem";
+			if (not helper.RenameDemo(selectedDemoPath, newPath)) {
+				AlertScreen al(this, _Tr("MainScreen", "Failed to rename demo."));
+				al.Run();
+				return;
+			}
+			selectedDemoPath = newPath;
+			demoNameField.Text = StripDemoPath(newPath);
 			LoadDemoList();
 		}
 
