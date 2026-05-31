@@ -35,7 +35,6 @@
 #include "Runner.h"
 #include "SplashWindow.h"
 #include <Client/Client.h>
-#include <Client/DemoRecorder.h>
 #include <Client/Fonts.h>
 #include <Client/GameMap.h>
 #include <Core/ConcurrentDispatch.h>
@@ -490,9 +489,6 @@ int main(int argc, char** argv) {
 		  new spades::DirectoryFileSystem(spades::g_userResourceDirectory, true));
 
 #endif
-
-		// Set the demos base directory now that g_userResourceDirectory is final.
-		spades::client::DemoRecorder::SetBaseDirectory(spades::g_userResourceDirectory);
 
 		// start log output to SystemMessages.log
 		try {

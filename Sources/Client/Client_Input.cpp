@@ -793,8 +793,10 @@ namespace spades {
 								if (maxDemos >= 1)
 									DemoRecorder::PruneOldRecordings(static_cast<size_t>(maxDemos));
 							}
-							SPLog("Demo recording started: %s", net->GetDemoFilename().c_str());
-							ShowAlert(_Tr("Client", "Recording demo"), AlertType::Notice);
+							
+							const auto demoPath = net->GetDemoFilename().c_str();
+							SPLog("Demo recording started: %s", demoPath);
+							ShowAlert(_Tr("Client", "Recording demo: {0}", demoPath), AlertType::Notice);
 						} else {
 							ShowAlert(_Tr("Client", "Failed to start demo recording"), AlertType::Error);
 						}
