@@ -677,7 +677,8 @@ namespace spades {
 
 				// Pie menu: hold to open, release to commit.
 				// Aim at a teammate to send a DM; otherwise broadcast on team chat.
-				if (CheckKey(cg_keyPieMenu, name) && localPlayerIsAlive && !localPlayerIsSpectating) {
+				if (CheckKey(cg_keyPieMenu, name) && localPlayerIsAlive && !localPlayerIsSpectating
+				    && !IsLocalMapMode()) {
 					if (down && !pieMenuView->IsOpen()) {
 						auto hot = HotTrackedPlayer();
 						if (hot) {
