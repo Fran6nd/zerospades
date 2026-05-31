@@ -40,7 +40,7 @@ namespace spades {
 	namespace client {
 
 		namespace {
-			std::string s_baseDir;
+			std::string baseDirectory;
 
 			constexpr const char* kExtension = ".vxl";
 			constexpr size_t kExtensionLen = 4;
@@ -76,10 +76,10 @@ namespace spades {
 			}
 		} // namespace
 
-		void MapRegistry::SetBaseDirectory(const std::string& dir) { s_baseDir = dir; }
+		void MapRegistry::SetBaseDirectory(const std::string& dir) { baseDirectory = dir; }
 
 		std::string MapRegistry::GetMapsDirectory() {
-			return s_baseDir.empty() ? "Mapshots" : s_baseDir + "/Mapshots";
+			return baseDirectory.empty() ? "Mapshots" : baseDirectory + "/Mapshots";
 		}
 
 		std::vector<MapEntry> MapRegistry::ListMaps() {
@@ -90,8 +90,8 @@ namespace spades {
 
 #ifdef _WIN32
 			WIN32_FIND_DATAA fd;
-			HANDLE hFind = FindFirstFileA((mapsDir + "\\*" + kExtension).c_str(), &fd);
-			if (hFind == INVALID_HANDLE_VALUE)
+			HANDLE findHandle = FindFirstFileA((mapsDir + "\\*" + kExtension).c_str(), &fd);
+			if (findHandle == INVALID_HANDLE_VALUE)
 				return entries;
 			do {
 				if (fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
@@ -112,8 +112,8 @@ namespace spades {
 				// Convert Windows FILETIME (100ns since 1601) to Unix epoch seconds.
 				entry.mtime = static_cast<int64_t>((ft.QuadPart - 116444736000000000ULL) / 10000000ULL);
 				entries.push_back(std::move(entry));
-			} while (FindNextFileA(hFind, &fd));
-			FindClose(hFind);
+			} while (FindNextFileA(findHandle, &fd));
+			FindClose(findHandle);
 #else
 			DIR* dir = opendir(mapsDir.c_str());
 			if (!dir)
