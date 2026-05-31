@@ -256,11 +256,6 @@ msgctxt "Client"
 msgid "Dominating!"
 msgstr "¡Dominando!"
 
-#: Sources/Client/Client_Update.cpp:909
-msgctxt "Client"
-msgid "You were killed by {0}"
-msgstr "Fuiste asesinado por {0}"
-
 #: Sources/Client/Client_Update.cpp:1225
 msgctxt "Client"
 msgid "Insufficient blocks."
@@ -485,6 +480,26 @@ msgid "Delete"
 msgstr "Borrar"
 
 msgctxt "MainScreen"
+msgid "Are you sure you want to delete '{0}'?\nThis action cannot be undone."
+msgstr "¿Está seguro de que desea eliminar '{0}'?\n Esta acción no se puede deshacer."
+
+msgctxt "MainScreen"
+msgid "Rename"
+msgstr "Renombrar"
+
+msgctxt "MainScreen"
+msgid "Cancel"
+msgstr "Cancelar"
+
+msgctxt "MainScreen"
+msgid "Rename Demo"
+msgstr "Renombrar demo"
+
+msgctxt "MainScreen"
+msgid "Failed to rename demo"
+msgstr "No se pudo cambiar el nombre de la demo"
+
+msgctxt "MainScreen"
 msgid "Play"
 msgstr "Reproducir"
 
@@ -556,9 +571,37 @@ msgctxt "Preferences"
 msgid "Toggle Demo HUD"
 msgstr "Alternar el HUD de la demo"
 
+msgctxt "Client"
+msgid "Recording demo: {0}"
+msgstr "Grabando demo: {0}"
+
+msgctxt "Client"
+msgid "Recording stopped"
+msgstr "La grabación se detuvo"
+
+msgctxt "NetClient"
+msgid "Failed to open demo file"
+msgstr "No se pudo abrir el archivo de la demo"
+
+msgctxt "NetClient"
+msgid "Demo finished - press [{0}] to replay"
+msgstr "Demo finalizada - pulsa [{0}] para volver a reproducir"
+
 msgctxt "NetClient"
 msgid "Loading demo"
 msgstr "Cargando demo"
+
+msgctxt "NetClient"
+msgid "Loading map from demo"
+msgid "Cargando mapa desde la demo"
+
+msgctxt "NetClient"
+msgid "Playing demo"
+msgstr "Reproduciendo demo"
+
+msgctxt "NetClient"
+msgid "Error loading map"
+msgstr "Error al cargar el mapa"
 
 msgctxt "Client"
 msgid "[{0}] Toggle player names"
@@ -1681,17 +1724,12 @@ msgstr "Examinar carpeta de configuración"
 #: Resources/Scripts/Gui/StartupScreen.as:1668
 msgctxt "StartupScreen"
 msgid "An unknown error has occurred while opening the config directory."
-msgstr ""
-"Un error desconocido ha ocurrido mientras se abria el directorio de "
-"configuraciones."
+msgstr "Un error desconocido ha ocurrido mientras se abria el directorio de configuraciones."
 
 #: Resources/Scripts/Gui/StartupScreen.as:1674
 msgctxt "StartupScreen"
-msgid ""
-"Are you sure to reset all settings? They include (but are not limited to):"
-msgstr ""
-"¿Está seguro de restablecer todos los ajustes? Incluyen (pero no se limitan "
-"a):"
+msgid "Are you sure to reset all settings? They include (but are not limited to):"
+msgstr "¿Está seguro de restablecer todos los ajustes? Incluyen (pero no se limitan a):"
 
 #: Resources/Scripts/Gui/StartupScreen.as:1675
 msgctxt "StartupScreen"
@@ -1816,10 +1854,13 @@ msgctxt "Client"
 msgid "You joined {0} team"
 msgstr "Te has unido al equipo {0}"
 
-#: Sources/Client/Client_Update.cpp:906
 msgctxt "Client"
 msgid "You have killed {0}"
-msgstr "Has matado a {0}"
+msgstr "Has eliminado a {0}"
+
+msgctxt "Client"
+msgid "You were killed by {0}"
+msgstr "Fuiste eliminado por {0}"
 
 #: Resources/Scripts/Gui/Console/ConsoleWindow.as:62
 msgctxt "Console"

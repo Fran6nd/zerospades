@@ -257,11 +257,6 @@ msgctxt "Client"
 msgid "Weapon Change"
 msgstr ""
 
-#: Sources/Client/Client_Update.cpp:909
-msgctxt "Client"
-msgid "You were killed by {0}"
-msgstr ""
-
 #: Sources/Client/Client_Update.cpp:1225
 msgctxt "Client"
 msgid "Insufficient blocks."
@@ -480,6 +475,26 @@ msgid "Delete"
 msgstr ""
 
 msgctxt "MainScreen"
+msgid "Are you sure you want to delete '{0}'?\nThis action cannot be undone."
+msgstr ""
+
+msgctxt "MainScreen"
+msgid "Rename"
+msgstr ""
+
+msgctxt "MainScreen"
+msgid "Cancel"
+msgstr ""
+
+msgctxt "MainScreen"
+msgid "Rename Demo"
+msgstr ""
+
+msgctxt "MainScreen"
+msgid "Failed to rename demo"
+msgstr ""
+
+msgctxt "MainScreen"
 msgid "Play"
 msgstr ""
 
@@ -548,7 +563,27 @@ msgid "Toggle Demo HUD"
 msgstr ""
 
 msgctxt "NetClient"
+msgid "Failed to open demo file"
+msgstr ""
+
+msgctxt "NetClient"
+msgid "Demo finished - press [{0}] to replay"
+msgstr ""
+
+msgctxt "NetClient"
 msgid "Loading demo"
+msgstr ""
+
+msgctxt "NetClient"
+msgid "Loading map from demo"
+msgstr ""
+
+msgctxt "NetClient"
+msgid "Playing demo"
+msgstr ""
+
+msgctxt "NetClient"
+msgid "Error loading map"
 msgstr ""
 
 msgctxt "Client"
@@ -577,6 +612,14 @@ msgstr ""
 
 msgctxt "Client"
 msgid "[{0}] Toggle Demo HUD"
+msgstr ""
+
+msgctxt "Client"
+msgid "Recording demo: {0}"
+msgstr ""
+
+msgctxt "Client"
+msgid "Recording stopped"
 msgstr ""
 
 #: Resources/Scripts/Gui/ClientUI.as:484
@@ -1746,6 +1789,10 @@ msgstr ""
 
 msgctxt "Client"
 msgid "You have killed {0}"
+msgstr ""
+
+msgctxt "Client"
+msgid "You were killed by {0}"
 msgstr ""
 
 #: Resources/Scripts/Gui/Console/ConsoleWindow.as:62
