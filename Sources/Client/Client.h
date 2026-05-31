@@ -377,7 +377,6 @@ namespace spades {
 			void CaptureColor();
 
 			bool inGameLimbo;
-			bool HasLocalPlayer();
 			bool IsLimboViewActive();
 			void CloseLimboView();
 			void SpawnPressed();
@@ -520,6 +519,7 @@ namespace spades {
 				const ServerAddress& host, Handle<FontManager>,
 				const std::string& demoPath = "");
 
+			bool HasLocalPlayer();
 			bool IsDemoMode() const { return demoNet != nullptr; }
 			DemoNetClient* GetDemoNetClient() { return demoNet.get(); }
 			void ReloadDemo();
