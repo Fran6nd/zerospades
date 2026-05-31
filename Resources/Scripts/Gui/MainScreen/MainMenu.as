@@ -480,7 +480,17 @@ namespace spades {
 		private void OnDeleteDemoPressed(spades::ui::UIElement@ sender) {
 			if (selectedDemoPath.length == 0)
 				return;
-			if (!helper.DeleteDemo(selectedDemoPath))
+			string name = StripDemoPath(selectedDemoPath);
+			ConfirmScreen confirm(this, _Tr("MainScreen", "Are you sure you want to delete '{0}'?\nThis action cannot be undone.", name));
+			@confirm.Closed = spades::ui::EventHandler(this.OnDeleteConfirmClosed);
+			confirm.Run();
+		}
+
+		private void OnDeleteConfirmClosed(spades::ui::UIElement@ sender) {
+			ConfirmScreen@ confirm = cast<ConfirmScreen@>(sender);
+			if (!confirm.Result)
+				return;
+			if (not helper.DeleteDemo(selectedDemoPath))
 				return;
 			selectedDemoPath = "";
 			demoNameField.Text = "";
