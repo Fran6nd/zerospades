@@ -109,6 +109,10 @@ namespace spades {
 					                              asMETHOD(gui::MainScreenHelper, ShouldOpenModsTab),
 					                              asCALL_THISCALL);
 					manager->CheckError(r);
+					r = eng->RegisterObjectMethod("MainScreenHelper", "bool IsTryingMod()",
+					                              asMETHOD(gui::MainScreenHelper, IsTryingMod),
+					                              asCALL_THISCALL);
+					manager->CheckError(r);
 					r = eng->RegisterObjectMethod("MainScreenHelper", "void RelaunchForMods()",
 					                              asMETHOD(gui::MainScreenHelper, RelaunchForMods),
 					                              asCALL_THISCALL);

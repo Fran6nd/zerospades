@@ -19,13 +19,11 @@
  */
 
 #include <algorithm> //std::sort
+#include <cstdio>
 #include <memory>
 #include <regex>
-
-#if (!defined(__APPLE__) && (__unix || __unix__)) || defined(__HAIKU__)
 #include <sys/stat.h>
 #include <sys/types.h>
-#endif
 
 #include <Imports/SDL.h>
 #include <zlib.h>
@@ -44,6 +42,7 @@
 #include <Core/FileManager.h>
 #include <Core/ServerAddress.h>
 #include <Core/Settings.h>
+#include <Core/StdStream.h>
 #include <Core/Strings.h>
 #include <Core/Thread.h>
 #include <Core/ZipFileSystem.h>
@@ -190,6 +189,8 @@ namespace {
 	bool g_printVersion = false;
 	bool g_printHelp = false;
 
+	std::string g_tryModPath;
+
 	void printHelp(char* binaryName) {
 		printf("usage: %s [server_address] [v=protocol_version] [--replay demo.dem] [-h|--help] [-v|--version]\n",
 		       binaryName);
@@ -197,6 +198,11 @@ namespace {
 		printf("  v=0.75 or v=0.76     protocol version (default: 0.75)\n");
 		printf("  --replay FILE        play back a demo recording\n");
 		printf("  -r FILE              play back a demo recording (short form)\n");
+		printf("  --try-mod PATH       try a mod (folder or .pak) on top of the base\n");
+		printf("                       game; bypasses the startup setup and the\n");
+		printf("                       enabled-mod set, and hides the Mods tab, so\n");
+		printf("                       only this mod applies. A bare name resolves\n");
+		printf("                       under the user Mods/ folder.\n");
 		printf("  -h, --help           show this help message\n");
 		printf("  -v, --version        show version information\n");
 		printf("\nAuto-recording can be enabled with the cg_demoAutoRecord setting.\n");
@@ -242,9 +248,49 @@ namespace {
 				spades::g_openModsTab = true;
 				return ++i;
 			}
+			if (!strcasecmp(a, "--try-mod")) {
+				if (i + 1 < argc) {
+					spades::g_tryMod = true;
+					g_tryModPath = argv[++i];
+					return ++i;
+				}
+				return 0;
+			}
 		}
 
 		return 0;
+	}
+
+	bool pathExists(const std::string& path) {
+		struct stat st;
+		return ::stat(path.c_str(), &st) == 0;
+	}
+
+	bool isDirectory(const std::string& path) {
+		struct stat st;
+		if (::stat(path.c_str(), &st) != 0)
+			return false;
+		return (st.st_mode & S_IFDIR) != 0;
+	}
+
+	// Resolve a --try-mod argument to a path on disk. Accepts a folder or a
+	// .pak/.zip file given directly (absolute or relative to the working dir),
+	// or a bare name that lives under the user Mods/ folder. Returns "" if
+	// nothing matches.
+	std::string resolveTryMod(const std::string& arg) {
+		if (pathExists(arg))
+			return arg;
+
+		const std::string& root = spades::g_userResourceDirectory;
+		std::string candidates[] = {
+		  root + "/Mods/" + arg,
+		  root + "/Mods/" + arg + ".pak",
+		};
+		for (const std::string& c : candidates) {
+			if (pathExists(c))
+				return c;
+		}
+		return std::string();
 	}
 } // namespace
 
@@ -252,6 +298,7 @@ namespace spades {
 	std::string g_userResourceDirectory;
 	std::string g_executablePath;
 	bool g_openModsTab = false;
+	bool g_tryMod = false;
 
 	void StartClient(const spades::ServerAddress& addr) {
 		class ConcreteRunner : public spades::gui::Runner {
@@ -704,7 +751,10 @@ int main(int argc, char** argv) {
 		// the base paks; the set is mounted in enabled order so the last-enabled
 		// mod ends up on top and wins conflicts. The shipped install paks are
 		// never modified — changes to the enabled set take effect on next launch.
-		{
+		//
+		// During a --try-mod run the enabled set is skipped entirely so the mod
+		// under test applies in isolation, on top of the base config only.
+		if (!spades::g_tryMod) {
 			std::vector<std::string> modPaks =
 			  spades::gui::ModsScreenHelper::GetEnabledModPakPaths();
 			for (const std::string& path : modPaks) {
@@ -716,6 +766,27 @@ int main(int argc, char** argv) {
 				} catch (const std::exception& ex) {
 					SPLog("Mod pak failed to mount: %s: %s", path.c_str(), ex.what());
 				}
+			}
+		}
+
+		// Mount the --try-mod target on top of everything. The target is an
+		// unpacked mod folder or a single .pak/.zip — both expose the same file
+		// tree, so the engine sees no difference between the two. No packing
+		// step, so editing files in the folder and relaunching is the whole loop.
+		if (spades::g_tryMod) {
+			std::string path = resolveTryMod(g_tryModPath);
+			if (path.empty()) {
+				SPLog("Mod to try not found: %s", g_tryModPath.c_str());
+			} else if (isDirectory(path)) {
+				spades::FileManager::PrependFileSystem(
+				  new spades::DirectoryFileSystem(path, false));
+				SPLog("Mod folder mounted: %s", path.c_str());
+			} else if (std::FILE* f = std::fopen(path.c_str(), "rb")) {
+				spades::FileManager::PrependFileSystem(
+				  new spades::ZipFileSystem(new spades::StdStream(f, true)));
+				SPLog("Mod pak mounted: %s", path.c_str());
+			} else {
+				SPLog("Mod to try failed to open: %s", path.c_str());
 			}
 		}
 		pumpEvents();
@@ -752,7 +823,7 @@ int main(int argc, char** argv) {
 			SPLog("Starting demo replay: %s", g_replayDemoPath.c_str());
 			spades::StartDemoReplay(g_replayDemoPath);
 		} else if (!g_autoconnect) {
-			if (spades::g_openModsTab ||
+			if (spades::g_openModsTab || spades::g_tryMod ||
 			    !((int)cl_showStartupWindow != 0 || splashWindow->IsStartupScreenRequested())) {
 				splashWindow.reset();
 

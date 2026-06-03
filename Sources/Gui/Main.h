@@ -34,6 +34,10 @@ namespace spades {
 	/** Set by --open-mods. Skips the startup window and selects the Mods tab. */
 	extern bool g_openModsTab;
 
+	/** Set by --try-mod. Mounts one mod in isolation, bypasses the startup
+	 * window and the enabled-mod set, and hides the Mods tab. */
+	extern bool g_tryMod;
+
 	void StartClient(const ServerAddress&);
 	void StartMainScreen();
 	void StartDemoReplay(const std::string& demoPath);

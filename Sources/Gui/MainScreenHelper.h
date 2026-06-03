@@ -118,6 +118,7 @@ namespace spades {
 			bool RenameDemo(const std::string& oldName, const std::string& newName);
 
 			bool ShouldOpenModsTab();
+			bool IsTryingMod();
 			void RelaunchForMods();
 		};
 	}
