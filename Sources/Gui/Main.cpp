@@ -20,6 +20,7 @@
 
 #include <algorithm> //std::sort
 #include <cstdio>
+#include <cstdlib>
 #include <memory>
 #include <regex>
 #include <sys/stat.h>
@@ -66,6 +67,11 @@ FILE __iob_func[3] = {*stdin, *stdout, *stderr};
 #endif
 
 DEFINE_SPADES_SETTING(cl_showStartupWindow, "1");
+
+// Absolute path of the running executable, refreshed every launch. Persisted
+// so external tooling (e.g. the mod workbench) can locate the binary without
+// guessing the platform's bundle layout.
+DEFINE_SPADES_SETTING(core_executablePath, "");
 
 #ifdef WIN32
 // windows.h must be included before DbgHelp.h and shlobj.h.
@@ -649,6 +655,26 @@ int main(int argc, char** argv) {
 
 		// load preferences.
 		spades::Settings::GetInstance()->Load();
+
+		// record the absolute executable path (overwrites any stale value from
+		// a previous launch, then gets flushed back to the config at shutdown).
+		// Windows: query the loaded module directly; POSIX: resolve argv[0]
+		// (symlinks and relative paths included) with realpath.
+		{
+			std::string exePath = spades::g_executablePath;
+#ifdef _WIN32
+			std::vector<wchar_t> wbuf(32768);
+			DWORD n = GetModuleFileNameW(NULL, wbuf.data(), (DWORD)wbuf.size());
+			if (n > 0 && n < wbuf.size())
+				exePath = Utf8FromWString(wbuf.data());
+#else
+			if (char* resolved = realpath(spades::g_executablePath.c_str(), nullptr)) {
+				exePath = resolved;
+				free(resolved);
+			}
+#endif
+			core_executablePath = exePath;
+		}
 		pumpEvents();
 
 		// dump CPU info (for debugging?)
