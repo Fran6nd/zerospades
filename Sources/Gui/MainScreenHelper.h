@@ -116,6 +116,9 @@ namespace spades {
 			int64_t GetDemoFileSize(const std::string& filename);
 			bool DeleteDemo(const std::string& filename);
 			bool RenameDemo(const std::string& oldName, const std::string& newName);
+
+			bool ShouldOpenModsTab();
+			void RelaunchForMods();
 		};
 	}
 }
