@@ -30,6 +30,7 @@
 #include <curl/curl.h>
 #include <json/json.h>
 
+#include "Main.h"
 #include "MainScreen.h"
 #include "MainScreenHelper.h"
 #include <Client/DemoRecorder.h>
@@ -473,6 +474,9 @@ namespace spades {
 		bool MainScreenHelper::RenameDemo(const std::string& oldName, const std::string& newName) {
 			return FileManager::RenameFile(oldName.c_str(), newName.c_str());
 		}
+
+		bool MainScreenHelper::ShouldOpenModsTab() { return spades::g_openModsTab; }
+		void MainScreenHelper::RelaunchForMods() { spades::RelaunchForMods(); }
 
 		std::string MainScreenHelper::GetPendingErrorMessage() {
 			std::string s = errorMessage;

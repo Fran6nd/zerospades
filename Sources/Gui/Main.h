@@ -28,7 +28,16 @@ namespace spades {
 	/** The path to the user resource directory. Can be empty. */
 	extern std::string g_userResourceDirectory;
 
+	/** argv[0] captured at startup, used to relaunch the program. */
+	extern std::string g_executablePath;
+
+	/** Set by --open-mods. Skips the startup window and selects the Mods tab. */
+	extern bool g_openModsTab;
+
 	void StartClient(const ServerAddress&);
 	void StartMainScreen();
 	void StartDemoReplay(const std::string& demoPath);
+
+	/** Relaunch the program with --open-mods, then exit the current process. */
+	void RelaunchForMods();
 } // namespace spades
