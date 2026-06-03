@@ -48,6 +48,7 @@
 #include <Core/Thread.h>
 #include <Core/ZipFileSystem.h>
 #include <Gui/ConsoleScreen.h>
+#include <Gui/ModsScreenHelper.h>
 #include <Gui/StartupScreen.h>
 #include <ZeroSpades.h>
 
@@ -237,6 +238,10 @@ namespace {
 				}
 				return 0;
 			}
+			if (!strcasecmp(a, "--open-mods")) {
+				spades::g_openModsTab = true;
+				return ++i;
+			}
 		}
 
 		return 0;
@@ -245,6 +250,8 @@ namespace {
 
 namespace spades {
 	std::string g_userResourceDirectory;
+	std::string g_executablePath;
+	bool g_openModsTab = false;
 
 	void StartClient(const spades::ServerAddress& addr) {
 		class ConcreteRunner : public spades::gui::Runner {
@@ -304,6 +311,90 @@ namespace spades {
 	}
 } // namespace spades
 
+#ifndef _WIN32
+#include <spawn.h>
+#include <unistd.h>
+extern char** environ;
+#else
+#include <process.h>
+#endif
+
+namespace spades {
+	void RelaunchForMods() {
+		// Spawn a new instance of the same binary with --open-mods, then exit.
+		Settings::GetInstance()->Flush();
+
+		// Release every file handle this process holds before spawning the
+		// replacement. On Windows a file open for writing without shared access
+		// can't be reopened by another process, so if the old process still held
+		// SystemMessages.log the fresh instance would fail to start logging. By
+		// closing first, the new process always finds the files free — no race,
+		// no startup delay.
+		StopLog();
+		FileManager::Close();
+
+#ifdef _WIN32
+		std::wstring exe;
+		{
+			auto* ws = (wchar_t*)SDL_iconv_string(
+			  "UCS-2-INTERNAL", "UTF-8", g_executablePath.c_str(),
+			  g_executablePath.size() + 1);
+			if (ws) {
+				exe.assign(ws);
+				SDL_free(ws);
+			}
+		}
+		std::wstring cmd = L"\"" + exe + L"\" --open-mods";
+		STARTUPINFOW si{};
+		si.cb = sizeof(si);
+		PROCESS_INFORMATION pi{};
+		if (CreateProcessW(exe.c_str(), &cmd[0], nullptr, nullptr, FALSE,
+		                   0, nullptr, nullptr, &si, &pi)) {
+			CloseHandle(pi.hThread);
+			CloseHandle(pi.hProcess);
+		}
+#elif defined(__APPLE__)
+		// Prefer launching the .app bundle via `open -n` so the new process
+		// becomes a proper foreground application; fall back to executing
+		// the binary directly if we can't find the bundle.
+		std::string base = g_executablePath;
+		std::string appPath;
+		auto pos = base.find(".app/");
+		if (pos != std::string::npos)
+			appPath = base.substr(0, pos + 4);
+
+		std::vector<const char*> args;
+		if (!appPath.empty()) {
+			args.push_back("open");
+			args.push_back("-n");
+			args.push_back(appPath.c_str());
+			args.push_back("--args");
+			args.push_back("--open-mods");
+			args.push_back(nullptr);
+			pid_t pid = 0;
+			posix_spawnp(&pid, args[0], nullptr, nullptr,
+			             const_cast<char**>(args.data()), environ);
+		} else {
+			args.push_back(g_executablePath.c_str());
+			args.push_back("--open-mods");
+			args.push_back(nullptr);
+			pid_t pid = 0;
+			posix_spawnp(&pid, args[0], nullptr, nullptr,
+			             const_cast<char**>(args.data()), environ);
+		}
+#else
+		const char* argv[] = {g_executablePath.c_str(), "--open-mods", nullptr};
+		pid_t pid = 0;
+		posix_spawnp(&pid, argv[0], nullptr, nullptr,
+		             const_cast<char**>(argv), environ);
+#endif
+
+		// Skip atexit handlers — SDL/GL teardown can stall here, and the
+		// fresh process is already on its way.
+		_exit(0);
+	}
+} // namespace spades
+
 static uLong computeCrc32ForStream(spades::IStream* s) {
 	uLong crc = crc32(0L, Z_NULL, 0);
 
@@ -332,6 +423,9 @@ int main(int argc, char** argv) {
 #ifdef WIN32
 	SetUnhandledExceptionFilter(UnhandledExceptionProc);
 #endif
+
+	if (argc > 0 && argv[0])
+		spades::g_executablePath = argv[0];
 
 	for (int i = 1; i < argc;) {
 		int ret = handleCommandLineArgument(argc, argv, i);
@@ -604,6 +698,26 @@ int main(int argc, char** argv) {
 			for (size_t i = 0; i < fssImportant.size(); i++)
 				spades::FileManager::PrependFileSystem(fssImportant[i]);
 		}
+
+		// Mount enabled mods as an overlay on top of the base paks. Each enabled
+		// mod's pak(s) live in Mods/ and are prepended so they take priority over
+		// the base paks; the set is mounted in enabled order so the last-enabled
+		// mod ends up on top and wins conflicts. The shipped install paks are
+		// never modified — changes to the enabled set take effect on next launch.
+		{
+			std::vector<std::string> modPaks =
+			  spades::gui::ModsScreenHelper::GetEnabledModPakPaths();
+			for (const std::string& path : modPaks) {
+				try {
+					auto stream = spades::FileManager::OpenForReading(path.c_str());
+					spades::FileManager::PrependFileSystem(
+					  new spades::ZipFileSystem(stream.release()));
+					SPLog("Mod pak mounted: %s", path.c_str());
+				} catch (const std::exception& ex) {
+					SPLog("Mod pak failed to mount: %s: %s", path.c_str(), ex.what());
+				}
+			}
+		}
 		pumpEvents();
 
 		// initialize localization system
@@ -638,7 +752,8 @@ int main(int argc, char** argv) {
 			SPLog("Starting demo replay: %s", g_replayDemoPath.c_str());
 			spades::StartDemoReplay(g_replayDemoPath);
 		} else if (!g_autoconnect) {
-			if (!((int)cl_showStartupWindow != 0 || splashWindow->IsStartupScreenRequested())) {
+			if (spades::g_openModsTab ||
+			    !((int)cl_showStartupWindow != 0 || splashWindow->IsStartupScreenRequested())) {
 				splashWindow.reset();
 
 				SPLog("Starting main screen");
