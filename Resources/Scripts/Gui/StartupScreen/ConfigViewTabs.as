@@ -806,6 +806,11 @@ namespace spades {
 			string[]@ names = GetAllConfigNames();
 			for (uint i = 0, count = names.length; i < count; i++) {
 				ConfigItem item(names[i]);
+				// Skip cvars whose default isn't registered yet (in-game-only
+				// screens declare their defaults lazily). Without this guard,
+				// item.DefaultValue would be "" and we'd wipe the user's value.
+				if (item.IsUnknown)
+					continue;
 				item.StringValue = item.DefaultValue;
 			}
 
