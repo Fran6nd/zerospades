@@ -21,6 +21,7 @@
 #include "CreateProfileScreen.as"
 #include "ServerList.as"
 #include "DemoList.as"
+#include "ModList.as"
 
 namespace spades {
 
@@ -198,6 +199,23 @@ namespace spades {
 		private float demoSizeColWidth;
 		private float demoContentsWidth;
 
+		// Mods tab state
+		ModsScreenHelper@ modsHelper;
+		TabPanel@ modsPanel;
+		spades::ui::ListView@ modsList;
+		spades::ui::Button@ modsDownloadButton;
+		spades::ui::Button@ modsApplyButton;
+		spades::ui::Button@ modsResetButton;
+		spades::ui::Label@ modsStatusLabel;
+		ModsProgressBar@ modsProgressBar;
+		bool modsDownloading = false;
+		bool modsDirty = false; // enabled set changed this session; restart to apply
+		private float modsCheckColWidth;
+		private float modsOrderColWidth;
+		private float modsNameColWidth;
+		private float modsCountColWidth;
+		private float modsSizeColWidth;
+
 		private ConfigItem cg_protocolVersion("cg_protocolVersion", "3");
 		private ConfigItem cg_lastQuickConnectHost("cg_lastQuickConnectHost", "127.0.0.1");
 		private ConfigItem cg_serverlistSort("cg_serverlistSort", "16385");
@@ -212,6 +230,13 @@ namespace spades {
 			demoModeColWidth = 125.0F;
 			demoMapColWidth	 = 185.0F;
 			demoSizeColWidth = 70.0F;
+
+			modsCheckColWidth = 60.0F;
+			modsOrderColWidth = 90.0F;
+			modsNameColWidth  = 320.0F;
+			modsCountColWidth = 80.0F;
+			modsSizeColWidth  = 100.0F;
+			@modsHelper = ModsScreenHelper();
 
 			float sw = Manager.ScreenWidth;
 			float sh = Manager.ScreenHeight;
@@ -245,6 +270,10 @@ namespace spades {
 				@demoPanel = TabPanel(Manager);
 				demoPanel.Bounds = AABB2(0.0F, 0.0F, sw, sh);
 				demoPanel.Visible = false;
+
+				@modsPanel = TabPanel(Manager);
+				modsPanel.Bounds = AABB2(0.0F, 0.0F, sw, sh);
+				modsPanel.Visible = false;
 
 				// --- Server panel contents ---
 				{
@@ -477,8 +506,86 @@ namespace spades {
 					demoPanel.AddChild(demoList);
 				}
 
+				// --- Mods panel contents ---
+				{
+					@modsDownloadButton = spades::ui::Button(Manager);
+					modsDownloadButton.Caption = _Tr("MainScreen", "Download official mods…");
+					modsDownloadButton.Bounds = AABB2(contentsLeft, 200.0F, 240.0F, 30.0F);
+					@modsDownloadButton.Activated = spades::ui::EventHandler(this.OnDownloadModsPressed);
+					modsPanel.AddChild(modsDownloadButton);
+				}
+				{
+					@modsResetButton = spades::ui::Button(Manager);
+					modsResetButton.Caption = _Tr("MainScreen", "Disable all");
+					modsResetButton.Bounds = AABB2(contentsLeft + contentsWidth - 270.0F, 200.0F, 130.0F, 30.0F);
+					@modsResetButton.Activated = spades::ui::EventHandler(this.OnResetModsPressed);
+					modsPanel.AddChild(modsResetButton);
+				}
+				{
+					@modsApplyButton = spades::ui::Button(Manager);
+					modsApplyButton.Caption = _Tr("MainScreen", "Apply changes");
+					modsApplyButton.Bounds = AABB2(contentsLeft + contentsWidth - 130.0F, 200.0F, 130.0F, 30.0F);
+					@modsApplyButton.Activated = spades::ui::EventHandler(this.OnApplyModsPressed);
+					modsPanel.AddChild(modsApplyButton);
+				}
+				{
+					@modsStatusLabel = spades::ui::Label(Manager);
+					modsStatusLabel.Bounds = AABB2(contentsLeft, footerPos - 30.0F, contentsWidth, 24.0F);
+					modsStatusLabel.Text = "";
+					modsPanel.AddChild(modsStatusLabel);
+				}
+				{
+					@modsProgressBar = ModsProgressBar(Manager);
+					modsProgressBar.Bounds = AABB2(contentsLeft, footerPos - 12.0F, contentsWidth, 6.0F);
+					modsProgressBar.Visible = false;
+					modsPanel.AddChild(modsProgressBar);
+				}
+				{
+					float x = contentsLeft;
+					{
+						ModListHeader header(Manager);
+						header.Bounds = AABB2(x, headerPos, modsCheckColWidth, headerHeight);
+						header.Text = _Tr("MainScreen", "Status");
+						modsPanel.AddChild(header);
+						x += modsCheckColWidth;
+					}
+					{
+						ModListHeader header(Manager);
+						header.Bounds = AABB2(x, headerPos, modsOrderColWidth, headerHeight);
+						header.Text = _Tr("MainScreen", "Apply Order");
+						modsPanel.AddChild(header);
+						x += modsOrderColWidth;
+					}
+					{
+						ModListHeader header(Manager);
+						header.Bounds = AABB2(x, headerPos, modsNameColWidth, headerHeight);
+						header.Text = _Tr("MainScreen", "Mod");
+						modsPanel.AddChild(header);
+						x += modsNameColWidth;
+					}
+					{
+						ModListHeader header(Manager);
+						header.Bounds = AABB2(x, headerPos, modsCountColWidth, headerHeight);
+						header.Text = _Tr("MainScreen", "Paks");
+						modsPanel.AddChild(header);
+						x += modsCountColWidth;
+					}
+					{
+						ModListHeader header(Manager);
+						header.Bounds = AABB2(x, headerPos, modsSizeColWidth, headerHeight);
+						header.Text = _Tr("MainScreen", "Size");
+						modsPanel.AddChild(header);
+					}
+				}
+				{
+					@modsList = spades::ui::ListView(Manager);
+					modsList.Bounds = AABB2(contentsLeft, listPos, contentsWidth, footerPos - listPos - 44.0F);
+					modsPanel.AddChild(modsList);
+				}
+
 				AddChild(serverPanel);
 				AddChild(demoPanel);
+				AddChild(modsPanel);
 
 				// Tab strip
 				{
@@ -487,7 +594,15 @@ namespace spades {
 					AddChild(tabStrip);
 					tabStrip.AddItem(_Tr("MainScreen", "Servers"), serverPanel);
 					tabStrip.AddItem(_Tr("MainScreen", "Demos"), demoPanel);
+					tabStrip.AddItem(_Tr("MainScreen", "Mods"), modsPanel);
 					@tabStrip.Changed = spades::ui::EventHandler(this.OnTabChanged);
+				}
+
+				// Coming back from an apply-triggered relaunch — open the Mods tab.
+				if (helper.ShouldOpenModsTab()) {
+					serverPanel.Visible = false;
+					demoPanel.Visible = false;
+					modsPanel.Visible = true;
 				}
 			}
 
@@ -517,6 +632,9 @@ namespace spades {
 
 			LoadServerList();
 			LoadDemoList();
+
+			if (helper.ShouldOpenModsTab())
+				LoadModList();
 		}
 
 		void LoadServerList() {
@@ -551,6 +669,169 @@ namespace spades {
 			// Refresh demo list when switching to demos tab
 			if (demoPanel.Visible)
 				LoadDemoList();
+			if (modsPanel.Visible)
+				LoadModList();
+		}
+
+		void LoadModList() {
+			string[]@ names = modsHelper.GetModNames();
+			string[]@ enabled = modsHelper.GetEnabledMods();
+			if (names is null)
+				@names = array<string>();
+			if (enabled is null)
+				@enabled = array<string>();
+
+			// Displayed rows keep a fixed order: every mod on disk in its natural
+			// order, then any enabled mod that no longer exists (orphaned entries,
+			// shown so they can be removed). Toggling only changes a row's apply
+			// number and colour, never its position.
+			string[] list;
+			int[] orders;
+			bool[] exists;
+
+			for (uint i = 0; i < names.length; i++) {
+				int idx = EnabledIndex(enabled, names[i]);
+				list.insertLast(names[i]);
+				orders.insertLast(idx + 1); // 0 when disabled (idx == -1)
+				exists.insertLast(true);
+			}
+			// Orphaned enabled mods (enabled but no longer on disk).
+			for (uint i = 0; i < enabled.length; i++) {
+				bool onDisk = false;
+				for (uint j = 0; j < names.length; j++) {
+					if (names[j] == enabled[i]) { onDisk = true; break; }
+				}
+				if (!onDisk) {
+					list.insertLast(enabled[i]);
+					orders.insertLast(int(i) + 1);
+					exists.insertLast(false);
+				}
+			}
+
+			ModListModel model(Manager, modsHelper, list, orders, exists, modsCheckColWidth,
+			                   modsOrderColWidth, modsNameColWidth, modsCountColWidth, modsSizeColWidth);
+			@modsList.Model = model;
+			@model.ItemActivated = ModListItemEventHandler(this.OnModToggle);
+			UpdateModsStatus();
+		}
+
+		private int EnabledIndex(string[]@ enabled, string name) {
+			for (uint i = 0; i < enabled.length; i++) {
+				if (enabled[i] == name)
+					return int(i);
+			}
+			return -1;
+		}
+
+		private void UpdateModsStatus() {
+			if (modsApplyButton !is null) {
+				// Toggles already persist; Apply only restarts to make pending
+				// changes live, so it's actionable only when something changed.
+				modsApplyButton.Enable = modsDirty and not modsDownloading;
+			}
+			if (modsDownloading) {
+				int done = modsHelper.GetRefreshDone();
+				int total = modsHelper.GetRefreshTotal();
+				string item = modsHelper.GetRefreshCurrentItem();
+				if (total <= 0) {
+					modsStatusLabel.Text = _Tr("MainScreen", "Fetching mod list…");
+					modsProgressBar.Fraction = 0.0F;
+				} else {
+					string label = "" + done + " / " + total;
+					if (item.length > 0)
+						label += "  —  " + item;
+					modsStatusLabel.Text = label;
+					modsProgressBar.Fraction = float(done) / float(total);
+				}
+				modsProgressBar.Visible = true;
+				return;
+			}
+			modsProgressBar.Visible = false;
+			string msg = modsHelper.GetRefreshMessage();
+			if (msg.length > 0) {
+				modsStatusLabel.Text = msg;
+				return;
+			}
+			if (modsDirty) {
+				modsStatusLabel.Text = _Tr("MainScreen", "Press Apply changes to restart and apply your mods.");
+				return;
+			}
+			modsStatusLabel.Text = "";
+		}
+
+		private void OnDownloadModsPressed(spades::ui::UIElement@ sender) {
+			if (modsDownloading)
+				return;
+			ConfigItem indexUrl("cl_modsIndexUrl", "");
+			string body = _Tr("MainScreen", "Download the official ZeroSpades mod pack?") + "\n\n";
+			body += _Tr("MainScreen", "These are mods reviewed and hosted by the ZeroSpades team.") + "\n\n";
+			body += _Tr("MainScreen", "Source: ") + indexUrl.StringValue + "\n";
+			body += _Tr("MainScreen", "Files will be saved into your Mods/ folder, overwriting any existing copies.");
+			ConfirmScreen cs(this, body, Min(500.0F, Manager.ScreenHeight - 100.0F));
+			@cs.Closed = spades::ui::EventHandler(this.OnDownloadConfirmed);
+			cs.Run();
+		}
+
+		private void OnDownloadConfirmed(spades::ui::UIElement@ sender) {
+			ConfirmScreen@ cs = cast<ConfirmScreen>(sender);
+			if (cs is null or !cs.Result)
+				return;
+			if (modsDownloading)
+				return;
+			modsDownloading = true;
+			modsHelper.StartRefresh();
+			UpdateModsStatus();
+		}
+
+		// Apply = restart now so the enabled set is mounted. Toggles are already
+		// saved, so this just relaunches straight back into the Mods tab.
+		private void OnApplyModsPressed(spades::ui::UIElement@ sender) {
+			if (modsDownloading)
+				return;
+			helper.RelaunchForMods();
+		}
+
+		private void OnResetModsPressed(spades::ui::UIElement@ sender) {
+			ConfirmScreen cs(this, _Tr("MainScreen", "Disable all mods? This takes effect after a restart."));
+			@cs.Closed = spades::ui::EventHandler(this.OnResetConfirmed);
+			cs.Run();
+		}
+
+		private void OnResetConfirmed(spades::ui::UIElement@ sender) {
+			ConfirmScreen@ cs = cast<ConfirmScreen>(sender);
+			if (cs is null or !cs.Result)
+				return;
+			modsHelper.ClearEnabledMods();
+			modsDirty = true;
+			// Refresh the rows to clear every checkbox, not just the status line.
+			LoadModList();
+		}
+
+		// Clicking a row toggles the mod in the enabled set. The change is saved
+		// immediately and takes effect the next time the game starts.
+		private void OnModToggle(string modName) {
+			if (modsDownloading)
+				return;
+			string[]@ enabled = modsHelper.GetEnabledMods();
+			if (enabled is null)
+				@enabled = array<string>();
+			if (EnabledIndex(enabled, modName) >= 0)
+				modsHelper.DisableMod(modName);
+			else
+				modsHelper.EnableMod(modName);
+			modsDirty = true;
+			LoadModList();
+		}
+
+		private void CheckModsRefresh() {
+			if (!modsDownloading)
+				return;
+			if (modsHelper.PollRefreshState()) {
+				modsDownloading = false;
+				LoadModList();
+				return;
+			}
+			UpdateModsStatus();
 		}
 
 		void DemoListItemActivated(DemoListModel@ sender, string filename) {
@@ -837,6 +1118,7 @@ namespace spades {
 
 		void Render() {
 			CheckServerList();
+			CheckModsRefresh();
 			UIElement::Render();
 
 			// check for client error message.
