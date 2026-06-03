@@ -20,12 +20,24 @@
 
 namespace spades {
 
+	// Passed in through PreferenceViewOptions rather than held as a script
+	// global because the script engine disallows them (asEP_DISALLOW_GLOBAL_VARS).
+	class PreferenceViewPersistedState {
+		int SelectedTabIndex = 0;
+		// Stored as decimal strings: AngelScript 2.38 fails to resolve `length`
+		// as a property accessor on array<primitive> in this build.
+		array<string> TabScrollRows;
+	}
+
 	class PreferenceViewOptions {
 		bool GameActive = false;
+		// Null means "don't remember position" — Restore/Save no-op.
+		PreferenceViewPersistedState@ PersistedState;
 	}
 
 	class PreferenceView : spades::ui::UIElement {
 		private spades::ui::UIElement@ owner;
+		private PreferenceViewPersistedState@ persistedState;
 
 		private PreferenceTab @[] tabs;
 
@@ -45,6 +57,7 @@ namespace spades {
 			PreferenceViewOptions@ options, FontManager@ fontManager) {
 			super(owner.Manager);
 			@this.owner = owner;
+			@this.persistedState = options.PersistedState;
 			this.Bounds = owner.Bounds;
 
 			float sw = Manager.ScreenWidth;
@@ -143,7 +156,55 @@ namespace spades {
 				}
 			}
 
+			// Must run after the panel constructors above: each one calls
+			// FinishLayout() which sets the ListView's bounds, so MaxValue
+			// is correct by the time ScrollToRow clamps against it.
+			RestorePersistedState();
 			UpdateTabs();
+		}
+
+		private spades::ui::ListView@ GetTabList(int idx) {
+			if (idx < 0 or idx >= int(tabs.length))
+				return null;
+			spades::ui::UIElement@ view = tabs[idx].View;
+			if (view is null)
+				return null;
+			spades::ui::UIElement @[] @children = view.GetChildren();
+			for (uint i = 0; i < children.length; i++) {
+				spades::ui::ListView@ list = cast<spades::ui::ListView>(children[i]);
+				if (list !is null)
+					return list;
+			}
+			return null;
+		}
+
+		private void RestorePersistedState() {
+			if (persistedState is null)
+				return;
+
+			if (persistedState.SelectedTabIndex >= 0 and persistedState.SelectedTabIndex < int(tabs.length))
+				SelectedTabIndex = persistedState.SelectedTabIndex;
+
+			uint limit = tabs.length;
+			if (persistedState.TabScrollRows.length < limit)
+				limit = persistedState.TabScrollRows.length;
+			for (uint i = 0; i < limit; i++) {
+				spades::ui::ListView@ list = GetTabList(int(i));
+				if (list !is null)
+					list.ScrollToRow(int(parseInt(persistedState.TabScrollRows[i])));
+			}
+		}
+
+		private void SavePersistedState() {
+			if (persistedState is null)
+				return;
+
+			persistedState.SelectedTabIndex = SelectedTabIndex;
+			persistedState.TabScrollRows.resize(tabs.length);
+			for (uint i = 0; i < tabs.length; i++) {
+				spades::ui::ListView@ list = GetTabList(int(i));
+				persistedState.TabScrollRows[i] = "" + ((list !is null) ? list.TopRowIndex : 0);
+			}
 		}
 
 		private void AddTab(spades::ui::UIElement@ view, string caption, HeadingNavIndex@ nav = null) {
@@ -221,6 +282,9 @@ namespace spades {
 		}
 
 		void Close() {
+			// Both Esc and the Back button route through Close(), so this
+			// is the single save point for the persisted position.
+			SavePersistedState();
 			owner.Enable = true;
 			@this.Parent = null;
 			OnClosed();
