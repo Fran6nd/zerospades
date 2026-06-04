@@ -296,7 +296,8 @@ namespace spades {
 			SPLog("Disconnected");
 
 			RemoveAllLocalEntities();
-
+			bloodMarks.reset();
+			
 			renderer->SetGameMap(nullptr);
 			audioDevice->SetGameMap(nullptr);
 
