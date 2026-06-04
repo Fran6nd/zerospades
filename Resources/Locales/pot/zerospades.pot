@@ -518,6 +518,70 @@ msgctxt "MainScreen"
 msgid "Size"
 msgstr ""
 
+msgctxt "MainScreen"
+msgid "Mods"
+msgstr ""
+
+msgctxt "MainScreen"
+msgid "Fetching mod list…"
+msgstr ""
+
+msgctxt "MainScreen"
+msgid "Download the official ZeroSpades mod pack?"
+msgstr ""
+
+msgctxt "MainScreen"
+msgid "These are mods reviewed and hosted by the ZeroSpades team."
+msgstr ""
+
+msgctxt "MainScreen"
+msgid "Source: "
+msgstr ""
+
+msgctxt "MainScreen"
+msgid "Files will be saved into your Mods/ folder, overwriting any existing copies."
+msgstr ""
+
+msgctxt "MainScreen"
+msgid "Disable all mods? This takes effect after a restart."
+msgstr ""
+
+msgctxt "MainScreen"
+msgid "Press 'Apply changes' to restart and apply your mods."
+msgstr ""
+
+msgctxt "MainScreen"
+msgid "Download official mods…"
+msgstr ""
+
+msgctxt "MainScreen"
+msgid "Disable All"
+msgstr ""
+
+msgctxt "MainScreen"
+msgid "Apply Changes"
+msgstr ""
+
+msgctxt "MainScreen"
+msgid "Status"
+msgstr ""
+
+msgctxt "MainScreen"
+msgid "Apply Order"
+msgstr ""
+
+msgctxt "MainScreen"
+msgid "Mod"
+msgstr ""
+
+msgctxt "MainScreen"
+msgid "Paks"
+msgstr ""
+
+msgctxt "MainScreen"
+msgid "Size"
+msgstr ""
+
 msgctxt "Preferences"
 msgid "Demo Recording"
 msgstr ""
@@ -1203,6 +1267,10 @@ msgstr ""
 #: Resources/Scripts/Gui/Preferences.as:736
 msgctxt "Preferences"
 msgid "Server List URL"
+msgstr ""
+
+msgctxt "Preferences"
+msgid "Mod List URL"
 msgstr ""
 
 #: Resources/Scripts/Gui/Preferences.as:736

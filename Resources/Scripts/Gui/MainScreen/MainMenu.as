@@ -169,7 +169,6 @@ namespace spades {
 
 		spades::ui::Button@ filterProtocol3Button;
 		spades::ui::Button@ filterProtocol4Button;
-		spades::ui::Button@ filterEmptyButton;
 		spades::ui::Button@ filterFullButton;
 		spades::ui::Field@ filterField;
 
@@ -280,13 +279,13 @@ namespace spades {
 					spades::ui::Button button(Manager);
 					button.Caption = _Tr("MainScreen", "Connect");
 					button.HotKeyText = _Tr("Client", "[Enter]");
-					button.Bounds = AABB2(contentsLeft + contentsWidth - 150.0F, 200.0F, 150.0F, 30.0F);
+					button.Bounds = AABB2(contentsLeft + contentsWidth - 160.0F, 200.0F, 160.0F, 30.0F);
 					@button.Activated = spades::ui::EventHandler(this.OnConnectPressed);
 					serverPanel.AddChild(button);
 				}
 				{
 					@addressField = spades::ui::Field(Manager);
-					addressField.Bounds = AABB2(contentsLeft, 200.0F, contentsWidth - 270.0F, 30.0F);
+					addressField.Bounds = AABB2(contentsLeft, 200.0F, contentsWidth - 280.0F, 30.0F);
 					addressField.Placeholder = _Tr("MainScreen", "Quick Connect");
 					addressField.Text = cg_lastQuickConnectHost.StringValue;
 					@addressField.Changed = spades::ui::EventHandler(this.OnAddressChanged);
@@ -294,13 +293,13 @@ namespace spades {
 				}
 				{
 					RefreshButton button(Manager);
-					button.Bounds = AABB2(contentsLeft + contentsWidth - 270.0F, 200.0F, 30.0F, 30.0F);
+					button.Bounds = AABB2(contentsLeft + contentsWidth - 278.0F, 200.0F, 30.0F, 30.0F);
 					@button.Activated = spades::ui::EventHandler(this.OnRefreshServerListPressed);
 					serverPanel.AddChild(button);
 				}
 				{
 					@protocol3Button = ProtocolButton(Manager);
-					protocol3Button.Bounds = AABB2(contentsLeft + contentsWidth - 240.0F + 6.0F, 200.0F, 40.0F, 30.0F);
+					protocol3Button.Bounds = AABB2(contentsLeft + contentsWidth - 245.0F, 200.0F, 40.0F, 30.0F);
 					protocol3Button.Caption = _Tr("MainScreen", "0.75");
 					@protocol3Button.Activated = spades::ui::EventHandler(this.OnProtocol3Pressed);
 					protocol3Button.Toggle = true;
@@ -309,7 +308,7 @@ namespace spades {
 				}
 				{
 					@protocol4Button = ProtocolButton(Manager);
-					protocol4Button.Bounds = AABB2(contentsLeft + contentsWidth - 200.0F + 6.0F, 200.0F, 40.0F, 30.0F);
+					protocol4Button.Bounds = AABB2(contentsLeft + contentsWidth - 205.0F, 200.0F, 40.0F, 30.0F);
 					protocol4Button.Caption = _Tr("MainScreen", "0.76");
 					@protocol4Button.Activated = spades::ui::EventHandler(this.OnProtocol4Pressed);
 					protocol4Button.Toggle = true;
@@ -379,6 +378,7 @@ namespace spades {
 					errorView.Visible = false;
 					serverPanel.AddChild(errorView);
 				}
+				
 				// Server filter footer elements
 				{
 					spades::ui::Label label(Manager);
@@ -403,25 +403,19 @@ namespace spades {
 					filterProtocol4Button.Toggle = true;
 					serverPanel.AddChild(filterProtocol4Button);
 				}
-				{
-					@filterEmptyButton = ProtocolButton(Manager);
-					filterEmptyButton.Bounds = AABB2(contentsLeft + 135.0F, footerPos, 50.0F, 30.0F);
-					filterEmptyButton.Caption = _Tr("MainScreen", "Empty");
-					@filterEmptyButton.Activated = spades::ui::EventHandler(this.OnFilterEmptyPressed);
-					filterEmptyButton.Toggle = true;
-					serverPanel.AddChild(filterEmptyButton);
-				}
+
 				{
 					@filterFullButton = ProtocolButton(Manager);
-					filterFullButton.Bounds = AABB2(contentsLeft + 185.0F, footerPos, 70.0F, 30.0F);
+					filterFullButton.Bounds = AABB2(contentsLeft + 135.0F, footerPos, 70.0F, 30.0F);
 					filterFullButton.Caption = _Tr("MainScreen", "Not Full");
 					@filterFullButton.Activated = spades::ui::EventHandler(this.OnFilterFullPressed);
 					filterFullButton.Toggle = true;
 					serverPanel.AddChild(filterFullButton);
 				}
+
 				{
 					@filterField = spades::ui::Field(Manager);
-					filterField.Bounds = AABB2(contentsLeft + 260.0F, footerPos, contentsWidth - 567.0F, 30.0F);
+					filterField.Bounds = AABB2(contentsLeft + 210.0F, footerPos, 100.0F, 30.0F);
 					filterField.Placeholder = _Tr("MainScreen", "Filter");
 					@filterField.Changed = spades::ui::EventHandler(this.OnFilterTextChanged);
 					serverPanel.AddChild(filterField);
@@ -530,7 +524,7 @@ namespace spades {
 				}
 				{
 					@modsStatusLabel = spades::ui::Label(Manager);
-					modsStatusLabel.Bounds = AABB2(contentsLeft, footerPos - 30.0F, contentsWidth, 24.0F);
+					modsStatusLabel.Bounds = AABB2(contentsLeft, footerPos - 40.0F, contentsWidth, 24.0F);
 					modsStatusLabel.Text = "";
 					modsPanel.AddChild(modsStatusLabel);
 				}
@@ -625,7 +619,7 @@ namespace spades {
 			{
 				spades::ui::Button button(Manager);
 				button.Caption = _Tr("MainScreen", "Setup");
-				button.Bounds = AABB2(contentsLeft + contentsWidth - 304.0F, footerPos, 100.0F, 30.0F);
+				button.Bounds = AABB2(contentsLeft + contentsWidth - 314.0F, footerPos, 110.0F, 30.0F);
 				@button.Activated = spades::ui::EventHandler(this.OnSetupPressed);
 				AddChild(button);
 			}
@@ -753,7 +747,7 @@ namespace spades {
 				return;
 			}
 			if (modsDirty) {
-				modsStatusLabel.Text = _Tr("MainScreen", "Press Apply changes to restart and apply your mods.");
+				modsStatusLabel.Text = _Tr("MainScreen", "Press 'Apply changes' to restart and apply your mods.");
 				return;
 			}
 			modsStatusLabel.Text = "";
@@ -971,7 +965,6 @@ namespace spades {
 			// filter the server list
 			bool filterProtocol3 = filterProtocol3Button.Toggled;
 			bool filterProtocol4 = filterProtocol4Button.Toggled;
-			bool filterEmpty = filterEmptyButton.Toggled;
 			bool filterFull = filterFullButton.Toggled;
 			string filterText = filterField.Text;
 			MainScreenServerItem @[] @list2 = array<spades::MainScreenServerItem @>();
@@ -980,8 +973,6 @@ namespace spades {
 				if (filterProtocol3 and (item.Protocol != "0.75"))
 					continue;
 				if (filterProtocol4 and (item.Protocol != "0.76"))
-					continue;
-				if (filterEmpty and (item.NumPlayers > 0))
 					continue;
 				if (filterFull and (item.NumPlayers >= item.MaxPlayers))
 					continue;
@@ -1067,11 +1058,6 @@ namespace spades {
 			UpdateServerList();
 		}
 		private void OnFilterFullPressed(spades::ui::UIElement@ sender) {
-			filterEmptyButton.Toggled = false;
-			UpdateServerList();
-		}
-		private void OnFilterEmptyPressed(spades::ui::UIElement@ sender) {
-			filterFullButton.Toggled = false;
 			UpdateServerList();
 		}
 		private void OnFilterTextChanged(spades::ui::UIElement@ sender) {
