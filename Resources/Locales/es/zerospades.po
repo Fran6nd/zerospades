@@ -523,6 +523,66 @@ msgctxt "MainScreen"
 msgid "Size"
 msgstr "Tamaño"
 
+msgctxt "MainScreen"
+msgid "Mods"
+msgstr "Mods"
+
+msgctxt "MainScreen"
+msgid "Fetching mod list…"
+msgstr "Obteniendo la lista de mods…"
+
+msgctxt "MainScreen"
+msgid "Download the official ZeroSpades mod pack?"
+msgstr "¿Descargar el paquete de mods oficial de ZeroSpades?"
+
+msgctxt "MainScreen"
+msgid "These are mods reviewed and hosted by the ZeroSpades team."
+msgstr "Estos son mods revisados ​​y alojados por el equipo de ZeroSpades."
+
+msgctxt "MainScreen"
+msgid "Source: "
+msgstr "Fuente: "
+
+msgctxt "MainScreen"
+msgid "Files will be saved into your Mods/ folder, overwriting any existing copies."
+msgstr "Los archivos se guardarán en tu carpeta Mods/, sobrescribiendo cualquier copia existente."
+
+msgctxt "MainScreen"
+msgid "Disable all mods? This takes effect after a restart."
+msgstr "¿Desactivar todos los mods? Esto se aplicará después de reiniciar el juego."
+
+msgctxt "MainScreen"
+msgid "Press 'Apply changes' to restart and apply your mods."
+msgstr "Presione 'Aplicar cambios' para reiniciar y aplicar sus mods"
+
+msgctxt "MainScreen"
+msgid "Download official mods…"
+msgstr "Descargar mods oficiales..."
+
+msgctxt "MainScreen"
+msgid "Disable all"
+msgstr "Desactivar todos"
+
+msgctxt "MainScreen"
+msgid "Apply changes"
+msgstr "Aplicar cambios"
+
+msgctxt "MainScreen"
+msgid "Status"
+msgstr "Estado"
+
+msgctxt "MainScreen"
+msgid "Apply Order"
+msgstr "Orden"
+
+msgctxt "MainScreen"
+msgid "Mod"
+msgstr "Mod"
+
+msgctxt "MainScreen"
+msgid "Paks"
+msgstr "Paks"
+
 msgctxt "Preferences"
 msgid "Demo Recording"
 msgstr "Grabador de demos"
@@ -1226,6 +1286,10 @@ msgstr "Guardar screenshot"
 msgctxt "Preferences"
 msgid "Server List URL"
 msgstr "URL de la lista de servidores"
+
+msgctxt "Preferences"
+msgid "Mod List URL"
+msgstr "URL de la lista de mods"
 
 #: Resources/Scripts/Gui/Preferences.as:736
 msgctxt "Preferences"
