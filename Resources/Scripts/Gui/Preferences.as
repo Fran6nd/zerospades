@@ -1950,6 +1950,7 @@ namespace spades {
 			layouter.AddSliderField(_Tr("Preferences", "Console Scrollback Lines"), "cl_consoleScrollbackLines",
 			100, 2000, 100, ConfigNumberFormatter(0, ""));
 			ConfigField@ urlField = layouter.AddInputField(_Tr("Preferences", "Server List URL"), "cl_serverListUrl", true, true);
+			ConfigField@ modUrlField = layouter.AddInputField(_Tr("Preferences", "Mod List URL"), "cl_modsIndexUrl", true, true);
 			layouter.AddToggleField(_Tr("Preferences", "Allow Unicode"), "cg_unicode");
 			layouter.AddChoiceStringField(_Tr("Preferences", "Screenshot Format"), "cg_screenshotFormat",
 					 array<string> = { "PNG", "JPEG", "TGA" },
