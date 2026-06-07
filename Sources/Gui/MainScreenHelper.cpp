@@ -476,6 +476,7 @@ namespace spades {
 		}
 
 		bool MainScreenHelper::ShouldOpenModsTab() { return spades::g_openModsTab; }
+		bool MainScreenHelper::IsTryingMod() { return spades::g_tryMod; }
 		void MainScreenHelper::RelaunchForMods() { spades::RelaunchForMods(); }
 
 		std::string MainScreenHelper::GetPendingErrorMessage() {

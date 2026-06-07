@@ -19,13 +19,16 @@
  */
 
 #include <algorithm> //std::sort
+#include <cstdio>
+#include <cstdlib>
 #include <memory>
 #include <regex>
-
-#if (!defined(__APPLE__) && (__unix || __unix__)) || defined(__HAIKU__)
+#include <set>
+#include <string>
 #include <sys/stat.h>
 #include <sys/types.h>
-#endif
+#include <utility>
+#include <vector>
 
 #include <Imports/SDL.h>
 #include <zlib.h>
@@ -35,6 +38,7 @@
 #include "Runner.h"
 #include "SplashWindow.h"
 #include <Client/Client.h>
+#include <Client/DemoRecorder.h>
 #include <Client/Fonts.h>
 #include <Client/GameMap.h>
 #include <Core/ConcurrentDispatch.h>
@@ -44,6 +48,7 @@
 #include <Core/FileManager.h>
 #include <Core/ServerAddress.h>
 #include <Core/Settings.h>
+#include <Core/StdStream.h>
 #include <Core/Strings.h>
 #include <Core/Thread.h>
 #include <Core/ZipFileSystem.h>
@@ -67,6 +72,11 @@ FILE __iob_func[3] = {*stdin, *stdout, *stderr};
 #endif
 
 DEFINE_SPADES_SETTING(cl_showStartupWindow, "1");
+
+// Absolute path of the running executable, refreshed every launch. Persisted
+// so external tooling (e.g. the mod workbench) can locate the binary without
+// guessing the platform's bundle layout.
+DEFINE_SPADES_SETTING(core_executablePath, "");
 
 #ifdef WIN32
 // windows.h must be included before DbgHelp.h and shlobj.h.
@@ -187,8 +197,28 @@ namespace {
 	bool g_replayDemo = false;
 	std::string g_replayDemoPath;
 
+	// Demo selection for --replay-demo, set with --demo and --player.
+	std::string g_demoPath;             // empty = latest demo in Demos/
+	std::string g_demoPlayer;           // empty = first player; else id or name
+
+	// Menuless demo replay (--replay-demo). Plays a demo and auto-follows a player,
+	// skipping the startup/setup/main screens entirely.
+	bool g_replayDemoMenuless = false;
+
 	bool g_printVersion = false;
 	bool g_printHelp = false;
+
+	std::string g_tryModPath;
+
+	// Config variable overrides requested on the command line via --override-cvar
+	// NAME=VALUE. Applied in memory after the preferences are loaded and reverted
+	// to their previous values before the config is written back, so the on-disk
+	// SPConfig.cfg is never modified by an override.
+	std::vector<std::pair<std::string, std::string>> g_cvarOverrides;
+
+	// Pre-override values of the variables in g_cvarOverrides, captured at apply
+	// time and written back before the config is flushed.
+	std::vector<std::pair<std::string, std::string>> g_cvarOverrideOriginals;
 
 	void printHelp(char* binaryName) {
 		printf("usage: %s [server_address] [v=protocol_version] [--replay demo.dem] [-h|--help] [-v|--version]\n",
@@ -197,6 +227,20 @@ namespace {
 		printf("  v=0.75 or v=0.76     protocol version (default: 0.75)\n");
 		printf("  --replay FILE        play back a demo recording\n");
 		printf("  -r FILE              play back a demo recording (short form)\n");
+		printf("  --try-mod PATH       try a mod (folder or .pak) on top of the base\n");
+		printf("                       game; bypasses the startup setup and the\n");
+		printf("                       enabled-mod set, and hides the Mods tab, so\n");
+		printf("                       only this mod applies. A bare name resolves\n");
+		printf("                       under the user Mods/ folder.\n");
+		printf("  --override-cvar NAME=VALUE\n");
+		printf("                       set a config variable for this run only; the\n");
+		printf("                       on-disk config is left unchanged. May be given\n");
+		printf("                       multiple times.\n");
+		printf("  --replay-demo        play a demo and follow a player, skipping all\n");
+		printf("                       menus. Use --demo and --player to customise it.\n");
+		printf("  --demo FILE          demo to use (default: latest in Demos/); a bare\n");
+		printf("                       name resolves under Demos/\n");
+		printf("  --player ID|NAME     player to follow (default: first player)\n");
 		printf("  -h, --help           show this help message\n");
 		printf("  -v, --version        show version information\n");
 		printf("\nAuto-recording can be enabled with the cg_demoAutoRecord setting.\n");
@@ -242,9 +286,103 @@ namespace {
 				spades::g_openModsTab = true;
 				return ++i;
 			}
+			if (!strcasecmp(a, "--try-mod")) {
+				if (i + 1 < argc) {
+					spades::g_tryMod = true;
+					g_tryModPath = argv[++i];
+					return ++i;
+				}
+				return 0;
+			}
+			if (!strcasecmp(a, "--override-cvar")) {
+				if (i + 1 < argc) {
+					std::string spec = argv[++i];
+					auto eq = spec.find('=');
+					if (eq != std::string::npos) {
+						std::string name = spec.substr(0, eq);
+						std::string value = spec.substr(eq + 1);
+						if (!name.empty())
+							g_cvarOverrides.emplace_back(name, value);
+						else
+							SPLog("Ignoring --override-cvar with empty name: %s", spec.c_str());
+					} else {
+						SPLog("Ignoring malformed --override-cvar (expected NAME=VALUE): %s",
+						      spec.c_str());
+					}
+					return ++i;
+				}
+				return 0;
+			}
+			if (!strcasecmp(a, "--replay-demo")) {
+				g_replayDemoMenuless = true;
+				return ++i;
+			}
+			if (!strcasecmp(a, "--demo")) {
+				if (i + 1 < argc) {
+					g_demoPath = argv[++i];
+					return ++i;
+				}
+				return 0;
+			}
+			if (!strcasecmp(a, "--player")) {
+				if (i + 1 < argc) {
+					g_demoPlayer = argv[++i];
+					return ++i;
+				}
+				return 0;
+			}
 		}
 
 		return 0;
+	}
+
+	bool pathExists(const std::string& path) {
+		struct stat st;
+		return ::stat(path.c_str(), &st) == 0;
+	}
+
+	bool isDirectory(const std::string& path) {
+		struct stat st;
+		if (::stat(path.c_str(), &st) != 0)
+			return false;
+		return (st.st_mode & S_IFDIR) != 0;
+	}
+
+	// Resolve a --try-mod argument to a path on disk. Accepts a folder or a
+	// .pak/.zip file given directly (absolute or relative to the working dir),
+	// or a bare name that lives under the user Mods/ folder. Returns "" if
+	// nothing matches.
+	std::string resolveTryMod(const std::string& arg) {
+		if (pathExists(arg))
+			return arg;
+
+		const std::string& root = spades::g_userResourceDirectory;
+		std::string candidates[] = {
+		  root + "/Mods/" + arg,
+		  root + "/Mods/" + arg + ".pak",
+		};
+		for (const std::string& c : candidates) {
+			if (pathExists(c))
+				return c;
+		}
+		return std::string();
+	}
+
+	// Resolve the demo to use for --replay-demo. An explicit --demo value is used
+	// as-is (a bare name resolves under Demos/); otherwise the most recent
+	// recording is chosen. Returns "" if none is found.
+	std::string resolveCliDemoPath(const std::string& explicitPath) {
+		if (!explicitPath.empty()) {
+			if (explicitPath.find('/') == std::string::npos &&
+			    explicitPath.find('\\') == std::string::npos)
+				return "Demos/" + explicitPath;
+			return explicitPath;
+		}
+
+		auto demos = spades::client::DemoRecorder::ListRecordings();
+		if (demos.empty())
+			return std::string();
+		return demos.back();
 	}
 } // namespace
 
@@ -252,6 +390,7 @@ namespace spades {
 	std::string g_userResourceDirectory;
 	std::string g_executablePath;
 	bool g_openModsTab = false;
+	bool g_tryMod = false;
 
 	void StartClient(const spades::ServerAddress& addr) {
 		class ConcreteRunner : public spades::gui::Runner {
@@ -293,6 +432,31 @@ namespace spades {
 		DemoRunner runner(demoPath);
 		runner.RunProtected();
 	}
+
+	void StartDemoReplayAutoFollow(const std::string& demoPath, const std::string& playerSpec) {
+		class DemoRunner : public spades::gui::Runner {
+			std::string demoPath;
+			std::string playerSpec;
+
+		protected:
+			spades::gui::View* CreateView(spades::client::IRenderer* renderer,
+			                              spades::client::IAudioDevice* audio) override {
+				auto fontManager = Handle<client::FontManager>::New(renderer);
+				auto innerView = Handle<client::Client>::New(
+				    renderer, audio, ServerAddress(), fontManager, demoPath);
+				innerView->EnableDemoReplayFollow(playerSpec);
+				return new spades::gui::ConsoleScreen(renderer, audio, fontManager,
+				                                      std::move(innerView).Cast<gui::View>());
+			}
+
+		public:
+			DemoRunner(const std::string& demoPath, const std::string& playerSpec)
+			    : demoPath(demoPath), playerSpec(playerSpec) {}
+		};
+		DemoRunner runner(demoPath, playerSpec);
+		runner.RunProtected();
+	}
+
 	void StartMainScreen() {
 		class ConcreteRunner : public spades::gui::Runner {
 		protected:
@@ -602,6 +766,52 @@ int main(int argc, char** argv) {
 
 		// load preferences.
 		spades::Settings::GetInstance()->Load();
+
+		// Apply --override-cvar values in memory. The previous value of each
+		// overridden variable is captured here and restored just before the
+		// config is flushed at shutdown, so an override never reaches the disk.
+		//
+		// Settings::Save() writes out every variable known to the instance, so
+		// referencing a brand-new name would add a stray line to the config.
+		// Only override variables that already exist (every real cvar is
+		// registered by static initializers before main runs); unknown names are
+		// skipped with a warning so the on-disk config is guaranteed untouched.
+		if (!g_cvarOverrides.empty()) {
+			auto knownNames = spades::Settings::GetInstance()->GetAllItemNames();
+			std::set<std::string> known(knownNames.begin(), knownNames.end());
+			for (const auto& ov : g_cvarOverrides) {
+				if (known.find(ov.first) == known.end()) {
+					SPLog("Ignoring --override-cvar for unknown config variable: %s",
+					      ov.first.c_str());
+					continue;
+				}
+				spades::Settings::ItemHandle item(ov.first, nullptr);
+				g_cvarOverrideOriginals.emplace_back(ov.first, (std::string)item);
+				item = ov.second;
+				SPLog("Overriding config variable for this run: %s = %s",
+				      ov.first.c_str(), ov.second.c_str());
+			}
+		}
+
+		// record the absolute executable path (overwrites any stale value from
+		// a previous launch, then gets flushed back to the config at shutdown).
+		// Windows: query the loaded module directly; POSIX: resolve argv[0]
+		// (symlinks and relative paths included) with realpath.
+		{
+			std::string exePath = spades::g_executablePath;
+#ifdef _WIN32
+			std::vector<wchar_t> wbuf(32768);
+			DWORD n = GetModuleFileNameW(NULL, wbuf.data(), (DWORD)wbuf.size());
+			if (n > 0 && n < wbuf.size())
+				exePath = Utf8FromWString(wbuf.data());
+#else
+			if (char* resolved = realpath(spades::g_executablePath.c_str(), nullptr)) {
+				exePath = resolved;
+				free(resolved);
+			}
+#endif
+			core_executablePath = exePath;
+		}
 		pumpEvents();
 
 		// dump CPU info (for debugging?)
@@ -704,7 +914,10 @@ int main(int argc, char** argv) {
 		// the base paks; the set is mounted in enabled order so the last-enabled
 		// mod ends up on top and wins conflicts. The shipped install paks are
 		// never modified — changes to the enabled set take effect on next launch.
-		{
+		//
+		// During a --try-mod run the enabled set is skipped entirely so the mod
+		// under test applies in isolation, on top of the base config only.
+		if (!spades::g_tryMod) {
 			std::vector<std::string> modPaks =
 			  spades::gui::ModsScreenHelper::GetEnabledModPakPaths();
 			for (const std::string& path : modPaks) {
@@ -716,6 +929,27 @@ int main(int argc, char** argv) {
 				} catch (const std::exception& ex) {
 					SPLog("Mod pak failed to mount: %s: %s", path.c_str(), ex.what());
 				}
+			}
+		}
+
+		// Mount the --try-mod target on top of everything. The target is an
+		// unpacked mod folder or a single .pak/.zip — both expose the same file
+		// tree, so the engine sees no difference between the two. No packing
+		// step, so editing files in the folder and relaunching is the whole loop.
+		if (spades::g_tryMod) {
+			std::string path = resolveTryMod(g_tryModPath);
+			if (path.empty()) {
+				SPLog("Mod to try not found: %s", g_tryModPath.c_str());
+			} else if (isDirectory(path)) {
+				spades::FileManager::PrependFileSystem(
+				  new spades::DirectoryFileSystem(path, false));
+				SPLog("Mod folder mounted: %s", path.c_str());
+			} else if (std::FILE* f = std::fopen(path.c_str(), "rb")) {
+				spades::FileManager::PrependFileSystem(
+				  new spades::ZipFileSystem(new spades::StdStream(f, true)));
+				SPLog("Mod pak mounted: %s", path.c_str());
+			} else {
+				SPLog("Mod to try failed to open: %s", path.c_str());
 			}
 		}
 		pumpEvents();
@@ -746,13 +980,23 @@ int main(int argc, char** argv) {
 		pumpEvents();
 
 		// everything is now ready!
-		if (g_replayDemo) {
+		if (g_replayDemoMenuless) {
+			splashWindow.reset();
+
+			std::string demoPath = resolveCliDemoPath(g_demoPath);
+			if (demoPath.empty()) {
+				SPLog("No demos found in Demos/ for --replay-demo");
+			} else {
+				SPLog("Starting menuless demo replay: '%s'", demoPath.c_str());
+				spades::StartDemoReplayAutoFollow(demoPath, g_demoPlayer);
+			}
+		} else if (g_replayDemo) {
 			splashWindow.reset();
 
 			SPLog("Starting demo replay: %s", g_replayDemoPath.c_str());
 			spades::StartDemoReplay(g_replayDemoPath);
 		} else if (!g_autoconnect) {
-			if (spades::g_openModsTab ||
+			if (spades::g_openModsTab || spades::g_tryMod ||
 			    !((int)cl_showStartupWindow != 0 || splashWindow->IsStartupScreenRequested())) {
 				splashWindow.reset();
 
@@ -769,6 +1013,13 @@ int main(int argc, char** argv) {
 
 			spades::ServerAddress host(g_autoconnectHostName, g_autoconnectProtocolVersion);
 			spades::StartClient(host);
+		}
+
+		// Revert any --override-cvar values to what they were before this run so
+		// the flush below writes the unchanged configuration back to disk.
+		for (const auto& orig : g_cvarOverrideOriginals) {
+			spades::Settings::ItemHandle item(orig.first, nullptr);
+			item = orig.second;
 		}
 
 		spades::Settings::GetInstance()->Flush();
