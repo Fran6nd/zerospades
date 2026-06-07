@@ -122,6 +122,12 @@ namespace spades {
 			float demoSeekPendingTime = 0.0F;   // target time to commit on key release
 			bool demoHudVisible = true;
 
+			// Automated one-shot follow for menuless demo replay (--replay-demo):
+			// once the world has loaded the requested player is followed. Unused
+			// unless EnableDemoReplayFollow() has been called.
+			bool demoReplayFollowPending = false;
+			std::string demoReplayFollowSpec; // empty = first player; else id or name
+
 			std::string playerName;
 			std::unique_ptr<IStream> logStream;
 
@@ -504,6 +510,10 @@ namespace spades {
 			std::string ScreenShotPath();
 			void TakeScreenShot(bool sceneOnly, bool scoreboardOnly = false);
 
+			// Demo helpers (see EnableDemoReplayFollow).
+			void UpdateDemoReplayFollow();
+			int ResolveDemoPlayer(const std::string& spec);
+
 			std::string BuildDemoContext();
 
 			std::string MapShotPath();
@@ -523,6 +533,14 @@ namespace spades {
 			bool IsDemoMode() const { return demoNet != nullptr; }
 			DemoNetClient* GetDemoNetClient() { return demoNet.get(); }
 			void ReloadDemo();
+
+			/**
+			 * Auto-follows a player once the demo world has loaded (empty = first
+			 * player; otherwise a player id or name) and keeps normal playback
+			 * running. Used by menuless demo replay (--replay-demo). Only
+			 * meaningful when the client was created with a demo path.
+			 */
+			void EnableDemoReplayFollow(const std::string& playerSpec);
 
 			void RunFrame(float dt) override;
 			void RunFrameLate(float dt) override;

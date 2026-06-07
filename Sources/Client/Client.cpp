@@ -717,6 +717,11 @@ namespace spades {
 				renderer->SetFogColor(MakeVector3(0, 0, 0));
 			}
 
+			// Auto-follow a player for menuless demo replay, before the scene is
+			// composed so the follow camera takes effect on the rendered frame.
+			if (demoReplayFollowPending)
+				UpdateDemoReplayFollow();
+
 			chatWindow->Update(dt);
 			killfeedWindow->Update(dt);
 			limbo->Update(dt);
@@ -769,6 +774,74 @@ namespace spades {
 			// Well done!
 			renderer->FrameDone();
 			renderer->Flip();
+		}
+
+		void Client::EnableDemoReplayFollow(const std::string& playerSpec) {
+			demoReplayFollowPending = true;
+			demoReplayFollowSpec = playerSpec;
+		}
+
+		int Client::ResolveDemoPlayer(const std::string& spec) {
+			if (!world)
+				return -1;
+
+			size_t slots = world->GetNumPlayerSlots();
+
+			if (!spec.empty()) {
+				// A purely numeric spec is treated as a player id (slot index).
+				bool numeric = true;
+				for (char c : spec) {
+					if (c < '0' || c > '9') {
+						numeric = false;
+						break;
+					}
+				}
+				if (numeric) {
+					int id = std::atoi(spec.c_str());
+					if (id >= 0 && (size_t)id < slots && world->GetPlayer((unsigned int)id))
+						return id;
+					SPLog("Demo: player id %s not present, using first player", spec.c_str());
+				} else {
+					for (size_t i = 0; i < slots; i++) {
+						auto p = world->GetPlayer((unsigned int)i);
+						if (p && p->GetName() == spec)
+							return (int)i;
+					}
+					SPLog("Demo: player named '%s' not found, using first player", spec.c_str());
+				}
+			}
+
+			// Default / fallback: first player that is on a team (not a spectator),
+			// since spectators have no body to watch.
+			for (size_t i = 0; i < slots; i++) {
+				auto p = world->GetPlayer((unsigned int)i);
+				if (p && !p->IsSpectator())
+					return (int)i;
+			}
+
+			// All occupied slots are spectators; fall back to the first one.
+			for (size_t i = 0; i < slots; i++) {
+				if (world->GetPlayer((unsigned int)i))
+					return (int)i;
+			}
+			return -1;
+		}
+
+		void Client::UpdateDemoReplayFollow() {
+			if (!world || !demoNet || activeNet->GetStatus() != NetClientStatusConnected)
+				return;
+
+			// Wait until at least one player exists, then follow it. ResolveDemoPlayer
+			// returns -1 while the world has no players, so this stays pending across
+			// the first frames of playback without ever blocking.
+			int pid = ResolveDemoPlayer(demoReplayFollowSpec);
+			if (pid < 0)
+				return;
+
+			followedPlayerId = pid;
+			followCameraState.enabled = true;
+			followCameraState.firstPerson = true;
+			demoReplayFollowPending = false;
 		}
 
 		bool Client::HasLocalPlayer() {
