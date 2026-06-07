@@ -23,8 +23,12 @@
 #include <cstdlib>
 #include <memory>
 #include <regex>
+#include <set>
+#include <string>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <utility>
+#include <vector>
 
 #include <Imports/SDL.h>
 #include <zlib.h>
@@ -197,6 +201,16 @@ namespace {
 
 	std::string g_tryModPath;
 
+	// Config variable overrides requested on the command line via --override-cvar
+	// NAME=VALUE. Applied in memory after the preferences are loaded and reverted
+	// to their previous values before the config is written back, so the on-disk
+	// SPConfig.cfg is never modified by an override.
+	std::vector<std::pair<std::string, std::string>> g_cvarOverrides;
+
+	// Pre-override values of the variables in g_cvarOverrides, captured at apply
+	// time and written back before the config is flushed.
+	std::vector<std::pair<std::string, std::string>> g_cvarOverrideOriginals;
+
 	void printHelp(char* binaryName) {
 		printf("usage: %s [server_address] [v=protocol_version] [--replay demo.dem] [-h|--help] [-v|--version]\n",
 		       binaryName);
@@ -209,6 +223,10 @@ namespace {
 		printf("                       enabled-mod set, and hides the Mods tab, so\n");
 		printf("                       only this mod applies. A bare name resolves\n");
 		printf("                       under the user Mods/ folder.\n");
+		printf("  --override-cvar NAME=VALUE\n");
+		printf("                       set a config variable for this run only; the\n");
+		printf("                       on-disk config is left unchanged. May be given\n");
+		printf("                       multiple times.\n");
 		printf("  -h, --help           show this help message\n");
 		printf("  -v, --version        show version information\n");
 		printf("\nAuto-recording can be enabled with the cg_demoAutoRecord setting.\n");
@@ -258,6 +276,25 @@ namespace {
 				if (i + 1 < argc) {
 					spades::g_tryMod = true;
 					g_tryModPath = argv[++i];
+					return ++i;
+				}
+				return 0;
+			}
+			if (!strcasecmp(a, "--override-cvar")) {
+				if (i + 1 < argc) {
+					std::string spec = argv[++i];
+					auto eq = spec.find('=');
+					if (eq != std::string::npos) {
+						std::string name = spec.substr(0, eq);
+						std::string value = spec.substr(eq + 1);
+						if (!name.empty())
+							g_cvarOverrides.emplace_back(name, value);
+						else
+							SPLog("Ignoring --override-cvar with empty name: %s", spec.c_str());
+					} else {
+						SPLog("Ignoring malformed --override-cvar (expected NAME=VALUE): %s",
+						      spec.c_str());
+					}
 					return ++i;
 				}
 				return 0;
@@ -656,6 +693,32 @@ int main(int argc, char** argv) {
 		// load preferences.
 		spades::Settings::GetInstance()->Load();
 
+		// Apply --override-cvar values in memory. The previous value of each
+		// overridden variable is captured here and restored just before the
+		// config is flushed at shutdown, so an override never reaches the disk.
+		//
+		// Settings::Save() writes out every variable known to the instance, so
+		// referencing a brand-new name would add a stray line to the config.
+		// Only override variables that already exist (every real cvar is
+		// registered by static initializers before main runs); unknown names are
+		// skipped with a warning so the on-disk config is guaranteed untouched.
+		if (!g_cvarOverrides.empty()) {
+			auto knownNames = spades::Settings::GetInstance()->GetAllItemNames();
+			std::set<std::string> known(knownNames.begin(), knownNames.end());
+			for (const auto& ov : g_cvarOverrides) {
+				if (known.find(ov.first) == known.end()) {
+					SPLog("Ignoring --override-cvar for unknown config variable: %s",
+					      ov.first.c_str());
+					continue;
+				}
+				spades::Settings::ItemHandle item(ov.first, nullptr);
+				g_cvarOverrideOriginals.emplace_back(ov.first, (std::string)item);
+				item = ov.second;
+				SPLog("Overriding config variable for this run: %s = %s",
+				      ov.first.c_str(), ov.second.c_str());
+			}
+		}
+
 		// record the absolute executable path (overwrites any stale value from
 		// a previous launch, then gets flushed back to the config at shutdown).
 		// Windows: query the loaded module directly; POSIX: resolve argv[0]
@@ -866,6 +929,13 @@ int main(int argc, char** argv) {
 
 			spades::ServerAddress host(g_autoconnectHostName, g_autoconnectProtocolVersion);
 			spades::StartClient(host);
+		}
+
+		// Revert any --override-cvar values to what they were before this run so
+		// the flush below writes the unchanged configuration back to disk.
+		for (const auto& orig : g_cvarOverrideOriginals) {
+			spades::Settings::ItemHandle item(orig.first, nullptr);
+			item = orig.second;
 		}
 
 		spades::Settings::GetInstance()->Flush();
