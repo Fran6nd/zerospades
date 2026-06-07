@@ -68,6 +68,14 @@ namespace spades {
 				viewer.MaxNumLines = uint(cl_consoleScrollbackLines.IntValue);
 				@this.viewer = viewer;
 			}
+			{
+				spades::ui::Label label(Manager);
+				label.TextColor = Vector4(1.0F, 1.0F, 1.0F, 0.25F);
+				label.Text = helper.GetVersionString();
+				label.Bounds = AABB2(5.0F, (height - 30.0F) - 8.0F, sw - 20.0F, 30.0F);
+				label.Alignment = Vector2(1.0F, 0.5F);
+				AddChild(label);
+			}
 		}
 
 		private void OnFieldChanged(spades::ui::UIElement@ sender) {}
