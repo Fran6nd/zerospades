@@ -260,7 +260,7 @@ namespace spades {
 		}
 
 		void Client::ReloadDemo() {
-			if (demoNet == nullptr || demoFilePath.empty())
+			if (!IsDemoMode() || demoFilePath.empty())
 				return;
 
 			SetWorld(nullptr);
@@ -668,17 +668,23 @@ namespace spades {
 			// Each repeat tick advances demoSeekPendingTime and calls SeekPreview() so the
 			// HUD updates smoothly.  The world-replay Seek() is deferred to key release.
 			if (demoNet && (demoSeekForwardHeld || demoSeekBackwardHeld)) {
-				constexpr float kSeekStep = 5.0f;
-				constexpr float kRepeatInterval = 0.35f;
+				constexpr float kSeekStep = 5.0F;
+				constexpr float kRepeatInterval = 0.35F;
 				demoSeekRepeatTimer += dt;
 				while (demoSeekRepeatTimer >= kRepeatInterval) {
 					demoSeekRepeatTimer -= kRepeatInterval;
 					float prev = demoSeekPendingTime;
-					float duration = demoNet->GetDuration();
-					if (demoSeekForwardHeld)
-						demoSeekPendingTime = std::min(duration, demoSeekPendingTime + kSeekStep);
-					if (demoSeekBackwardHeld)
-						demoSeekPendingTime = std::max(0.0f, demoSeekPendingTime - kSeekStep);
+					float minTime = demoNet->GetBootstrapEndTime();
+					float maxTime = demoNet->GetDuration();
+					if (demoSeekForwardHeld) {
+						demoSeekPendingTime = std::min(maxTime, demoSeekPendingTime + kSeekStep);
+						if (demoSeekPendingTime >= maxTime)
+							demoSeekForwardHeld = false;
+					} else if (demoSeekBackwardHeld) {
+						demoSeekPendingTime = std::max(minTime, demoSeekPendingTime - kSeekStep);
+						if (demoSeekPendingTime <= minTime)
+							demoSeekBackwardHeld = false;
+					}
 					if (demoSeekPendingTime != prev)
 						demoNet->SeekPreview(demoSeekPendingTime);
 				}
@@ -790,14 +796,14 @@ namespace spades {
 		}
 
 		void Client::SpawnPressed() {
+			// In demo mode, player actions are replayed from the demo file
+			if (IsDemoMode())
+				return;
+			
 			WeaponType weap = limbo->GetSelectedWeapon();
 			int team = limbo->GetSelectedTeam();
 			if (team == 2)
 				team = 255;
-
-			// In demo mode, player actions are replayed from the demo file
-			if (IsDemoMode())
-				return;
 
 			stmp::optional<Player&> maybePlayer = world->GetLocalPlayer();
 			if (!maybePlayer || maybePlayer->IsSpectator()) { // join
@@ -1140,7 +1146,7 @@ namespace spades {
 			} while (nextId != startId);
 
 			followedPlayerId = nextId;
-			followCameraState.enabled = staffSpectating || IsDemoMode() || (followedPlayerId != localPlayerId);
+			followCameraState.enabled = IsDemoMode() || staffSpectating || (followedPlayerId != localPlayerId);
 		}
 	} // namespace client
 } // namespace spades

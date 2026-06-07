@@ -121,6 +121,7 @@ namespace spades {
 			float GetTime() const { return demoPlayer ? demoPlayer->GetTime() : 0.0F; }
 			float GetDuration() const { return demoPlayer ? demoPlayer->GetDuration() : 0.0F; }
 			float GetSpeed() const { return demoPlayer ? demoPlayer->GetSpeed() : 1.0F; }
+			float GetBootstrapEndTime() const {return demoPlayer ? demoPlayer->GetBootstrapEndTime() : 0.0F; }
 			bool IsFinished() const { return demoPlayer ? demoPlayer->IsFinished() : true; }
 			bool IsPaused() const { return demoPlayer ? demoPlayer->IsPaused() : false; }
 			int GetRecordedLocalPlayerId() const { return recordedLocalPlayerId; }

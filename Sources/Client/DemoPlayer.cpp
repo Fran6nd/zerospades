@@ -72,7 +72,7 @@ namespace spades {
 			isOpen = true;
 			paused = false;
 			finished = false;
-			playbackTime = 0.0f;
+			playbackTime = 0.0F;
 			currentPacketIndex = 0;
 
 			SPLog("Opened demo file: %s (protocol %d, %.1f seconds, %zu packets)",
@@ -185,6 +185,8 @@ namespace spades {
 				return 0;
 
 			playbackTime += dt * speed;
+			if (playbackTime >= duration)
+				playbackTime = duration;
 
 			int dispatched = 0;
 			while (currentPacketIndex < packets.size()) {
@@ -212,8 +214,8 @@ namespace spades {
 			// mode, no players), which is never a valid playback state.
 			time = std::max(time, bootstrapEndTime);
 
-			playbackTime = std::max(0.0f, std::min(time, duration));
-			finished = false;
+			playbackTime = std::max(0.0F, std::min(time, duration));
+			finished = (currentPacketIndex >= packets.size());
 
 			// Find the first packet with timestamp > playbackTime (O(log n)).
 			// Update() will start dispatching from this index, so no packet

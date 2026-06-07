@@ -444,36 +444,37 @@ namespace spades {
 					//
 					// While a seek key is held we only call SeekPreview(), which updates the
 					// displayed playback position cheaply (no world reset/replay). RunFrame
-					// advances the pending target on each repeat tick.  The full Seek() —
+					// advances the pending target on each repeat tick.	 The full Seek() —
 					// which resets and replays the world — fires once on key release so the
 					// expensive operation happens at most once per key press.
 					if (CheckKey(cg_keyDemoSeekForward, name)) {
-						if (down) {
+						if (down && !demoSeekForwardHeld) {
 							float demoTime = demoNet->GetTime();
-							float duration = demoNet->GetDuration();
-							float target = std::min(duration, demoTime + 5.0F);
-							if (target > demoTime) {
+							float maxTime = demoNet->GetDuration();
+							if (demoTime < maxTime) {
+								float target = std::min(maxTime, demoTime + 5.0F);
 								demoSeekForwardHeld = true;
 								demoSeekRepeatTimer = 0.0F;
 								demoSeekPendingTime = target;
 								demoNet->SeekPreview(demoSeekPendingTime);
 							}
-						} else {
+						} else if (!down && demoSeekForwardHeld) {
 							demoSeekForwardHeld = false;
 							demoNet->Seek(demoSeekPendingTime);
 						}
 						return;
 					} else if (CheckKey(cg_keyDemoSeekBackward, name)) {
-						if (down) {
+						if (down && !demoSeekBackwardHeld) {
 							float demoTime = demoNet->GetTime();
-							float target = std::max(0.0F, demoTime - 5.0F);
-							if (target < demoTime) {
+							float minTime = demoNet->GetBootstrapEndTime();
+							if (demoTime > minTime) {
+								float target = std::max(minTime, demoTime - 5.0F);
 								demoSeekBackwardHeld = true;
 								demoSeekRepeatTimer = 0.0F;
 								demoSeekPendingTime = target;
 								demoNet->SeekPreview(demoSeekPendingTime);
-							}
-						} else {
+							 }
+						} else if (!down && demoSeekBackwardHeld) {
 							demoSeekBackwardHeld = false;
 							demoNet->Seek(demoSeekPendingTime);
 						}
@@ -540,7 +541,7 @@ namespace spades {
 							return;
 						}
 					} else if (cameraMode == ClientCameraMode::FirstPersonFollow ||
-					           cameraMode == ClientCameraMode::ThirdPersonFollow) {
+							   cameraMode == ClientCameraMode::ThirdPersonFollow) {
 						if (CheckKey(cg_keyAttack, name)) {
 							if (down) {
 								if (spectatorZoom) {
@@ -695,8 +696,7 @@ namespace spades {
 							const std::string& msg = labels[static_cast<size_t>(sel)];
 							if (v == PieMenuView::Variant::Player && targetId >= 0) {
 								char cmd[128];
-								std::snprintf(cmd, sizeof(cmd), "/pm #%d %s",
-								              targetId, msg.c_str());
+								std::snprintf(cmd, sizeof(cmd), "/pm #%d %s", targetId, msg.c_str());
 								net->SendChat(cmd, false);
 							} else if (v == PieMenuView::Variant::World) {
 								net->SendChat(msg, false);
@@ -793,7 +793,7 @@ namespace spades {
 								if (maxDemos >= 1)
 									DemoRecorder::PruneOldRecordings(static_cast<size_t>(maxDemos));
 							}
-							
+
 							const auto demoPath = net->GetDemoFilename().c_str();
 							SPLog("Demo recording started: %s", demoPath);
 							ShowAlert(_Tr("Client", "Recording demo: {0}", demoPath), AlertType::Notice);
