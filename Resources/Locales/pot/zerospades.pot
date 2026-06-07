@@ -686,6 +686,46 @@ msgctxt "Client"
 msgid "Recording stopped"
 msgstr ""
 
+msgctxt "Client"
+msgid "Affirmative"
+msgstr ""
+
+msgctxt "Client"
+msgid "Negative"
+msgstr ""
+
+msgctxt "Client"
+msgid "Tear It Down!"
+msgstr ""
+
+msgctxt "Client"
+msgid "Help Me Build"
+msgstr ""
+
+msgctxt "Client"
+msgid "Spawnkiller!"
+msgstr ""
+
+msgctxt "Client"
+msgid "Behind Us!"
+msgstr ""
+
+msgctxt "Client"
+msgid "Thank You"
+msgstr ""
+
+msgctxt "Client"
+msgid "Cover Me"
+msgstr ""
+
+msgctxt "Client"
+msgid "Behind You"
+msgstr ""
+
+msgctxt "Client"
+msgid "Help Me"
+msgstr ""
+
 #: Resources/Scripts/Gui/ClientUI.as:484
 msgctxt "Client"
 msgid "Send"

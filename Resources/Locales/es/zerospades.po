@@ -691,6 +691,46 @@ msgctxt "Client"
 msgid "[{0}] Toggle Demo HUD"
 msgstr "[{0}] Alternar interfaz de la demo"
 
+msgctxt "Client"
+msgid "Affirmative"
+msgstr "Afirmativo"
+
+msgctxt "Client"
+msgid "Negative"
+msgstr "Negativo"
+
+msgctxt "Client"
+msgid "Tear It Down!"
+msgstr "¡Derribenlo!"
+
+msgctxt "Client"
+msgid "Help Me Build"
+msgstr "Ayúdame a construir"
+
+msgctxt "Client"
+msgid "Spawnkiller!"
+msgstr "¡Emboscada!"
+
+msgctxt "Client"
+msgid "Behind Us!"
+msgstr "¡Detrás nuestro!"
+
+msgctxt "Client"
+msgid "Thank You"
+msgstr "Gracias"
+
+msgctxt "Client"
+msgid "Cover Me"
+msgstr "Cúbreme"
+
+msgctxt "Client"
+msgid "Behind You"
+msgstr "Detrás de ti"
+
+msgctxt "Client"
+msgid "Help Me"
+msgstr "Ayúdame"
+
 #: Resources/Scripts/Gui/ClientUI.as:484
 msgctxt "Client"
 msgid "Send"
