@@ -42,6 +42,10 @@ namespace spades {
 	void StartMainScreen();
 	void StartDemoReplay(const std::string& demoPath);
 
+	/** Play back a demo and auto-follow a player, skipping all menus. playerSpec
+	 * selects the followed player (empty = first). Used by --replay-demo. */
+	void StartDemoReplayAutoFollow(const std::string& demoPath, const std::string& playerSpec);
+
 	/** Relaunch the program with --open-mods, then exit the current process. */
 	void RelaunchForMods();
 } // namespace spades

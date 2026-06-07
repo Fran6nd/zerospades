@@ -38,6 +38,7 @@
 #include "Runner.h"
 #include "SplashWindow.h"
 #include <Client/Client.h>
+#include <Client/DemoRecorder.h>
 #include <Client/Fonts.h>
 #include <Client/GameMap.h>
 #include <Core/ConcurrentDispatch.h>
@@ -196,6 +197,14 @@ namespace {
 	bool g_replayDemo = false;
 	std::string g_replayDemoPath;
 
+	// Demo selection for --replay-demo, set with --demo and --player.
+	std::string g_demoPath;             // empty = latest demo in Demos/
+	std::string g_demoPlayer;           // empty = first player; else id or name
+
+	// Menuless demo replay (--replay-demo). Plays a demo and auto-follows a player,
+	// skipping the startup/setup/main screens entirely.
+	bool g_replayDemoMenuless = false;
+
 	bool g_printVersion = false;
 	bool g_printHelp = false;
 
@@ -227,6 +236,11 @@ namespace {
 		printf("                       set a config variable for this run only; the\n");
 		printf("                       on-disk config is left unchanged. May be given\n");
 		printf("                       multiple times.\n");
+		printf("  --replay-demo        play a demo and follow a player, skipping all\n");
+		printf("                       menus. Use --demo and --player to customise it.\n");
+		printf("  --demo FILE          demo to use (default: latest in Demos/); a bare\n");
+		printf("                       name resolves under Demos/\n");
+		printf("  --player ID|NAME     player to follow (default: first player)\n");
 		printf("  -h, --help           show this help message\n");
 		printf("  -v, --version        show version information\n");
 		printf("\nAuto-recording can be enabled with the cg_demoAutoRecord setting.\n");
@@ -299,6 +313,24 @@ namespace {
 				}
 				return 0;
 			}
+			if (!strcasecmp(a, "--replay-demo")) {
+				g_replayDemoMenuless = true;
+				return ++i;
+			}
+			if (!strcasecmp(a, "--demo")) {
+				if (i + 1 < argc) {
+					g_demoPath = argv[++i];
+					return ++i;
+				}
+				return 0;
+			}
+			if (!strcasecmp(a, "--player")) {
+				if (i + 1 < argc) {
+					g_demoPlayer = argv[++i];
+					return ++i;
+				}
+				return 0;
+			}
 		}
 
 		return 0;
@@ -334,6 +366,23 @@ namespace {
 				return c;
 		}
 		return std::string();
+	}
+
+	// Resolve the demo to use for --replay-demo. An explicit --demo value is used
+	// as-is (a bare name resolves under Demos/); otherwise the most recent
+	// recording is chosen. Returns "" if none is found.
+	std::string resolveCliDemoPath(const std::string& explicitPath) {
+		if (!explicitPath.empty()) {
+			if (explicitPath.find('/') == std::string::npos &&
+			    explicitPath.find('\\') == std::string::npos)
+				return "Demos/" + explicitPath;
+			return explicitPath;
+		}
+
+		auto demos = spades::client::DemoRecorder::ListRecordings();
+		if (demos.empty())
+			return std::string();
+		return demos.back();
 	}
 } // namespace
 
@@ -383,6 +432,31 @@ namespace spades {
 		DemoRunner runner(demoPath);
 		runner.RunProtected();
 	}
+
+	void StartDemoReplayAutoFollow(const std::string& demoPath, const std::string& playerSpec) {
+		class DemoRunner : public spades::gui::Runner {
+			std::string demoPath;
+			std::string playerSpec;
+
+		protected:
+			spades::gui::View* CreateView(spades::client::IRenderer* renderer,
+			                              spades::client::IAudioDevice* audio) override {
+				auto fontManager = Handle<client::FontManager>::New(renderer);
+				auto innerView = Handle<client::Client>::New(
+				    renderer, audio, ServerAddress(), fontManager, demoPath);
+				innerView->EnableDemoReplayFollow(playerSpec);
+				return new spades::gui::ConsoleScreen(renderer, audio, fontManager,
+				                                      std::move(innerView).Cast<gui::View>());
+			}
+
+		public:
+			DemoRunner(const std::string& demoPath, const std::string& playerSpec)
+			    : demoPath(demoPath), playerSpec(playerSpec) {}
+		};
+		DemoRunner runner(demoPath, playerSpec);
+		runner.RunProtected();
+	}
+
 	void StartMainScreen() {
 		class ConcreteRunner : public spades::gui::Runner {
 		protected:
@@ -906,7 +980,17 @@ int main(int argc, char** argv) {
 		pumpEvents();
 
 		// everything is now ready!
-		if (g_replayDemo) {
+		if (g_replayDemoMenuless) {
+			splashWindow.reset();
+
+			std::string demoPath = resolveCliDemoPath(g_demoPath);
+			if (demoPath.empty()) {
+				SPLog("No demos found in Demos/ for --replay-demo");
+			} else {
+				SPLog("Starting menuless demo replay: '%s'", demoPath.c_str());
+				spades::StartDemoReplayAutoFollow(demoPath, g_demoPlayer);
+			}
+		} else if (g_replayDemo) {
 			splashWindow.reset();
 
 			SPLog("Starting demo replay: %s", g_replayDemoPath.c_str());
