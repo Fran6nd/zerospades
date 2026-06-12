@@ -37,7 +37,7 @@ namespace spades {
 			constexpr float kDeadZone = 66.0F;
 			constexpr float kRingInner = 77.0F;
 			constexpr float kRingOuter = 176.0F;
-			constexpr float kSliceGapDeg = 4.0F;
+			constexpr float kSliceGapDeg = 1.0F;
 			constexpr float kLabelRadius = 126.5F;
 
 			// Normalized quarter-circle half-width table: table[i] = sqrt(1-(i/N)^2).
