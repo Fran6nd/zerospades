@@ -653,7 +653,11 @@ msgstr "Cargando demo"
 
 msgctxt "NetClient"
 msgid "Loading map from demo"
-msgid "Cargando mapa desde la demo"
+msgid "Cargando mapa de la demo"
+
+msgctxt "NetClient"
+msgid "Loading map from demo ({0}%)"
+msgstr "Cargando mapa de la demo ({0}%)"
 
 msgctxt "NetClient"
 msgid "Playing demo"

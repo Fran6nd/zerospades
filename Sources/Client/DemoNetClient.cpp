@@ -901,7 +901,8 @@ namespace spades {
 		std::string DemoNetClient::GetStatusString() {
 			if (status == NetClientStatusReceivingMap && mapLoader) {
 				float progress = mapLoader->GetProgress();
-				return Format("{0} ({1}%)", statusString, (int)(progress * 100.0f));
+				int per = (int)(progress * 100.0F);
+				return _Tr("NetClient", "Loading map from demo ({0}%)", per);
 			}
 			return statusString;
 		}
