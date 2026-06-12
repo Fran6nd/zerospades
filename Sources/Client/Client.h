@@ -275,6 +275,13 @@ namespace spades {
 			bool flashlightOn;
 			float flashlightOnTime;
 
+			struct GrenadeTracer {
+				std::vector<Vector3> positions;
+				float fadeTime = -1.0F;
+				float fadeDuration = 0.3F;
+			};
+			std::unordered_map<Grenade*, GrenadeTracer> grenadeTracers;
+
 			CoherentNoiseSampler1D coherentNoiseSamplers[3];
 			void KickCamera(float strength);
 

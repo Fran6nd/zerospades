@@ -211,6 +211,9 @@ namespace spades {
 
 			stmp::optional<Player&> maybePlayer = world->GetLocalPlayer();
 
+			bool isDemoMode = IsDemoMode();
+			bool demoPaused = isDemoMode && demoNet->IsPaused();
+
 			if (maybePlayer) {
 				Player& player = maybePlayer.value();
 
@@ -299,14 +302,12 @@ namespace spades {
 				int score = player.GetScore();
 				if (score != lastScore)
 					lastScore = score;
-			} else if (IsDemoMode()) {
+			} else if (isDemoMode) {
 				// In demo mode with no local player, still update spectator camera
 				UpdateLocalSpectator(dt);
 			}
 
 			// Check if demo is paused - freeze game objects but allow camera movement
-			bool demoPaused = IsDemoMode() && demoNet && demoNet->IsPaused();
-
 			if (!demoPaused) {
 #if 0
 				// dynamic time step
@@ -334,7 +335,6 @@ namespace spades {
 					worldSubFrameFast -= step;
 				}
 #endif
-
 				// update player view (doesn't affect physics/game logics)
 				for (const auto& clientPlayer : clientPlayers) {
 					if (clientPlayer)
@@ -356,6 +356,8 @@ namespace spades {
 						}
 					}
 				};
+
+				// run corpse update concurrently while the main thread processes other entities
 				CorpseUpdateDispatch corpseDispatch{*this, gameplayDt};
 				corpseDispatch.Start();
 
@@ -371,8 +373,37 @@ namespace spades {
 						localEntities.erase(it);
 				}
 
+				// update blood marks
 				bloodMarks->Update(gameplayDt);
+
+				// wait for corpse update to finish
 				corpseDispatch.Join();
+
+				// update grenade tracers
+				const auto& grenades = world->GetAllGrenades();
+				for (auto it = grenadeTracers.begin(); it != grenadeTracers.end();) {
+					if (it->second.fadeTime >= 0) {
+						it->second.fadeTime -= dt;
+						it = (it->second.fadeTime <= 0) ? grenadeTracers.erase(it) : std::next(it);
+						continue;
+					}
+					bool found = false;
+					for (const auto& nade : grenades) {
+						if (nade.get() == it->first) {
+							found = true;
+							break;
+						}
+					}
+					if (!found)
+						it->second.fadeTime = it->second.fadeDuration;
+					++it;
+				}
+				for (const auto& nade : grenades)
+					grenadeTracers[nade.get()].positions.push_back(nade->GetPosition());
+
+				// spawn snow particles when christmas season is active
+				if (isChristmasOn)
+					EmitSnowflakes(lastSceneDef.viewOrigin);
 			}
 
 			if (grenadeVibration > 0.0F) {
@@ -638,9 +669,9 @@ namespace spades {
 				SetSelectedTool(t);
 			}
 
-			// send position/orientaion updates
+			// send position/orientation updates
 			{
-				float POSITION_UPDATE_RATE = 1.0F;             // 1/s
+				float POSITION_UPDATE_RATE = 1.0F;			   // 1/s
 				float ORIENTATION_UPDATE_RATE = 1.0F / 120.0F; // 120/s
 
 				Vector3 curPos = player.GetPosition();
@@ -1588,7 +1619,7 @@ namespace spades {
 					param.referenceDistance = 3.0F;
 					IntVector3 outPos;
 					Vector3 soundPos = origin;
-					if (world->GetMap()->CastRay(soundPos, MakeVector3(0, 0, 1), 8.0F, outPos))
+					if (map->CastRay(soundPos, MakeVector3(0, 0, 1), 8.0F, outPos))
 						soundPos.z = (float)outPos.z - 0.2F;
 					audioDevice->Play(c.GetPointerOrNull(), soundPos, param);
 				}

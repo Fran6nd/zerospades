@@ -124,6 +124,7 @@ namespace spades {
 
 			damageIndicators.clear();
 			localEntities.clear();
+			grenadeTracers.clear();
 			
 			if (bloodMarks)
 				bloodMarks->Clear();

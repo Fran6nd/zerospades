@@ -15,7 +15,7 @@
  GNU General Public License for more details.
 
  You should have received a copy of the GNU General Public License
- along with OpenSpades.  If not, see <http://www.gnu.org/licenses/>.
+ along with OpenSpades.	 If not, see <http://www.gnu.org/licenses/>.
 
  */
 
@@ -637,8 +637,8 @@ namespace spades {
 				for (int i = 0; i < tc.GetNumTerritories(); i++) {
 					TCGameMode::Territory& t = tc.GetTerritory(i);
 					IntVector3 col = (t.ownerTeamId >= NEUTRAL_TEAM)
-					                   ? MakeIntVector3(255, 255, 255)
-					                   : world->GetTeamColor(t.ownerTeamId);
+									   ? MakeIntVector3(255, 255, 255)
+									   : world->GetTeamColor(t.ownerTeamId);
 
 					ModelRenderParam param;
 					param.customColor = ConvertColorRGB(col);
@@ -755,10 +755,83 @@ namespace spades {
 					}
 				}
 
-				if (isChristmasOn)
-					EmitSnowflakes(lastSceneDef.viewOrigin);
+				// draw grenade prediction/tracers
+				if (IsDemoMode()) {
+					const float frameStep = 1.0F / 60.0F;
+
+					Vector4 crossColor = MakeVector4(1, 0, 0, 1);
+					auto drawCross = [&](Vector3 p, float size, Vector4 col) {
+						renderer->AddDebugLine(Vector3{p.x - size, p.y, p.z},
+											   Vector3{p.x + size, p.y, p.z}, col);
+						renderer->AddDebugLine(Vector3{p.x, p.y - size, p.z},
+											   Vector3{p.x, p.y + size, p.z}, col);
+						renderer->AddDebugLine(Vector3{p.x, p.y, p.z - size},
+											   Vector3{p.x, p.y, p.z + size}, col);
+					};
+
+					auto cameraMode = GetCameraMode();
+					bool isFollowingNonLocal = FollowsNonLocalPlayer(cameraMode);
+
+					// draw trayectory
+					auto cameraPlayer = world->GetPlayer(GetCameraTargetPlayerId());
+					if (cameraPlayer) {
+						Player& p = cameraPlayer.value();
+						if (isFollowingNonLocal && p.IsAlive()
+							&& p.IsToolGrenade() && p.IsReadyToUseTool()) {
+							const float fuseTime = 3.0F;
+							const float fuse = fuseTime - p.GetGrenadeCookTime();
+							const float maxTime = p.IsCookingGrenade() ? fuse : fuseTime;
+
+							const Vector3 dir = p.GetFront();
+							const Vector3 muzzle = p.GetEye() + (dir * 0.1F);
+							const Vector3 vel = dir + p.GetVelocity();
+
+							Grenade sim(*world, muzzle, vel, fuse);
+							Vector3 prev = sim.GetPosition();
+
+							for (float t = 0.0F; t < maxTime; t += frameStep) {
+								float dt = std::min(frameStep, maxTime - t);
+								int ret = sim.MoveGrenade(dt);
+								if (ret == -1) break;
+
+								const Vector3 cur = sim.GetPosition();
+								const float progress = std::min(t / fuseTime, 1.0F);
+								const float alpha = std::min(progress / 0.1F, 1.0F);
+								const Vector4 color = {1.0F, 1.0F, 0.0F, alpha};
+
+								renderer->AddDebugLine(prev, cur, color);
+								prev = cur;
+							}
+
+							drawCross(prev, 0.2F, crossColor);
+						}
+					}
+
+					// draw tracers
+					for (const auto& [nade, trace] : grenadeTracers) {
+						float alpha = (trace.fadeTime >= 0) ? (trace.fadeTime / trace.fadeDuration) : 1.0F;
+						for (size_t i = 1; i < trace.positions.size(); i++) {
+							float progress = float(i) / float(trace.positions.size());
+							Vector4 color = {1.0F, 0.0F, 0.0F, progress * alpha};
+							renderer->AddDebugLine(trace.positions[i - 1], trace.positions[i], color);
+						}
+
+						if (trace.fadeTime < 0) {
+							Grenade sim(*world, nade->GetPosition(), nade->GetVelocity(), nade->GetFuse());
+							Vector3 prev = sim.GetPosition();
+							for (float t = 0.0F; t < nade->GetFuse(); t += frameStep) {
+								int ret = sim.MoveGrenade(frameStep);
+								if (ret == -1) break;
+								prev = sim.GetPosition();
+							}
+
+							drawCross(prev, 0.2F, crossColor);
+						}
+					}
+				}
 			}
 
+			// draw lights (e.g. muzzle fire, grenade explosions, flashlight)
 			for (const auto& lights : flashDlights)
 				renderer->AddLight(lights);
 			flashDlightsOld.clear();
