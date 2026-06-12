@@ -120,8 +120,8 @@ namespace spades {
 			// key release, avoiding one expensive reset/replay per repeat tick.
 			bool demoSeekForwardHeld = false;
 			bool demoSeekBackwardHeld = false;
-			float demoSeekRepeatTimer = 0.0F;   // accumulates dt between preview steps
-			float demoSeekPendingTime = 0.0F;   // target time to commit on key release
+			float demoSeekRepeatTimer = 0.0F;	// accumulates dt between preview steps
+			float demoSeekPendingTime = 0.0F;	// target time to commit on key release
 			bool demoHudVisible = true;
 
 			// Automated one-shot follow for menuless demo replay (--replay-demo):
@@ -213,6 +213,30 @@ namespace spades {
 			};
 			HitStats hitStats;
 
+			// Net-graph history ring buffer.
+			// Sampled once per frame; stores the last kNetGraphSamples measurements.
+			static constexpr int kNetGraphSamples = 128;
+			struct NetGraphSample {
+				float downKbps;
+				float upKbps;
+				float pingMs;
+			};
+			struct NetGraphSampler {
+				NetGraphSample samples[kNetGraphSamples]{};
+				int head = 0; // next write index
+				float accumTime = 0.0F;
+
+				void Push(const NetGraphSample& s) {
+					samples[head] = s;
+					head = (head + 1) % kNetGraphSamples;
+				}
+				// Index 0 = oldest, index (kNetGraphSamples-1) = newest
+				const NetGraphSample& At(int i) const {
+					return samples[(head + i) % kNetGraphSamples];
+				}
+			};
+			NetGraphSampler netGraph;
+
 			float worldSetTime;
 
 			bool reloadKeyPressed;
@@ -273,6 +297,7 @@ namespace spades {
 			float grenadeVibration;
 			float grenadeVibrationSlow;
 			bool scoreboardVisible;
+			bool netgraphVisible;
 			bool hudVisible;
 			bool flashlightOn;
 			float flashlightOnTime;
@@ -504,6 +529,7 @@ namespace spades {
 			void DrawAlert();
 			void DrawDebugAim(Player&);
 			void DrawStats();
+			void DrawNetGraph();
 			void DrawHitTestDebugger();
 			void DrawPlayerStats();
 
@@ -599,6 +625,7 @@ namespace spades {
 			bool WantsToBeClosed() override;
 			bool IsMuted();
 			bool IsScoreboardVisible() { return scoreboardVisible; }
+			bool IsNetgraphVisible() { return netgraphVisible; }
 
 			void PlayerSentChatMessage(Player&, bool global, const std::string&);
 			void ServerSentMessage(bool system, const std::string&);

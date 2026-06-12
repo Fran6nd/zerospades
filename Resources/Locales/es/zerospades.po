@@ -3010,10 +3010,13 @@ msgctxt "Preferences"
 msgid "Classic Sprinting"
 msgstr "Sprint clásico"
 
-#: Resources/Scripts/Gui/Preferences.as:1496
 msgctxt "Preferences"
 msgid "Force Spectator Mode"
 msgstr "Forzar modo espectador"
+
+msgctxt "Preferences"
+msgid "Network Graph"
+msgstr "Monitor de red"
 
 #: Resources/Scripts/Gui/Preferences.as:1226
 msgctxt "Preferences"
