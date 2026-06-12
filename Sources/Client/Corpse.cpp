@@ -37,8 +37,8 @@ SPADES_SETTING(cg_classicPlayerModels);
 
 namespace spades {
 	namespace client {
-		Corpse::Corpse(IRenderer& renderer, GameMap& map, Player& p)
-			: renderer{renderer}, map{map} {
+		Corpse::Corpse(IRenderer& renderer, GameMap& map, Player& p, bool isChristmasOn)
+			: renderer{renderer}, map{map}, isChristmasOn{isChristmasOn} {
 			SPADES_MARK_FUNCTION();
 
 			playerId = p.GetId();
@@ -550,7 +550,9 @@ namespace spades {
 
 			// Head
 			{
-				model = renderer.RegisterModel((modelPath + "Head.kv6").c_str());
+				model = isChristmasOn
+					? renderer.RegisterModel("Models/Player/XmasHat.kv6")
+					: renderer.RegisterModel((modelPath + "Head.kv6").c_str());
 
 				const Vector3 headBase = (torso * MakeVector3(0.0F, 0.0F, 0.0F)).GetXYZ();
 

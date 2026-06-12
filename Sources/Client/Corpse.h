@@ -14,7 +14,7 @@
  GNU General Public License for more details.
 
  You should have received a copy of the GNU General Public License
- along with OpenSpades.  If not, see <http://www.gnu.org/licenses/>.
+ along with OpenSpades.	 If not, see <http://www.gnu.org/licenses/>.
 
  */
 
@@ -66,6 +66,7 @@ namespace spades {
 			Vector3 color;
 			std::string weaponName;
 			bool isLocalPlayer;
+			bool isChristmasOn;
 
 			Node nodes[NodeCount];
 			Edge edges[8];
@@ -75,9 +76,9 @@ namespace spades {
 
 			void Spring(NodeType n1, NodeType n2, float distance, float dt);
 			void Spring(NodeType n1a, NodeType n1b, NodeType n2, float distance, float dt);
-			void AngleSpring(NodeType base, NodeType a, NodeType b, 
+			void AngleSpring(NodeType base, NodeType a, NodeType b,
 				float minDot, float maxDot, float dt);
-			void AngleSpring(NodeType a, NodeType b, Vector3 dir, 
+			void AngleSpring(NodeType a, NodeType b, Vector3 dir,
 				float minDot, float maxDot, float dt);
 			void AngularMomentum(int eId, NodeType a, NodeType b);
 			void ApplyConstraint(float dt);
@@ -92,7 +93,7 @@ namespace spades {
 			 * @param p The player to create a corpse from. Can be destroyed
 			 *			after `Corpse` is constructed.
 			 */
-			Corpse(IRenderer& renderer, GameMap& map, Player& p);
+			Corpse(IRenderer& renderer, GameMap& map, Player& p, bool isChristmasOn);
 			~Corpse();
 
 			void Update(float dt);
