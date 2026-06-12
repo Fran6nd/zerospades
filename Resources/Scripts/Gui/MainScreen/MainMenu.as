@@ -670,11 +670,11 @@ namespace spades {
 					AddChild(tabStrip);
 					tabStrip.AddItem(_Tr("MainScreen", "Servers"), serverPanel);
 					tabStrip.AddItem(_Tr("MainScreen", "Demos"), demoPanel);
-					tabStrip.AddItem(_Tr("MainScreen", "Editor"), editorPanel);
 					// Hide the Mods tab while trying a single mod (--try-mod):
 					// the mod manager is irrelevant and its enabled set is bypassed.
 					if (!helper.IsTryingMod())
 						tabStrip.AddItem(_Tr("MainScreen", "Mods"), modsPanel);
+					tabStrip.AddItem(_Tr("MainScreen", "Editor"), editorPanel);
 					@tabStrip.Changed = spades::ui::EventHandler(this.OnTabChanged);
 				}
 
