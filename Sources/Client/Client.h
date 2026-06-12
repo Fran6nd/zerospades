@@ -44,6 +44,8 @@
 #include <Core/VersionInfo.h>
 #include <Gui/View.h>
 
+#include "SoundIndicatorEntity.h"
+
 namespace spades {
 	class IStream;
 	class Stopwatch;
@@ -407,6 +409,7 @@ namespace spades {
 			void MuzzleFire(Vector3, bool smoke = true);
 			void BulletHitWaterSurface(Vector3);
 			void EmitSnowflakes(Vector3);
+			void EmitSoundIndicator(Vector3, SoundType type);
 
 			// drawings
 			Handle<FontManager> fontManager;
