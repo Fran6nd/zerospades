@@ -21,6 +21,8 @@
 #include "UIFramework/UIFramework.as"
 #include "MessageBox.as"
 #include "KV6Editor/KV6FileList.as"
+#include "KV6Editor/Tools/EditorTool.as"
+#include "KV6Editor/Tools/CylinderTool.as"
 #include "MainScreen/MainScreenUI.as"
 #include "StartupScreen/StartupScreenUI.as"
 #include "Preferences.as"
