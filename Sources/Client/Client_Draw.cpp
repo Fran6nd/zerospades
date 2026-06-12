@@ -1824,6 +1824,9 @@ namespace spades {
 						DrawSpectateHUD();
 					}
 
+					if (netgraphVisible)
+						DrawNetGraph();
+
 					chatWindow->Draw();
 					killfeedWindow->Draw();
 
@@ -1993,7 +1996,7 @@ namespace spades {
 				}
 			}
 
-			if (!IsDemoMode()) {
+			if (!IsDemoMode() && !netgraphVisible) {
 				auto ping = activeNet->GetPing();
 				snprintf(buf, sizeof(buf), ", ping: %dms", ping);
 				str += buf;
@@ -2028,6 +2031,118 @@ namespace spades {
 			// draw text
 			pos += MakeVector2(margin, margin);
 			font.DrawOutline(str, pos, 1.0F, color, outline);
+		}
+
+		void Client::DrawNetGraph() {
+			SPADES_MARK_FUNCTION();
+
+			if (IsDemoMode())
+				return;
+
+			IFont& font = fontManager->GetSmallFont();
+
+			const float sw = renderer->ScreenWidth();
+			const float sh = renderer->ScreenHeight();
+
+			const float margin = 4.0F;
+			const float graphW = 128.0F;
+			const float graphH = 64.0F;
+			const float graphX = margin;
+			const float graphY = (sh * 0.5F) - margin - graphH * 0.5F;
+
+			// label column to the right of the graph
+			const float labelColW = 64.0F;
+			const float panelX = graphX;
+			const float panelW = graphW + margin + labelColW;
+			const float panelH = graphH;
+			const float panelY = graphY;
+
+			// colors
+			const Vector4 white = MakeVector4(1, 1, 1, 1);
+			const Vector4 colDown = MakeVector4(0.2F, 1, 0.35F, 1);
+			const Vector4 colUp = MakeVector4(0.35F, 0.55F, 1, 1);
+			const Vector4 colPing = MakeVector4(1, 0.25F, 0.25F, 1);
+			const Vector4 outline = MakeVector4(0, 0, 0, 0.7F);
+			const Vector4 colBackground = MakeVector4(0, 0, 0, 0.55F);
+			const Vector4 colBorder = MakeVector4(0.6F, 0.6F, 0.6F, 0.6F);
+
+			// draw background
+			renderer->SetColorAlphaPremultiplied(colBackground);
+			renderer->DrawFilledRect(panelX - margin, panelY - margin,
+									panelX - margin + panelW + margin * 2,
+									panelY - margin + panelH + margin * 2);
+
+			// compute max values for scaling
+			float maxBw = 8.0F; // kbps floor
+			float maxPing = 300.0F; // ms floor
+			for (int i = 0; i < kNetGraphSamples; i++) {
+				const auto& s = netGraph.At(i);
+				maxBw = std::max({maxBw, s.downKbps, s.upKbps});
+				maxPing = std::max(maxPing, s.pingMs);
+			}
+
+			// round up to a clean headroom ceiling
+			maxBw *= 2.0F;
+			maxPing *= 2.0F;
+
+			// draw graph lines (one pixel-wide column per sample)
+			const float colW = graphW / static_cast<float>(kNetGraphSamples);
+			for (int i = 0; i < kNetGraphSamples; i++) {
+				const auto& s = netGraph.At(i);
+				const float x = graphX + float(i) * colW;
+
+				float downH = (s.downKbps / maxBw) * graphH;
+				float upH = (s.upKbps / maxBw) * graphH;
+				float pingH = (s.pingMs / maxPing) * graphH;
+				float baseH = graphY + graphH;
+
+				{
+					float top = std::max(baseH - downH, graphY);
+					renderer->SetColorAlphaPremultiplied(colDown);
+					renderer->DrawFilledRect(x, top, x + colW, baseH);
+					baseH = top;
+				}
+				{
+					float top = std::max(baseH - upH, graphY);
+					renderer->SetColorAlphaPremultiplied(colUp);
+					renderer->DrawFilledRect(x, top, x + colW, baseH);
+					baseH = top;
+				}
+				{
+					float top = std::max(baseH - pingH, graphY);
+					renderer->SetColorAlphaPremultiplied(colPing);
+					renderer->DrawFilledRect(x, top, x + colW, baseH);
+				}
+			}
+
+			// graph border
+			renderer->SetColorAlphaPremultiplied(colBorder);
+			renderer->DrawOutlinedRect(graphX - 1, graphY - 1, graphX + graphW + 1, graphY + graphH + 1);
+
+			// draw labels (right-aligned text in the label column)
+			const float downKbps = std::min(static_cast<float>(activeNet->GetDownlinkBps() / 1000.0), 999.0F);
+			const float upKbps = std::min(static_cast<float>(activeNet->GetUplinkBps() / 1000.0), 999.0F);
+			const float pingMs = std::min(static_cast<float>(activeNet->GetPing()), 999.0F);
+			const float lossPer = activeNet->GetPacketLoss() * 100.0F;
+
+			char buf[64];
+			const float lh = graphH / 4.0F;
+			Vector2 labelPos = MakeVector2(graphX + graphW + margin, panelY);
+			auto drawLabel = [&](const std::string& label, const std::string& value, const Vector4& col) {
+				float ty = labelPos.y + (lh - font.Measure(label).y) * 0.5F;
+				font.DrawOutline(label, MakeVector2(labelPos.x, ty), 1.0F, col, outline);
+				font.DrawOutline(value, MakeVector2(labelPos.x + labelColW - font.Measure(value).x, ty), 1.0F, col, outline);
+				labelPos.y += lh;
+			};
+
+			snprintf(buf, sizeof(buf), "%.0fkbps", downKbps);
+			drawLabel("in", buf, colDown);
+			snprintf(buf, sizeof(buf), "%.0fkbps", upKbps);
+			drawLabel("out", buf, colUp);
+			snprintf(buf, sizeof(buf), "%dms", static_cast<int>(pingMs));
+			drawLabel("ping", buf, colPing);
+			snprintf(buf, sizeof(buf), "%.0f%%", lossPer);
+			drawLabel("loss", buf, white);
 		}
 
 		void Client::Draw2D() {

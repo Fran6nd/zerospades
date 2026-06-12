@@ -109,6 +109,7 @@ namespace spades {
 			  grenadeVibration(0.0F),
 			  grenadeVibrationSlow(0.0F),
 			  scoreboardVisible(false),
+			  netgraphVisible(false),
 			  hudVisible(true),
 			  flashlightOn(false),
 			  isChristmasOn(false),
@@ -297,7 +298,7 @@ namespace spades {
 
 			RemoveAllLocalEntities();
 			bloodMarks.reset();
-			
+
 			renderer->SetGameMap(nullptr);
 			audioDevice->SetGameMap(nullptr);
 
@@ -764,6 +765,20 @@ namespace spades {
 			// render scene
 			DrawScene();
 
+			// accumulate net-graph sample at fixed interval
+			if (!IsDemoMode()) {
+				const float sampleInterval = 0.1F;
+				netGraph.accumTime += dt;
+				while (netGraph.accumTime >= sampleInterval) {
+					netGraph.accumTime -= sampleInterval;
+					NetGraphSample s;
+					s.downKbps = static_cast<float>(activeNet->GetDownlinkBps() / 1000.0);
+					s.upKbps = static_cast<float>(activeNet->GetUplinkBps() / 1000.0);
+					s.pingMs = static_cast<float>(activeNet->GetPing());
+					netGraph.Push(s);
+				}
+			}
+
 			// draw 2d
 			Draw2D();
 
@@ -872,7 +887,7 @@ namespace spades {
 			// In demo mode, player actions are replayed from the demo file
 			if (IsDemoMode())
 				return;
-			
+
 			WeaponType weap = limbo->GetSelectedWeapon();
 			int team = limbo->GetSelectedTeam();
 			if (team == 2)

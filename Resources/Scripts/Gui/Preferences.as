@@ -1928,6 +1928,7 @@ namespace spades {
 			layouter.AddControl(_Tr("Preferences", "Save Screenshot"), "cg_keyScreenshot");
 			layouter.AddControl(_Tr("Preferences", "Master Volume Up"), "cg_keyVolumeUp");
 			layouter.AddControl(_Tr("Preferences", "Master Volume Down"), "cg_keyVolumeDown");
+			layouter.AddControl(_Tr("Preferences", "Network Graph"), "cg_keyNetgraph");
 			layouter.AddControl(_Tr("Preferences", "Force Spectator Mode"), "cg_keyStaffSpectating");
 
 			layouter.FinishLayout();

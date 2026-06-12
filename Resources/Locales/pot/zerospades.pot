@@ -2929,9 +2929,12 @@ msgctxt "Preferences"
 msgid "Classic Sprinting"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1496
 msgctxt "Preferences"
 msgid "Force Spectator Mode"
+msgstr ""
+
+msgctxt "Preferences"
+msgid "Network Graph"
 msgstr ""
 
 #: Resources/Scripts/Gui/Preferences.as:1225
