@@ -685,13 +685,6 @@ namespace spades {
 				device->PolygonOffset(0.0F, 0.0F);
 				device->LineWidth(1.0F);
 			}
-
-			{
-				GLProfiler::Context p(*profiler, "Debug Line");
-
-				device->DepthFunc(IGLDevice::Less);
-				RenderDebugLines();
-			}
 		}
 
 		void GLRenderer::RenderGhosts() {
@@ -813,7 +806,7 @@ namespace spades {
 					}
 
 					device->FrontFace(IGLDevice::CCW);
-					
+
 					// render mirrored objects
 					{
 						GLProfiler::Context p(*profiler, "Mirrored Objects");
@@ -878,6 +871,16 @@ namespace spades {
 				GLProfiler::Context p(*profiler, "Water");
 				waterRenderer->Update(dt);
 				waterRenderer->Render();
+			}
+
+			{
+				GLProfiler::Context p(*profiler, "Debug Line");
+				device->DepthFunc(IGLDevice::Less);
+				device->Enable(IGLDevice::DepthTest, true);
+				device->Enable(IGLDevice::Blend, true);
+				device->BlendFunc(IGLDevice::SrcAlpha, IGLDevice::OneMinusSrcAlpha);
+				RenderDebugLines();
+				device->Enable(IGLDevice::Blend, false);
 			}
 
 			{
