@@ -21,8 +21,9 @@
 #include "UIFramework/UIFramework.as"
 #include "MessageBox.as"
 #include "KV6Editor/KV6FileList.as"
-#include "KV6Editor/Tools/EditorTool.as"
-#include "KV6Editor/Tools/CylinderTool.as"
+// Auto-include every editor tool script; drop a new tool .as in this folder and it
+// is compiled and discovered automatically (see RegisterScriptTools).
+#include "KV6Editor/Tools/*.as"
 #include "MainScreen/MainScreenUI.as"
 #include "StartupScreen/StartupScreenUI.as"
 #include "Preferences.as"
