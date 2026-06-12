@@ -1526,8 +1526,9 @@ namespace spades {
 			stmp::optional<Player&> maybePlayer = world->GetLocalPlayer();
 
 			// In demo mode there's no local player, treat as spectator
-			bool localPlayerIsSpectator = IsDemoMode() || staffSpectating ||
-				(maybePlayer && maybePlayer->IsSpectator());
+			bool isDemoMode = IsDemoMode();
+			bool localPlayerIsSpectator = maybePlayer && maybePlayer->IsSpectator();
+			bool isSpectating = localPlayerIsSpectator || isDemoMode || staffSpectating;
 
 			float x = sw - 8.0F;
 			float minY = sh * 0.5F;
@@ -1576,7 +1577,7 @@ namespace spades {
 				addLine(_Tr("Client", "[{0}/{1}] Next/Prev player",
 					TrKey(cg_keyAttack), TrKey(cg_keyAltAttack)));
 
-				if (localPlayerIsSpectator)
+				if (isSpectating)
 					addLine(_Tr("Client", "[{0}] Unfollow", TrKey(cg_keyReloadWeapon)));
 			} else if (!FollowsNonLocalPlayer(cameraMode)) {
 				addLine(_Tr("Client", "[{0}/{1}] Follow a player",
@@ -1587,9 +1588,8 @@ namespace spades {
 				addLine(_Tr("Client", "[{0}/{1}] Go up/down",
 					TrKey(cg_keyJump), TrKey(cg_keyCrouch)));
 
-			if (localPlayerIsSpectator) {
+			if (isSpectating) {
 				addLine(_Tr("Client", "[{0}] Toggle player names", TrKey(cg_keyToggleSpectatorNames)));
-
 				bool isStaff = activeNet && activeNet->GetGameProperties()->isStaff;
 				if (isStaff || demoNet)
 					addLine(_Tr("Client", "[{0}] Toggle ESP", TrKey(cg_keyStaffSpectating)));
@@ -1597,7 +1597,7 @@ namespace spades {
 
 			y += lh * 0.5F;
 
-			if (IsDemoMode()) {
+			if (isDemoMode) {
 				// Demo playback controls
 				addLine(demoNet->IsPaused()
 					? _Tr("Client", "[{0}] Resume", TrKey(cg_keyDemoPlayPause))
@@ -1745,6 +1745,7 @@ namespace spades {
 		void Client::Draw2DWithWorld() {
 			SPADES_MARK_FUNCTION();
 
+			bool isDemoMode = IsDemoMode();
 			bool shouldDrawHUD = hudVisible && !cg_hideHud;
 
 			float sw = renderer->ScreenWidth();
@@ -1837,6 +1838,9 @@ namespace spades {
 					chatWindow->Draw();
 				}
 
+				if (pieMenuView && pieMenuView->IsOpen())
+					pieMenuView->Draw();
+
 				DrawAlert();
 				centerMessageView->Draw();
 				if (scoreboardVisible) {
@@ -1844,14 +1848,11 @@ namespace spades {
 					DrawPlayingTime();
 				}
 
-				if (pieMenuView && pieMenuView->IsOpen())
-					pieMenuView->Draw();
-
 				// --- end "player is there" render
 			} else {
 				// world exists, but no local player: not joined (or demo mode)
 
-				if (IsDemoMode() && shouldDrawHUD) {
+				if (isDemoMode && shouldDrawHUD) {
 					// Draw spectator HUD elements in demo mode.
 					// Boxes always render (staff use); names follow the toggle.
 					DrawPubOVL();
@@ -1886,10 +1887,11 @@ namespace spades {
 				}
 
 				// In demo mode, only show scoreboard when toggled
-				if (!IsDemoMode() || scoreboardVisible) {
+				if (!isDemoMode || scoreboardVisible) {
 					scoreboard->Draw();
 					DrawPlayingTime();
 				}
+
 				centerMessageView->Draw();
 				DrawAlert();
 			}
