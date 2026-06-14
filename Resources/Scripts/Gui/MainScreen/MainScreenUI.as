@@ -170,9 +170,7 @@ namespace spades {
 			renderer.Flip();
 		}
 
-		void Closing() {
-			shouldExit = true;
-		}
+		void Closing() { shouldExit = true; }
 
 		bool WantsToBeClosed() { return shouldExit; }
 	}
