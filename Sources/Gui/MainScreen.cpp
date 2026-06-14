@@ -73,15 +73,8 @@ namespace spades {
 			SPADES_MARK_FUNCTION();
 			if (subview)
 				return subview->NeedsAbsoluteMouseCoordinate();
-			if (!ui)
-				return true;
 
-			ScopedPrivilegeEscalation privilege;
-			static ScriptFunction func("MainScreenUI", "bool NeedsAbsoluteMouseCoordinate()");
-			ScriptContextHandle c = func.Prepare();
-			c->SetObject(&*ui);
-			c.ExecuteChecked();
-			return c->GetReturnByte() != 0;
+			return true;
 		}
 
 		void MainScreen::MouseEvent(float x, float y) {

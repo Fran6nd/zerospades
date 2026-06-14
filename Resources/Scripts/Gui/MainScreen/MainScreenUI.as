@@ -88,11 +88,6 @@ namespace spades {
 				manager.KeyPanic();
 		}
 
-		// The main menu always uses an absolute cursor. (When the KV6 editor is
-		// open it runs as a C++ `subview`, so `MainScreen` queries the editor
-		// directly and never reaches this.)
-		bool NeedsAbsoluteMouseCoordinate() { return true; }
-
 		void MouseEvent(float x, float y) { manager.MouseEvent(x, y); }
 		void WheelEvent(float x, float y) { manager.WheelEvent(x, y); }
 		void KeyEvent(string key, bool down) { manager.KeyEvent(key, down); }
