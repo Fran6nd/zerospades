@@ -212,7 +212,7 @@ namespace spades {
 			stmp::optional<Player&> maybePlayer = world->GetLocalPlayer();
 
 			bool isDemoMode = IsDemoMode();
-			bool demoPaused = isDemoMode && demoNet->IsPaused();
+			bool isDemoPaused = isDemoMode && demoNet->IsPaused();
 
 			if (maybePlayer) {
 				Player& player = maybePlayer.value();
@@ -308,7 +308,7 @@ namespace spades {
 			}
 
 			// Check if demo is paused - freeze game objects but allow camera movement
-			if (!demoPaused) {
+			if (!isDemoPaused) {
 #if 0
 				// dynamic time step
 				// physics diverges from server

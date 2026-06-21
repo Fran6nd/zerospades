@@ -411,8 +411,8 @@ namespace spades {
 				auto cameraMode = GetCameraMode();
 
 				// In demo mode, we're always spectating without a local player
-				bool demoMode = IsDemoMode();
-				if (demoMode) {
+				bool isDemoMode = IsDemoMode();
+				if (isDemoMode) {
 					// Allow screenshot / mapshot keys during playback — they don't
 					// require a local player and are commonly used to capture demos.
 					if (CheckKey(cg_keySceneshot, name) && down) {
@@ -783,7 +783,7 @@ namespace spades {
 				}
 
 				// demo record toggle accessible for both players and spectators
-				if (CheckKey(cg_keyDemoRecord, name) && down && !demoMode) {
+				if (CheckKey(cg_keyDemoRecord, name) && down && !isDemoMode) {
 					if (net->IsDemoRecording()) {
 						net->StopDemoRecording();
 						ShowAlert(_Tr("Client", "Recording stopped"), AlertType::Notice);
