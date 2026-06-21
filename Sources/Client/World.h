@@ -15,7 +15,7 @@
  GNU General Public License for more details.
 
  You should have received a copy of the GNU General Public License
- along with OpenSpades.  If not, see <http://www.gnu.org/licenses/>.
+ along with OpenSpades.	 If not, see <http://www.gnu.org/licenses/>.
 
  */
 
@@ -44,14 +44,12 @@ namespace spades {
 		class IWorldListener;
 		class Grenade;
 		class IGameMode;
-		class Client; // FIXME: for debug
 		class HitTestDebugger;
 		struct GameProperties;
 
 		constexpr std::size_t NumPlayerSlots = 256;
 
 		class World {
-			friend class Client; // FIXME: for debug
 		public:
 			struct Team {
 				IntVector3 color;
@@ -158,7 +156,7 @@ namespace spades {
 			};
 
 			WeaponRayCastResult WeaponRayCast(Vector3 startPos, Vector3 dir,
-			                                  stmp::optional<int> excludePlayerId);
+											  stmp::optional<int> excludePlayerId);
 
 			size_t GetNumPlayerSlots() { return players.size(); }
 			size_t GetNumPlayers();
