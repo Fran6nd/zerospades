@@ -792,7 +792,7 @@ namespace spades {
 						client->PlayerDropIntel(*p);
 				} break;
 				case PacketTypeRestock: {
-					r.ReadByte();
+					r.ReadByte(); // skip player id
 					if (recordedLocalPlayerId >= 0) {
 						auto p = GetPlayerOrNull(recordedLocalPlayerId);
 						if (p) p->Restock();
@@ -800,7 +800,7 @@ namespace spades {
 				} break;
 				case PacketTypeFogColour: {
 					if (GetWorld()) {
-						r.ReadByte();
+						r.ReadByte(); // skip alpha value
 						GetWorld()->SetFogColor(r.ReadIntColor());
 					}
 				} break;
@@ -824,7 +824,7 @@ namespace spades {
 					// These packets are ignored in demo playback
 					break;
 				case PacketTypePlayerProperties: {
-					int subId = r.ReadByte();
+					r.ReadByte(); // skip subId
 					int pId = r.ReadByte();
 					int hp = r.ReadByte();
 					int blocks = r.ReadByte();

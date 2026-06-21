@@ -28,8 +28,8 @@ namespace spades {
 		class World;
 
 		class Grenade {
-			int ownerId;
 			World& world;
+			int ownerId;
 			float fuse;
 			Vector3 position;
 			Vector3 velocity;
