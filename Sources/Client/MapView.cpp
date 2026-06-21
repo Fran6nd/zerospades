@@ -385,7 +385,7 @@ namespace spades {
 
 			// draw grid lines
 			Vector2 gridSize = mapSize / 8.0F;
-			Vector4 gridCol = MakeVector4(0, 0, 0, 1) * 0.8F * alpha;
+			Vector4 gridCol = MakeVector4(0, 0, 0, 1) * 0.4F * alpha;
 			renderer.SetColorAlphaPremultiplied(gridCol);
 			for (float x = gridSize.x; x < inRect.GetMaxX() - 1; x += gridSize.x) {
 				float wx = (x - inRect.GetMinX()) / inRect.GetWidth();
@@ -616,12 +616,12 @@ namespace spades {
 				}
 
 				if (focusPlayerIsAlive || (focusPlayerIsLocal && localPlayerIsSpectating))
-					DrawIcon(focusPlayerPos, *focusPlayerViewIcon, iconColorF * 0.9F, focusPlayerAngle);
+					DrawIcon(focusPlayerPos, *focusPlayerViewIcon, iconColorF * 0.7F, focusPlayerAngle);
 				DrawIcon(focusPlayerPos, *iconImg, iconColorF, focusPlayerAngle);
 			} else if (localPlayerIsSpectating && isFreeCamera) {
 				// In demo free camera mode, draw a simple view indicator
 				Vector4 iconColorF = ModifyColor(spectatorColor) * largeMapAlpha;
-				DrawIcon(focusPlayerPos, *focusPlayerViewIcon, iconColorF * 0.9F, focusPlayerAngle);
+				DrawIcon(focusPlayerPos, *focusPlayerViewIcon, iconColorF * 0.7F, focusPlayerAngle);
 				DrawIcon(focusPlayerPos, *spectatorIcon, iconColorF, focusPlayerAngle);
 			}
 
