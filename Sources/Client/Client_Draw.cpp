@@ -2028,7 +2028,7 @@ namespace spades {
 
 			IFont& font = fontManager->GetSmallFont();
 
-			const float sw = renderer->ScreenWidth();
+			// const float sw = renderer->ScreenWidth();
 			const float sh = renderer->ScreenHeight();
 
 			const float margin = 4.0F;
