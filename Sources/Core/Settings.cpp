@@ -215,7 +215,7 @@ namespace spades {
 								i++;
 							} else {
 								buffer.append(val, i, utf8charsize);
-								column += utf8charsize;
+								column += static_cast<int>(utf8charsize);
 								i += utf8charsize;
 							}
 							break;
