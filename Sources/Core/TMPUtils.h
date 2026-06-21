@@ -14,7 +14,7 @@
  GNU General Public License for more details.
 
  You should have received a copy of the GNU General Public License
- along with OpenSpades.  If not, see <http://www.gnu.org/licenses/>.
+ along with OpenSpades.	 If not, see <http://www.gnu.org/licenses/>.
 
  */
 
@@ -47,25 +47,30 @@ namespace stmp {
 		optional(T&& v) : has_some(false) { reset(std::forward<T>(v)); }
 		optional(const optional& o) : has_some(o.has_some) {
 			if (has_some) {
-				Allocator().construct(get_pointer(), o.get());
+				Allocator alloc;
+				std::allocator_traits<Allocator>::construct(alloc, get_pointer(), o.get());
 			}
 		}
 		optional(optional&& o) : has_some(o.has_some) {
 			if (has_some) {
-				Allocator().construct(get_pointer(), std::move(o.get()));
+				Allocator alloc;
+				std::allocator_traits<Allocator>::construct(alloc, get_pointer(), std::move(o.get()));
 				o.has_some = false;
 			}
 		}
 		~optional() { reset(); }
 		void reset() {
 			if (has_some) {
-				Allocator().destroy(get_pointer());
+				Allocator alloc;
+				std::allocator_traits<Allocator>::destroy(alloc, get_pointer());
 				has_some = false;
 			}
 		}
 		template <class... Args> void reset(Args&&... args) {
 			reset();
-			Allocator().construct(reinterpret_cast<T*>(&storage), std::forward<Args>(args)...);
+			Allocator alloc;
+			std::allocator_traits<Allocator>::construct(alloc, reinterpret_cast<T*>(&storage),
+														 std::forward<Args>(args)...);
 			has_some = true;
 		}
 		void operator=(const T& o) {
@@ -321,7 +326,7 @@ namespace stmp {
 
 		inline std::unique_ptr<T>
 		unsafe_exchange(std::unique_ptr<T>&& desired,
-		                std::memory_order order = std::memory_order_seq_cst) {
+						std::memory_order order = std::memory_order_seq_cst) {
 			return std::unique_ptr<T>{inner.exchange(desired.release(), order)};
 		}
 
