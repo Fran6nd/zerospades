@@ -14,7 +14,7 @@
  GNU General Public License for more details.
 
  You should have received a copy of the GNU General Public License
- along with OpenSpades.  If not, see <http://www.gnu.org/licenses/>.
+ along with OpenSpades.	 If not, see <http://www.gnu.org/licenses/>.
 
  */
 
@@ -56,6 +56,7 @@ namespace spades {
 			 */
 			bool useHeuristics = true;
 			bool isGameModeArena = false;
+			bool isGameModeFFA = false;
 			bool isStaff = false;
 
 			/**
