@@ -15,7 +15,7 @@
  GNU General Public License for more details.
 
  You should have received a copy of the GNU General Public License
- along with OpenSpades.  If not, see <http://www.gnu.org/licenses/>.
+ along with OpenSpades.	 If not, see <http://www.gnu.org/licenses/>.
 
  */
 
@@ -46,7 +46,7 @@ namespace spades {
 	namespace client {
 
 		World::World(const std::shared_ptr<GameProperties>& gameProperties)
-		    : gameProperties{gameProperties} {
+			: gameProperties{gameProperties} {
 			SPADES_MARK_FUNCTION();
 		}
 		World::~World() { SPADES_MARK_FUNCTION(); }
@@ -449,7 +449,7 @@ namespace spades {
 			float hitBlockDist = (mapResult.hitPos - startPos).GetSquaredLength();
 
 			if (mapResult.hit && hitBlockDist <= FOG_DISTANCE_SQ &&
-			    (!hasHitPlayer || hitBlockDist < hitPlayerDist)) {
+				(!hasHitPlayer || hitBlockDist < hitPlayerDist)) {
 				result.hit = true;
 				result.startSolid = mapResult.startSolid;
 				result.blockPos = mapResult.hitBlock;
@@ -475,6 +475,12 @@ namespace spades {
 				return hitTestDebugger.get();
 			}
 			return nullptr;
+		}
+
+		bool World::IsModeFFA() {
+			if (gameProperties->isGameModeFFA)
+				return true; // if this fails we check for color matching
+			return teams[0].color == teams[1].color;
 		}
 	} // namespace client
 } // namespace spades

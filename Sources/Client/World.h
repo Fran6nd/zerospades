@@ -140,6 +140,8 @@ namespace spades {
 			std::string GetTeamName(int t) { return GetTeam(t).name; }
 			IntVector3 GetTeamColor(int t) { return GetTeam(t).color; }
 
+			bool IsModeFFA();
+
 			PlayerPersistent& GetPlayerPersistent(int index);
 			std::string GetPlayerName(int index) { return GetPlayerPersistent(index).name; }
 			int GetPlayerScore(int index) { return GetPlayerPersistent(index).score; }
