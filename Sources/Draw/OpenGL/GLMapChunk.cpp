@@ -132,7 +132,7 @@ namespace spades {
 
 			int uz = (ux == 0 && uy == 0) ? 1 : 0;
 			int vz = (vx == 0 && vy == 0) ? 1 : 0;
-			
+
 			// evaluate ambient occlusion
 			unsigned int aoID = calcAOID(aoX, aoY, aoZ, ux, uy, uz, vx, vy, vz);
 
@@ -569,7 +569,8 @@ namespace spades {
 
 			device.BindBuffer(IGLDevice::ArrayBuffer, 0);
 			device.BindBuffer(IGLDevice::ElementArrayBuffer, iBuffer);
-			device.DrawElements(IGLDevice::Triangles, indices.size(), IGLDevice::UnsignedShort, NULL);
+			device.DrawElements(IGLDevice::Triangles, static_cast<IGLDevice::Sizei>(indices.size()),
+                     IGLDevice::UnsignedShort, NULL);
 			device.BindBuffer(IGLDevice::ElementArrayBuffer, 0);
 		}
 
