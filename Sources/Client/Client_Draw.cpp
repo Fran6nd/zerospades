@@ -1678,14 +1678,14 @@ namespace spades {
 			auto cameraMode = GetCameraMode();
 
 			// Help messages (make sure to synchronize these with the keyboard input handler)
-			if (HasTargetPlayer(cameraMode) && FollowsNonLocalPlayer(cameraMode)) {
+			if (FollowsNonLocalPlayer(cameraMode)) {
 				int focusedPlayerId = GetCameraTargetPlayerId();
 				auto maybeTarget = world->GetPlayer(focusedPlayerId);
 				if (maybeTarget) {
-					Player& camTarget = maybeTarget.value();			
+					Player& camTarget = maybeTarget.value();
 					addLine(_Tr("Client", "Following {0} [#{1}]",
 						world->GetPlayerName(focusedPlayerId), focusedPlayerId));
-					
+
 					int secs = (int)roundf(camTarget.GetTimeToRespawn());
 					if (secs > 0)
 						addLine(_Tr("Client", "Respawning in: {0}", secs));
@@ -1787,11 +1787,11 @@ namespace spades {
 					DrawPubOVL();
 				}
 
-				// draw firstperson camera player HUD
-				if (IsFirstPerson(GetCameraMode()))
-					DrawFirstPersonHUD();
-
 				if (shouldDrawHUD) {
+					// draw firstperson camera player HUD
+					if (IsFirstPerson(GetCameraMode()))
+						DrawFirstPersonHUD();
+
 					tcView->Draw();
 
 					if (cg_hudPlayerCount)
@@ -1849,33 +1849,35 @@ namespace spades {
 			} else {
 				// world exists, but no local player: not joined (or demo mode)
 
-				if (isDemoMode && shouldDrawHUD) {
+				if (isDemoMode) {
 					// Draw spectator HUD elements in demo mode.
 					// Boxes always render (staff use); names follow the toggle.
 					DrawPubOVL();
 
-					// draw firstperson camera player HUD
-					if (IsFirstPerson(GetCameraMode()))
-						DrawFirstPersonHUD();
+					if (shouldDrawHUD) {
+						// draw firstperson camera player HUD
+						if (IsFirstPerson(GetCameraMode()))
+							DrawFirstPersonHUD();
 
-					tcView->Draw();
+						tcView->Draw();
 
-					if (cg_hudPlayerCount)
-						DrawAlivePlayersCount();
+						if (cg_hudPlayerCount)
+							DrawAlivePlayersCount();
 
-					// draw map
-					bool largeMap = largeMapView->IsZoomed();
-					if (!largeMap)
-						mapView->Draw();
+						// draw map
+						bool largeMap = largeMapView->IsZoomed();
+						if (!largeMap)
+							mapView->Draw();
 
-					DrawSpectateHUD();
+						DrawSpectateHUD();
 
-					chatWindow->Draw();
-					killfeedWindow->Draw();
+						chatWindow->Draw();
+						killfeedWindow->Draw();
 
-					// large map view should come in front
-					if (largeMap)
-						largeMapView->Draw();
+						// large map view should come in front
+						if (largeMap)
+							largeMapView->Draw();
+					}
 				}
 
 				// In demo mode, only show scoreboard when toggled
@@ -1889,13 +1891,13 @@ namespace spades {
 			}
 
 			if (shouldDrawHUD) {
-				if (cg_stats)
-					DrawStats();
-
 				// draw demo hud
 				if (isDemoMode)
 					DrawDemoPlaybackHUD();
 				DrawRecordingIndicator();
+
+				if (cg_stats)
+					DrawStats();
 			}
 
 			// draw limbo view (above everything)
