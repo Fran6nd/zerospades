@@ -668,7 +668,8 @@ namespace spades {
 			// Repeated seek preview while a seek key is held.
 			// Each repeat tick advances demoSeekPendingTime and calls SeekPreview() so the
 			// HUD updates smoothly.  The world-replay Seek() is deferred to key release.
-			if (demoNet && (demoSeekForwardHeld || demoSeekBackwardHeld)) {
+			bool isDemoMode = IsDemoMode();
+			if (isDemoMode && (demoSeekForwardHeld || demoSeekBackwardHeld)) {
 				constexpr float kSeekStep = 5.0F;
 				constexpr float kRepeatInterval = 0.35F;
 				demoSeekRepeatTimer += dt;
@@ -718,7 +719,7 @@ namespace spades {
 			UpdateAutoFocus(dt);
 
 			if (world) {
-				float gameplayDt = demoNet ? dt * demoNet->GetSpeed() : dt;
+				float gameplayDt = isDemoMode ? dt * demoNet->GetSpeed() : dt;
 				UpdateWorld(dt, gameplayDt);
 				mumbleLink.Update(world->GetLocalPlayer().get_pointer());
 			} else {
@@ -766,7 +767,7 @@ namespace spades {
 			DrawScene();
 
 			// accumulate net-graph sample at fixed interval
-			if (!IsDemoMode()) {
+			if (!isDemoMode) {
 				const float sampleInterval = 0.1F;
 				netGraph.accumTime += dt;
 				while (netGraph.accumTime >= sampleInterval) {
@@ -850,7 +851,7 @@ namespace spades {
 		}
 
 		void Client::UpdateDemoReplayFollow() {
-			if (!world || !demoNet || activeNet->GetStatus() != NetClientStatusConnected)
+			if (!world || !IsDemoMode() || activeNet->GetStatus() != NetClientStatusConnected)
 				return;
 
 			// Wait until at least one player exists, then follow it. ResolveDemoPlayer

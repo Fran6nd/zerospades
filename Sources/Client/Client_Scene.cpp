@@ -126,9 +126,7 @@ namespace spades {
 					if (IsDemoMode()) {
 						if (followedPlayerId >= 0 && world->GetPlayer(followedPlayerId))
 							return followedPlayerId;
-						if (demoNet)
-							return demoNet->GetRecordedLocalPlayerId();
-						return 0;
+						return demoNet->GetRecordedLocalPlayerId();
 					}
 					return world->GetLocalPlayerIndex().value();
 				case ClientCameraMode::FirstPersonLocal:

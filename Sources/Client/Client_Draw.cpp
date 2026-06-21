@@ -427,7 +427,7 @@ namespace spades {
 
 			const int statsMode = cg_stats;
 			if ((statsMode == 2 || (statsMode >= 3 && scoreboardVisible))
-				|| statsMode >= 1 && demoNet) // force on screen top for demo playback hud
+				|| (statsMode >= 1 && IsDemoMode())) // force on screen top for demo playback hud
 				y += cg_statsSmallFont ? 10.0F : 20.0F;
 
 			int now = (int)time;
@@ -462,16 +462,17 @@ namespace spades {
 			float x = sw * 0.5F;
 			float y = 8.0F;
 
-			if ((playerCountMode < 2 || demoNet) && scoreboardVisible)
+			bool isDemoMode = IsDemoMode();
+			if ((playerCountMode < 2 || isDemoMode) && scoreboardVisible)
 				y += 30.0F;
 
 			const int statsMode = cg_stats;
 			if ((playerCountMode >= 2 && statsMode == 1) ||
 				(playerCountMode < 2 && (statsMode == 2 || (statsMode >= 3 && scoreboardVisible)))
-				|| statsMode >= 1 && demoNet) // force on screen top for demo playback hud
+				|| (statsMode >= 1 && isDemoMode)) // force on screen top for demo playback hud
 				y += cg_statsSmallFont ? 10.0F : 20.0F;
 
-			float teamBarY = (playerCountMode < 2 || demoNet) ? y : ((sh - y) - teamBarH);
+			float teamBarY = (playerCountMode < 2 || isDemoMode) ? y : ((sh - y) - teamBarH);
 
 			Handle<IImage> img;
 			IFont& font = fontManager->GetHeadingFont();
@@ -2013,7 +2014,7 @@ namespace spades {
 				: fontManager->GetGuiFont();
 			Vector2 size = font.Measure(str) + (margin * 2.0F);
 			Vector2 pos = MakeVector2(sw, sh) - size;
-			pos *= MakeVector2(0.5F, (statsMode >= 2 || demoNet) ? 0.0F : 1.0F);
+			pos *= MakeVector2(0.5F, (statsMode >= 2 || IsDemoMode()) ? 0.0F : 1.0F);
 
 			Vector4 color = MakeVector4(1, 1, 1, 1);
 			Vector4 outline = MakeVector4(0, 0, 0, 0.8F);

@@ -292,14 +292,13 @@ namespace spades {
 			// In demo mode, there's no local player - treat as spectator
 			stmp::optional<Player&> maybePlayer = world->GetLocalPlayer();
 
-			bool demoMode = client->IsDemoMode();
-			
+			bool isDemoMode = client->IsDemoMode();
 			bool isStaffSpectating = client->staffSpectating;
-			bool localPlayerIsSpectator = demoMode || (maybePlayer && maybePlayer->IsSpectator());
+			bool localPlayerIsSpectator = isDemoMode || (maybePlayer && maybePlayer->IsSpectator());
 			bool localPlayerIsSpectating = localPlayerIsSpectator || isStaffSpectating;
 
 			// Need either a local player or demo mode to continue
-			if (!maybePlayer && !demoMode)
+			if (!maybePlayer && !isDemoMode)
 				return;
 
 			// Pointers for safe access (may be null in demo mode)
@@ -358,7 +357,7 @@ namespace spades {
 
 			if (!largeMap) {
 				const int statsMode = cg_stats;
-				if ((statsMode == 2 || (statsMode >= 3 && client->IsScoreboardVisible())) && !demoMode)
+				if ((statsMode == 2 || (statsMode >= 3 && client->IsScoreboardVisible())) && !isDemoMode)
 					winY += cg_statsSmallFont ? 10.0F : 20.0F;
 			}
 
