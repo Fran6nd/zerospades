@@ -904,10 +904,10 @@ namespace spades {
 			center.y = sh * 0.5F;
 
 			Vector2 p1, p2;
-			p1.x = (int)floorf(center.x - spreadDistance);
-			p1.y = (int)floorf(center.y - spreadDistance);
-			p2.x = (int)ceilf(center.x + spreadDistance);
-			p2.y = (int)ceilf(center.y + spreadDistance);
+			p1.x = floorf(center.x - spreadDistance);
+			p1.y = floorf(center.y - spreadDistance);
+			p2.x = ceilf(center.x + spreadDistance);
+			p2.y = ceilf(center.y + spreadDistance);
 
 			renderer->SetColorAlphaPremultiplied(MakeVector4(0, 0, 0, 1));
 			renderer->DrawOutlinedRect(p1.x - 1, p1.y - 1, p2.x + 1, p2.y + 1);
