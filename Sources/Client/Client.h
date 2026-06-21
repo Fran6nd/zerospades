@@ -492,6 +492,8 @@ namespace spades {
 			void Draw2D();
 			void Draw2DWithoutWorld();
 			void Draw2DWithWorld();
+			
+			Vector4 GetHUDColor(Player&);
 
 			/** Called when the local player is alive. */
 			void DrawJoinedAlivePlayerHUD();
