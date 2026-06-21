@@ -748,15 +748,26 @@ namespace spades {
 		void Client::PlayerLanded(spades::client::Player& p, bool hurt) {
 			SPADES_MARK_FUNCTION();
 
-			if (!IsMuted()) {
-				Handle<IAudioChunk> c = hurt
-					? audioDevice->RegisterSound("Sounds/Player/FallHurt.opus")
-					: (p.GetWade() ? audioDevice->RegisterSound("Sounds/Player/WaterLand.opus")
-						: audioDevice->RegisterSound("Sounds/Player/Land.opus"));
-				audioDevice->Play(c.GetPointerOrNull(), p.GetOrigin(), AudioParam());
+			auto cameraMode = GetCameraMode();
 
-				if (!IsInFirstPersonView(p.GetId()))
-					EmitSoundIndicator(p.GetOrigin(), SoundType::Action);
+			if (!IsMuted()) {
+				const auto& origin = p.GetOrigin();
+
+				Handle<IAudioChunk> c = p.GetWade()
+					? audioDevice->RegisterSound("Sounds/Player/WaterLand.opus")
+					: audioDevice->RegisterSound("Sounds/Player/Land.opus");
+				audioDevice->Play(c.GetPointerOrNull(), origin, AudioParam());
+
+				if (hurt) {
+					c = audioDevice->RegisterSound("Sounds/Player/FallHurt.opus");
+					audioDevice->Play(c.GetPointerOrNull(), origin, AudioParam());
+				}
+
+				// register sound
+				if (HasTargetPlayer(cameraMode) && GetCameraTargetPlayerId() == p.GetId()) {
+					if (!IsFirstPerson(cameraMode))
+						EmitSoundIndicator(origin, SoundType::Movement);
+				}
 			}
 		}
 
