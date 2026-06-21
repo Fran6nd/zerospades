@@ -876,7 +876,7 @@ namespace spades {
 
 				float const fuse = 3.0F - GetGrenadeCookTime();
 
-				auto nade = stmp::make_unique<Grenade>(world, muzzle, vel, fuse);
+				auto nade = stmp::make_unique<Grenade>(world, playerId, muzzle, vel, fuse);
 				if (world.GetListener())
 					world.GetListener()->PlayerThrewGrenade(*this, *nade);
 				world.AddGrenade(std::move(nade));

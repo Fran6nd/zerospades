@@ -398,8 +398,15 @@ namespace spades {
 						it->second.fadeTime = it->second.fadeDuration;
 					++it;
 				}
-				for (const auto& nade : grenades)
-					grenadeTracers[nade.get()].positions.push_back(nade->GetPosition());
+				for (const auto& nade : grenades) {
+					auto& trace = grenadeTracers[nade.get()];
+					if (trace.positions.empty()) {
+						auto ownerPlayer = world->GetPlayer(nade->GetOwnerId());
+						if (ownerPlayer)
+							trace.color = ConvertColorRGB(ownerPlayer->GetColor());
+					}
+					trace.positions.push_back(nade->GetPosition());
+				}
 
 				// spawn snow particles when christmas season is active
 				if (isChristmasOn)

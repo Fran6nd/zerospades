@@ -222,7 +222,8 @@ namespace spades {
 
 				def.blurVignette = 0.0F;
 
-				switch (GetCameraMode()) {
+				auto cameraMode = GetCameraMode();
+				switch (cameraMode) {
 					case ClientCameraMode::None: SPUnreachable();
 					case ClientCameraMode::NotJoined: {
 						// get highest solid block at map's center
@@ -512,7 +513,7 @@ namespace spades {
 				def.zNear = 0.05F;
 				def.skipWorld = false;
 			} else {
-				SPAssert(GetCameraMode() == ClientCameraMode::None);
+				SPAssert(cameraMode == ClientCameraMode::None);
 
 				// Let there be darkness
 				def.viewOrigin = MakeVector3(0, 0, 0);
@@ -769,57 +770,60 @@ namespace spades {
 											   Vector3{p.x, p.y, p.z + size}, col);
 					};
 
-					auto cameraMode = GetCameraMode();
-					bool isFollowingNonLocal = FollowsNonLocalPlayer(cameraMode);
-
 					// draw trayectory
-					auto cameraPlayer = world->GetPlayer(GetCameraTargetPlayerId());
-					if (cameraPlayer) {
-						Player& p = cameraPlayer.value();
-						if (isFollowingNonLocal && p.IsAlive()
-							&& p.IsToolGrenade() && p.IsReadyToUseTool()) {
-							const float fuseTime = 3.0F;
-							const float fuse = fuseTime - p.GetGrenadeCookTime();
-							const float maxTime = p.IsCookingGrenade() ? fuse : fuseTime;
+					if (FollowsNonLocalPlayer(GetCameraMode())) {
+						auto cameraPlayer = world->GetPlayer(GetCameraTargetPlayerId());
+						if (cameraPlayer) {
+							Player& p = cameraPlayer.value();
+							if (p.IsAlive() && p.IsToolGrenade() && p.IsReadyToUseTool()) {
+								const float fuseTime = 3.0F;
+								const float fuse = fuseTime - p.GetGrenadeCookTime();
+								const float maxTime = p.IsCookingGrenade() ? fuse : fuseTime;
 
-							const Vector3 dir = p.GetFront();
-							const Vector3 muzzle = p.GetEye() + (dir * 0.1F);
-							const Vector3 vel = dir + p.GetVelocity();
+								const Vector3 dir = p.GetFront();
+								const Vector3 muzzle = p.GetEye() + (dir * 0.1F);
+								const Vector3 vel = dir + p.GetVelocity();
 
-							Grenade sim(*world, muzzle, vel, fuse);
-							Vector3 prev = sim.GetPosition();
+								Grenade sim(*world, -1, muzzle, vel, fuse);
+								Vector3 prev = sim.GetPosition();
 
-							for (float t = 0.0F; t < maxTime; t += frameStep) {
-								float dt = std::min(frameStep, maxTime - t);
-								int ret = sim.MoveGrenade(dt);
-								if (ret == -1) break;
+								for (float t = 0.0F; t < maxTime; t += frameStep) {
+									float dt = std::min(frameStep, maxTime - t);
+									int ret = sim.MoveGrenade(dt);
+									if (ret == -1) break;
 
-								const Vector3 cur = sim.GetPosition();
-								const float progress = std::min(t / fuseTime, 1.0F);
-								const float alpha = std::min(progress / 0.1F, 1.0F);
-								const Vector4 color = {1.0F, 1.0F, 0.0F, alpha};
+									const Vector3 cur = sim.GetPosition();
+									const float progress = std::min(t / fuseTime, 1.0F);
+									const float alpha = std::min(progress / 0.1F, 1.0F);
+									const Vector4 color = {1.0F, 1.0F, 0.0F, alpha};
 
-								renderer->AddDebugLine(prev, cur, color);
-								prev = cur;
+									renderer->AddDebugLine(prev, cur, color);
+									prev = cur;
+								}
+
+								drawCross(prev, 0.2F, crossColor);
 							}
-
-							drawCross(prev, 0.2F, crossColor);
 						}
 					}
 
 					// draw tracers
 					for (const auto& [nade, trace] : grenadeTracers) {
-						float alpha = (trace.fadeTime >= 0) ? (trace.fadeTime / trace.fadeDuration) : 1.0F;
-						for (size_t i = 1; i < trace.positions.size(); i++) {
-							float progress = float(i) / float(trace.positions.size());
-							Vector4 color = {1.0F, 0.0F, 0.0F, progress * alpha};
+						float fade = (trace.fadeTime >= 0.0F) ? (trace.fadeTime / trace.fadeDuration) : 1.0F;
+
+						int numPositions =	static_cast<int>(trace.positions.size());
+						for (int i = 1; i < numPositions; i++) {
+							float progress = float(i) / float(numPositions);
+							Vector4 color = MakeVector4(trace.color.x, trace.color.y, trace.color.z, progress * fade);
 							renderer->AddDebugLine(trace.positions[i - 1], trace.positions[i], color);
 						}
 
-						if (trace.fadeTime < 0) {
-							Grenade sim(*world, nade->GetPosition(), nade->GetVelocity(), nade->GetFuse());
+						if (fade > 0.0F) {
+							const float fuse = nade->GetFuse();
+
+							Grenade sim(*world, -1, nade->GetPosition(), nade->GetVelocity(), fuse);
 							Vector3 prev = sim.GetPosition();
-							for (float t = 0.0F; t < nade->GetFuse(); t += frameStep) {
+
+							for (float t = 0.0F; t < fuse; t += frameStep) {
 								int ret = sim.MoveGrenade(frameStep);
 								if (ret == -1) break;
 								prev = sim.GetPosition();

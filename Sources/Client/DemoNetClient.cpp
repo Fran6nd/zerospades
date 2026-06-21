@@ -345,7 +345,7 @@ namespace spades {
 						float fuse = r.ReadFloat();
 						Vector3 pos = r.ReadVector3();
 						Vector3 vel = r.ReadVector3();
-						Grenade* g = new Grenade(*GetWorld(), pos, vel, fuse);
+						Grenade* g = new Grenade(*GetWorld(), pId, pos, vel, fuse);
 						GetWorld()->AddGrenade(std::unique_ptr<Grenade>{g});
 					}
 					break;
