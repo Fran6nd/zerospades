@@ -229,7 +229,7 @@ namespace spades {
 					for (size_t y = 0; y < kMarkResolution; ++y)
 					for (size_t x = 0; x < kMarkResolution; ++x) {
 						if (heightMap.at(y).at(x) > 0)
-							model->SetSolid(x, 0, y, 0);
+							model->SetSolid(static_cast<int>(x), 0, static_cast<int>(y), 0);
 					}
 
 					model->SetOrigin(Vector3{float(kMarkResolution) * -0.5F, 0.0F,
