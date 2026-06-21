@@ -131,13 +131,13 @@ namespace spades {
 				case SDL_MOUSEMOTION:
 					if (m_active) {
 						if (view.NeedsAbsoluteMouseCoordinate())
-							view.MouseEvent(event.motion.x, event.motion.y);
+							view.MouseEvent(static_cast<float>(event.motion.x), static_cast<float>(event.motion.y));
 						else
-							view.MouseEvent(event.motion.xrel, event.motion.yrel);
+							view.MouseEvent(static_cast<float>(event.motion.xrel), static_cast<float>(event.motion.yrel));
 					}
 					break;
 				case SDL_MOUSEWHEEL:
-					view.WheelEvent(-event.wheel.x, -event.wheel.y);
+					view.WheelEvent(static_cast<float>(-event.wheel.x), static_cast<float>(-event.wheel.y));
 					break;
 				case SDL_KEYDOWN:
 					if (!event.key.repeat) {
