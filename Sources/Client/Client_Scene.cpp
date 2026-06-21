@@ -808,7 +808,10 @@ namespace spades {
 
 					// draw tracers
 					for (const auto& [nade, trace] : grenadeTracers) {
-						float fade = (trace.fadeTime >= 0.0F) ? (trace.fadeTime / trace.fadeDuration) : 1.0F;
+						bool alive = trace.fadeTime < 0.0F;
+						float fade = alive ? 1.0F : (trace.fadeTime / trace.fadeDuration);
+						if (fade <= 0.0F)
+							continue;
 
 						int numPositions =	static_cast<int>(trace.positions.size());
 						for (int i = 1; i < numPositions; i++) {
@@ -817,9 +820,8 @@ namespace spades {
 							renderer->AddDebugLine(trace.positions[i - 1], trace.positions[i], color);
 						}
 
-						if (fade > 0.0F) {
+						if (alive) {
 							const float fuse = nade->GetFuse();
-
 							Grenade sim(*world, -1, nade->GetPosition(), nade->GetVelocity(), fuse);
 							Vector3 prev = sim.GetPosition();
 
