@@ -306,6 +306,7 @@ namespace spades {
 				std::vector<Vector3> positions;
 				float fadeTime = -1.0F;
 				float fadeDuration = 0.3F;
+				Vector3 color = MakeVector3(1.0F, 0.0F, 0.0F);
 			};
 			std::unordered_map<Grenade*, GrenadeTracer> grenadeTracers;
 
@@ -316,10 +317,10 @@ namespace spades {
 			float lastSnowDropTime;
 
 			float hotBarIconState;
-
+			
 			float hitFeedbackIconState;
 			bool hitFeedbackFriendly;
-
+			
 			float debugHitTestZoomState;
 			bool debugHitTestZoom;
 
@@ -404,7 +405,7 @@ namespace spades {
 			Player& GetCameraTargetPlayer();
 
 			bool IsInFirstPersonView(int playerId);
-
+			
 			/**
 			 * Calculate the zoom value incorporating the effect of ADS for a first-person view.
 			 *
@@ -511,7 +512,6 @@ namespace spades {
 
 			bool staffSpectating;
 			bool spectatorPlayerNames;
-
 			Vector4 GetPlayerColor(Player&);
 			void DrawPlayerBox(Player&, const Vector4&);
 			void DrawPlayerName(Player&, const Vector4&);

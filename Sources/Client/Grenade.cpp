@@ -15,7 +15,7 @@
  GNU General Public License for more details.
 
  You should have received a copy of the GNU General Public License
- along with OpenSpades.  If not, see <http://www.gnu.org/licenses/>.
+ along with OpenSpades.	 If not, see <http://www.gnu.org/licenses/>.
 
  */
 
@@ -28,7 +28,8 @@
 
 namespace spades {
 	namespace client {
-		Grenade::Grenade(World& w, Vector3 pos, Vector3 vel, float fuse) : world{w} {
+		Grenade::Grenade(World& w, int ownerId, Vector3 pos, Vector3 vel, float fuse)
+			: world{w}, ownerId{ownerId} {
 			SPADES_MARK_FUNCTION();
 
 			position = pos;
@@ -61,7 +62,7 @@ namespace spades {
 			float f = dt * 32.0F;
 			Vector3 rotAxis = {0.0F, 0.0F, 0.0F};
 			if (fabsf(velocity.x) > BOUNCE_SOUND_THRESHOLD ||
-			    fabsf(velocity.y) > BOUNCE_SOUND_THRESHOLD) {
+				fabsf(velocity.y) > BOUNCE_SOUND_THRESHOLD) {
 				rotAxis.x -= f * velocity.y * DEG2RAD(45);
 				rotAxis.y += f * velocity.x * DEG2RAD(45);
 				orientation = Quaternion::MakeRotation(rotAxis) * orientation;
@@ -100,8 +101,8 @@ namespace spades {
 			if (m->ClipWorld(lp.x, lp.y, lp.z)) {
 				ret = 1; // hit a wall
 				if (fabsf(velocity.x) > BOUNCE_SOUND_THRESHOLD ||
-				    fabsf(velocity.y) > BOUNCE_SOUND_THRESHOLD ||
-				    fabsf(velocity.z) > BOUNCE_SOUND_THRESHOLD)
+					fabsf(velocity.y) > BOUNCE_SOUND_THRESHOLD ||
+					fabsf(velocity.z) > BOUNCE_SOUND_THRESHOLD)
 					ret = 2; // play sound
 
 				if (lp.z != lp2.z && ((lp.x == lp2.x && lp.y == lp2.y)
