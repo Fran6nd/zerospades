@@ -171,35 +171,10 @@ namespace spades {
 			SimpleButton(spades::ui::UIManager@ manager) { super(manager); }
 
 			void Render() {
-				Renderer@ r = Manager.Renderer;
-				Vector2 pos = ScreenPosition;
-				Vector2 size = Size;
-
-				Vector4 color = IsEnabled ? TextColor : DisabledTextColor;
-
-				if (Toggled or (Pressed and Hover))
-					r.ColorNP = Vector4(1.0F, 1.0F, 1.0F, 0.2F);
-				else if (Hover)
-					r.ColorNP = Vector4(1.0F, 1.0F, 1.0F, 0.12F);
-				else
-					r.ColorNP = Vector4(1.0F, 1.0F, 1.0F, 0.07F * color.w);
-				r.DrawImage(null, AABB2(pos.x, pos.y, size.x, size.y));
-
-				if (Toggled or (Pressed and Hover))
-					r.ColorNP = Vector4(1.0F, 1.0F, 1.0F, 0.1F);
-				else if (Hover)
-					r.ColorNP = Vector4(1.0F, 1.0F, 1.0F, 0.07F);
-				else
-					r.ColorNP = Vector4(1.0F, 1.0F, 1.0F, 0.03F * color.w);
-				r.DrawOutlinedRect(pos.x, pos.y, pos.x + size.x, pos.y + size.y);
-
-				pos += Vector2(4.0F, 4.0F);
-				size -= Vector2(8.0F, 8.0F);
-
-				Vector2 txtSize = Font.Measure(Caption);
-				Vector2 txtPos = pos + (size - txtSize) * Alignment;
-
-				Font.DrawShadow(Caption, txtPos, 1.0F, color, Vector4(0, 0, 0, 0.4F * color.w));
+				// Appearance lives in C++ (shared with the editor); see
+				// Gui/UIWidgetPainter and ScriptBindings/UIWidgetPainterScript.
+				PaintSimpleButton(Manager.Renderer, this.Font, ScreenPosition, Size, Caption,
+					Alignment, TextColor, DisabledTextColor, IsEnabled, Hover, Pressed, Toggled);
 			}
 		}
 
@@ -209,27 +184,8 @@ namespace spades {
 				this.Toggle = true;
 			}
 			void Render() {
-				Renderer@ r = Manager.Renderer;
-				Vector2 pos = ScreenPosition;
-				Vector2 size = Size;
-				Image@ img = r.RegisterImage("Gfx/UI/CheckBox.png");
-
-				if (Pressed and Hover)
-					r.ColorNP = Vector4(1.0F, 1.0F, 1.0F, 0.2F);
-				else if (Hover)
-					r.ColorNP = Vector4(1.0F, 1.0F, 1.0F, 0.12F);
-				else
-					r.ColorNP = Vector4(1.0F, 1.0F, 1.0F, 0.0F);
-				r.DrawImage(null, AABB2(pos.x, pos.y, size.x, size.y));
-
-				Vector2 txtSize = Font.Measure(Caption);
-				Font.DrawShadow(Caption, pos + (size - txtSize)
-					* Vector2(0.0F, 0.5F) + Vector2(16.0F, 0.0F),
-					1.0F, Vector4(1, 1, 1, 1), Vector4(0, 0, 0, 0.2F));
-
-				r.ColorNP = Vector4(1.0F, 1.0F, 1.0F, Toggled ? 0.9F : 0.6F);
-				r.DrawImage(img, AABB2(pos.x, pos.y + (size.y - 16.0F) * 0.5F, 16.0F, 16.0F),
-								   AABB2(Toggled ? 16.0F : 0.0F, 0.0F, 16.0F, 16.0F));
+				PaintCheckBox(Manager.Renderer, this.Font, ScreenPosition, Size, Caption,
+					Hover, Pressed, Toggled);
 			}
 		}
 
@@ -263,41 +219,8 @@ namespace spades {
 				Button::OnActivated();
 			}
 			void Render() {
-				Renderer@ r = Manager.Renderer;
-				Vector2 pos = ScreenPosition;
-				Vector2 size = Size;
-
-				if (not this.Enable)
-					r.ColorNP = Vector4(1.0F, 1.0F, 1.0F, 0.07F);
-
-				if (Toggled or (Pressed and Hover))
-					r.ColorNP = Vector4(1.0F, 1.0F, 1.0F, 0.2F);
-				else if (Hover)
-					r.ColorNP = Vector4(1.0F, 1.0F, 1.0F, 0.12F);
-				else
-					r.ColorNP = Vector4(1.0F, 1.0F, 1.0F, 0.07F);
-				r.DrawImage(null, AABB2(pos.x, pos.y, size.x, size.y));
-
-				if (not this.Enable)
-					r.ColorNP = Vector4(1.0F, 1.0F, 1.0F, 0.03F);
-
-				if (Toggled or (Pressed and Hover))
-					r.ColorNP = Vector4(1.0F, 1.0F, 1.0F, 0.06F);
-				else if (Hover)
-					r.ColorNP = Vector4(1.0F, 1.0F, 1.0F, 0.04F);
-				else
-					r.ColorNP = Vector4(1.0F, 1.0F, 1.0F, 0.02F);
-				r.DrawOutlinedRect(pos.x, pos.y, pos.x + size.x, pos.y + size.y);
-
-				Vector2 txtSize = Font.Measure(Caption);
-				Font.DrawShadow(Caption, pos + (size - txtSize) * 0.5F + Vector2(8.0F, 0.0F), 1.0F,
-					Vector4(1, 1, 1, (Toggled and this.Enable) ? 1.0F : 0.4F),
-					Vector4(0, 0, 0, 0.4F));
-
-				if (Toggled) {
-					r.ColorNP = Vector4(1.0F, 1.0F, 1.0F, (Toggled and this.Enable) ? 0.6F : 0.3F);
-					r.DrawImage(null, AABB2(pos.x + 4.0F, pos.y + (size.y - 8.0F) * 0.5F, 8.0F, 8.0F));
-				}
+				PaintRadioButton(Manager.Renderer, this.Font, ScreenPosition, Size, Caption,
+					this.Enable, Hover, Pressed, Toggled);
 			}
 		}
 
@@ -312,48 +235,12 @@ namespace spades {
 			}
 
 			void Render() {
-				Renderer@ r = Manager.Renderer;
-				Vector2 pos = ScreenPosition;
-				Vector2 size = Size;
-
-				Vector4 color = Vector4(0.2F, 0.2F, 0.2F, 0.5F);
-
-				if (IsEnabled) {
-					if (Toggled or (Pressed and Hover))
-						color = Vector4(0.7F, 0.7F, 0.7F, 0.9F);
-					else if (Hover)
-						color = Vector4(0.4F, 0.4F, 0.4F, 0.7F);
-				} else {
-					color.w *= 0.5F;
-				}
-
-				r.ColorNP = color;
-				r.DrawFilledRect(pos.x + 1, pos.y + 1, pos.x + size.x - 1, pos.y + size.y - 1);
-
-				r.ColorNP = Vector4(0.0F, 0.0F, 0.0F, color.w);
-				r.DrawOutlinedRect(pos.x + 1, pos.y + 1, pos.x + size.x - 1, pos.y + size.y - 1);
-
-				Font@ font = this.Font;
-				string text = this.Caption;
-
-				pos += Vector2(8.0F, 8.0F);
-				size -= Vector2(16.0F, 16.0F);
-
+				// Preserve the original side effect: a button with a hotkey label
+				// left-aligns its caption from then on.
 				if (HotKeyText.length > 0)
 					Alignment = Vector2(0.0F, 0.5F);
-
-				Vector2 txtSize = font.Measure(text);
-				Vector2 txtPos = pos + (size - txtSize) * Alignment;
-				font.DrawShadow(text, txtPos, 1.0F,
-					Vector4(1.0F, 1.0F, 1.0F, IsEnabled ? 1.0F : 0.5F),
-					Vector4(0.0F, 0.0F, 0.0F, IsEnabled ? 0.4F : 0.1F));
-
-				// TODO: use "FontManager::SmallFont" for this
-				txtSize = font.Measure(HotKeyText);
-				txtPos = pos + (size - txtSize) * HotKeyTextAlignment;
-				font.DrawShadow(HotKeyText, txtPos, 1.0F,
-					Vector4(1.0F, 1.0F, 1.0F, IsEnabled ? 0.6F : 0.3F),
-					Vector4(0.0F, 0.0F, 0.0F, IsEnabled ? 0.1F : 0.05F));
+				PaintButton(Manager.Renderer, this.Font, ScreenPosition, Size, Caption, Alignment,
+					HotKeyText, HotKeyTextAlignment, IsEnabled, Hover, Pressed, Toggled);
 			}
 		}
 	}
