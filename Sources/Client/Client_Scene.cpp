@@ -511,7 +511,10 @@ namespace spades {
 				def.zNear = 0.05F;
 				def.skipWorld = false;
 			} else {
-				SPAssert(cameraMode == ClientCameraMode::None);
+				// `cameraMode` is local to the has-world branch above; query it again
+				// here (GetCameraMode() returns None when there's no world). Without
+				// this, debug builds fail to compile (SPAssert references it).
+				SPAssert(GetCameraMode() == ClientCameraMode::None);
 
 				// Let there be darkness
 				def.viewOrigin = MakeVector3(0, 0, 0);
