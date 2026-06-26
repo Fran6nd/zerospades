@@ -852,7 +852,7 @@ namespace spades {
 				if (!Project(origin, scrPos))
 					continue;
 
-				std::string str =_Tr("Client", "{0}", p.GetName());
+				std::string str = p.GetName();
 
 				Vector2 size = font.Measure(str);
 				scrPos.x -= size.x * 0.5F;
