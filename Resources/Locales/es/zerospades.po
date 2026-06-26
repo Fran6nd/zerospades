@@ -1,894 +1,1052 @@
 msgid ""
 msgstr ""
-"Project-Id-Version: openspades\n"
-"Report-Msgid-Bugs-To: i at yvt.jp\n"
-"POT-Creation-Date: 2016-12-25 23:47-0200\n"
-"PO-Revision-Date: 2023-06-18 18:43-0300\n"
-"Last-Translator: yvt <i@yvt.jp>\n"
+"Project-Id-Version: zerospades\n"
+"POT-Creation-Date: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
 "Language-Team: Spanish\n"
 "Language: es_ES\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
-"X-Generator: Poedit 3.2.2\n"
+"X-Generator: Poedit 3.9\n"
 "X-Poedit-SourceCharset: UTF-8\n"
-"X-Crowdin-Project: openspades\n"
-"X-Crowdin-Language: es-ES\n"
-"X-Crowdin-File: openspades.pot\n"
 
-#: Sources/Client/Client.cpp:585
+#: Sources/Client/Client.cpp:1027
 msgctxt "Client"
 msgid "Map saved: {0}"
 msgstr "Mapa guardado: {0}"
 
-#: Sources/Client/Client.cpp:589 Sources/Client/Client.cpp:595
+#: Sources/Client/Client.cpp:1031 Sources/Client/Client.cpp:1036
 msgctxt "Client"
 msgid "Saving map failed: "
 msgstr "Error en el guardado del mapa: "
 
-#. ! Prefix added to global chat messages.
-#. !
-#. ! Example: [Global] playername (Red) blah blah
-#: Sources/Client/Client.cpp:633
+#: Sources/Client/Client.cpp:1065
+#: Resources/Scripts/Gui/Client/ChatSayWindow.as:211
+msgctxt "Client"
+msgid "Global"
+msgstr "Global"
+
+#: Sources/Client/Client.cpp:1065
+#: Resources/Scripts/Gui/Client/ChatSayWindow.as:220
+msgctxt "Client"
+msgid "Team"
+msgstr "Equipo"
+
+#: Sources/Client/Client.cpp:1068 Sources/Client/Client_NetHandler.cpp:405
+#: Sources/Client/LimboView.cpp:67
+msgctxt "Client"
+msgid "Spectator"
+msgstr "Espectador"
+
+#: Sources/Client/Client.cpp:1075
+msgctxt "Client"
+msgid "(DEAD)"
+msgstr "(MUERTO)"
+
+#: Sources/Client/Client.cpp:1077
+msgctxt "Client"
+msgid "(SPEC)"
+msgstr "(SPEC)"
+
+#: Sources/Client/Client.cpp:1085 Sources/Client/Client.cpp:1112
 msgctxt "Client"
 msgid "[Global]"
 msgstr "[Global]"
 
-#: Sources/Client/Client_Draw.cpp:119
+#: Sources/Client/Client.cpp:1177
+msgctxt "Client"
+msgid "[PM] "
+msgstr "[MP] "
+
+#: Sources/Client/Client_Draw.cpp:143
+msgctxt "Client"
+msgid "Unbound"
+msgstr "Sin asignar"
+
+#: Sources/Client/Client_Draw.cpp:180
 msgctxt "Client"
 msgid "Sceneshot saved: {0}"
 msgstr "Sceneshot guardada: {0}"
 
-#: Sources/Client/Client_Draw.cpp:121
+#: Sources/Client/Client_Draw.cpp:181
 msgctxt "Client"
 msgid "Screenshot saved: {0}"
 msgstr "Screenshot guardada: {0}"
 
-#: Sources/Client/Client_Draw.cpp:125 Sources/Client/Client_Draw.cpp:131
+#: Sources/Client/Client_Draw.cpp:186 Sources/Client/Client_Draw.cpp:191
 msgctxt "Client"
 msgid "Screenshot failed: "
 msgstr "Screenshot fallida: "
 
-#: Sources/Client/Client_Draw.cpp:198
+#: Sources/Client/Client_Draw.cpp:256
 msgctxt "Client"
 msgid "NOW LOADING"
 msgstr "CARGANDO"
 
-#: Sources/Client/Client_Draw.cpp:220
+#: Sources/Client/Client_Draw.cpp:1048
 msgctxt "Client"
-msgid "Disconnecting..."
-msgstr "Desconectando..."
+msgid "[{0}] Grab color"
+msgstr "[{0}] Capturar color"
 
-#: Sources/Client/Client_Draw.cpp:534
+#: Sources/Client/Client_Draw.cpp:1049
+msgctxt "Client"
+msgid "[{0}/{1}] Navigate up/down"
+msgstr "[{0}/{1}] Navegar arriba/abajo"
+
+#: Sources/Client/Client_Draw.cpp:1051
+msgctxt "Client"
+msgid "[{0}/{1}] Navigate left/right"
+msgstr "[{0}/{1}] Navegar izq./derecha"
+
+#: Sources/Client/Client_Draw.cpp:1053
+msgctxt "Client"
+msgid "[{0}] Toggle extended palette"
+msgstr "[{0}] Alternar paleta extendida"
+
+#: Sources/Client/Client_Draw.cpp:1061
+msgctxt "Client"
+msgid "#{0} / RGB({1}, {2}, {3})"
+msgstr "#{0} / RGB({1}, {2}, {3})"
+
+#: Sources/Client/Client_Draw.cpp:1112
+msgctxt "Client"
+msgid "Accuracy: {0}%"
+msgstr "Precisión: {0}%"
+
+#: Sources/Client/Client_Draw.cpp:1116
+msgctxt "Client"
+msgid "Kill/Death Ratio: {0}"
+msgstr "Tasa de bajas/muertes: {0}"
+
+#: Sources/Client/Client_Draw.cpp:1117
+msgctxt "Client"
+msgid "Kill Streak: {0}, Best: {1}"
+msgstr "Racha de bajas: {0}, Mejor: {1}"
+
+#: Sources/Client/Client_Draw.cpp:1118
+msgctxt "Client"
+msgid "Melee Kills: {0}"
+msgstr "Bajas cuerpo a cuerpo: {0}"
+
+#: Sources/Client/Client_Draw.cpp:1119
+msgctxt "Client"
+msgid "Grenade Kills: {0}"
+msgstr "Bajas con granadas: {0}"
+
+#: Sources/Client/Client_Draw.cpp:1122
+msgctxt "Client"
+msgid "Blocks Placed: {0}"
+msgstr "Bloques colocados: {0}"
+
+#: Sources/Client/Client_Draw.cpp:1456
 msgctxt "Client"
 msgid "Reloading"
 msgstr "Recargando"
 
-#: Sources/Client/Client_Draw.cpp:539
+#: Sources/Client/Client_Draw.cpp:1458
 msgctxt "Client"
 msgid "Press [{0}] to Reload"
 msgstr "Presione [{0}] para recargar"
 
-#: Sources/Client/Client_Draw.cpp:586
+#: Sources/Client/Client_Draw.cpp:1606
+msgctxt "Client"
+msgid "You will respawn in: {0}"
+msgstr "Reaparecerás en: {0}"
+
+#: Sources/Client/Client_Draw.cpp:1607
 msgctxt "Client"
 msgid "Waiting for respawn"
 msgstr "Esperando para reaparecer"
 
-#: Sources/Client/Client_Draw.cpp:764
+#: Sources/Client/Client_Draw.cpp:1685
 msgctxt "Client"
-msgid "Following {0}"
-msgstr "Siguiendo {0}"
+msgid "Following {0} [#{1}]"
+msgstr "Siguiendo a {0} [#{1}]"
 
-#: Sources/Client/Client_Input.cpp:427
+#: Sources/Client/Client_Draw.cpp:1690
 msgctxt "Client"
-msgid "Out of Blocks"
-msgstr "Sin bloques"
+msgid "Respawning in: {0}"
+msgstr "Reapareciendo en: {0}"
 
-#: Sources/Client/Client_Input.cpp:439
+#: Sources/Client/Client_Draw.cpp:1695
 msgctxt "Client"
-msgid "Out of Ammo"
-msgstr "Sin munición"
+msgid "[{0}] Cycle camera mode"
+msgstr "[{0}] Vista en 3ra persona"
 
-#: Sources/Client/Client_Input.cpp:451
+#: Sources/Client/Client_Draw.cpp:1696
 msgctxt "Client"
-msgid "Out of Grenades"
-msgstr "Sin granadas"
+msgid "[{0}/{1}] Next/Prev player"
+msgstr "[{0}/{1}] Siguiente/Anterior jugador"
 
-#: Sources/Client/Client_Input.cpp:599
+#: Sources/Client/Client_Draw.cpp:1699
+msgctxt "Client"
+msgid "[{0}] Unfollow"
+msgstr "[{0}] Dejar de seguir"
+
+#: Sources/Client/Client_Draw.cpp:1702
+msgctxt "Client"
+msgid "[{0}/{1}] Follow a player"
+msgstr "[{0}/{1}] Seguir a un jugador"
+
+#: Sources/Client/Client_Draw.cpp:1707
+msgctxt "Client"
+msgid "[{0}/{1}] Go up/down"
+msgstr "[{0}/{1}] Ir arriba/abajo"
+
+#: Sources/Client/Client_Draw.cpp:1711
+msgctxt "Client"
+msgid "[{0}] Toggle player names"
+msgstr "[{0}] Alternar nombres de jugadores"
+
+#: Sources/Client/Client_Draw.cpp:1714
+msgctxt "Client"
+msgid "[{0}] Toggle ESP"
+msgstr "[{0}] Alternar ESP"
+
+#: Sources/Client/Client_Draw.cpp:1722
+msgctxt "Client"
+msgid "[{0}] Resume"
+msgstr "[{0}] Renaudar"
+
+#: Sources/Client/Client_Draw.cpp:1723
+msgctxt "Client"
+msgid "[{0}] Pause"
+msgstr "[{0}] Pausar"
+
+#: Sources/Client/Client_Draw.cpp:1724
+msgctxt "Client"
+msgid "[{0}/{1}] Seek +/-5s"
+msgstr "[{0}/{1}] Avanzar/Retroceder +/-5s"
+
+#: Sources/Client/Client_Draw.cpp:1729
+msgctxt "Client"
+msgid "[{0}/{1}] Speed: {2}x"
+msgstr "[{0}/{1}] Velocidad: x{2}"
+
+#: Sources/Client/Client_Draw.cpp:1731
+msgctxt "Client"
+msgid "[{0}] Toggle Demo HUD"
+msgstr "[{0}] Alternar interfaz de la demo"
+
+#: Sources/Client/Client_Draw.cpp:1733
+msgctxt "Client"
+msgid "[{0}] Select Team/Weapon"
+msgstr "[{0}] Seleccionar Equipo/Arma"
+
+#: Sources/Client/Client_Input.cpp:398
+msgctxt "Client"
+msgid "Volume: {0}%"
+msgstr "Volumen: {0}%"
+
+#: Sources/Client/Client_Input.cpp:647 Sources/Client/Client_Input.cpp:979
 msgctxt "Client"
 msgid "Press [{0}] to enable HUD"
 msgstr "Presione [{0}] para activar el HUD"
 
-#: Sources/Client/Client_NetHandler.cpp:89
+#: Sources/Client/Client_Input.cpp:789
 msgctxt "Client"
-msgid "{0} captured {1}'s territory"
-msgstr "{0} capturó el territorio {1}"
+msgid "Recording stopped"
+msgstr "La grabación se detuvo"
 
-#: Sources/Client/Client_NetHandler.cpp:91
+#: Sources/Client/Client_Input.cpp:800 Sources/Client/Client_NetHandler.cpp:160
 msgctxt "Client"
-msgid "{0} captured a neutral territory"
-msgstr "{0} ha capturado un territorio neutral"
+msgid "Recording demo: {0}"
+msgstr "Grabando demo: {0}"
 
-#: Sources/Client/Client_NetHandler.cpp:99
+#: Sources/Client/Client_Input.cpp:802
 msgctxt "Client"
-msgid "{0} captured {1}'s Territory"
-msgstr "{0} capturó el Territorio {1}"
+msgid "Failed to start demo recording"
+msgstr "No se pudo iniciar la grabación de la demo"
 
-#: Sources/Client/Client_NetHandler.cpp:101
+#: Sources/Client/Client_Input.cpp:904
+msgctxt "Client"
+msgid "Out of Blocks"
+msgstr "Sin bloques"
+
+#: Sources/Client/Client_Input.cpp:911
+msgctxt "Client"
+msgid "Out of Ammo"
+msgstr "Sin munición"
+
+#: Sources/Client/Client_Input.cpp:918
+msgctxt "Client"
+msgid "Out of Grenades"
+msgstr "Sin granadas"
+
+#: Sources/Client/Client_Input.cpp:1017
+msgctxt "Client"
+msgid "zerovl {0}"
+msgstr "zerovl {0}"
+
+#: Sources/Client/Client_NetHandler.cpp:142
+msgctxt "Client"
+msgid "Welcome to the server, {0}!"
+msgstr "¡Bienvenido al servidor, {0}!"
+
+#: Sources/Client/Client_NetHandler.cpp:152
+msgctxt "Client"
+msgid "You are connected with {0} ({2}) on {1}"
+msgstr "Estás conectado con {0} ({2}) en {1}"
+
+#: Sources/Client/Client_NetHandler.cpp:180
 msgctxt "Client"
 msgid "{0} captured a Neutral Territory"
 msgstr "{0} ha capturado un Territorio Neutral"
 
-#: Sources/Client/Client_NetHandler.cpp:127
+#: Sources/Client/Client_NetHandler.cpp:182
 msgctxt "Client"
-msgid "{0} captured {1}'s intel"
-msgstr "{0} capturó la intel {1}"
+msgid "{0} captured {1}'s Territory"
+msgstr "{0} capturó el Territorio {1}"
 
-#: Sources/Client/Client_NetHandler.cpp:134
+#: Sources/Client/Client_NetHandler.cpp:191
+msgctxt "Client"
+msgid "{0} captured a neutral territory"
+msgstr "{0} ha capturado un territorio neutral"
+
+#: Sources/Client/Client_NetHandler.cpp:194
+msgctxt "Client"
+msgid "{0} captured {1}'s territory"
+msgstr "{0} capturó el territorio {1}"
+
+#: Sources/Client/Client_NetHandler.cpp:216
 msgctxt "Client"
 msgid "{0} captured {1}'s Intel"
-msgstr "{0} capturó la Intel {1}"
+msgstr "{0} capturó la intel {1}"
 
-#: Sources/Client/Client_NetHandler.cpp:158
-msgctxt "Client"
-msgid "{0} picked up {1}'s intel"
-msgstr "{0} tomó la intel {1}"
-
-#: Sources/Client/Client_NetHandler.cpp:165
-msgctxt "Client"
-msgid "{0} picked up {1}'s Intel"
-msgstr "{0} tomó la Intel {1}"
-
-#: Sources/Client/Client_NetHandler.cpp:183
-msgctxt "Client"
-msgid "{0} dropped {1}'s intel"
-msgstr "{0} soltó la intel {1}"
-
-#: Sources/Client/Client_NetHandler.cpp:190
-msgctxt "Client"
-msgid "{0} dropped {1}'s Intel"
-msgstr "{0} soltó la Intel {1}"
-
-#: Sources/Client/Client_NetHandler.cpp:237
-#: Sources/Client/Client_NetHandler.cpp:243
-msgctxt "Client"
-msgid "Player {0} has left"
-msgstr "El jugador {0} ha salido"
-
-#: Sources/Client/Client_NetHandler.cpp:257
-#: Sources/Client/Client_NetHandler.cpp:264
-msgctxt "Client"
-msgid "{0} joined {1} team"
-msgstr "{0} se unio al equipo {1}"
-
+#: Sources/Client/Client_NetHandler.cpp:220
 msgctxt "Client"
 msgid "You captured {0}'s Intel"
 msgstr "Has capturado la Intel {0}"
 
+#: Sources/Client/Client_NetHandler.cpp:225
+msgctxt "Client"
+msgid "{0} captured {1}'s intel"
+msgstr "{0} capturó la intel {1}"
+
+#: Sources/Client/Client_NetHandler.cpp:248
+msgctxt "Client"
+msgid "{0} picked up {1}'s Intel"
+msgstr "{0} tomó la intel {1}"
+
+#: Sources/Client/Client_NetHandler.cpp:252
 msgctxt "Client"
 msgid "You picked up {0}'s Intel"
 msgstr "Has tomado la Intel {0}"
 
+#: Sources/Client/Client_NetHandler.cpp:257
+msgctxt "Client"
+msgid "{0} picked up {1}'s intel"
+msgstr "{0} tomó la intel {1}"
+
+#: Sources/Client/Client_NetHandler.cpp:278
+msgctxt "Client"
+msgid "{0} dropped {1}'s Intel"
+msgstr "{0} soltó la intel {1}"
+
+#: Sources/Client/Client_NetHandler.cpp:282
 msgctxt "Client"
 msgid "You dropped {0}'s Intel"
 msgstr "Has soltado la Intel {0}"
 
-#: Sources/Client/Client_NetHandler.cpp:294
+#: Sources/Client/Client_NetHandler.cpp:287
 msgctxt "Client"
-msgid "{0} wins!"
-msgstr "{0} gana!"
+msgid "{0} dropped {1}'s intel"
+msgstr "{0} soltó la intel {1}"
 
-#: Sources/Client/Client_NetHandler.cpp:298
+#: Sources/Client/Client_NetHandler.cpp:375
+#: Sources/Client/Client_NetHandler.cpp:383
+msgctxt "Client"
+msgid "Player {0} has left"
+msgstr "El jugador {0} ha salido"
+
+#: Sources/Client/Client_NetHandler.cpp:377
+#: Sources/Client/Client_NetHandler.cpp:385
+msgctxt "Client"
+msgid " (ragequit)"
+msgstr " (ragequit)"
+
+#: Sources/Client/Client_NetHandler.cpp:409
+msgctxt "Client"
+msgid "You are now a spectator"
+msgstr "Ahora eres un espectador"
+
+#: Sources/Client/Client_NetHandler.cpp:410
+msgctxt "Client"
+msgid "You joined {0} team"
+msgstr "Te has unido al equipo {0}"
+
+#: Sources/Client/Client_NetHandler.cpp:416
+#: Sources/Client/Client_NetHandler.cpp:422
+msgctxt "Client"
+msgid "{0} joined {1} team"
+msgstr "{0} se unio al equipo {1}"
+
+#: Sources/Client/Client_NetHandler.cpp:443
 msgctxt "Client"
 msgid "{0} Wins!"
 msgstr "{0} Gana!"
 
-#: Sources/Client/Client_Update.cpp:479
+#: Sources/Client/Client_NetHandler.cpp:450
+msgctxt "Client"
+msgid "{0} wins!"
+msgstr "{0} gana!"
+
+#: Sources/Client/Client_Update.cpp:716
 msgctxt "Client"
 msgid "{0} block"
 msgid_plural "{0} blocks"
 msgstr[0] "{0} bloque"
 msgstr[1] "{0} bloques"
 
-#: Sources/Client/Client_Update.cpp:486
+#: Sources/Client/Client_Update.cpp:721
 msgctxt "Client"
 msgid "-- blocks"
 msgstr "-- bloques"
 
-#: Sources/Client/Client_Update.cpp:842 Sources/Client/LimboView.cpp:68
+#: Sources/Client/Client_Update.cpp:1235 Sources/Client/LimboView.cpp:73
 msgctxt "Client"
 msgid "Rifle"
 msgstr "Rifle"
 
-#: Sources/Client/Client_Update.cpp:843 Sources/Client/LimboView.cpp:71
+#: Sources/Client/Client_Update.cpp:1236 Sources/Client/LimboView.cpp:76
 msgctxt "Client"
 msgid "SMG"
 msgstr "SMG"
 
-#: Sources/Client/Client_Update.cpp:844 Sources/Client/LimboView.cpp:74
+#: Sources/Client/Client_Update.cpp:1237 Sources/Client/LimboView.cpp:79
 msgctxt "Client"
 msgid "Shotgun"
 msgstr "Escopeta"
 
-#. ! A cause of death shown in the kill feed.
-#: Sources/Client/Client_Update.cpp:849
+#: Sources/Client/Client_Update.cpp:1241
 msgctxt "Client"
 msgid "Fall"
 msgstr "Caída"
 
-#. ! A cause of death shown in the kill feed.
-#: Sources/Client/Client_Update.cpp:853
+#: Sources/Client/Client_Update.cpp:1242
 msgctxt "Client"
 msgid "Melee"
 msgstr "Cuerpo a cuerpo"
 
-#: Sources/Client/Client_Update.cpp:856
+#: Sources/Client/Client_Update.cpp:1243
 msgctxt "Client"
 msgid "Grenade"
 msgstr "Granada"
 
-#. ! A cause of death shown in the kill feed.
-#: Sources/Client/Client_Update.cpp:860
+#: Sources/Client/Client_Update.cpp:1244
 msgctxt "Client"
 msgid "Headshot"
-msgstr "Tiro en la Cabeza"
+msgstr "Tiro en la cabeza"
 
-#. ! A cause of death shown in the kill feed.
-#: Sources/Client/Client_Update.cpp:864
+#: Sources/Client/Client_Update.cpp:1245
 msgctxt "Client"
 msgid "Team Change"
 msgstr "Cambio de equipo"
 
-#. ! A cause of death shown in the kill feed.
-#: Sources/Client/Client_Update.cpp:868
+#: Sources/Client/Client_Update.cpp:1246
 msgctxt "Client"
 msgid "Weapon Change"
 msgstr "Cambio de arma"
 
-#: Sources/Client/Client_Update.cpp:860
+#: Sources/Client/Client_Update.cpp:1296
 msgctxt "Client"
 msgid "Revenge!"
 msgstr "¡Venganza!"
 
-#: Sources/Client/Client_Update.cpp:860
+#: Sources/Client/Client_Update.cpp:1304
 msgctxt "Client"
 msgid "Dominating!"
 msgstr "¡Dominando!"
 
-#: Sources/Client/Client_Update.cpp:1225
+#: Sources/Client/Client_Update.cpp:1330
+msgctxt "Client"
+msgid "You were killed by {0}"
+msgstr "Fuiste eliminado por {0}"
+
+#: Sources/Client/Client_Update.cpp:1332
+msgctxt "Client"
+msgid "You have killed {0}"
+msgstr "Has eliminado a {0}"
+
+#: Sources/Client/Client_Update.cpp:1542
+msgctxt "Client"
+msgid "You hit {0} from: {1} blocks "
+msgstr "Le diste a {0} desde: {1} bloques "
+
+#: Sources/Client/Client_Update.cpp:1562
+msgctxt "Client"
+msgid "TORSO"
+msgstr "TORSO"
+
+#: Sources/Client/Client_Update.cpp:1563
+msgctxt "Client"
+msgid "ARMS"
+msgstr "BRAZOS"
+
+#: Sources/Client/Client_Update.cpp:1564
+msgctxt "Client"
+msgid "LEGS"
+msgstr "PIERNAS"
+
+#: Sources/Client/Client_Update.cpp:1565
+msgctxt "Client"
+msgid "MELEE"
+msgstr "MELEE"
+
+#: Sources/Client/Client_Update.cpp:1566
+msgctxt "Client"
+msgid "HEAD"
+msgstr "CABEZA"
+
+#: Sources/Client/Client_Update.cpp:1897
+msgctxt "Client"
+msgid "You are taking damage. Find solid ground!"
+msgstr "Estás recibiendo daño. ¡Busca un terreno firme!"
+
+#: Sources/Client/Client_Update.cpp:1915
 msgctxt "Client"
 msgid "Insufficient blocks."
 msgstr "Bloques insuficientes."
 
-#: Sources/Client/Client_Update.cpp:1228
+#: Sources/Client/Client_Update.cpp:1918
 msgctxt "Client"
 msgid "You cannot place a block there."
 msgstr "No puedes colocar un bloque ahí."
 
-#: Sources/Client/LimboView.cpp:79
-msgctxt "Client"
-msgid "Spawn"
-msgstr "Aparecer"
-
-#: Sources/Client/LimboView.cpp:183
-msgctxt "Client"
-msgid "Select Team:"
-msgstr "Seleccionar equipo:"
-
-#: Sources/Client/LimboView.cpp:191
-msgctxt "Client"
-msgid "Select Weapon:"
-msgstr "Seleccionar arma:"
-
-#: Sources/Client/NetClient.cpp:422
-msgctxt "NetClient"
-msgid "Connecting to the server"
-msgstr "Conectando al servidor"
-
-#: Sources/Client/NetClient.cpp:434
+#: Sources/Client/DemoNetClient.cpp:102 Sources/Client/NetClient.cpp:275
 msgctxt "NetClient"
 msgid "Not connected"
 msgstr "No conectado"
 
-#: Sources/Client/NetClient.cpp:498
+#: Sources/Client/DemoNetClient.cpp:116
+msgctxt "NetClient"
+msgid "Failed to open demo file"
+msgstr "No se pudo abrir el archivo de la demo"
+
+#: Sources/Client/DemoNetClient.cpp:129
+msgctxt "NetClient"
+msgid "Loading demo"
+msgstr "Cargando demo"
+
+#: Sources/Client/DemoNetClient.cpp:149
+msgctxt "NetClient"
+msgid "Demo finished - press [{0}] to replay"
+msgstr "Demo finalizada - pulsa [{0}] para volver a reproducir"
+
+#: Sources/Client/DemoNetClient.cpp:173
+msgctxt "NetClient"
+msgid "Loading map from demo"
+msgstr "Cargando mapa de la demo"
+
+#: Sources/Client/DemoNetClient.cpp:186 Sources/Client/DemoNetClient.cpp:985
+#: Sources/Client/DemoNetClient.cpp:1005
+msgctxt "NetClient"
+msgid "Playing demo"
+msgstr "Reproduciendo demo"
+
+#: Sources/Client/DemoNetClient.cpp:193
+msgctxt "NetClient"
+msgid "Error loading map"
+msgstr "Error al cargar el mapa"
+
+#: Sources/Client/DemoNetClient.cpp:905
+msgctxt "NetClient"
+msgid "Loading map from demo ({0}%)"
+msgstr "Cargando mapa de la demo ({0}%)"
+
+#: Sources/Client/LimboView.cpp:84
+msgctxt "Client"
+msgid "Spawn"
+msgstr "Aparecer"
+
+#: Sources/Client/LimboView.cpp:204
+msgctxt "Client"
+msgid "Select Team:"
+msgstr "Seleccionar equipo:"
+
+#: Sources/Client/LimboView.cpp:210
+msgctxt "Client"
+msgid "Select Weapon:"
+msgstr "Seleccionar arma:"
+
+#: Sources/Client/LimboView.cpp:260
+#: Resources/Scripts/Gui/Client/ChatLogWindow.as:85
+#: Resources/Scripts/Gui/Client/ChatSayWindow.as:193
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:607
+#: Resources/Scripts/Gui/Preferences.as:116
+msgctxt "Client"
+msgid "[Esc]"
+msgstr "[Esc]"
+
+#: Sources/Client/LimboView.cpp:272
+msgctxt "Client"
+msgid "[1, 2, 3]"
+msgstr "[1, 2, 3]"
+
+#: Sources/Client/NetClient.cpp:264
+msgctxt "NetClient"
+msgid "Connecting to the server"
+msgstr "Conectando al servidor"
+
+#: Sources/Client/NetClient.cpp:397
 msgctxt "NetClient"
 msgid "Awaiting for state"
-msgstr "Esperando el estado"
+msgstr "Esperando estado del servidor"
 
-#: Sources/Client/NetClient.cpp:508 Sources/Client/NetClient.cpp:1277
+#: Sources/Client/NetClient.cpp:413 Sources/Client/NetClient.cpp:1095
 msgctxt "NetClient"
 msgid "Loading snapshot"
 msgstr "Cargando mapa"
 
-#: Sources/Client/NetClient.cpp:528 Sources/Client/NetClient.cpp:562
+#: Sources/Client/NetClient.cpp:459
 msgctxt "NetClient"
 msgid "Connected"
 msgstr "Conectado"
 
-#: Sources/Client/NetClient.cpp:540 Sources/Client/NetClient.cpp:575
-#: Sources/Client/NetClient.cpp:627
-msgctxt "NetClient"
-msgid "Still loading..."
-msgstr "Aún cargando..."
-
-#: Sources/Client/NetClient.cpp:543 Sources/Client/NetClient.cpp:549
-#: Sources/Client/NetClient.cpp:579 Sources/Client/NetClient.cpp:584
-#: Sources/Client/NetClient.cpp:631 Sources/Client/NetClient.cpp:636
+#: Sources/Client/NetClient.cpp:468 Sources/Client/NetClient.cpp:473
 msgctxt "NetClient"
 msgid "Error"
 msgstr "Error"
 
-#: Sources/Client/NetClient.cpp:696
+#: Sources/Client/NetClient.cpp:545
 msgctxt "NetClient"
 msgid "You are banned from this server."
-msgstr "Has sido baneado de este servidor."
+msgstr "Estás banneado en este servidor."
 
-#: Sources/Client/NetClient.cpp:697
+#: Sources/Client/NetClient.cpp:546
 msgctxt "NetClient"
 msgid "Your network's public address has too many connections to this server."
 msgstr ""
-"La dirección pública de su red tiene demasiadas conexiones a este servidor."
+"La dirección IP pública de su red tiene demasiadas conexiones con este "
+"servidor."
 
-#: Sources/Client/NetClient.cpp:698
+#: Sources/Client/NetClient.cpp:547
 msgctxt "NetClient"
 msgid "Incompatible client protocol version."
 msgstr "Versión de protocolo de cliente incompatible."
 
-#: Sources/Client/NetClient.cpp:699
+#: Sources/Client/NetClient.cpp:548
 msgctxt "NetClient"
 msgid "Server full"
 msgstr "Servidor lleno"
 
-#: Sources/Client/NetClient.cpp:700
+#: Sources/Client/NetClient.cpp:549
 msgctxt "NetClient"
 msgid "Server shutdown"
-msgstr "Cierre del servidor"
+msgstr "Servidor cerrado"
 
-#: Sources/Client/NetClient.cpp:701
+#: Sources/Client/NetClient.cpp:550
 msgctxt "NetClient"
 msgid "You were kicked from this server."
 msgstr "Has sido expulsado de este servidor."
 
-#: Sources/Client/NetClient.cpp:702
+#: Sources/Client/NetClient.cpp:551
 msgctxt "NetClient"
 msgid "Invalid name"
 msgstr "Nombre inválido"
 
-#: Sources/Client/NetClient.cpp:703
+#: Sources/Client/NetClient.cpp:552
 msgctxt "NetClient"
 msgid "Unknown Reason"
 msgstr "Razón desconocida"
 
-#: Sources/Client/ScoreboardView.cpp:63 Sources/Client/ScoreboardView.cpp:345
+#: Sources/Client/NetClient.cpp:1758
+msgctxt "NetClient"
+msgid "{0} second remaining"
+msgid_plural "{0} seconds remaining"
+msgstr[0] "{0} segundo restante"
+msgstr[1] "{0} segundos restantes"
+
+#: Sources/Client/NetClient.cpp:1761
+msgctxt "NetClient"
+msgid "{0} minute remaining"
+msgid_plural "{0} minutes remaining"
+msgstr[0] "{0} minuto restante"
+msgstr[1] "{0} minutos restantes"
+
+#: Sources/Client/ScoreboardView.cpp:61 Sources/Client/ScoreboardView.cpp:418
 msgctxt "Client"
 msgid "Spectator{1}"
 msgid_plural "Spectators{1}"
 msgstr[0] "Espectador{1}"
 msgstr[1] "Espectadores{1}"
 
-#: Sources/Client/TCProgressView.cpp:151
+#: Sources/Client/TCProgressView.cpp:159
 msgctxt "Client"
 msgid "Neutral Territory"
-msgstr "Territorio neutral"
+msgstr "Territorio Neutral"
 
-#: Sources/Client/TCProgressView.cpp:154
+#: Sources/Client/TCProgressView.cpp:162
 msgctxt "Client"
 msgid "{0}'s Territory"
 msgstr "Territorio {0}"
 
-#: Sources/Gui/Main.cpp:548
+#: Sources/Gui/Main.cpp:960
 msgctxt "Main"
 msgid "Localization System Loaded"
 msgstr "Sistema de localización cargado"
 
-#: Sources/Gui/Main.cpp:604 Sources/Gui/Runner.cpp:56
+#: Sources/Gui/Main.cpp:1038 Sources/Gui/Runner.cpp:56
 msgctxt "Main"
 msgid ""
-"A serious error caused OpenSpades to stop working:\n"
+"A serious error caused ZeroSpades to stop working:\n"
 "\n"
 "{0}\n"
 "\n"
 "See SystemMessages.log for more details."
 msgstr ""
-"Un error grave ha provocado que OpenSpades deje de funcionar:\n"
+"Un error grave ha provocado que ZeroSpades deje de funcionar:\n"
 "\n"
 "{0}\n"
 "\n"
 "Ver SystemMessages.log para más detalles."
 
-#: Sources/Gui/Main.cpp:612 Sources/Gui/Runner.cpp:62
+#: Sources/Gui/Main.cpp:1046 Sources/Gui/Runner.cpp:62
 msgctxt "Main"
-msgid "OpenSpades Fatal Error"
-msgstr "Error fatal de OpenSpades"
+msgid "ZeroSpades Fatal Error"
+msgstr "Error fatal de ZeroSpades"
 
-#: Sources/Gui/MainScreen.cpp:225
+#: Sources/Gui/MainScreen.cpp:229
 msgctxt "MainScreen"
 msgid "NOW LOADING"
 msgstr "CARGANDO"
 
-#: Resources/Scripts/Gui/ClientUI.as:198
-msgctxt "Client"
-msgid "Back to Game"
-msgstr "Volver al juego"
-
-#: Resources/Scripts/Gui/ClientUI.as:205
-msgctxt "Client"
-msgid "Chat Log"
-msgstr "Registro del chat"
-
-#: Resources/Scripts/Gui/ClientUI.as:212
-msgctxt "Client"
-msgid "Setup"
-msgstr "Configurar"
-
-#: Resources/Scripts/Gui/ClientUI.as:219
-msgctxt "Client"
-msgid "Disconnect"
-msgstr "Desconectar"
-
-msgctxt "Client"
-msgid "Exit Demo"
-msgstr "Salir de la demo"
-
-msgctxt "StartupScreen"
-msgid "Demo Recording"
-msgstr "Grabador de demos"
-
-msgctxt "StartupScreen"
-msgid "Max stored demos"
-msgstr "Número máximo de demos almacenadas"
-
-msgctxt "StartupScreen"
-msgid "Automatically record every game"
-msgstr "Grabar automáticamente todos los juegos"
-
-msgctxt "StartupScreen"
-msgid "Delete oldest demos when limit is reached"
-msgstr "Eliminar las demos más antiguas cuando se alcance el límite"
-
-msgctxt "StartupScreen"
-msgid "Demos Folder"
-msgstr "Carpeta de demos"
-
-msgctxt "StartupScreen"
-msgid "Open Demos Folder in Explorer"
-msgstr "Abrir la carpeta de demos en el explorador"
-
-msgctxt "StartupScreen"
-msgid "Reveal Demos Folder in Finder"
-msgstr "Mostrar la carpeta de demos en el buscador"
-
-msgctxt "StartupScreen"
-msgid "Browse Demos Folder"
-msgstr "Explorar la carpeta de demos"
-
-msgctxt "MainScreen"
-msgid "Servers"
-msgstr "Servidores"
-
-msgctxt "MainScreen"
-msgid "Demos"
-msgstr "Demos"
-
-msgctxt "MainScreen"
-msgid "Select a demo"
-msgstr "Seleccione una demo"
-
-msgctxt "MainScreen"
-msgid "Delete"
-msgstr "Borrar"
-
-msgctxt "MainScreen"
-msgid "Are you sure you want to delete '{0}'?\nThis action cannot be undone."
-msgstr "¿Está seguro de que desea eliminar '{0}'?\n Esta acción no se puede deshacer."
-
-msgctxt "MainScreen"
-msgid "Rename"
-msgstr "Renombrar"
-
-msgctxt "MainScreen"
-msgid "Cancel"
-msgstr "Cancelar"
-
-msgctxt "MainScreen"
-msgid "Rename Demo"
-msgstr "Renombrar demo"
-
-msgctxt "MainScreen"
-msgid "Failed to rename demo"
-msgstr "No se pudo cambiar el nombre de la demo"
-
-msgctxt "MainScreen"
-msgid "Play"
-msgstr "Reproducir"
-
-msgctxt "MainScreen"
-msgid "Server"
-msgstr "Servidor"
-
-msgctxt "MainScreen"
-msgid "Map"
-msgstr "Mapa"
-
-msgctxt "MainScreen"
-msgid "Game Mode"
-msgstr "Modo de juego"
-
-msgctxt "MainScreen"
-msgid "Timestamp"
-msgstr "Fecha y hora"
-
-msgctxt "MainScreen"
-msgid "Size"
-msgstr "Tamaño"
-
-msgctxt "MainScreen"
-msgid "Mods"
-msgstr "Mods"
-
-msgctxt "MainScreen"
-msgid "Fetching mod list…"
-msgstr "Obteniendo la lista de mods…"
-
-msgctxt "MainScreen"
-msgid "Download the official ZeroSpades mod pack?"
-msgstr "¿Descargar el paquete de mods oficial de ZeroSpades?"
-
-msgctxt "MainScreen"
-msgid "These are mods reviewed and hosted by the ZeroSpades team."
-msgstr "Estos son mods revisados ​​y alojados por el equipo de ZeroSpades."
-
-msgctxt "MainScreen"
-msgid "Source: "
-msgstr "Fuente: "
-
-msgctxt "MainScreen"
-msgid "Files will be saved into your Mods/ folder, overwriting any existing copies."
-msgstr "Los archivos se guardarán en tu carpeta Mods/, sobrescribiendo cualquier copia existente."
-
-msgctxt "MainScreen"
-msgid "Disable all mods? This takes effect after a restart."
-msgstr "¿Desactivar todos los mods? Esto se aplicará después de reiniciar el juego."
-
-msgctxt "MainScreen"
-msgid "Press 'Apply changes' to restart and apply your mods."
-msgstr "Presione 'Aplicar cambios' para reiniciar y aplicar sus mods"
-
-msgctxt "MainScreen"
-msgid "Download official mods…"
-msgstr "Descargar mods oficiales..."
-
-msgctxt "MainScreen"
-msgid "Disable all"
-msgstr "Desactivar todos"
-
-msgctxt "MainScreen"
-msgid "Apply changes"
-msgstr "Aplicar cambios"
-
-msgctxt "MainScreen"
-msgid "Status"
-msgstr "Estado"
-
-msgctxt "MainScreen"
-msgid "Apply Order"
-msgstr "Orden"
-
-msgctxt "MainScreen"
-msgid "Mod"
-msgstr "Mod"
-
-msgctxt "MainScreen"
-msgid "Paks"
-msgstr "Paks"
-
-msgctxt "Preferences"
-msgid "Demo Recording"
-msgstr "Grabador de demos"
-
-msgctxt "Preferences"
-msgid "Start/Stop Recording"
-msgstr "Iniciar/detener grabación"
-
-msgctxt "Preferences"
-msgid "Auto Record"
-msgstr "Grabar automáticamente"
-
-msgctxt "Preferences"
-msgid "Auto Delete Old Demos"
-msgstr "Auto-eliminar demos antiguas"
-
-msgctxt "Preferences"
-msgid "Max Stored Demos"
-msgstr "Límite de demos guardadas"
-
-msgctxt "Preferences"
-msgid "Demo Playback"
-msgstr "Reproductor de demos"
-
-msgctxt "Preferences"
-msgid "Pause/Resume"
-msgstr "Pausar/Reanudar"
-
-msgctxt "Preferences"
-msgid "Speed Up"
-msgstr "Acelerar"
-
-msgctxt "Preferences"
-msgid "Slow Down"
-msgstr "Ralentizar"
-
-msgctxt "Preferences"
-msgid "Seek Forward"
-msgstr "Avanzar"
-
-msgctxt "Preferences"
-msgid "Seek Backward"
-msgstr "Retroceder"
-
-msgctxt "Preferences"
-msgid "Toggle Demo HUD"
-msgstr "Alternar el HUD de la demo"
-
-msgctxt "Client"
-msgid "Recording demo: {0}"
-msgstr "Grabando demo: {0}"
-
-msgctxt "Client"
-msgid "Recording stopped"
-msgstr "La grabación se detuvo"
-
-msgctxt "NetClient"
-msgid "Failed to open demo file"
-msgstr "No se pudo abrir el archivo de la demo"
-
-msgctxt "NetClient"
-msgid "Demo finished - press [{0}] to replay"
-msgstr "Demo finalizada - pulsa [{0}] para volver a reproducir"
-
-msgctxt "NetClient"
-msgid "Loading demo"
-msgstr "Cargando demo"
-
-msgctxt "NetClient"
-msgid "Loading map from demo"
-msgid "Cargando mapa de la demo"
-
-msgctxt "NetClient"
-msgid "Loading map from demo ({0}%)"
-msgstr "Cargando mapa de la demo ({0}%)"
-
-msgctxt "NetClient"
-msgid "Playing demo"
-msgstr "Reproduciendo demo"
-
-msgctxt "NetClient"
-msgid "Error loading map"
-msgstr "Error al cargar el mapa"
-
-msgctxt "Client"
-msgid "[{0}] Toggle player names"
-msgstr "[{0}] Alternar nombres de jugadores"
-
-msgctxt "Client"
-msgid "[{0}] Toggle ESP"
-msgstr "[{0}] Alternar ESP"
-
-msgctxt "Client"
-msgid "[{0}] Pause"
-msgstr "[{0}] Pausar"
-
-msgctxt "Client"
-msgid "[{0}] Resume"
-msgstr "[{0}] Renaudar"
-
-msgctxt "Client"
-msgid "[{0}/{1}] Seek +/-5s"
-msgstr "[{0}/{1}] Avanzar/Retroceder +/-5s"
-
-msgctxt "Client"
-msgid "[{0}/{1}] Speed: {2}x"
-msgstr "[{0}/{1}] Velocidad: x{2}"
-
-msgctxt "Client"
-msgid "[{0}] Toggle Demo HUD"
-msgstr "[{0}] Alternar interfaz de la demo"
-
-msgctxt "Client"
-msgid "Affirmative"
-msgstr "Afirmativo"
-
-msgctxt "Client"
-msgid "Negative"
-msgstr "Negativo"
-
-msgctxt "Client"
-msgid "Tear It Down!"
-msgstr "¡Derribenlo!"
-
-msgctxt "Client"
-msgid "Help Me Build"
-msgstr "Ayúdame a construir"
-
-msgctxt "Client"
-msgid "Spawnkiller!"
-msgstr "¡Emboscada!"
-
-msgctxt "Client"
-msgid "Behind Us!"
-msgstr "¡Detrás nuestro!"
-
-msgctxt "Client"
-msgid "Thank You"
-msgstr "Gracias"
-
-msgctxt "Client"
-msgid "Cover Me"
-msgstr "Cúbreme"
-
-msgctxt "Client"
-msgid "Behind You"
-msgstr "Detrás de ti"
-
-msgctxt "Client"
-msgid "Help Me"
-msgstr "Ayúdame"
-
-#: Resources/Scripts/Gui/ClientUI.as:484
-msgctxt "Client"
-msgid "Send"
-msgstr "Enviar"
-
-#: Resources/Scripts/Gui/ClientUI.as:492
-msgctxt "Client"
-msgid "Cancel"
-msgstr "Cancelar"
-
-#: Resources/Scripts/Gui/ClientUI.as:500
-msgctxt "Client"
-msgid "Chat Text"
-msgstr "Chat de texto"
-
-#: Resources/Scripts/Gui/ClientUI.as:508
-msgctxt "Client"
-msgid "Global"
-msgstr "Global"
-
-#: Resources/Scripts/Gui/ClientUI.as:517
-msgctxt "Client"
-msgid "Team"
-msgstr "Equipo"
-
-#: Resources/Scripts/Gui/ClientUI.as:661
+#: Resources/Scripts/Gui/Client/ChatLogWindow.as:84
 msgctxt "Client"
 msgid "Close"
 msgstr "Cerrar"
 
-#: Resources/Scripts/Gui/ClientUI.as:671
+#: Resources/Scripts/Gui/Client/ChatLogWindow.as:93
 msgctxt "Client"
 msgid "Say Global"
 msgstr "Decir a todos"
 
-#: Resources/Scripts/Gui/ClientUI.as:682
+#: Resources/Scripts/Gui/Client/ChatLogWindow.as:102
 msgctxt "Client"
 msgid "Say Team"
 msgstr "Decir al equipo"
 
-#: Resources/Scripts/Gui/CreateProfileScreen.as:58
+#: Resources/Scripts/Gui/Client/ChatSayWindow.as:183
+msgctxt "Client"
+msgid "Send"
+msgstr "Enviar"
+
+#: Resources/Scripts/Gui/Client/ChatSayWindow.as:184
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:281
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:451
+#: Resources/Scripts/Gui/StartupScreen/MainMenu.as:58
+msgctxt "Client"
+msgid "[Enter]"
+msgstr "[Intro]"
+
+#: Resources/Scripts/Gui/Client/ChatSayWindow.as:192
+msgctxt "Client"
+msgid "Cancel"
+msgstr "Cancelar"
+
+#: Resources/Scripts/Gui/Client/ChatSayWindow.as:201
+msgctxt "Client"
+msgid "Chat Text"
+msgstr "Chat de texto"
+
+#: Resources/Scripts/Gui/Client/Menu.as:52
+msgctxt "Client"
+msgid "Back to Game"
+msgstr "Volver al juego"
+
+#: Resources/Scripts/Gui/Client/Menu.as:59
+msgctxt "Client"
+msgid "Chat Log"
+msgstr "Registro del chat"
+
+#: Resources/Scripts/Gui/Client/Menu.as:66
+msgctxt "Client"
+msgid "Setup"
+msgstr "Configurar"
+
+#: Resources/Scripts/Gui/Client/Menu.as:74
+msgctxt "Client"
+msgid "Exit Demo"
+msgstr "Salir de la demo"
+
+#: Resources/Scripts/Gui/Client/Menu.as:75
+msgctxt "Client"
+msgid "Disconnect"
+msgstr "Desconectar"
+
+#: Resources/Scripts/Gui/Console/ConsoleWindow.as:59
+msgctxt "Console"
+msgid "Command"
+msgstr "Comando"
+
+#: Resources/Scripts/Gui/MainScreen/CreateProfileScreen.as:53
 msgctxt "CreateProfileScreen"
 msgid "OK"
 msgstr "Aceptar"
 
-#: Resources/Scripts/Gui/CreateProfileScreen.as:70
+#: Resources/Scripts/Gui/MainScreen/CreateProfileScreen.as:63
 msgctxt "CreateProfileScreen"
 msgid "Decide later"
 msgstr "Decidir después"
 
-#: Resources/Scripts/Gui/CreateProfileScreen.as:80
+#: Resources/Scripts/Gui/MainScreen/CreateProfileScreen.as:70
 msgctxt "CreateProfileScreen"
-msgid "Welcome to OpenSpades"
-msgstr "Bienvenido a OpenSpades"
+msgid "Welcome to ZeroSpades"
+msgstr "Bienvenido a ZeroSpades"
 
-#: Resources/Scripts/Gui/CreateProfileScreen.as:88
+#: Resources/Scripts/Gui/MainScreen/CreateProfileScreen.as:78
 msgctxt "CreateProfileScreen"
 msgid "Choose a player name:"
 msgstr "Elija un nombre de jugador:"
 
-#: Resources/Scripts/Gui/CreateProfileScreen.as:96
+#: Resources/Scripts/Gui/MainScreen/CreateProfileScreen.as:86
 msgctxt "CreateProfileScreen"
 msgid "Player name"
 msgstr "Nombre del jugador"
 
-#: Resources/Scripts/Gui/CreateProfileScreen.as:104
+#: Resources/Scripts/Gui/MainScreen/CreateProfileScreen.as:95
 msgctxt "CreateProfileScreen"
 msgid "You can change it later in the Setup dialog."
 msgstr "Puede cambiarlo más tarde en el cuadro de diálogo Configurar."
 
-#: Resources/Scripts/Gui/MainScreen.as:376
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:99
+msgctxt "MainScreen"
+msgid "Rename Demo"
+msgstr "Renombrar demo"
+
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:113
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:443
+msgctxt "MainScreen"
+msgid "Rename"
+msgstr "Renombrar"
+
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:120
+msgctxt "MainScreen"
+msgid "Cancel"
+msgstr "Cancelar"
+
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:280
 msgctxt "MainScreen"
 msgid "Connect"
 msgstr "Conectar"
 
-#: Resources/Scripts/Gui/MainScreen.as:384
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:289
 msgctxt "MainScreen"
 msgid "Quick Connect"
 msgstr "Conexión rapida"
 
-#: Resources/Scripts/Gui/MainScreen.as:393
-#: Resources/Scripts/Gui/MainScreen.as:447
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:303
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:393
 msgctxt "MainScreen"
 msgid "0.75"
 msgstr "0.75"
 
-#: Resources/Scripts/Gui/MainScreen.as:403
-#: Resources/Scripts/Gui/MainScreen.as:456
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:312
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:401
 msgctxt "MainScreen"
 msgid "0.76"
 msgstr "0.76"
 
-#: Resources/Scripts/Gui/MainScreen.as:411
-msgctxt "MainScreen"
-msgid "Quit"
-msgstr "Salir"
-
-#: Resources/Scripts/Gui/MainScreen.as:418
-msgctxt "MainScreen"
-msgid "Credits"
-msgstr "Créditos"
-
-#: Resources/Scripts/Gui/MainScreen.as:425
-msgctxt "MainScreen"
-msgid "Setup"
-msgstr "Configurar"
-
-#: Resources/Scripts/Gui/MainScreen.as:438
-#: Resources/Scripts/Gui/MainScreen.as:482
-msgctxt "MainScreen"
-msgid "Filter"
-msgstr "Filtro"
-
-#: Resources/Scripts/Gui/MainScreen.as:465
-msgctxt "MainScreen"
-msgid "Empty"
-msgstr "Vacío"
-
-#: Resources/Scripts/Gui/MainScreen.as:474
-msgctxt "MainScreen"
-msgid "Not Full"
-msgstr "No lleno"
-
-#: Resources/Scripts/Gui/MainScreen.as:494
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:326
 msgctxt "MainScreen"
 msgid "Server Name"
 msgstr "Nombre del servidor"
 
-#: Resources/Scripts/Gui/MainScreen.as:501
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:333
 msgctxt "MainScreen"
-msgid "Players"
-msgstr "Jugadores"
+msgid "Slots"
+msgstr "Slots"
 
-#: Resources/Scripts/Gui/MainScreen.as:508
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:341
 msgctxt "MainScreen"
 msgid "Map Name"
 msgstr "Nombre del mapa"
 
-#: Resources/Scripts/Gui/MainScreen.as:515
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:348
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:479
 msgctxt "MainScreen"
 msgid "Game Mode"
 msgstr "Modo de juego"
 
-#: Resources/Scripts/Gui/MainScreen.as:522
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:356
 msgctxt "MainScreen"
 msgid "Ver."
 msgstr "Ver."
 
-#: Resources/Scripts/Gui/MainScreen.as:529
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:364
 msgctxt "MainScreen"
-msgid "Loc."
-msgstr "Loc."
+msgid "Ping"
+msgstr "Ping"
 
-#: Resources/Scripts/Gui/MainScreen.as:787
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:385
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:419
+msgctxt "MainScreen"
+msgid "Filter"
+msgstr "Filtro"
+
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:410
+msgctxt "MainScreen"
+msgid "Not Full"
+msgstr "No lleno"
+
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:429
+msgctxt "MainScreen"
+msgid "Select a demo"
+msgstr "Seleccione una demo"
+
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:436
+msgctxt "MainScreen"
+msgid "Delete"
+msgstr "Borrar"
+
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:450
+msgctxt "MainScreen"
+msgid "Play"
+msgstr "Reproducir"
+
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:465
+msgctxt "MainScreen"
+msgid "Server"
+msgstr "Servidor"
+
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:472
+msgctxt "MainScreen"
+msgid "Map"
+msgstr "Mapa"
+
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:486
+msgctxt "MainScreen"
+msgid "Timestamp"
+msgstr "Fecha y hora"
+
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:493
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:570
+msgctxt "MainScreen"
+msgid "Size"
+msgstr "Tamaño"
+
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:506
+msgctxt "MainScreen"
+msgid "Download official mods..."
+msgstr "Descargar mods oficiales..."
+
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:513
+msgctxt "MainScreen"
+msgid "Disable all"
+msgstr "Desactivar todo"
+
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:520
+msgctxt "MainScreen"
+msgid "Apply changes"
+msgstr "Aplicar cambios"
+
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:542
+msgctxt "MainScreen"
+msgid "Status"
+msgstr "Estado"
+
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:549
+msgctxt "MainScreen"
+msgid "Apply Order"
+msgstr "Orden"
+
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:556
+msgctxt "MainScreen"
+msgid "Mod"
+msgstr "Mod"
+
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:563
+msgctxt "MainScreen"
+msgid "Paks"
+msgstr "Paks"
+
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:589
+msgctxt "MainScreen"
+msgid "Servers"
+msgstr "Servidores"
+
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:590
+msgctxt "MainScreen"
+msgid "Demos"
+msgstr "Demos"
+
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:591
+msgctxt "MainScreen"
+msgid "Mods"
+msgstr "Mods"
+
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:606
+msgctxt "MainScreen"
+msgid "Quit"
+msgstr "Salir"
+
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:614
+msgctxt "MainScreen"
+msgid "Credits"
+msgstr "Créditos"
+
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:621
+msgctxt "MainScreen"
+msgid "Setup"
+msgstr "Configurar"
+
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:731
+msgctxt "MainScreen"
+msgid "Fetching mod list..."
+msgstr "Obteniendo la lista de mods..."
+
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:750
+msgctxt "MainScreen"
+msgid "Press 'Apply changes' to restart and apply your mods."
+msgstr "Presione 'Aplicar cambios' para reiniciar y aplicar sus mods."
+
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:760
+msgctxt "MainScreen"
+msgid "Download the official ZeroSpades mod pack?"
+msgstr "¿Descargar el paquete de mods oficial de ZeroSpades?"
+
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:761
+msgctxt "MainScreen"
+msgid "These are mods reviewed and hosted by the ZeroSpades team."
+msgstr "Estos son mods revisados ​​y alojados por el equipo de ZeroSpades."
+
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:762
+msgctxt "MainScreen"
+msgid "Source: "
+msgstr "Fuente: "
+
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:763
+msgctxt "MainScreen"
+msgid ""
+"Files will be saved into your Mods/ folder, overwriting any existing copies."
+msgstr ""
+"Los archivos se guardarán en tu carpeta Mods/, sobrescribiendo cualquier "
+"copia existente."
+
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:789
+msgctxt "MainScreen"
+msgid "Disable all mods? This takes effect after a restart."
+msgstr ""
+"¿Desactivar todos los mods? Esto se aplicará después de reiniciar el juego."
+
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:860
+msgctxt "MainScreen"
+msgid ""
+"Are you sure you want to delete '{0}'?\n"
+"This action cannot be undone."
+msgstr ""
+"¿Está seguro de que desea eliminar '{0}'?\n"
+"Esta acción no se puede deshacer."
+
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:895
+msgctxt "MainScreen"
+msgid "Failed to rename demo."
+msgstr "No se pudo cambiar el nombre de la demo."
+
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:1125
 msgctxt "MainScreen"
 msgid ""
 "You were disconnected from the server because of the following reason:\n"
@@ -899,529 +1057,1454 @@ msgstr ""
 "\n"
 "{0}"
 
-#: Resources/Scripts/Gui/MainScreen.as:807
+#: Resources/Scripts/Gui/MainScreen/ServerList.as:223
 msgctxt "MainScreen"
 msgid "Fetching server list..."
 msgstr "Obteniendo lista de servidores..."
 
-#: Resources/Scripts/Gui/MainScreen.as:825
+#: Resources/Scripts/Gui/MainScreen/ServerList.as:239
 msgctxt "MainScreen"
 msgid "Failed to fetch the server list."
 msgstr "No se ha podido obtener la lista de servidores."
 
-#: Resources/Scripts/Gui/MessageBox.as:130
-#: Resources/Scripts/Gui/MessageBox.as:144
+#: Resources/Scripts/Gui/MessageBox.as:120
+#: Resources/Scripts/Gui/MessageBox.as:134
 msgctxt "MessageBox"
 msgid "OK"
 msgstr "Aceptar"
 
-#: Resources/Scripts/Gui/MessageBox.as:144
+#: Resources/Scripts/Gui/MessageBox.as:134
 msgctxt "MessageBox"
 msgid "Cancel"
 msgstr "Cancelar"
 
-#: Resources/Scripts/Gui/Preferences.as:60
+#: Resources/Scripts/Gui/Preferences.as:103
 msgctxt "Preferences"
 msgid "Game Options"
 msgstr "Opciones del juego"
 
-#: Resources/Scripts/Gui/Preferences.as:60
+#: Resources/Scripts/Gui/Preferences.as:106
 msgctxt "Preferences"
 msgid "Interface"
 msgstr "Interfaz"
 
-#: Resources/Scripts/Gui/Preferences.as:61
+#: Resources/Scripts/Gui/Preferences.as:107
+msgctxt "Preferences"
+msgid "Graphics"
+msgstr "Gráficos"
+
+#: Resources/Scripts/Gui/Preferences.as:108
 msgctxt "Preferences"
 msgid "Controls"
 msgstr "Controles"
 
-#: Resources/Scripts/Gui/Preferences.as:62
-#: Resources/Scripts/Gui/Preferences.as:663
-#: Resources/Scripts/Gui/Preferences.as:708
+#: Resources/Scripts/Gui/Preferences.as:109
+#: Resources/Scripts/Gui/Preferences.as:1633
+#: Resources/Scripts/Gui/Preferences.as:1914
 msgctxt "Preferences"
 msgid "Misc"
 msgstr "Varios"
 
-#: Resources/Scripts/Gui/Preferences.as:66
+#: Resources/Scripts/Gui/Preferences.as:115
 msgctxt "Preferences"
 msgid "Back"
 msgstr "Atrás"
 
-#: Resources/Scripts/Gui/Preferences.as:407
+#: Resources/Scripts/Gui/Preferences.as:373
+msgctxt "Preferences"
+msgid "Horizontal Alignment"
+msgstr "Alineación horizontal"
+
+#: Resources/Scripts/Gui/Preferences.as:385
+msgctxt "Preferences"
+msgid "Vertical Alignment"
+msgstr "Alineación vertical"
+
+#: Resources/Scripts/Gui/Preferences.as:397
+msgctxt "Preferences"
+msgid "OK"
+msgstr "Aceptar"
+
+#: Resources/Scripts/Gui/Preferences.as:519
+msgctxt "Preferences"
+msgid "Left"
+msgstr "Izquierda"
+
+#: Resources/Scripts/Gui/Preferences.as:521
+msgctxt "Preferences"
+msgid "Center"
+msgstr "Centro"
+
+#: Resources/Scripts/Gui/Preferences.as:523
+msgctxt "Preferences"
+msgid "Right"
+msgstr "Derecha"
+
+#: Resources/Scripts/Gui/Preferences.as:536
+#: Resources/Scripts/Gui/Preferences.as:591
+#: Resources/Scripts/Gui/Preferences.as:1617
+#: Resources/Scripts/Gui/Preferences.as:1729
+msgctxt "Preferences"
+msgid "Default"
+msgstr "Por defecto"
+
+#: Resources/Scripts/Gui/Preferences.as:538
+msgctxt "Preferences"
+msgid "Quake Pro"
+msgstr "Quake Pro"
+
+#: Resources/Scripts/Gui/Preferences.as:551
+msgctxt "Preferences"
+msgid "Bicubic"
+msgstr "Bicúbico"
+
+#: Resources/Scripts/Gui/Preferences.as:553
+msgctxt "Preferences"
+msgid "Bilinear"
+msgstr "Bilineal"
+
+#: Resources/Scripts/Gui/Preferences.as:555
+msgctxt "Preferences"
+msgid "Nearest Neighbour"
+msgstr "Vecino más cercano"
+
+#: Resources/Scripts/Gui/Preferences.as:568
+msgctxt "Preferences"
+msgid "Unlimited"
+msgstr "Sin límite"
+
+#: Resources/Scripts/Gui/Preferences.as:602
+msgctxt "Preferences"
+msgid "Team Color"
+msgstr "Color del equipo"
+
+#: Resources/Scripts/Gui/Preferences.as:604
+msgctxt "Preferences"
+msgid "Light Blue"
+msgstr "Azul claro"
+
+#: Resources/Scripts/Gui/Preferences.as:606
+#: Resources/Scripts/Gui/Preferences.as:637
+msgctxt "Preferences"
+msgid "Blue"
+msgstr "Azul"
+
+#: Resources/Scripts/Gui/Preferences.as:608
+msgctxt "Preferences"
+msgid "Purple"
+msgstr "Púrpura"
+
+#: Resources/Scripts/Gui/Preferences.as:610
+#: Resources/Scripts/Gui/Preferences.as:633
+msgctxt "Preferences"
+msgid "Red"
+msgstr "Rojo"
+
+#: Resources/Scripts/Gui/Preferences.as:612
+msgctxt "Preferences"
+msgid "Orange"
+msgstr "Naranja"
+
+#: Resources/Scripts/Gui/Preferences.as:614
+#: Resources/Scripts/Gui/Preferences.as:639
+msgctxt "Preferences"
+msgid "Yellow"
+msgstr "Amarillo"
+
+#: Resources/Scripts/Gui/Preferences.as:616
+#: Resources/Scripts/Gui/Preferences.as:635
+msgctxt "Preferences"
+msgid "Green"
+msgstr "Verde"
+
+#: Resources/Scripts/Gui/Preferences.as:618
+msgctxt "Preferences"
+msgid "Aqua"
+msgstr "Turquesa"
+
+#: Resources/Scripts/Gui/Preferences.as:620
+#: Resources/Scripts/Gui/Preferences.as:643
+msgctxt "Preferences"
+msgid "Pink"
+msgstr "Rosa"
+
+#: Resources/Scripts/Gui/Preferences.as:622
+#: Resources/Scripts/Gui/Preferences.as:645
+#: Resources/Scripts/Gui/Preferences.as:660
+#: Resources/Scripts/Gui/Preferences.as:1730
+msgctxt "Preferences"
+msgid "Custom"
+msgstr "Personalizado"
+
+#: Resources/Scripts/Gui/Preferences.as:641
+msgctxt "Preferences"
+msgid "Cyan"
+msgstr "Cian"
+
+#: Resources/Scripts/Gui/Preferences.as:656
+msgctxt "Preferences"
+msgid "Classic"
+msgstr "Clásico"
+
+#: Resources/Scripts/Gui/Preferences.as:658
+msgctxt "Preferences"
+msgid "Dot Sight"
+msgstr "Mira de punto"
+
+#: Resources/Scripts/Gui/Preferences.as:662
+msgctxt "Preferences"
+msgid "Iron Sight"
+msgstr "Mira de hierro"
+
+#: Resources/Scripts/Gui/Preferences.as:808
 msgctxt "Preferences"
 msgid "Press Key to Bind or [Escape] to Cancel..."
 msgstr "Presione la tecla para asignar o [Escape] para Cancelar..."
 
-#: Resources/Scripts/Gui/Preferences.as:420
+#: Resources/Scripts/Gui/Preferences.as:819
 msgctxt "Preferences"
 msgid "Unbound"
-msgstr "Sin Asignar"
+msgstr "Sin asignar"
 
-#: Resources/Scripts/Gui/Preferences.as:431
+#: Resources/Scripts/Gui/Preferences.as:822
 msgctxt "Preferences"
 msgid "Left Mouse Button"
 msgstr "Botón izquierdo del ratón"
 
-#: Resources/Scripts/Gui/Preferences.as:433
+#: Resources/Scripts/Gui/Preferences.as:824
 msgctxt "Preferences"
 msgid "Right Mouse Button"
 msgstr "Botón derecho del ratón"
 
-#: Resources/Scripts/Gui/Preferences.as:435
+#: Resources/Scripts/Gui/Preferences.as:826
 msgctxt "Preferences"
 msgid "Middle Mouse Button"
 msgstr "Botón central del ratón"
 
-#: Resources/Scripts/Gui/Preferences.as:437
+#: Resources/Scripts/Gui/Preferences.as:828
 msgctxt "Preferences"
 msgid "Mouse Button 4"
 msgstr "Botón 4 del ratón"
 
-#: Resources/Scripts/Gui/Preferences.as:439
+#: Resources/Scripts/Gui/Preferences.as:830
 msgctxt "Preferences"
 msgid "Mouse Button 5"
 msgstr "Botón 5 del ratón"
 
-#: Resources/Scripts/Gui/Preferences.as:613
-#: Resources/Scripts/Gui/Preferences.as:619
+#: Resources/Scripts/Gui/Preferences.as:1083
+#: Resources/Scripts/Gui/Preferences.as:1247
+msgctxt "Preferences"
+msgid "No Preview Available."
+msgstr "No hay vista previa disponible."
+
+#: Resources/Scripts/Gui/Preferences.as:1455
+#: Resources/Scripts/Gui/Preferences.as:1462
+#: Resources/Scripts/Gui/Preferences.as:1564
+#: Resources/Scripts/Gui/Preferences.as:1569
 msgctxt "Preferences"
 msgid "ON"
 msgstr "Encendido"
 
-#: Resources/Scripts/Gui/Preferences.as:613
-#: Resources/Scripts/Gui/Preferences.as:619
-#: Resources/Scripts/Gui/Preferences.as:648
-#: Resources/Scripts/Gui/Preferences.as:651
+#: Resources/Scripts/Gui/Preferences.as:1456
+#: Resources/Scripts/Gui/Preferences.as:1464
+#: Resources/Scripts/Gui/Preferences.as:1548
+#: Resources/Scripts/Gui/Preferences.as:1559
+#: Resources/Scripts/Gui/Preferences.as:1566
+#: Resources/Scripts/Gui/Preferences.as:1571
+#: Resources/Scripts/Gui/Preferences.as:1579
+#: Resources/Scripts/Gui/Preferences.as:1584
+#: Resources/Scripts/Gui/Preferences.as:1683
+#: Resources/Scripts/Gui/Preferences.as:1688
+#: Resources/Scripts/Gui/Preferences.as:1718
+#: Resources/Scripts/Gui/Preferences.as:1728
+#: Resources/Scripts/Gui/Preferences.as:1770
 msgctxt "Preferences"
 msgid "OFF"
 msgstr "Apagado"
 
-#: Resources/Scripts/Gui/Preferences.as:619
+#: Resources/Scripts/Gui/Preferences.as:1463
 msgctxt "Preferences"
 msgid "REVERSED"
 msgstr "Invertido"
 
-#: Resources/Scripts/Gui/Preferences.as:637
+#: Resources/Scripts/Gui/Preferences.as:1488
+msgctxt "Preferences"
+msgid "Reset"
+msgstr "Restablecer"
+
+#: Resources/Scripts/Gui/Preferences.as:1494
+msgctxt "Preferences"
+msgid "Randomize"
+msgstr "Aleatorizar"
+
+#: Resources/Scripts/Gui/Preferences.as:1537
 msgctxt "Preferences"
 msgid "Player Information"
 msgstr "Info. del jugador"
 
-#: Resources/Scripts/Gui/Preferences.as:638
+#: Resources/Scripts/Gui/Preferences.as:1538
 msgctxt "Preferences"
 msgid "Player Name"
 msgstr "Nombre del jugador"
 
-#: Resources/Scripts/Gui/Preferences.as:642
+#: Resources/Scripts/Gui/Preferences.as:1544
 msgctxt "Preferences"
-msgid "Effects"
-msgstr "Efectos"
+msgid "Gameplay"
+msgstr "Jugabilidad"
 
-#: Resources/Scripts/Gui/Preferences.as:643
-msgctxt "Preferences"
-msgid "Blood"
-msgstr "Sangre"
-
-#: Resources/Scripts/Gui/Preferences.as:1174
-msgctxt "Preferences"
-msgid "Full Aim Down Sight"
-msgstr "Apuntado completo"
-
-#: Resources/Scripts/Gui/Preferences.as:1175
+#: Resources/Scripts/Gui/Preferences.as:1545
 msgctxt "Preferences"
 msgid "Aiming Animation"
 msgstr "Animación de apuntado"
 
-#: Resources/Scripts/Gui/Preferences.as:647
-msgctxt "Preferences"
-msgid "Camera Shake"
-msgstr "Vibración de cámara"
-
-#: Resources/Scripts/Gui/Preferences.as:648
-msgctxt "Preferences"
-msgid "MORE"
-msgstr "Más"
-
-#: Resources/Scripts/Gui/Preferences.as:648
-#: Resources/Scripts/Gui/Preferences.as:1176
-msgctxt "Preferences"
-msgid "NORMAL"
-msgstr "Normal"
-
-#: Resources/Scripts/Gui/Preferences.as:1157
+#: Resources/Scripts/Gui/Preferences.as:1546
 msgctxt "Preferences"
 msgid "FAST"
 msgstr "Rápido"
 
-#: Resources/Scripts/Gui/Preferences.as:1176
+#: Resources/Scripts/Gui/Preferences.as:1547
+#: Resources/Scripts/Gui/Preferences.as:1558
+#: Resources/Scripts/Gui/Preferences.as:1578
+#: Resources/Scripts/Gui/Preferences.as:1583
+#: Resources/Scripts/Gui/Preferences.as:1590
+#: Resources/Scripts/Gui/Preferences.as:1594
+#: Resources/Scripts/Gui/Preferences.as:1679
 msgctxt "Preferences"
-msgid "SMALL"
-msgstr "Pequeño"
+msgid "NORMAL"
+msgstr "Normal"
 
-#: Resources/Scripts/Gui/Preferences.as:650
+#: Resources/Scripts/Gui/Preferences.as:1550
+msgctxt "Preferences"
+msgid "Full Aim Down Sight"
+msgstr "Apuntado completo"
+
+#: Resources/Scripts/Gui/Preferences.as:1551
+msgctxt "Preferences"
+msgid "Classic Weapon Recoil"
+msgstr "Retroceso clásico del arma"
+
+#: Resources/Scripts/Gui/Preferences.as:1552
+msgctxt "Preferences"
+msgid "Classic Sprinting"
+msgstr "Sprint clásico"
+
+#: Resources/Scripts/Gui/Preferences.as:1553
+msgctxt "Preferences"
+msgid "Classic Zoom"
+msgstr "Zoom clásico"
+
+#: Resources/Scripts/Gui/Preferences.as:1555
+msgctxt "Preferences"
+msgid "Effects"
+msgstr "Efectos"
+
+#: Resources/Scripts/Gui/Preferences.as:1556
+msgctxt "Preferences"
+msgid "Blood"
+msgstr "Sangre"
+
+#: Resources/Scripts/Gui/Preferences.as:1557
+msgctxt "Preferences"
+msgid "MARKS"
+msgstr "Marcas"
+
+#: Resources/Scripts/Gui/Preferences.as:1561
+msgctxt "Preferences"
+msgid "Ragdoll Corpses"
+msgstr "Cadáveres ragdoll"
+
+#: Resources/Scripts/Gui/Preferences.as:1562
+msgctxt "Preferences"
+msgid "Enhanced Ragdoll Physics"
+msgstr "Físicas de cadáveres mejoradas"
+
+#: Resources/Scripts/Gui/Preferences.as:1563
+msgctxt "Preferences"
+msgid "Bullet Tracers"
+msgstr "Trazadores de bala"
+
+#: Resources/Scripts/Gui/Preferences.as:1565
+#: Resources/Scripts/Gui/Preferences.as:1570
+msgctxt "Preferences"
+msgid "3rd Person"
+msgstr "3ra persona"
+
+#: Resources/Scripts/Gui/Preferences.as:1568
+msgctxt "Preferences"
+msgid "Muzzle Flashes"
+msgstr "Fogonazos del arma"
+
+#: Resources/Scripts/Gui/Preferences.as:1573
+msgctxt "Preferences"
+msgid "Eject Bullet Casings"
+msgstr "Eyectar cartuchos de bala"
+
+#: Resources/Scripts/Gui/Preferences.as:1574
+msgctxt "Preferences"
+msgid "Hurt Screen Effects"
+msgstr "Efectos de daño en pantalla"
+
+#: Resources/Scripts/Gui/Preferences.as:1575
+msgctxt "Preferences"
+msgid "Heal Screen Effects"
+msgstr "Efectos de curación en pantalla"
+
+#: Resources/Scripts/Gui/Preferences.as:1576
+msgctxt "Preferences"
+msgid "Camera Shake"
+msgstr "Vibración de cámara"
+
+#: Resources/Scripts/Gui/Preferences.as:1577
+#: Resources/Scripts/Gui/Preferences.as:1582
+msgctxt "Preferences"
+msgid "MORE"
+msgstr "Más"
+
+#: Resources/Scripts/Gui/Preferences.as:1581
 msgctxt "Preferences"
 msgid "Particles"
 msgstr "Partículas"
 
-#: Resources/Scripts/Gui/Preferences.as:651
+#: Resources/Scripts/Gui/Preferences.as:1586
+msgctxt "Preferences"
+msgid "Water Splash"
+msgstr "Salpicaduras de agua"
+
+#: Resources/Scripts/Gui/Preferences.as:1588
+msgctxt "Preferences"
+msgid "Feedbacks"
+msgstr "Feedbacks"
+
+#: Resources/Scripts/Gui/Preferences.as:1589
+msgctxt "Preferences"
+msgid "Center Messages"
+msgstr "Mensajes centrales"
+
+#: Resources/Scripts/Gui/Preferences.as:1591
 msgctxt "Preferences"
 msgid "LESS"
 msgstr "Menos"
 
-#: Resources/Scripts/Gui/Preferences.as:654
+#: Resources/Scripts/Gui/Preferences.as:1593
 msgctxt "Preferences"
-msgid "Feedbacks"
-msgstr ""
+msgid "Center Messages Size"
+msgstr "Tamaño de mensajes centrales"
 
-#: Resources/Scripts/Gui/Preferences.as:1545
+#: Resources/Scripts/Gui/Preferences.as:1595
 msgctxt "Preferences"
-msgid "Viewmodel"
-msgstr ""
+msgid "SMALL"
+msgstr "Pequeño"
 
-#: Resources/Scripts/Gui/Preferences.as:656
+#: Resources/Scripts/Gui/Preferences.as:1597
 msgctxt "Preferences"
-msgid "Hit Indicator"
-msgstr "Indicador de impacto"
+msgid "Ignore Chat Messages"
+msgstr "Ignorar mensajes del chat"
 
-#: Resources/Scripts/Gui/Preferences.as:657
+#: Resources/Scripts/Gui/Preferences.as:1598
+msgctxt "Preferences"
+msgid "Ignore Private Messages"
+msgstr "Ignorar mensajes privados"
+
+#: Resources/Scripts/Gui/Preferences.as:1599
+msgctxt "Preferences"
+msgid "Master Volume"
+msgstr "Volumen general"
+
+#: Resources/Scripts/Gui/Preferences.as:1601
+msgctxt "Preferences"
+msgid "Death Camera Volume"
+msgstr "Volumen de cámara de muerte"
+
+#: Resources/Scripts/Gui/Preferences.as:1602
+msgctxt "Preferences"
+msgid "Respawn Beep Volume"
+msgstr "Volumen de reaparición"
+
+#: Resources/Scripts/Gui/Preferences.as:1603
+msgctxt "Preferences"
+msgid "Hit Feedback Volume"
+msgstr "Vol. de confirmación de impacto"
+
+#: Resources/Scripts/Gui/Preferences.as:1604
+msgctxt "Preferences"
+msgid "Headshot Feedback Volume"
+msgstr "Vol. de confirmación de headshot"
+
+#: Resources/Scripts/Gui/Preferences.as:1605
+msgctxt "Preferences"
+msgid "Chat Notify Sounds"
+msgstr "Vol. de notificación del chat"
+
+#: Resources/Scripts/Gui/Preferences.as:1606
 msgctxt "Preferences"
 msgid "Show Alerts"
 msgstr "Mostrar alertas"
 
-#: Resources/Scripts/Gui/Preferences.as:657
+#: Resources/Scripts/Gui/Preferences.as:1607
 msgctxt "Preferences"
 msgid "Show Server Alerts"
 msgstr "Mostrar alertas del servidor"
 
-#: Resources/Scripts/Gui/Preferences.as:660
+#: Resources/Scripts/Gui/Preferences.as:1608
 msgctxt "Preferences"
-msgid "Allow Unicode"
-msgstr "Permitir Unicode"
+msgid "Alert Sounds"
+msgstr "Sonidos de alertas"
 
-#: Resources/Scripts/Gui/Preferences.as:664
+#: Resources/Scripts/Gui/Preferences.as:1609
+msgctxt "Preferences"
+msgid "Hit Log"
+msgstr "Registro de impactos"
+
+#: Resources/Scripts/Gui/Preferences.as:1610
+msgctxt "Preferences"
+msgid "Hit Indicator"
+msgstr "Indicador de impacto"
+
+#: Resources/Scripts/Gui/Preferences.as:1612
+msgctxt "Preferences"
+msgid "Viewmodel"
+msgstr "Viewmodel"
+
+#: Resources/Scripts/Gui/Preferences.as:1613
+msgctxt "Preferences"
+msgid "Weapon Keychains"
+msgstr "Llaveros del arma"
+
+#: Resources/Scripts/Gui/Preferences.as:1615
+msgctxt "Preferences"
+msgid "Viewmodel Position"
+msgstr "Posición del arma"
+
+#: Resources/Scripts/Gui/Preferences.as:1618
+msgctxt "Preferences"
+msgid "Balanced"
+msgstr "Equilibrado"
+
+#: Resources/Scripts/Gui/Preferences.as:1619
+msgctxt "Preferences"
+msgid "Minimal"
+msgstr "Minimalista"
+
+#: Resources/Scripts/Gui/Preferences.as:1625
+msgctxt "Preferences"
+msgid "Viewmodel Alignment"
+msgstr "Alineación del arma"
+
+#: Resources/Scripts/Gui/Preferences.as:1627
+msgctxt "Preferences"
+msgid "Switch Viewmodel Handedness"
+msgstr "Cambiar lateralidad del arma"
+
+#: Resources/Scripts/Gui/Preferences.as:1628
+msgctxt "Preferences"
+msgid "Hide Player Arms"
+msgstr "Ocultar brazos del jugador"
+
+#: Resources/Scripts/Gui/Preferences.as:1629
+msgctxt "Preferences"
+msgid "Hide Player Body"
+msgstr "Ocultar cuerpo del jugador"
+
+#: Resources/Scripts/Gui/Preferences.as:1630
+msgctxt "Preferences"
+msgid "Classic Player Model"
+msgstr "Modelo clásico del jugador"
+
+#: Resources/Scripts/Gui/Preferences.as:1631
+msgctxt "Preferences"
+msgid "Classic Viewmodel"
+msgstr "Modelo clásico del arma"
+
+#: Resources/Scripts/Gui/Preferences.as:1634
 msgctxt "Preferences"
 msgid "Field of View"
 msgstr "Campo de visión"
 
-#: Resources/Scripts/Gui/Preferences.as:1278
+#: Resources/Scripts/Gui/Preferences.as:1636
 msgctxt "Preferences"
-msgid "Minimap Size"
-msgstr "Tamaño del minimapa"
+msgid "Horizontal FOV"
+msgstr "FOV horizontal"
 
-#: Resources/Scripts/Gui/Preferences.as:1280
+#: Resources/Scripts/Gui/Preferences.as:1637
 msgctxt "Preferences"
-msgid "Minimap Scale Mode"
-msgstr "Modo de escala del minimapa"
+msgid "Environmental Audio"
+msgstr "Audio ambiental"
 
-#: Resources/Scripts/Gui/Preferences.as:1274
+#: Resources/Scripts/Gui/Preferences.as:1638
 msgctxt "Preferences"
-msgid "Minimap Opacity"
-msgstr "Opacidad del minimapa"
+msgid "Skip dead players (death cam)"
+msgstr "Omitir muertos (cám. de muerte)"
 
-#: Resources/Scripts/Gui/Preferences.as:668
+#: Resources/Scripts/Gui/Preferences.as:1639
+msgctxt "Preferences"
+msgid "Save Final Score Screenshot"
+msgstr "Guardar captura del marcador final"
+
+#: Resources/Scripts/Gui/Preferences.as:1640
+msgctxt "Preferences"
+msgid "Debug Hit Detection"
+msgstr "Depurar detección de impactos"
+
+#: Resources/Scripts/Gui/Preferences.as:1641
+msgctxt "Preferences"
+msgid "Hit Test Debugger Size"
+msgstr "Tamaño del depurador de impactos"
+
+#: Resources/Scripts/Gui/Preferences.as:1643
+msgctxt "Preferences"
+msgid "Toggle Hit Debugger Zoom"
+msgstr "Zoom del depurador de impactos"
+
+#: Resources/Scripts/Gui/Preferences.as:1644
+msgctxt "Preferences"
+msgid "Hit Debugger Fade Time"
+msgstr "Tiempo de desvanecimiento"
+
+#: Resources/Scripts/Gui/Preferences.as:1646
+msgctxt "Preferences"
+msgid "Debug Weapon Spread"
+msgstr "Depurar dispersión del arma"
+
+#: Resources/Scripts/Gui/Preferences.as:1647
+msgctxt "Preferences"
+msgid "Debug Block Cursor"
+msgstr "Depurar cursor de bloques"
+
+#: Resources/Scripts/Gui/Preferences.as:1648
+msgctxt "Preferences"
+msgid "Debug Players Hitbox"
+msgstr "Depurar hitbox de jugadores"
+
+#: Resources/Scripts/Gui/Preferences.as:1649
+msgctxt "Preferences"
+msgid "Debug Weapon Anchor Points"
+msgstr "Depurar puntos de anclaje del arma"
+
+#: Resources/Scripts/Gui/Preferences.as:1670
+msgctxt "Preferences"
+msgid "Heads-Up Display"
+msgstr "HUD"
+
+#: Resources/Scripts/Gui/Preferences.as:1671
+msgctxt "Preferences"
+msgid "Hide HUD"
+msgstr "Ocultar el HUD"
+
+#: Resources/Scripts/Gui/Preferences.as:1672
+msgctxt "Preferences"
+msgid "HUD Color"
+msgstr "Color del HUD"
+
+#: Resources/Scripts/Gui/Preferences.as:1674
+#: Resources/Scripts/Gui/Preferences.as:1735
+msgctxt "Preferences"
+msgid "Custom Color"
+msgstr "Color personalizado"
+
+#: Resources/Scripts/Gui/Preferences.as:1676
+msgctxt "Preferences"
+msgid "HUD Edge Positions"
+msgstr "Posicion de los bordes del HUD"
+
+#: Resources/Scripts/Gui/Preferences.as:1677
+msgctxt "Preferences"
+msgid "Edit"
+msgstr "Editar"
+
+#: Resources/Scripts/Gui/Preferences.as:1678
+msgctxt "Preferences"
+msgid "HUD Ammo Style"
+msgstr "Estilo de munición del HUD"
+
+#: Resources/Scripts/Gui/Preferences.as:1680
+msgctxt "Preferences"
+msgid "SIMPLE"
+msgstr "Simple"
+
+#: Resources/Scripts/Gui/Preferences.as:1682
+msgctxt "Preferences"
+msgid "Show Alive Player Count"
+msgstr "Mostrar jugadores vivos"
+
+#: Resources/Scripts/Gui/Preferences.as:1684
+#: Resources/Scripts/Gui/Preferences.as:1689
+msgctxt "Preferences"
+msgid "Top"
+msgstr "Arriba"
+
+#: Resources/Scripts/Gui/Preferences.as:1685
+#: Resources/Scripts/Gui/Preferences.as:1690
+#: Resources/Scripts/Gui/Preferences.as:1719
+msgctxt "Preferences"
+msgid "Bottom"
+msgstr "Abajo"
+
+#: Resources/Scripts/Gui/Preferences.as:1687
 msgctxt "Preferences"
 msgid "Show Client Statistics"
 msgstr "Mostrar estadísticas del cliente"
 
-#: Resources/Scripts/Gui/Preferences.as:678
+#: Resources/Scripts/Gui/Preferences.as:1692
+msgctxt "Preferences"
+msgid "Small Stats Font"
+msgstr "Fuente de estadísticas pequeña"
+
+#: Resources/Scripts/Gui/Preferences.as:1693
+msgctxt "Preferences"
+msgid "Show Player Statistics"
+msgstr "Mostrar estadísticas del jugador"
+
+#: Resources/Scripts/Gui/Preferences.as:1694
+msgctxt "Preferences"
+msgid "Show Placed Blocks"
+msgstr "Mostrar bloques colocados"
+
+#: Resources/Scripts/Gui/Preferences.as:1695
+msgctxt "Preferences"
+msgid "Player Statistics Height"
+msgstr "Altura de estadísticas del jugador"
+
+#: Resources/Scripts/Gui/Preferences.as:1697
+msgctxt "Preferences"
+msgid "Chat Height"
+msgstr "Altura del chat"
+
+#: Resources/Scripts/Gui/Preferences.as:1699
+msgctxt "Preferences"
+msgid "Chat Fade Time"
+msgstr "Desvanecimiento del chat"
+
+#: Resources/Scripts/Gui/Preferences.as:1701
+msgctxt "Preferences"
+msgid "Killfeed Height"
+msgstr "Altura del killfeed"
+
+#: Resources/Scripts/Gui/Preferences.as:1703
+msgctxt "Preferences"
+msgid "Killfeed Fade Time"
+msgstr "Desvanecimiento del killfeed"
+
+#: Resources/Scripts/Gui/Preferences.as:1705
+msgctxt "Preferences"
+msgid "Killfeed Icons"
+msgstr "Iconos del killfeed"
+
+#: Resources/Scripts/Gui/Preferences.as:1706
+msgctxt "Preferences"
+msgid "Show Dominations"
+msgstr "Mostrar dominaciones"
+
+#: Resources/Scripts/Gui/Preferences.as:1708
+msgctxt "Preferences"
+msgid "Minimap"
+msgstr "Minimapa"
+
+#: Resources/Scripts/Gui/Preferences.as:1709
+msgctxt "Preferences"
+msgid "Minimap Size"
+msgstr "Tamaño del minimapa"
+
+#: Resources/Scripts/Gui/Preferences.as:1711
+msgctxt "Preferences"
+msgid "Minimap Scale Mode"
+msgstr "Modo de escala del minimapa"
+
+#: Resources/Scripts/Gui/Preferences.as:1713
+msgctxt "Preferences"
+msgid "Minimap Opacity"
+msgstr "Opacidad del minimapa"
+
+#: Resources/Scripts/Gui/Preferences.as:1715
+msgctxt "Preferences"
+msgid "Use Weapon Icons"
+msgstr "Usar iconos de armas"
+
+#: Resources/Scripts/Gui/Preferences.as:1716
+msgctxt "Preferences"
+msgid "Use Random Colors"
+msgstr "Usar colores aleatorios"
+
+#: Resources/Scripts/Gui/Preferences.as:1717
+msgctxt "Preferences"
+msgid "Show Map Location"
+msgstr "Mostrar ubicación en el mapa"
+
+#: Resources/Scripts/Gui/Preferences.as:1720
+msgctxt "Preferences"
+msgid "Side"
+msgstr "Lado"
+
+#: Resources/Scripts/Gui/Preferences.as:1722
+msgctxt "Preferences"
+msgid "Show Player Names"
+msgstr "Mostrar nombres de jugadores"
+
+#: Resources/Scripts/Gui/Preferences.as:1724
+msgctxt "Preferences"
+msgid "Target"
+msgstr "Objetivo"
+
+#: Resources/Scripts/Gui/Preferences.as:1727
+msgctxt "Preferences"
+msgid "Target Type"
+msgstr "Tipo de objetivo"
+
+#: Resources/Scripts/Gui/Preferences.as:1732
+#: Resources/Scripts/Gui/Preferences.as:1776
+msgctxt "Preferences"
+msgid "Lines"
+msgstr "Líneas"
+
+#: Resources/Scripts/Gui/Preferences.as:1733
+#: Resources/Scripts/Gui/Preferences.as:1777
+msgctxt "Preferences"
+msgid "Color"
+msgstr "Color"
+
+#: Resources/Scripts/Gui/Preferences.as:1737
+#: Resources/Scripts/Gui/Preferences.as:1779
+msgctxt "Preferences"
+msgid "Opacity"
+msgstr "Opacidad"
+
+#: Resources/Scripts/Gui/Preferences.as:1739
+#: Resources/Scripts/Gui/Preferences.as:1781
+msgctxt "Preferences"
+msgid "Length"
+msgstr "Longitud"
+
+#: Resources/Scripts/Gui/Preferences.as:1742
+#: Resources/Scripts/Gui/Preferences.as:1784
+msgctxt "Preferences"
+msgid "Thickness"
+msgstr "Grosor"
+
+#: Resources/Scripts/Gui/Preferences.as:1744
+#: Resources/Scripts/Gui/Preferences.as:1786
+msgctxt "Preferences"
+msgid "Gap"
+msgstr "Abertura"
+
+#: Resources/Scripts/Gui/Preferences.as:1746
+#: Resources/Scripts/Gui/Preferences.as:1788
+msgctxt "Preferences"
+msgid "Dynamic"
+msgstr "Dinámico"
+
+#: Resources/Scripts/Gui/Preferences.as:1747
+#: Resources/Scripts/Gui/Preferences.as:1789
+msgctxt "Preferences"
+msgid "Dynamic Split Dist"
+msgstr "Distancia de separación"
+
+#: Resources/Scripts/Gui/Preferences.as:1749
+#: Resources/Scripts/Gui/Preferences.as:1791
+msgctxt "Preferences"
+msgid "Outline"
+msgstr "Contorno"
+
+#: Resources/Scripts/Gui/Preferences.as:1750
+#: Resources/Scripts/Gui/Preferences.as:1792
+msgctxt "Preferences"
+msgid "Outline Color"
+msgstr "Color del contorno"
+
+#: Resources/Scripts/Gui/Preferences.as:1752
+#: Resources/Scripts/Gui/Preferences.as:1794
+msgctxt "Preferences"
+msgid "Outline Opacity"
+msgstr "Opacidad del contorno"
+
+#: Resources/Scripts/Gui/Preferences.as:1754
+#: Resources/Scripts/Gui/Preferences.as:1796
+msgctxt "Preferences"
+msgid "Outline Thickness"
+msgstr "Grosor del contorno"
+
+#: Resources/Scripts/Gui/Preferences.as:1756
+#: Resources/Scripts/Gui/Preferences.as:1798
+msgctxt "Preferences"
+msgid "Rounded Corners Style"
+msgstr "Estilo de esquinas redondeadas"
+
+#: Resources/Scripts/Gui/Preferences.as:1757
+#: Resources/Scripts/Gui/Preferences.as:1799
+msgctxt "Preferences"
+msgid "Center Dot"
+msgstr "Opacidad del punto central"
+
+#: Resources/Scripts/Gui/Preferences.as:1758
+#: Resources/Scripts/Gui/Preferences.as:1800
+msgctxt "Preferences"
+msgid "Center Dot Color"
+msgstr "Color del punto central"
+
+#: Resources/Scripts/Gui/Preferences.as:1760
+#: Resources/Scripts/Gui/Preferences.as:1802
+msgctxt "Preferences"
+msgid "Center Dot Opacity"
+msgstr "Opacidad del punto central"
+
+#: Resources/Scripts/Gui/Preferences.as:1762
+#: Resources/Scripts/Gui/Preferences.as:1804
+msgctxt "Preferences"
+msgid "Center Dot Thickness"
+msgstr "Grosor del punto central"
+
+#: Resources/Scripts/Gui/Preferences.as:1764
+#: Resources/Scripts/Gui/Preferences.as:1806
+msgctxt "Preferences"
+msgid "T Style"
+msgstr "Estilo T"
+
+#: Resources/Scripts/Gui/Preferences.as:1766
+msgctxt "Preferences"
+msgid "Scope"
+msgstr "Mira"
+
+#: Resources/Scripts/Gui/Preferences.as:1769
+msgctxt "Preferences"
+msgid "Reflex Sight"
+msgstr "Mira reflectora"
+
+#: Resources/Scripts/Gui/Preferences.as:1771
+msgctxt "Preferences"
+msgid "Dot"
+msgstr "Punto"
+
+#: Resources/Scripts/Gui/Preferences.as:1772
+msgctxt "Preferences"
+msgid "Cross"
+msgstr "Cruz"
+
+#: Resources/Scripts/Gui/Preferences.as:1774
+msgctxt "Preferences"
+msgid "Scope Type"
+msgstr "Tipo de mira"
+
+#: Resources/Scripts/Gui/Preferences.as:1808
+#: Resources/Scripts/Gui/Preferences.as:1834
+msgctxt "Preferences"
+msgid "World"
+msgstr "Mundo"
+
+#: Resources/Scripts/Gui/Preferences.as:1809
+msgctxt "Preferences"
+msgid "Damage Indicators"
+msgstr "Indicadores de daño"
+
+#: Resources/Scripts/Gui/Preferences.as:1810
+msgctxt "Preferences"
+msgid "Show Hover Player Names"
+msgstr "Nombres al pasar el cursor"
+
+#: Resources/Scripts/Gui/Preferences.as:1811
+msgctxt "Preferences"
+msgid "Show Dead Player Names"
+msgstr "Nombres de jugadores muertos"
+
+#: Resources/Scripts/Gui/Preferences.as:1826
+#: Resources/Scripts/Gui/Preferences.as:1947
+msgctxt "Preferences"
+msgid "General"
+msgstr "General"
+
+#: Resources/Scripts/Gui/Preferences.as:1827
+msgctxt "Preferences"
+msgid "Render Scale"
+msgstr "Escala de renderizado"
+
+#: Resources/Scripts/Gui/Preferences.as:1829
+msgctxt "Preferences"
+msgid "Render Scaling Filter"
+msgstr "Filtro de escala de renderizado"
+
+#: Resources/Scripts/Gui/Preferences.as:1831
+msgctxt "Preferences"
+msgid "Rendering Statistics"
+msgstr "Estadísticas de renderizado"
+
+#: Resources/Scripts/Gui/Preferences.as:1832
+msgctxt "Preferences"
+msgid "Allow CPU Rendering"
+msgstr "Permitir renderizado por CPU"
+
+#: Resources/Scripts/Gui/Preferences.as:1835
+msgctxt "Preferences"
+msgid "Dynamic Lights"
+msgstr "Luces dinámicas"
+
+#: Resources/Scripts/Gui/Preferences.as:1836
+msgctxt "Preferences"
+msgid "Tracers Lights"
+msgstr "Luces de trazadores"
+
+#: Resources/Scripts/Gui/Preferences.as:1837
+msgctxt "Preferences"
+msgid "Depth Prepass"
+msgstr "Prepaso de profundidad"
+
+#: Resources/Scripts/Gui/Preferences.as:1838
+msgctxt "Preferences"
+msgid "Occlusion Querying"
+msgstr "Consulta de oclusiones"
+
+#: Resources/Scripts/Gui/Preferences.as:1839
+msgctxt "Preferences"
+msgid "Object Outlines"
+msgstr "Contornos de objetos"
+
+#: Resources/Scripts/Gui/Preferences.as:1841
+msgctxt "Preferences"
+msgid "Post-processing"
+msgstr "Post-procesado"
+
+#: Resources/Scripts/Gui/Preferences.as:1842
+msgctxt "Preferences"
+msgid "Depth Of Field"
+msgstr "Profundidad de campo"
+
+#: Resources/Scripts/Gui/Preferences.as:1843
+msgctxt "Preferences"
+msgid "Camera Blur"
+msgstr "Desenfoque de cámara"
+
+#: Resources/Scripts/Gui/Preferences.as:1844
+msgctxt "Preferences"
+msgid "FXAA Anti-Aliasing"
+msgstr "Suavizado FXAA"
+
+#: Resources/Scripts/Gui/Preferences.as:1845
+msgctxt "Preferences"
+msgid "Lens Flares"
+msgstr "Destellos de lente"
+
+#: Resources/Scripts/Gui/Preferences.as:1846
+msgctxt "Preferences"
+msgid "Flares Lights"
+msgstr "Luces de destellos"
+
+#: Resources/Scripts/Gui/Preferences.as:1847
+msgctxt "Preferences"
+msgid "Color Correction"
+msgstr "Corrección de color"
+
+#: Resources/Scripts/Gui/Preferences.as:1848
+msgctxt "Preferences"
+msgid "Sharpening"
+msgstr "Nitidez"
+
+#: Resources/Scripts/Gui/Preferences.as:1850
+msgctxt "Preferences"
+msgid "Saturation"
+msgstr "Saturación"
+
+#: Resources/Scripts/Gui/Preferences.as:1852
+msgctxt "Preferences"
+msgid "Exposure"
+msgstr "Exposición"
+
+#: Resources/Scripts/Gui/Preferences.as:1855
+msgctxt "Preferences"
+msgid "Software Renderer"
+msgstr "Render Software"
+
+#: Resources/Scripts/Gui/Preferences.as:1856
+msgctxt "Preferences"
+msgid "Thread Count"
+msgstr "Número de hilos"
+
+#: Resources/Scripts/Gui/Preferences.as:1857
+msgctxt "Preferences"
+msgid " Threads"
+msgstr " Hilos"
+
+#: Resources/Scripts/Gui/Preferences.as:1858
+msgctxt "Preferences"
+msgid "Undersampling"
+msgstr "Submuestreo"
+
+#: Resources/Scripts/Gui/Preferences.as:1874
 msgctxt "Preferences"
 msgid "Weapons/Tools"
 msgstr "Armas/Herramientas"
 
-#: Resources/Scripts/Gui/Preferences.as:679
+#: Resources/Scripts/Gui/Preferences.as:1875
 msgctxt "Preferences"
 msgid "Attack"
 msgstr "Ataque"
 
-#: Resources/Scripts/Gui/Preferences.as:680
+#: Resources/Scripts/Gui/Preferences.as:1876
 msgctxt "Preferences"
 msgid "Alt. Attack"
 msgstr "Ataque alternativo"
 
-#: Resources/Scripts/Gui/Preferences.as:681
+#: Resources/Scripts/Gui/Preferences.as:1877
 msgctxt "Preferences"
 msgid "Hold Aim Down Sight"
 msgstr "Mantener mirilla con el botón"
 
-#: Resources/Scripts/Gui/Preferences.as:682
+#: Resources/Scripts/Gui/Preferences.as:1878
+msgctxt "Preferences"
+msgid "Mouse Sensitivity Type"
+msgstr "Tipo de sensibilidad del ratón"
+
+#: Resources/Scripts/Gui/Preferences.as:1880
 msgctxt "Preferences"
 msgid "Mouse Sensitivity"
 msgstr "Sensibilidad del ratón"
 
-#: Resources/Scripts/Gui/Preferences.as:684
+#: Resources/Scripts/Gui/Preferences.as:1882
 msgctxt "Preferences"
 msgid "ADS Mouse Sens. Scale"
 msgstr "Sensibilidad del zoom"
 
-#: Resources/Scripts/Gui/Preferences.as:686
+#: Resources/Scripts/Gui/Preferences.as:1884
+msgctxt "Preferences"
+msgid "Mouse Acceleration"
+msgstr "Aceleración del ratón"
+
+#: Resources/Scripts/Gui/Preferences.as:1885
 msgctxt "Preferences"
 msgid "Exponential Power"
 msgstr "Exponente de aceleración"
 
-#: Resources/Scripts/Gui/Preferences.as:688
+#: Resources/Scripts/Gui/Preferences.as:1887
 msgctxt "Preferences"
 msgid "Invert Y-axis Mouse Input"
 msgstr "Invertir ratón"
 
-#: Resources/Scripts/Gui/Preferences.as:689
+#: Resources/Scripts/Gui/Preferences.as:1888
 msgctxt "Preferences"
 msgid "Reload"
 msgstr "Recargar"
 
-#: Resources/Scripts/Gui/Preferences.as:1420
-msgctxt "Preferences"
-msgid "Color Palette"
-msgstr "Paleta de colores"
-
-#: Resources/Scripts/Gui/Preferences.as:1421
-msgctxt "Preferences"
-msgid "Capture Color"
-msgstr "Capturar color"
-
-#: Resources/Scripts/Gui/Preferences.as:1422
-msgctxt "Preferences"
-msgid "Navigate up"
-msgstr "Navegar hacia arriba"
-
-#: Resources/Scripts/Gui/Preferences.as:1423
-msgctxt "Preferences"
-msgid "Navigate down"
-msgstr "Navegar hacia abajo"
-
-#: Resources/Scripts/Gui/Preferences.as:1424
-msgctxt "Preferences"
-msgid "Navigate left"
-msgstr "Navegar a la izquierda"
-
-#: Resources/Scripts/Gui/Preferences.as:1425
-msgctxt "Preferences"
-msgid "Navigate right"
-msgstr "Navegar a la derecha"
-
-#: Resources/Scripts/Gui/Preferences.as:1466
-msgctxt "Preferences"
-msgid "Toggle extended palette"
-msgstr "Alternar paleta extendida"
-
-#: Resources/Scripts/Gui/Preferences.as:691
+#: Resources/Scripts/Gui/Preferences.as:1889
 msgctxt "Preferences"
 msgid "Equip Spade"
 msgstr "Equipar pala"
 
-#: Resources/Scripts/Gui/Preferences.as:692
+#: Resources/Scripts/Gui/Preferences.as:1890
 msgctxt "Preferences"
 msgid "Equip Block"
 msgstr "Equipar bloque"
 
-#: Resources/Scripts/Gui/Preferences.as:693
+#: Resources/Scripts/Gui/Preferences.as:1891
 msgctxt "Preferences"
 msgid "Equip Weapon"
 msgstr "Equipar arma"
 
-#: Resources/Scripts/Gui/Preferences.as:694
+#: Resources/Scripts/Gui/Preferences.as:1892
 msgctxt "Preferences"
 msgid "Equip Grenade"
 msgstr "Equipar granada"
 
-#: Resources/Scripts/Gui/Preferences.as:695
+#: Resources/Scripts/Gui/Preferences.as:1893
 msgctxt "Preferences"
 msgid "Last Used Tool"
 msgstr "Última arma usada"
 
-#: Resources/Scripts/Gui/Preferences.as:696
+#: Resources/Scripts/Gui/Preferences.as:1894
 msgctxt "Preferences"
 msgid "Switch Tools by Wheel"
 msgstr "Cambiar arma con la rueda"
 
-#: Resources/Scripts/Gui/Preferences.as:698
+#: Resources/Scripts/Gui/Preferences.as:1896
 msgctxt "Preferences"
 msgid "Movement"
 msgstr "Movimiento"
 
-#: Resources/Scripts/Gui/Preferences.as:699
+#: Resources/Scripts/Gui/Preferences.as:1897
 msgctxt "Preferences"
 msgid "Move Forward"
 msgstr "Avanzar"
 
-#: Resources/Scripts/Gui/Preferences.as:700
+#: Resources/Scripts/Gui/Preferences.as:1898
 msgctxt "Preferences"
 msgid "Move Backward"
 msgstr "Retroceder"
 
-#: Resources/Scripts/Gui/Preferences.as:701
+#: Resources/Scripts/Gui/Preferences.as:1899
 msgctxt "Preferences"
 msgid "Move Left"
 msgstr "Moverse a la izquierda"
 
-#: Resources/Scripts/Gui/Preferences.as:702
+#: Resources/Scripts/Gui/Preferences.as:1900
 msgctxt "Preferences"
 msgid "Move Right"
 msgstr "Moverse a la derecha"
 
-#: Resources/Scripts/Gui/Preferences.as:703
+#: Resources/Scripts/Gui/Preferences.as:1901
 msgctxt "Preferences"
 msgid "Crouch"
 msgstr "Agacharse"
 
-#: Resources/Scripts/Gui/Preferences.as:704
+#: Resources/Scripts/Gui/Preferences.as:1902
 msgctxt "Preferences"
 msgid "Sneak"
 msgstr "Caminar (Moverse lento)"
 
-#: Resources/Scripts/Gui/Preferences.as:705
+#: Resources/Scripts/Gui/Preferences.as:1903
 msgctxt "Preferences"
 msgid "Jump"
 msgstr "Saltar"
 
-#: Resources/Scripts/Gui/Preferences.as:706
+#: Resources/Scripts/Gui/Preferences.as:1904
 msgctxt "Preferences"
 msgid "Sprint"
 msgstr "Correr (Moverse rápido)"
 
-#: Resources/Scripts/Gui/Preferences.as:709
+#: Resources/Scripts/Gui/Preferences.as:1906
+msgctxt "Preferences"
+msgid "Color Palette"
+msgstr "Paleta de colores"
+
+#: Resources/Scripts/Gui/Preferences.as:1907
+msgctxt "Preferences"
+msgid "Capture Color"
+msgstr "Capturar color"
+
+#: Resources/Scripts/Gui/Preferences.as:1908
+msgctxt "Preferences"
+msgid "Navigate up"
+msgstr "Navegar hacia arriba"
+
+#: Resources/Scripts/Gui/Preferences.as:1909
+msgctxt "Preferences"
+msgid "Navigate down"
+msgstr "Navegar hacia abajo"
+
+#: Resources/Scripts/Gui/Preferences.as:1910
+msgctxt "Preferences"
+msgid "Navigate left"
+msgstr "Navegar a la izquierda"
+
+#: Resources/Scripts/Gui/Preferences.as:1911
+msgctxt "Preferences"
+msgid "Navigate right"
+msgstr "Navegar a la derecha"
+
+#: Resources/Scripts/Gui/Preferences.as:1912
+msgctxt "Preferences"
+msgid "Toggle extended palette"
+msgstr "Alternar paleta extendida"
+
+#: Resources/Scripts/Gui/Preferences.as:1915
+msgctxt "Preferences"
+msgid "Scoreboard"
+msgstr "Tabla de puntuaciones"
+
+#: Resources/Scripts/Gui/Preferences.as:1916
+msgctxt "Preferences"
+msgid "Hold Large Map"
+msgstr "Mantener el mapa con el botón"
+
+#: Resources/Scripts/Gui/Preferences.as:1917
 msgctxt "Preferences"
 msgid "Minimap Scale"
 msgstr "Escala del minimapa"
 
-#: Resources/Scripts/Gui/Preferences.as:710
+#: Resources/Scripts/Gui/Preferences.as:1918
 msgctxt "Preferences"
 msgid "Toggle Map"
 msgstr "Mostrar mapa"
 
-#: Resources/Scripts/Gui/Preferences.as:711
+#: Resources/Scripts/Gui/Preferences.as:1919
 msgctxt "Preferences"
 msgid "Flashlight"
 msgstr "Linterna"
 
-#: Resources/Scripts/Gui/Preferences.as:712
+#: Resources/Scripts/Gui/Preferences.as:1920
 msgctxt "Preferences"
 msgid "Global Chat"
 msgstr "Chat global"
 
-#: Resources/Scripts/Gui/Preferences.as:713
+#: Resources/Scripts/Gui/Preferences.as:1921
 msgctxt "Preferences"
 msgid "Team Chat"
 msgstr "Chat de equipo"
 
+#: Resources/Scripts/Gui/Preferences.as:1922
 msgctxt "Preferences"
 msgid "Chat Log"
 msgstr "Registro del chat"
 
-#: Resources/Scripts/Gui/Preferences.as:714
+#: Resources/Scripts/Gui/Preferences.as:1923
+msgctxt "Preferences"
+msgid "Chat Zoom"
+msgstr "Zoom del chat"
+
+#: Resources/Scripts/Gui/Preferences.as:1924
+msgctxt "Preferences"
+msgid "Pie Menu"
+msgstr "Menú circular"
+
+#: Resources/Scripts/Gui/Preferences.as:1925
 msgctxt "Preferences"
 msgid "Limbo Menu"
 msgstr "Menú limbo"
 
-#: Resources/Scripts/Gui/Preferences.as:715
+#: Resources/Scripts/Gui/Preferences.as:1926
 msgctxt "Preferences"
 msgid "Save Map"
 msgstr "Guardar mapa"
 
-#: Resources/Scripts/Gui/Preferences.as:716
+#: Resources/Scripts/Gui/Preferences.as:1927
 msgctxt "Preferences"
 msgid "Save Sceneshot"
 msgstr "Guardar sceneshot"
 
-#: Resources/Scripts/Gui/Preferences.as:717
+#: Resources/Scripts/Gui/Preferences.as:1928
 msgctxt "Preferences"
 msgid "Save Screenshot"
 msgstr "Guardar screenshot"
 
-#: Resources/Scripts/Gui/Preferences.as:736
+#: Resources/Scripts/Gui/Preferences.as:1929
 msgctxt "Preferences"
-msgid "Server List URL"
-msgstr "URL de la lista de servidores"
+msgid "Master Volume Up"
+msgstr "Subir volumen general"
 
+#: Resources/Scripts/Gui/Preferences.as:1930
 msgctxt "Preferences"
-msgid "Mod List URL"
-msgstr "URL de la lista de mods"
+msgid "Master Volume Down"
+msgstr "Bajar volumen general"
 
-#: Resources/Scripts/Gui/Preferences.as:736
+#: Resources/Scripts/Gui/Preferences.as:1931
+msgctxt "Preferences"
+msgid "Network Graph"
+msgstr "Monitor de red"
+
+#: Resources/Scripts/Gui/Preferences.as:1932
+msgctxt "Preferences"
+msgid "Force Spectator Mode"
+msgstr "Forzar modo espectador"
+
+#: Resources/Scripts/Gui/Preferences.as:1948
+msgctxt "Preferences"
+msgid "FPS Limit"
+msgstr "Límite de FPS"
+
+#: Resources/Scripts/Gui/Preferences.as:1951
 msgctxt "Preferences"
 msgid "Console Scrollback Lines"
 msgstr "Líneas de historial de la consola"
 
-#: Resources/Scripts/Gui/Preferences.as:736
+#: Resources/Scripts/Gui/Preferences.as:1953
+msgctxt "Preferences"
+msgid "Server List URL"
+msgstr "URL de la lista de servidores"
+
+#: Resources/Scripts/Gui/Preferences.as:1954
+msgctxt "Preferences"
+msgid "Mod List URL"
+msgstr "URL de la lista de mods"
+
+#: Resources/Scripts/Gui/Preferences.as:1955
+msgctxt "Preferences"
+msgid "Allow Unicode"
+msgstr "Permitir Unicode"
+
+#: Resources/Scripts/Gui/Preferences.as:1956
+msgctxt "Preferences"
+msgid "Screenshot Format"
+msgstr "Formato de captura de pantalla"
+
+#: Resources/Scripts/Gui/Preferences.as:1959
 msgctxt "Preferences"
 msgid "JPEG Quality"
 msgstr "Calidad JPEG"
 
-#: Resources/Scripts/Gui/Preferences.as:736
+#: Resources/Scripts/Gui/Preferences.as:1961
 msgctxt "Preferences"
 msgid "Enable Startup Window"
 msgstr "Activar la ventana de inicio"
 
-#: Resources/Scripts/Gui/Preferences.as:757
+#: Resources/Scripts/Gui/Preferences.as:1963
 msgctxt "Preferences"
-msgid "Quit and restart OpenSpades to access the startup window."
-msgstr "Salga y reinicie OpenSpades para acceder a la ventana de inicio."
+msgid "Demo Recording"
+msgstr "Grabador de demos"
 
-#: Resources/Scripts/Gui/Preferences.as:758
+#: Resources/Scripts/Gui/Preferences.as:1964
 msgctxt "Preferences"
-msgid "Some settings only can be changed in the startup window."
-msgstr "Algunas opciones solo pueden ser cambiadas en la ventana de inicio."
+msgid "Start/Stop Recording"
+msgstr "Iniciar/detener grabación"
 
-#: Resources/Scripts/Gui/StartupScreen.as:160
-msgctxt "StartupScreen"
-msgid "Start"
-msgstr "Iniciar"
+#: Resources/Scripts/Gui/Preferences.as:1965
+msgctxt "Preferences"
+msgid "Auto Record"
+msgstr "Grabar automáticamente"
 
-#: Resources/Scripts/Gui/StartupScreen.as:167
-msgctxt "StartupScreen"
-msgid "Skip this screen next time"
-msgstr "Saltar esta pantalla la próxima vez"
+#: Resources/Scripts/Gui/Preferences.as:1966
+msgctxt "Preferences"
+msgid "Auto Delete Old Demos"
+msgstr "Auto-eliminar demos antiguas"
 
-#: Resources/Scripts/Gui/StartupScreen.as:211
-msgctxt "StartupScreen"
-msgid "Graphics"
-msgstr "Gráficos"
+#: Resources/Scripts/Gui/Preferences.as:1967
+msgctxt "Preferences"
+msgid "Max Stored Demos"
+msgstr "Límite de demos guardadas"
 
-#: Resources/Scripts/Gui/StartupScreen.as:212
-msgctxt "StartupScreen"
-msgid "Audio"
-msgstr "Audio"
+#: Resources/Scripts/Gui/Preferences.as:1970
+msgctxt "Preferences"
+msgid "Demo Playback"
+msgstr "Reproductor de demos"
 
-#: Resources/Scripts/Gui/StartupScreen.as:213
-msgctxt "StartupScreen"
-msgid "Generic"
-msgstr "General"
+#: Resources/Scripts/Gui/Preferences.as:1971
+msgctxt "Preferences"
+msgid "Pause/Resume"
+msgstr "Pausar/Reanudar"
 
-#: Resources/Scripts/Gui/StartupScreen.as:214
-msgctxt "StartupScreen"
-msgid "System Info"
-msgstr "Información del sistema"
+#: Resources/Scripts/Gui/Preferences.as:1972
+msgctxt "Preferences"
+msgid "Speed Up"
+msgstr "Acelerar"
 
-#: Resources/Scripts/Gui/StartupScreen.as:215
-#: Resources/Scripts/Gui/StartupScreen.as:1679
-msgctxt "StartupScreen"
-msgid "Advanced"
-msgstr "Avanzado"
+#: Resources/Scripts/Gui/Preferences.as:1973
+msgctxt "Preferences"
+msgid "Slow Down"
+msgstr "Ralentizar"
 
-#: Resources/Scripts/Gui/StartupScreen.as:853
+#: Resources/Scripts/Gui/Preferences.as:1974
+msgctxt "Preferences"
+msgid "Seek Forward"
+msgstr "Avanzar"
+
+#: Resources/Scripts/Gui/Preferences.as:1975
+msgctxt "Preferences"
+msgid "Seek Backward"
+msgstr "Retroceder"
+
+#: Resources/Scripts/Gui/Preferences.as:1976
+msgctxt "Preferences"
+msgid "Toggle Demo HUD"
+msgstr "Alternar el HUD de la demo"
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewFramework.as:499
 msgctxt "StartupScreen"
 msgid "Custom"
 msgstr "Personalizado"
 
-#: Resources/Scripts/Gui/StartupScreen.as:979
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewFramework.as:608
 msgctxt "StartupScreen"
 msgid "Close"
 msgstr "Cerrar"
 
-#: Resources/Scripts/Gui/StartupScreen.as:1085
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:55
 msgctxt "StartupScreen"
-msgid "Graphics"
-msgstr "Gráficos"
+msgid "Graphics Settings"
+msgstr "Ajustes de gráficos"
 
-#: Resources/Scripts/Gui/StartupScreen.as:1090
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:60
 msgctxt "StartupScreen"
 msgid "Resolution"
 msgstr "Resolución"
 
-#: Resources/Scripts/Gui/StartupScreen.as:1100
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:70
 msgctxt "StartupScreen"
 msgid "Fullscreen Mode"
 msgstr "Modo pantalla completa"
 
-#: Resources/Scripts/Gui/StartupScreen.as:1103
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:76
 msgctxt "StartupScreen"
 msgid ""
 "By running in fullscreen mode OpenSpades occupies the screen, making it "
@@ -1430,24 +2513,17 @@ msgstr ""
 "Al ejecutarse en modo de pantalla completa, OpenSpades ocupa toda la "
 "pantalla, lo que te permite concentrarte mejor en el juego."
 
-#: Resources/Scripts/Gui/StartupScreen.as:1110
-#: Resources/Scripts/Gui/StartupScreen.as:1492
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:84
 msgctxt "StartupScreen"
 msgid "Renderer"
 msgstr "Renderizador"
 
-#: Resources/Scripts/Gui/StartupScreen.as:1110
-#: Resources/Scripts/Gui/StartupScreen.as:1492
-msgctxt "StartupScreen"
-msgid "Backend"
-msgstr "Motor"
-
-#: Resources/Scripts/Gui/StartupScreen.as:1113
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:87
 msgctxt "StartupScreen"
 msgid "OpenGL"
 msgstr "OpenGL"
 
-#: Resources/Scripts/Gui/StartupScreen.as:1117
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:93
 msgctxt "StartupScreen"
 msgid ""
 "OpenGL renderer uses your computer's graphics accelerator to generate the "
@@ -1456,12 +2532,12 @@ msgstr ""
 "El renderizador OpenGL utiliza el acelerador gráfico de tu ordenador para "
 "generar la pantalla del juego."
 
-#: Resources/Scripts/Gui/StartupScreen.as:1125
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:102
 msgctxt "StartupScreen"
 msgid "Software"
 msgstr "Software"
 
-#: Resources/Scripts/Gui/StartupScreen.as:1129
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:108
 msgctxt "StartupScreen"
 msgid ""
 "Software renderer uses CPU to generate the game screen. Its quality and "
@@ -1472,945 +2548,7 @@ msgstr ""
 "Su calidad y rendimiento pueden ser inferiores a los del renderizador "
 "OpenGL, pero funciona incluso con una GPU no compatible."
 
-#: Resources/Scripts/Gui/StartupScreen.as:1150
-msgctxt "StartupScreen"
-msgid "Global Illumination"
-msgstr "Iluminación global"
-
-#: Resources/Scripts/Gui/StartupScreen.as:1152
-msgctxt "StartupScreen"
-msgid ""
-"Enables a physically based simulation of light path for more realistic "
-"lighting."
-msgstr ""
-"Permite una simulación física en base a la trayectoria de la luz para una "
-"iluminación más realista."
-
-#: Resources/Scripts/Gui/StartupScreen.as:1155
-msgctxt "StartupScreen"
-msgid "Linear HDR Rendering"
-msgstr "Renderizado HDR lineal"
-
-#: Resources/Scripts/Gui/StartupScreen.as:1157
-msgctxt "StartupScreen"
-msgid ""
-"Uses a number representation which allows wider dynamic range during "
-"rendering process. Additionally, this allows color calculation whose value "
-"is in linear correspondence with actual energy, that is, physically accurate "
-"blending can be achieved."
-msgstr ""
-"Utiliza una representación numérica que permite un rango dinámico más amplio "
-"durante el proceso de renderizado. Además, permite calcular el color cuyo "
-"valor está en correspondencia lineal con la energía real, es decir, se puede "
-"lograr una mezcla físicamente precisa."
-
-#: Resources/Scripts/Gui/StartupScreen.as:1164
-msgctxt "StartupScreen"
-msgid "Camera Blur"
-msgstr "Desenfoque de cámara"
-
-#: Resources/Scripts/Gui/StartupScreen.as:1165
-msgctxt "StartupScreen"
-msgid "Blurs the screen when you turn quickly."
-msgstr "Desenfoca la pantalla cuando te giras rapidamente."
-
-#: Resources/Scripts/Gui/StartupScreen.as:1167
-msgctxt "StartupScreen"
-msgid "Lens Effect"
-msgstr "Efecto de lente"
-
-#: Resources/Scripts/Gui/StartupScreen.as:1168
-msgctxt "StartupScreen"
-msgid "Simulates distortion caused by a real camera lens."
-msgstr "Simula la distorsión provocada por el lente de una cámara real."
-
-#: Resources/Scripts/Gui/StartupScreen.as:1170
-msgctxt "StartupScreen"
-msgid "Lens Scattering Filter"
-msgstr "Filtro de dispersión en el lente"
-
-#: Resources/Scripts/Gui/StartupScreen.as:1171
-msgctxt "StartupScreen"
-msgid "Simulates light being scattered by dust on the camera lens."
-msgstr "Simula la luz siendo dispersada por el polvo en el lente de la cámara."
-
-#: Resources/Scripts/Gui/StartupScreen.as:1174
-msgctxt "StartupScreen"
-msgid "Lens Flare"
-msgstr "Destello de lente"
-
-#: Resources/Scripts/Gui/StartupScreen.as:1175
-msgctxt "StartupScreen"
-msgid "The Sun causes lens flare."
-msgstr "El Sol causa un destello de lente."
-
-#: Resources/Scripts/Gui/StartupScreen.as:1178
-msgctxt "StartupScreen"
-msgid "Enables lens flare for light sources other than the Sun."
-msgstr "Activa destello de lente para otras fuentes de luz diferentes al Sol."
-
-#: Resources/Scripts/Gui/StartupScreen.as:1180
-msgctxt "StartupScreen"
-msgid "Color Correction"
-msgstr "Corrección de color"
-
-#: Resources/Scripts/Gui/StartupScreen.as:1181
-msgctxt "StartupScreen"
-msgid "Applies cinematic color correction to make the image look better."
-msgstr ""
-"Aplica una corrección de color cinematográfica para que la imagen tenga "
-"mejor aspecto."
-
-#: Resources/Scripts/Gui/StartupScreen.as:1183
-msgctxt "StartupScreen"
-msgid "Depth of Field"
-msgstr "Profundidad de campo"
-
-#: Resources/Scripts/Gui/StartupScreen.as:1184
-msgctxt "StartupScreen"
-msgid "Blurs out-of-focus objects."
-msgstr "Difumina los objetos fuera del foco."
-
-#: Resources/Scripts/Gui/StartupScreen.as:1186
-msgctxt "StartupScreen"
-msgid "Screen Space Ambient Occlusion"
-msgstr "Oclusión ambiental de espacio en pantalla"
-
-#: Resources/Scripts/Gui/StartupScreen.as:1187
-msgctxt "StartupScreen"
-msgid "Simulates soft shadows that occur between nearby objects."
-msgstr "Simula sombras suaves que se producen entre objetos cercanos."
-
-#: Resources/Scripts/Gui/StartupScreen.as:1189
-#: Resources/Scripts/Gui/StartupScreen.as:1228
-#: Resources/Scripts/Gui/StartupScreen.as:1250
-msgctxt "StartupScreen"
-msgid "Low"
-msgstr "Bajo"
-
-#: Resources/Scripts/Gui/StartupScreen.as:1190
-#: Resources/Scripts/Gui/StartupScreen.as:1229
-msgctxt "StartupScreen"
-msgid "Medium"
-msgstr "Medio"
-
-#: Resources/Scripts/Gui/StartupScreen.as:1191
-#: Resources/Scripts/Gui/StartupScreen.as:1230
-#: Resources/Scripts/Gui/StartupScreen.as:1252
-msgctxt "StartupScreen"
-msgid "High"
-msgstr "Alto"
-
-#: Resources/Scripts/Gui/StartupScreen.as:1192
-#: Resources/Scripts/Gui/StartupScreen.as:1253
-msgctxt "StartupScreen"
-msgid "Ultra"
-msgstr "Ultra"
-
-#: Resources/Scripts/Gui/StartupScreen.as:1195
-msgctxt "StartupScreen"
-msgid "Post-process"
-msgstr "Post-proceso"
-
-#: Resources/Scripts/Gui/StartupScreen.as:1196
-msgctxt "StartupScreen"
-msgid ""
-"Post-process modifies the image to make it look better and more realistic."
-msgstr ""
-"El post-procesado modifica la imagen para que tenga un aspecto mejor y más "
-"realista."
-
-#: Resources/Scripts/Gui/StartupScreen.as:1203
-msgctxt "StartupScreen"
-msgid ""
-"Particle Quality|Low:Artifact occurs when a particle intersects other "
-"objects.|Medium:Particle intersects objects smoothly.|High:Particle "
-"intersects objects smoothly, and some objects casts their shadow to "
-"particles."
-msgstr ""
-"Calidad de partículas|Bajo:Artefactos se producen cuando una partícula "
-"intersecta otros objetos.|Medio:Las partículas intersectan objetos suavemente.|"
-"Alto:Las partículas intersectan objetos suavemente, y algunos objetos proyectan "
-"su sombra a las partículas."
-
-#: Resources/Scripts/Gui/StartupScreen.as:1213
-msgctxt "StartupScreen"
-msgid "Dynamic Lights"
-msgstr "Luces dinámicas"
-
-#: Resources/Scripts/Gui/StartupScreen.as:1215
-msgctxt "StartupScreen"
-msgid ""
-"Gives some objects an ability to emit light to give them an energy-emitting "
-"impression."
-msgstr ""
-"Otorga a algunos objetos la capacidad de emitir luz para darles una "
-"impresión de emisores de energía."
-
-#: Resources/Scripts/Gui/StartupScreen.as:1218
-msgctxt "StartupScreen"
-msgid "Shadows"
-msgstr "Sombras"
-
-#: Resources/Scripts/Gui/StartupScreen.as:1219
-msgctxt "StartupScreen"
-msgid "Non-static object casts a shadow."
-msgstr "Los objetos no estáticos proyectan una sombra."
-
-#: Resources/Scripts/Gui/StartupScreen.as:1221
-msgctxt "StartupScreen"
-msgid "Volumetric Fog"
-msgstr "Niebla volumetrica"
-
-#: Resources/Scripts/Gui/StartupScreen.as:1222
-msgctxt "StartupScreen"
-msgid ""
-"Simulates shadow being casted to the fog particles using a super highly "
-"computationally demanding algorithm. "
-msgstr ""
-"Simula un fundido de sombra a las partículas de niebla usando un algoritmo "
-"de computación altamente exigente. "
-
-#: Resources/Scripts/Gui/StartupScreen.as:1225
-msgctxt "StartupScreen"
-msgid "Physically Based Lighting"
-msgstr "Iluminación basada fisicamente"
-
-#: Resources/Scripts/Gui/StartupScreen.as:1226
-msgctxt "StartupScreen"
-msgid ""
-"Uses more accurate approximation techniques to decide the brightness of "
-"objects."
-msgstr ""
-"Utiliza técnicas de aproximación más precisas para decidir el brillo de los "
-"objetos."
-
-#: Resources/Scripts/Gui/StartupScreen.as:1233
-msgctxt "StartupScreen"
-msgid "Direct Lights"
-msgstr "Luces directas"
-
-#: Resources/Scripts/Gui/StartupScreen.as:1234
-msgctxt "StartupScreen"
-msgid ""
-"Controls how light encounting a material and atmosphere directly affects its "
-"appearance."
-msgstr ""
-"Controla cómo la luz llega a un material y el ambiente afecta directamente a "
-"su aspecto."
-
-#: Resources/Scripts/Gui/StartupScreen.as:1244
-msgctxt "StartupScreen"
-msgid ""
-"Water Shader|None:Water is rendered in the same way that normal blocks are "
-"done.|Level 1:Refraction and the reflected Sun are simulated.|Level 2:Waving "
-"water is simulated as well as reflection and refraction.|Level 3:Reflections "
-"and refractions are rendered at the highest quality using screen-space "
-"techniques."
-msgstr ""
-"Sombreador de agua|Ninguno:El agua se renderiza del mismo modo que los "
-"bloques normales.|Nivel 1:Se simula la refracción y el Sol reflejado.|Nivel "
-"2:Se simula el agua ondulante, así como el reflejo y la refracción.|Nivel 3:"
-"Los reflejos y refracciones se renderizan con la máxima calidad mediante "
-"técnicas de espacio en pantalla."
-
-#: Resources/Scripts/Gui/StartupScreen.as:1251
-msgctxt "StartupScreen"
-msgid "Med"
-msgstr "Med"
-
-#: Resources/Scripts/Gui/StartupScreen.as:1256
-msgctxt "StartupScreen"
-msgid "Shader Effects"
-msgstr "Efectos del sombreador"
-
-#: Resources/Scripts/Gui/StartupScreen.as:1256
-msgctxt "StartupScreen"
-msgid "Special effects."
-msgstr "Efectos especiales."
-
-#: Resources/Scripts/Gui/StartupScreen.as:1273
-msgctxt "StartupScreen"
-msgid ""
-"Fast Mode:Reduces the image resolution to make the rendering faster.|Off|2x|"
-"4x"
-msgstr ""
-"Modo Rápido:Reduce la resolución de la imagen para hacer un rendimiento mas "
-"rápido.|Apagado|2x|4x"
-
-msgctxt "StartupScreen"
-msgid "Graphics Settings"
-msgstr "Ajustes de gráficos"
-
-#: Resources/Scripts/Gui/StartupScreen.as:1486
-msgctxt "StartupScreen"
-msgid "Audio Settings"
-msgstr "Ajustes de audio"
-
-#: Resources/Scripts/Gui/StartupScreen.as:1495
-msgctxt "StartupScreen"
-msgid "OpenAL"
-msgstr "OpenAL"
-
-#: Resources/Scripts/Gui/StartupScreen.as:1499
-msgctxt "StartupScreen"
-msgid ""
-"Uses an OpenAL-capable sound card to process sound. In most cases where "
-"there isn't such a sound card, software emulation is used."
-msgstr ""
-"Utiliza una tarjeta de sonido compatible con OpenAL para procesar el sonido. "
-"En la mayoría de los casos en los que no existe tal tarjeta de sonido, se "
-"utiliza la emulación por software."
-
-#. ! The name of audio driver that outputs no audio.
-#: Resources/Scripts/Gui/StartupScreen.as:1523
-msgctxt "StartupScreen"
-msgid "Null"
-msgstr "Nulo"
-
-#: Resources/Scripts/Gui/StartupScreen.as:1527
-msgctxt "StartupScreen"
-msgid "Disables audio output."
-msgstr "Desactivar salida de audio."
-
-#: Resources/Scripts/Gui/StartupScreen.as:1539
-msgctxt "StartupScreen"
-msgid ""
-"Specifies how many sounds can be played simultaneously. Higher value needs "
-"more processing power, so setting this too high might cause an overload "
-"(especially with a software emulation)."
-msgstr ""
-"Especifica cuántos sonidos pueden reproducirse simultáneamente. Un valor más "
-"alto necesita más potencia de procesamiento, por lo que un valor demasiado "
-"alto podría causar una sobrecarga (especialmente con una emulación de "
-"software)."
-
-#: Resources/Scripts/Gui/StartupScreen.as:1546
-msgctxt "StartupScreen"
-msgid "EAX"
-msgstr "EAX"
-
-#: Resources/Scripts/Gui/StartupScreen.as:1547
-msgctxt "StartupScreen"
-msgid ""
-"Enables extended features provided by the OpenAL driver to create more "
-"ambience."
-msgstr ""
-"Activa las funciones ampliadas que ofrece el controlador OpenAL para crear "
-"más ambiente."
-
-#: Resources/Scripts/Gui/StartupScreen.as:1623
-msgctxt "StartupScreen"
-msgid "Language"
-msgstr "Lenguaje"
-
-#: Resources/Scripts/Gui/StartupScreen.as:1635
-msgctxt "StartupScreen"
-msgid "Tools"
-msgstr "Herramientas"
-
-#: Resources/Scripts/Gui/StartupScreen.as:1638
-msgctxt "StartupScreen"
-msgid "Reset All Settings"
-msgstr "Restablecer todos los ajustes"
-
-#: Resources/Scripts/Gui/StartupScreen.as:1647
-msgctxt "StartupScreen"
-msgid "Open Config Folder in Explorer"
-msgstr "Abrir carpeta de configuración en el explorador"
-
-#: Resources/Scripts/Gui/StartupScreen.as:1649
-msgctxt "StartupScreen"
-msgid "Reveal Config Folder in Finder"
-msgstr "Revelar carpeta de configuración en el buscador"
-
-#: Resources/Scripts/Gui/StartupScreen.as:1651
-msgctxt "StartupScreen"
-msgid "Browse Config Folder"
-msgstr "Examinar carpeta de configuración"
-
-#: Resources/Scripts/Gui/StartupScreen.as:1668
-msgctxt "StartupScreen"
-msgid "An unknown error has occurred while opening the config directory."
-msgstr "Un error desconocido ha ocurrido mientras se abria el directorio de configuraciones."
-
-#: Resources/Scripts/Gui/StartupScreen.as:1674
-msgctxt "StartupScreen"
-msgid "Are you sure to reset all settings? They include (but are not limited to):"
-msgstr "¿Está seguro de restablecer todos los ajustes? Incluyen (pero no se limitan a):"
-
-#: Resources/Scripts/Gui/StartupScreen.as:1675
-msgctxt "StartupScreen"
-msgid "All graphics/audio settings"
-msgstr "Todos los ajustes de gráficos/audio"
-
-#: Resources/Scripts/Gui/StartupScreen.as:1676
-msgctxt "StartupScreen"
-msgid "All key bindings"
-msgstr "Todas las teclas asignadas"
-
-#: Resources/Scripts/Gui/StartupScreen.as:1677
-msgctxt "StartupScreen"
-msgid "Your player name"
-msgstr "Tu nombre de jugador"
-
-#: Resources/Scripts/Gui/StartupScreen.as:1748
-msgctxt "StartupScreen"
-msgid "Unknown ({0})"
-msgstr "Desconocido ({0})"
-
-#: Resources/Scripts/Gui/StartupScreen.as:1750
-#: Resources/Scripts/Gui/StartupScreen.as:1764
-msgctxt "StartupScreen"
-msgid "System default"
-msgstr "Predeterminado del sistema"
-
-#: Resources/Scripts/Gui/StartupScreen.as:1813
-msgctxt "StartupScreen"
-msgid "Copy to Clipboard"
-msgstr "Copiar al portapapeles"
-
-#: Resources/Scripts/Gui/StartupScreen.as:1849
-msgctxt "StartupScreen"
-msgid "Advanced Settings"
-msgstr "Configuración avanzada"
-
-#: Resources/Scripts/Gui/StartupScreen.as:1858
-msgctxt "StartupScreen"
-msgid "Filter"
-msgstr "Filtro"
-
-#: Sources/Client/Client_NetHandler.cpp:258
-msgctxt "Client"
-msgid "Spectator"
-msgstr "Espectador"
-
-#: Sources/Client/Client_Draw.cpp:99
-msgctxt "Client"
-msgid "Unbound"
-msgstr "Sin Asignar"
-
-#: Sources/Client/Client_Draw.cpp:655
-msgctxt "Client"
-msgid "[{0}] Cycle camera mode"
-msgstr "[{0}] Vista en 3ra persona"
-
-#: Sources/Client/Client_Draw.cpp:661
-msgctxt "Client"
-msgid "[{0}] Unfollow"
-msgstr "[{0}] Dejar de seguir"
-
-#: Sources/Client/Client_Draw.cpp:664
-msgctxt "Client"
-msgid "[{0}/{1}] Follow a player"
-msgstr "[{0}/{1}] Seguir a un jugador"
-
-#: Sources/Client/Client_Draw.cpp:669
-msgctxt "Client"
-msgid "[{0}/{1}] Go up/down"
-msgstr "[{0}/{1}] Ir arriba/abajo"
-
-#: Sources/Client/NetClient.cpp:1763
-msgctxt "NetClient"
-msgid "{0} second remaining"
-msgid_plural "{0} seconds remaining"
-msgstr[0] "{0} segundo restante"
-msgstr[1] "{0} segundos restantes"
-
-#: Sources/Client/NetClient.cpp:1766
-msgctxt "NetClient"
-msgid "{0} minute remaining"
-msgid_plural "{0} minutes remaining"
-msgstr[0] "{0} minuto restante"
-msgstr[1] "{0} minutos restantes"
-
-#: Sources/Client/Client.cpp:643
-msgctxt "Client"
-msgid "(DEAD)"
-msgstr "(MUERTO)"
-
-#: Sources/Client/Client_Draw.cpp:729
-msgctxt "Client"
-msgid "You will respawn in: {0}"
-msgstr "Reaparecerás en: {0}"
-
-#: Sources/Client/Client_Draw.cpp:774
-msgctxt "Client"
-msgid "Following {0} [#{1}]"
-msgstr "Siguiendo a {0} [#{1}]"
-
-#: Sources/Client/Client_Draw.cpp:785
-msgctxt "Client"
-msgid "[{0}/{1}] Next/Prev player"
-msgstr "[{0}/{1}] Siguiente/Anterior jugador"
-
-#: Sources/Client/Client_Draw.cpp:802
-msgctxt "Client"
-msgid "[{0}] Select Team/Weapon"
-msgstr "[{0}] Seleccionar Equipo/Arma"
-
-#: Sources/Client/Client_NetHandler.cpp:66
-msgctxt "Client"
-msgid "Welcome to the server, {0}!"
-msgstr "¡Bienvenido al servidor, {0}!"
-
-msgctxt "Client"
-msgid "You are now a spectator"
-msgstr "Ahora eres un espectador"
-
-msgctxt "Client"
-msgid "You joined {0} team"
-msgstr "Te has unido al equipo {0}"
-
-msgctxt "Client"
-msgid "You have killed {0}"
-msgstr "Has eliminado a {0}"
-
-msgctxt "Client"
-msgid "You were killed by {0}"
-msgstr "Fuiste eliminado por {0}"
-
-#: Resources/Scripts/Gui/Console/ConsoleWindow.as:62
-msgctxt "Console"
-msgid "Command"
-msgstr "Comando"
-
-#: Resources/Scripts/Gui/MainScreen/MainMenu.as:215
-msgctxt "MainScreen"
-msgid "Slots"
-msgstr "Slots"
-
-#: Resources/Scripts/Gui/MainScreen/MainMenu.as:250
-msgctxt "MainScreen"
-msgid "Ping"
-msgstr "Ping"
-
-#: Resources/Scripts/Gui/Preferences.as:56
-msgctxt "Preferences"
-msgid "Graphics"
-msgstr "Gráficos"
-
-#: Resources/Scripts/Gui/Preferences.as:605
-msgctxt "Preferences"
-msgid "MARKS"
-msgstr "Marcas"
-
-#: Resources/Scripts/Gui/Preferences.as:609
-msgctxt "Preferences"
-msgid "Ragdoll Corpses"
-msgstr "Cadáveres ragdoll"
-
-#: Resources/Scripts/Gui/Preferences.as:610
-msgctxt "Preferences"
-msgid "Enhanced Ragdoll Physics"
-msgstr "Físicas de cadáveres mejoradas"
-
-#: Resources/Scripts/Gui/Preferences.as:611
-msgctxt "Preferences"
-msgid "Bullet Tracers"
-msgstr "Trazadores de bala"
-
-#: Resources/Scripts/Gui/Preferences.as:1232
-msgctxt "Preferences"
-msgid "3rd Person"
-msgstr "3ra persona"
-
-#: Resources/Scripts/Gui/Preferences.as:1183
-msgctxt "Preferences"
-msgid "Muzzle Flashes"
-msgstr "Fogonazos del arma"
-
-#: Resources/Scripts/Gui/Preferences.as:613
-msgctxt "Preferences"
-msgid "Eject Bullet Casings"
-msgstr "Eyectar cartuchos de bala"
-
-#: Resources/Scripts/Gui/Preferences.as:615
-msgctxt "Preferences"
-msgid "Hurt Screen Effects"
-msgstr "Efectos de daño en pantalla"
-
-#: Resources/Scripts/Gui/Preferences.as:1186
-msgctxt "Preferences"
-msgid "Heal Screen Effects"
-msgstr "Efectos de curación en pantalla"
-
-#: Resources/Scripts/Gui/Preferences.as:628
-msgctxt "Preferences"
-msgid "Ignore Chat Messages"
-msgstr "Ignorar mensajes del chat"
-
-#: Resources/Scripts/Gui/Preferences.as:629
-msgctxt "Preferences"
-msgid "Hit Log"
-msgstr "Registro de impactos"
-
-#: Resources/Scripts/Gui/Preferences.as:630
-msgctxt "Preferences"
-msgid "Center Messages"
-msgstr "Mensajes centrales"
-
-#: Resources/Scripts/Gui/Preferences.as:634
-msgctxt "Preferences"
-msgid "Center Messages Size"
-msgstr "Tamaño de mensajes centrales"
-
-#: Resources/Scripts/Gui/Preferences.as:636
-msgctxt "Preferences"
-msgid "Chat Notify Sounds"
-msgstr "Vol. de notificación del chat"
-
-#: Resources/Scripts/Gui/Preferences.as:638
-msgctxt "Preferences"
-msgid "Alert Sounds"
-msgstr "Sonidos de alertas"
-
-#: Resources/Scripts/Gui/Preferences.as:640
-msgctxt "Preferences"
-msgid "Damage Indicators"
-msgstr "Indicadores de daño"
-
-#: Resources/Scripts/Gui/Preferences.as:647
-msgctxt "Preferences"
-msgid "Horizontal FOV"
-msgstr "FOV horizontal"
-
-#: Resources/Scripts/Gui/Preferences.as:648
-msgctxt "Preferences"
-msgid "Classic Zoom"
-msgstr "Zoom clásico"
-
-#: Resources/Scripts/Gui/Preferences.as:651
-msgctxt "Preferences"
-msgid "Master Volume"
-msgstr "Volumen general"
-
-#: Resources/Scripts/Gui/Preferences.as:655
-msgctxt "Preferences"
-msgid "Environmental Audio"
-msgstr "Audio ambiental"
-
-#: Resources/Scripts/Gui/Preferences.as:657
-msgctxt "Preferences"
-msgid "Show Player Statistics"
-msgstr "Mostrar estadísticas del jugador"
-
-#: Resources/Scripts/Gui/Preferences.as:658
-msgctxt "Preferences"
-msgid "Debug Hit Detection"
-msgstr "Depurar detección de impactos"
-
-#: Resources/Scripts/Gui/Preferences.as:659
-msgctxt "Preferences"
-msgid "Hit Test Debugger Size"
-msgstr "Tamaño del depurador de impactos"
-
-#: Resources/Scripts/Gui/Preferences.as:661
-msgctxt "Preferences"
-msgid "Toggle Hit Debugger Zoom"
-msgstr "Zoom del depurador de impactos"
-
-#: Resources/Scripts/Gui/Preferences.as:1228
-msgctxt "Preferences"
-msgid "Hit Debugger Fade Time"
-msgstr "Tiempo de desvanecimiento"
-
-#: Resources/Scripts/Gui/Preferences.as:662
-msgctxt "Preferences"
-msgid "Debug Weapon Spread"
-msgstr "Depurar dispersión del arma"
-
-#: Resources/Scripts/Gui/Preferences.as:249
-msgctxt "Preferences"
-msgid "Left"
-msgstr "Izquierda"
-
-#: Resources/Scripts/Gui/Preferences.as:251
-msgctxt "Preferences"
-msgid "Center"
-msgstr "Centro"
-
-#: Resources/Scripts/Gui/Preferences.as:253
-msgctxt "Preferences"
-msgid "Right"
-msgstr "Derecha"
-
-#: Resources/Scripts/Gui/Preferences.as:1233
-msgctxt "Preferences"
-msgid "Weapon Keychains"
-msgstr "Llaveros del arma"
-
-#: Resources/Scripts/Gui/Preferences.as:1550
-msgctxt "Preferences"
-msgid "Hide Player Arms"
-msgstr "Ocultar brazos del jugador"
-
-#: Resources/Scripts/Gui/Preferences.as:1551
-msgctxt "Preferences"
-msgid "Hide Player Body"
-msgstr "Ocultar cuerpo del jugador"
-
-#: Resources/Scripts/Gui/Preferences.as:1230
-msgctxt "Preferences"
-msgid "Viewmodel Alignment"
-msgstr "Alineación del arma"
-
-msgctxt "Preferences"
-msgid "Viewmodel Position"
-msgstr "Posición del arma"
-
-msgctxt "Preferences"
-msgid "Balanced"
-msgstr "Equilibrado"
-
-msgctxt "Preferences"
-msgid "Minimal"
-msgstr "Minimalista"
-
-#: Resources/Scripts/Gui/Preferences.as:1232
-msgctxt "Preferences"
-msgid "Switch Viewmodel Handedness"
-msgstr "Cambiar lateralidad del arma"
-
-#: Resources/Scripts/Gui/Preferences.as:1186
-msgctxt "Preferences"
-msgid "Classic Player Model"
-msgstr "Modelo clásico del jugador"
-
-#: Resources/Scripts/Gui/Preferences.as:663
-msgctxt "Preferences"
-msgid "Classic Viewmodel"
-msgstr "Modelo clásico del arma"
-
-#: Resources/Scripts/Gui/Preferences.as:665
-msgctxt "Preferences"
-msgid "Minimap"
-msgstr "Minimapa"
-
-#: Resources/Scripts/Gui/Preferences.as:666
-msgctxt "Preferences"
-msgid "Minimap Size"
-msgstr "Tamaño del minimapa"
-
-#: Resources/Scripts/Gui/Preferences.as:668
-msgctxt "Preferences"
-msgid "Use Weapon Icons"
-msgstr "Usar iconos de armas"
-
-#: Resources/Scripts/Gui/Preferences.as:669
-msgctxt "Preferences"
-msgid "Use Random Colors"
-msgstr "Usar colores aleatorios"
-
-#: Resources/Scripts/Gui/Preferences.as:671
-msgctxt "Preferences"
-msgid "Heads-Up Display"
-msgstr "HUD"
-
-#: Resources/Scripts/Gui/Preferences.as:672
-msgctxt "Preferences"
-msgid "Hide HUD"
-msgstr "Ocultar el HUD"
-
-#: Resources/Scripts/Gui/Preferences.as:677
-msgctxt "Preferences"
-msgid "Chat Height"
-msgstr "Altura del chat"
-
-#: Resources/Scripts/Gui/Preferences.as:1269
-msgctxt "Preferences"
-msgid "Chat Fade Time"
-msgstr "Desvanecimiento del chat"
-
-#: Resources/Scripts/Gui/Preferences.as:679
-msgctxt "Preferences"
-msgid "Killfeed Height"
-msgstr "Altura del killfeed"
-
-#: Resources/Scripts/Gui/Preferences.as:1271
-msgctxt "Preferences"
-msgid "Killfeed Fade Time"
-msgstr "Desvanecimiento del killfeed"
-
-#: Resources/Scripts/Gui/Preferences.as:1274
-msgctxt "Preferences"
-msgid "Show Dominations"
-msgstr "Mostrar dominaciones"
-
-#: Resources/Scripts/Gui/Preferences.as:692
-msgctxt "Preferences"
-msgid "General"
-msgstr "General"
-
-msgctxt "Preferences"
-msgid "FPS Limit"
-msgstr "Límite de FPS"
-
-msgctxt "Preferences"
-msgid "Unlimited"
-msgstr "Sin límite"
-
-#: Resources/Scripts/Gui/Preferences.as:693
-msgctxt "Preferences"
-msgid "Render Scale"
-msgstr "Escala de renderizado"
-
-#: Resources/Scripts/Gui/Preferences.as:695
-msgctxt "Preferences"
-msgid "Render Scaling Filter"
-msgstr "Filtro de escala de renderizado"
-
-#: Resources/Scripts/Gui/Preferences.as:696
-msgctxt "Preferences"
-msgid "Bicubic"
-msgstr "Bicúbico"
-
-#: Resources/Scripts/Gui/Preferences.as:697
-msgctxt "Preferences"
-msgid "Bilinear"
-msgstr "Bilineal"
-
-#: Resources/Scripts/Gui/Preferences.as:698
-msgctxt "Preferences"
-msgid "Nearest Neighbour"
-msgstr "Vecino más cercano"
-
-#: Resources/Scripts/Gui/Preferences.as:701
-msgctxt "Preferences"
-msgid "VSync"
-msgstr "VSync"
-
-#: Resources/Scripts/Gui/Preferences.as:702
-msgctxt "Preferences"
-msgid "Adaptive"
-msgstr "Adaptable"
-
-#: Resources/Scripts/Gui/Preferences.as:707
-msgctxt "Preferences"
-msgid "World"
-msgstr "Mundo"
-
-#: Resources/Scripts/Gui/Preferences.as:708
-msgctxt "Preferences"
-msgid "Dynamic Lights"
-msgstr "Luces dinámicas"
-
-#: Resources/Scripts/Gui/Preferences.as:709
-msgctxt "Preferences"
-msgid "Tracers Lights"
-msgstr "Luces de trazadores"
-
-#: Resources/Scripts/Gui/Preferences.as:710
-msgctxt "Preferences"
-msgid "Depth Prepass"
-msgstr "Prepaso de profundidad"
-
-#: Resources/Scripts/Gui/Preferences.as:711
-msgctxt "Preferences"
-msgid "Occlusion Querying"
-msgstr "Consulta de oclusiones"
-
-#: Resources/Scripts/Gui/Preferences.as:713
-msgctxt "Preferences"
-msgid "Post-processing"
-msgstr "Post-procesado"
-
-#: Resources/Scripts/Gui/Preferences.as:714
-msgctxt "Preferences"
-msgid "Depth Of Field"
-msgstr "Profundidad de campo"
-
-#: Resources/Scripts/Gui/Preferences.as:715
-msgctxt "Preferences"
-msgid "Camera Blur"
-msgstr "Desenfoque de cámara"
-
-#: Resources/Scripts/Gui/Preferences.as:716
-msgctxt "Preferences"
-msgid "FXAA Anti-Aliasing"
-msgstr "Suavizado FXAA"
-
-#: Resources/Scripts/Gui/Preferences.as:717
-msgctxt "Preferences"
-msgid "Lens Flares"
-msgstr "Destellos de lente"
-
-#: Resources/Scripts/Gui/Preferences.as:718
-msgctxt "Preferences"
-msgid "Flares Lights"
-msgstr "Luces de destellos"
-
-#: Resources/Scripts/Gui/Preferences.as:719
-msgctxt "Preferences"
-msgid "Color Correction"
-msgstr "Corrección de color"
-
-#: Resources/Scripts/Gui/Preferences.as:720
-msgctxt "Preferences"
-msgid "Sharpening"
-msgstr "Nitidez"
-
-#: Resources/Scripts/Gui/Preferences.as:722
-msgctxt "Preferences"
-msgid "Saturation"
-msgstr "Saturación"
-
-#: Resources/Scripts/Gui/Preferences.as:724
-msgctxt "Preferences"
-msgid "Exposure"
-msgstr "Exposición"
-
-#: Resources/Scripts/Gui/Preferences.as:727
-msgctxt "Preferences"
-msgid "Other"
-msgstr "Otros"
-
-#: Resources/Scripts/Gui/Preferences.as:728
-msgctxt "Preferences"
-msgid "Rendering Statistics"
-msgstr "Estadísticas de renderizado"
-
-#: Resources/Scripts/Gui/Preferences.as:729
-msgctxt "Preferences"
-msgid "Allow CPU Rendering"
-msgstr "Permitir renderizado por CPU"
-
-#: Resources/Scripts/Gui/Preferences.as:731
-msgctxt "Preferences"
-msgid "Software Renderer"
-msgstr "Render Software"
-
-#: Resources/Scripts/Gui/Preferences.as:732
-msgctxt "Preferences"
-msgid "Thread Count"
-msgstr "Número de hilos"
-
-#: Resources/Scripts/Gui/Preferences.as:733
-msgctxt "Preferences"
-msgid " Threads"
-msgstr " Hilos"
-
-#: Resources/Scripts/Gui/Preferences.as:734
-msgctxt "Preferences"
-msgid "Undersampling"
-msgstr "Submuestreo"
-
-#: Resources/Scripts/Gui/Preferences.as:751
-msgctxt "Preferences"
-msgid "Mouse Sensitivity Type"
-msgstr "Tipo de sensibilidad del ratón"
-
-#: Resources/Scripts/Gui/Preferences.as:752
-msgctxt "Preferences"
-msgid "Default"
-msgstr "Predeterminado"
-
-#: Resources/Scripts/Gui/Preferences.as:758
-msgctxt "Preferences"
-msgid "Mouse Acceleration"
-msgstr "Aceleración del ratón"
-
-#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:123
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:124
 msgctxt "StartupScreen"
 msgid ""
 "Antialiasing:Enables a technique to improve the appearance of high-contrast "
@@ -2431,396 +2569,40 @@ msgstr ""
 "FXAA: Realiza el antialiasing suavizando los artefactos como un post-"
 "proceso.|Off|MSAA 2x|4x|FXAA"
 
-#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:144
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:132
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:206
 msgctxt "StartupScreen"
-msgid "V-Sync"
-msgstr "V-Sync"
+msgid "Global Illumination"
+msgstr "Iluminación global"
 
-#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:145
-msgctxt "StartupScreen"
-msgid "Enables frame rate synchronization."
-msgstr "Activa la sincronización de la frecuencia de imagen."
-
-#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:163
-msgctxt "StartupScreen"
-msgid "Flares for Dynamic Lights."
-msgstr "Destellos para luces dinámicas."
-
-#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:199
-msgctxt "StartupScreen"
-msgid "None"
-msgstr "Ninguno"
-
-#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:200
-msgctxt "StartupScreen"
-msgid "Disables the volumetric fog effect."
-msgstr "Desactiva el efecto de niebla volumétrica."
-
-#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:201
-msgctxt "StartupScreen"
-msgid "Level 1"
-msgstr "Nivel 1"
-
-#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:202
-msgctxt "StartupScreen"
-msgid "Applies local illumination to the fog."
-msgstr "Aplica iluminación local a la niebla."
-
-#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:203
-msgctxt "StartupScreen"
-msgid "Level 2"
-msgstr "Nivel 2"
-
-#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:204
-msgctxt "StartupScreen"
-msgid "Applies both local illumination and global illumination to the fog."
-msgstr ""
-"Aplica tanto la iluminación local como la iluminación global a la niebla."
-
-#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:205
-msgctxt "StartupScreen"
-msgid "Warning: '{0}' must be enabled."
-msgstr "Advertencia: '{0}' debe estar activado."
-
-#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:530
-#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:567
-msgctxt "StartupScreen"
-msgid "Volume"
-msgstr "Volumen"
-
-#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:638
-msgctxt "StartupScreen"
-msgid "Output Device"
-msgstr "Dispositivo de salida"
-
-#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:755
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:134
 msgctxt "StartupScreen"
 msgid ""
-"Other advanced settings only accessible through '{0}' tab and in-game "
-"commands."
+"Enables a physically based simulation of light path for more realistic "
+"lighting."
 msgstr ""
-"Otros ajustes avanzados sólo accesibles a través de la pestaña '{0}' y desde "
-"los comandos en el juego."
+"Permite una simulación física en base a la trayectoria de la luz para una "
+"iluminación más realista."
 
-#: Resources/Scripts/Gui/Preferences.as:281
-msgctxt "Preferences"
-msgid "Team Color"
-msgstr "Color del equipo"
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:138
+msgctxt "StartupScreen"
+msgid "Linear HDR Rendering"
+msgstr "Renderizado HDR lineal"
 
-#: Resources/Scripts/Gui/Preferences.as:283
-msgctxt "Preferences"
-msgid "Light Blue"
-msgstr "Azul claro"
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:139
+msgctxt "StartupScreen"
+msgid ""
+"Uses a number representation which allows wider dynamic range during "
+"rendering process. Additionally, this allows color calculation whose value "
+"is in linear correspondence with actual energy, that is, physically accurate "
+"blending can be achieved."
+msgstr ""
+"Utiliza una representación numérica que permite un rango dinámico más amplio "
+"durante el proceso de renderizado. Además, permite calcular el color cuyo "
+"valor está en correspondencia lineal con la energía real, es decir, se puede "
+"lograr una mezcla físicamente precisa."
 
-#: Resources/Scripts/Gui/Preferences.as:285
-#: Resources/Scripts/Gui/Preferences.as:316
-msgctxt "Preferences"
-msgid "Blue"
-msgstr "Azul"
-
-#: Resources/Scripts/Gui/Preferences.as:287
-msgctxt "Preferences"
-msgid "Purple"
-msgstr "Púrpura"
-
-#: Resources/Scripts/Gui/Preferences.as:289
-#: Resources/Scripts/Gui/Preferences.as:312
-msgctxt "Preferences"
-msgid "Red"
-msgstr "Rojo"
-
-#: Resources/Scripts/Gui/Preferences.as:291
-msgctxt "Preferences"
-msgid "Orange"
-msgstr "Naranja"
-
-#: Resources/Scripts/Gui/Preferences.as:293
-#: Resources/Scripts/Gui/Preferences.as:318
-msgctxt "Preferences"
-msgid "Yellow"
-msgstr "Amarillo"
-
-#: Resources/Scripts/Gui/Preferences.as:295
-#: Resources/Scripts/Gui/Preferences.as:314
-msgctxt "Preferences"
-msgid "Green"
-msgstr "Verde"
-
-#: Resources/Scripts/Gui/Preferences.as:297
-msgctxt "Preferences"
-msgid "Aqua"
-msgstr "Aqua"
-
-#: Resources/Scripts/Gui/Preferences.as:299
-#: Resources/Scripts/Gui/Preferences.as:322
-msgctxt "Preferences"
-msgid "Pink"
-msgstr "Rosa"
-
-#: Resources/Scripts/Gui/Preferences.as:301
-#: Resources/Scripts/Gui/Preferences.as:324
-#: Resources/Scripts/Gui/Preferences.as:339
-#: Resources/Scripts/Gui/Preferences.as:1216
-msgctxt "Preferences"
-msgid "Custom"
-msgstr "Personalizado"
-
-#: Resources/Scripts/Gui/Preferences.as:320
-msgctxt "Preferences"
-msgid "Cyan"
-msgstr "Cian"
-
-#: Resources/Scripts/Gui/Preferences.as:335
-msgctxt "Preferences"
-msgid "Classic"
-msgstr "Clásico"
-
-#: Resources/Scripts/Gui/Preferences.as:337
-msgctxt "Preferences"
-msgid "Dot Sight"
-msgstr "Mira de punto"
-
-#: Resources/Scripts/Gui/Preferences.as:341
-msgctxt "Preferences"
-msgid "Iron Sight"
-msgstr "Mira de hierro"
-
-#: Resources/Scripts/Gui/Preferences.as:866
-msgctxt "Preferences"
-msgid "No Preview Available."
-msgstr "No hay vista previa disponible."
-
-#: Resources/Scripts/Gui/Preferences.as:1066
-#: Resources/Scripts/Gui/Preferences.as:1086
-msgctxt "Preferences"
-msgid "Reset"
-msgstr "Reset"
-
-#: Resources/Scripts/Gui/Preferences.as:1072
-#: Resources/Scripts/Gui/Preferences.as:1092
-msgctxt "Preferences"
-msgid "Randomize"
-msgstr "Aleatorio"
-
-#: Resources/Scripts/Gui/Preferences.as:1151
-msgctxt "Preferences"
-msgid "Ignore Private Messages"
-msgstr "Ignorar mensajes privados"
-
-#: Resources/Scripts/Gui/Preferences.as:1159
-msgctxt "Preferences"
-msgid "Death Camera Volume"
-msgstr "Volumen de cámara de muerte"
-
-#: Resources/Scripts/Gui/Preferences.as:1160
-msgctxt "Preferences"
-msgid "Respawn Beep Volume"
-msgstr "Volumen de reaparición"
-
-#: Resources/Scripts/Gui/Preferences.as:1161
-msgctxt "Preferences"
-msgid "Hit Feedback Volume"
-msgstr "Vol. de confirmación de impacto"
-
-#: Resources/Scripts/Gui/Preferences.as:1162
-msgctxt "Preferences"
-msgid "Headshot Feedback Volume"
-msgstr "Vol. de confirmación de headshot"
-
-#: Resources/Scripts/Gui/Preferences.as:1177
-msgctxt "Preferences"
-msgid "Show Placed Blocks"
-msgstr "Mostrar bloques colocados"
-
-#: Resources/Scripts/Gui/Preferences.as:1178
-msgctxt "Preferences"
-msgid "Player Statistics Height"
-msgstr "Altura de estadísticas del jugador"
-
-msgctxt "Preferences"
-msgid "HUD Edge Positions"
-msgstr "Posicion de los bordes del HUD"
-
-msgctxt "Preferences"
-msgid "Horizontal Alignment"
-msgstr "Alineación horizontal"
-
-msgctxt "Preferences"
-msgid "Vertical Alignment"
-msgstr "Alineación vertical"
-
-msgctxt "Preferences"
-msgid "Edit"
-msgstr "Editar"
-
-msgctxt "Preferences"
-msgid "OK"
-msgstr "Aceptar"
-
-#: Resources/Scripts/Gui/Preferences.as:1199
-msgctxt "Preferences"
-msgid "HUD Color"
-msgstr "Color del HUD"
-
-#: Resources/Scripts/Gui/Preferences.as:1201
-#: Resources/Scripts/Gui/Preferences.as:1221
-msgctxt "Preferences"
-msgid "Custom Color"
-msgstr "Color personalizado"
-
-#: Resources/Scripts/Gui/Preferences.as:1207
-msgctxt "Preferences"
-msgid "Small Stats Font"
-msgstr "Fuente de estadísticas pequeña"
-
-#: Resources/Scripts/Gui/Preferences.as:1210
-msgctxt "Preferences"
-msgid "Target"
-msgstr "Objetivo"
-
-#: Resources/Scripts/Gui/Preferences.as:1213
-msgctxt "Preferences"
-msgid "Target Type"
-msgstr "Tipo de objetivo"
-
-#: Resources/Scripts/Gui/Preferences.as:1218
-#: Resources/Scripts/Gui/Preferences.as:1257
-msgctxt "Preferences"
-msgid "Lines"
-msgstr "Líneas"
-
-#: Resources/Scripts/Gui/Preferences.as:1219
-#: Resources/Scripts/Gui/Preferences.as:1258
-msgctxt "Preferences"
-msgid "Color"
-msgstr "Color"
-
-#: Resources/Scripts/Gui/Preferences.as:1223
-#: Resources/Scripts/Gui/Preferences.as:1260
-msgctxt "Preferences"
-msgid "Opacity"
-msgstr "Opacidad"
-
-#: Resources/Scripts/Gui/Preferences.as:1225
-#: Resources/Scripts/Gui/Preferences.as:1262
-msgctxt "Preferences"
-msgid "Length"
-msgstr "Longitud"
-
-#: Resources/Scripts/Gui/Preferences.as:1228
-#: Resources/Scripts/Gui/Preferences.as:1265
-msgctxt "Preferences"
-msgid "Thickness"
-msgstr "Grosor"
-
-#: Resources/Scripts/Gui/Preferences.as:1230
-#: Resources/Scripts/Gui/Preferences.as:1267
-msgctxt "Preferences"
-msgid "Gap"
-msgstr "Abertura"
-
-#: Resources/Scripts/Gui/Preferences.as:1232
-#: Resources/Scripts/Gui/Preferences.as:1269
-msgctxt "Preferences"
-msgid "Dynamic"
-msgstr "Dinámico"
-
-#: Resources/Scripts/Gui/Preferences.as:1233
-#: Resources/Scripts/Gui/Preferences.as:1270
-msgctxt "Preferences"
-msgid "Dynamic Split Dist"
-msgstr "Distancia de separación"
-
-#: Resources/Scripts/Gui/Preferences.as:1235
-#: Resources/Scripts/Gui/Preferences.as:1272
-msgctxt "Preferences"
-msgid "Outline"
-msgstr "Contorno"
-
-#: Resources/Scripts/Gui/Preferences.as:1236
-#: Resources/Scripts/Gui/Preferences.as:1273
-msgctxt "Preferences"
-msgid "Outline Color"
-msgstr "Color del contorno"
-
-#: Resources/Scripts/Gui/Preferences.as:1238
-#: Resources/Scripts/Gui/Preferences.as:1275
-msgctxt "Preferences"
-msgid "Outline Opacity"
-msgstr "Opacidad del contorno"
-
-#: Resources/Scripts/Gui/Preferences.as:1240
-#: Resources/Scripts/Gui/Preferences.as:1277
-msgctxt "Preferences"
-msgid "Outline Thickness"
-msgstr "Grosor del contorno"
-
-#: Resources/Scripts/Gui/Preferences.as:1242
-#: Resources/Scripts/Gui/Preferences.as:1279
-msgctxt "Preferences"
-msgid "Rounded Corners Style"
-msgstr "Estilo de esquinas redondeadas"
-
-#: Resources/Scripts/Gui/Preferences.as:1243
-#: Resources/Scripts/Gui/Preferences.as:1280
-msgctxt "Preferences"
-msgid "Center Dot"
-msgstr "Punto central"
-
-#: Resources/Scripts/Gui/Preferences.as:1244
-#: Resources/Scripts/Gui/Preferences.as:1281
-msgctxt "Preferences"
-msgid "Center Dot Color"
-msgstr "Color del punto central"
-
-#: Resources/Scripts/Gui/Preferences.as:1246
-#: Resources/Scripts/Gui/Preferences.as:1283
-msgctxt "Preferences"
-msgid "Center Dot Opacity"
-msgstr "Opacidad del punto central"
-
-#: Resources/Scripts/Gui/Preferences.as:1248
-#: Resources/Scripts/Gui/Preferences.as:1285
-msgctxt "Preferences"
-msgid "Center Dot Thickness"
-msgstr "Grosor del punto central"
-
-#: Resources/Scripts/Gui/Preferences.as:1250
-#: Resources/Scripts/Gui/Preferences.as:1287
-msgctxt "Preferences"
-msgid "T Style"
-msgstr "Estilo T"
-
-#: Resources/Scripts/Gui/Preferences.as:1252
-msgctxt "Preferences"
-msgid "Scope"
-msgstr "Mira"
-
-#: Resources/Scripts/Gui/Preferences.as:1255
-msgctxt "Preferences"
-msgid "Scope Type"
-msgstr "Tipo de mira"
-
-#: Resources/Scripts/Gui/Preferences.as:1432
-msgctxt "Preferences"
-msgid "Scoreboard"
-msgstr "Tabla de puntuaciones"
-
-msgctxt "Preferences"
-msgid "Pie Menu"
-msgstr "Menu circular"
-
-#: Resources/Scripts/Gui/Preferences.as:1439
-msgctxt "Preferences"
-msgid "Chat Zoom"
-msgstr "Zoom del chat"
-
-#: Resources/Scripts/Gui/Preferences.as:1377
-msgctxt "Preferences"
-msgid "Hold Large Map"
-msgstr "Mantener el mapa con el botón"
-
-#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:145
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:146
 msgctxt "StartupScreen"
 msgid ""
 "Vertical Sync:Synchronizes screen updates to a monitor's refresh rate.|Off|"
@@ -2829,296 +2611,534 @@ msgstr ""
 "Sincronización vertical:Sincroniza las actualizaciones de la pantalla con la "
 "frecuencia de actualización del monitor.|Apagado|Encendido|Adaptable"
 
-#: Sources/Client/Client_Draw.cpp:860
-msgctxt "Client"
-msgid "Accuracy: {0}%"
-msgstr "Precisión: {0}%"
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:152
+msgctxt "StartupScreen"
+msgid "Camera Blur"
+msgstr "Desenfoque de cámara"
 
-#: Sources/Client/Client_Draw.cpp:864
-msgctxt "Client"
-msgid "Kill/Death Ratio: {0}"
-msgstr "Tasa de bajas/muertes: {0}"
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:153
+msgctxt "StartupScreen"
+msgid "Blurs the screen when you turn quickly."
+msgstr "Desenfoca la pantalla cuando te giras rapidamente."
 
-#: Sources/Client/Client_Draw.cpp:866
-msgctxt "Client"
-msgid "Kill Streak: {0}, Best: {1}"
-msgstr "Racha de bajas: {0}, Mejor: {1}"
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:156
+msgctxt "StartupScreen"
+msgid "Lens Scattering Filter"
+msgstr "Filtro de dispersión en el lente"
 
-#: Sources/Client/Client_Draw.cpp:868
-msgctxt "Client"
-msgid "Melee Kills: {0}"
-msgstr "Bajas cuerpo a cuerpo: {0}"
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:157
+msgctxt "StartupScreen"
+msgid "Simulates light being scattered by dust on the camera lens."
+msgstr "Simula la luz siendo dispersada por el polvo en el lente de la cámara."
 
-#: Sources/Client/Client_Draw.cpp:869
-msgctxt "Client"
-msgid "Grenade Kills: {0}"
-msgstr "Bajas con granadas: {0}"
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:160
+msgctxt "StartupScreen"
+msgid "Lens Flare"
+msgstr "Destellos de lente"
 
-#: Sources/Client/Client_Draw.cpp:870
-msgctxt "Client"
-msgid "Blocks Placed: {0}"
-msgstr "Bloques colocados: {0}"
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:161
+msgctxt "StartupScreen"
+msgid "The Sun causes lens flare."
+msgstr "El Sol causa un destello de lente."
 
-#: Sources/Client/Client_Update.cpp:1078
-msgctxt "Client"
-msgid "You hit {0} from: {1} blocks "
-msgstr "Le diste a {0} desde: {1} bloques "
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:164
+msgctxt "StartupScreen"
+msgid "Flares for Dynamic Lights."
+msgstr "Destellos para luces dinámicas."
 
-#: Sources/Client/Client_Update.cpp:1148
-msgctxt "Client"
-msgid "TORSO"
-msgstr "TORSO"
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:165
+msgctxt "StartupScreen"
+msgid "Enables lens flare for light sources other than the Sun."
+msgstr "Activa destello de lente para otras fuentes de luz diferentes al Sol."
 
-#: Sources/Client/Client_Update.cpp:1149
-msgctxt "Client"
-msgid "ARMS"
-msgstr "BRAZOS"
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:168
+msgctxt "StartupScreen"
+msgid "Color Correction"
+msgstr "Corrección de color"
 
-#: Sources/Client/Client_Update.cpp:1150
-msgctxt "Client"
-msgid "LEGS"
-msgstr "PIERNAS"
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:169
+msgctxt "StartupScreen"
+msgid "Applies cinematic color correction to make the image look better."
+msgstr ""
+"Aplica una corrección de color cinematográfica para que la imagen tenga "
+"mejor aspecto."
 
-#: Sources/Client/Client_Update.cpp:1151
-msgctxt "Client"
-msgid "MELEE"
-msgstr "MELEE"
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:172
+msgctxt "StartupScreen"
+msgid "Depth of Field"
+msgstr "Profundidad de campo"
 
-#: Sources/Client/Client_Update.cpp:1152
-msgctxt "Client"
-msgid "HEAD"
-msgstr "CABEZA"
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:173
+msgctxt "StartupScreen"
+msgid "Blurs out-of-focus objects."
+msgstr "Difumina los objetos fuera del foco."
 
-#: Resources/Scripts/Gui/Preferences.as:1189
-msgctxt "Preferences"
-msgid "Show Alive Player Count"
-msgstr "Mostrar jugadores vivos"
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:176
+msgctxt "StartupScreen"
+msgid "Screen Space Ambient Occlusion"
+msgstr "Oclusión ambiental de espacio en pantalla"
 
-#: Resources/Scripts/Gui/Preferences.as:1191
-#: Resources/Scripts/Gui/Preferences.as:1196
-msgctxt "Preferences"
-msgid "Top"
-msgstr "Arriba"
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:177
+msgctxt "StartupScreen"
+msgid "Simulates soft shadows that occur between nearby objects."
+msgstr "Simula sombras suaves que se producen entre objetos cercanos."
 
-#: Resources/Scripts/Gui/Preferences.as:1192
-#: Resources/Scripts/Gui/Preferences.as:1197
-#: Resources/Scripts/Gui/Preferences.as:1218
-msgctxt "Preferences"
-msgid "Bottom"
-msgstr "Abajo"
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:179
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:224
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:241
+msgctxt "StartupScreen"
+msgid "Low"
+msgstr "Bajo"
 
-#: Resources/Scripts/Gui/Preferences.as:1216
-msgctxt "Preferences"
-msgid "Show Map Location"
-msgstr "Mostrar ubicación en el mapa"
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:180
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:225
+msgctxt "StartupScreen"
+msgid "Medium"
+msgstr "Medio"
 
-#: Resources/Scripts/Gui/Preferences.as:1219
-msgctxt "Preferences"
-msgid "Side"
-msgstr "Lado"
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:181
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:226
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:243
+msgctxt "StartupScreen"
+msgid "High"
+msgstr "Alto"
 
-#: Resources/Scripts/Gui/Preferences.as:1221
-msgctxt "Preferences"
-msgid "Show Player Names"
-msgstr "Mostrar nombres de jugadores"
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:182
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:244
+msgctxt "StartupScreen"
+msgid "Ultra"
+msgstr "Ultra"
 
-#: Resources/Scripts/Gui/Preferences.as:1226
-msgctxt "Preferences"
-msgid "Show Hover Player Names"
-msgstr "Nombres al pasar el cursor"
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:185
+msgctxt "StartupScreen"
+msgid "Post-process"
+msgstr "Post-procesado"
 
-#: Resources/Scripts/Gui/Preferences.as:1267
-msgctxt "Preferences"
-msgid "Show Dead Player Names"
-msgstr "Nombres de jugadores muertos"
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:186
+msgctxt "StartupScreen"
+msgid ""
+"Post-process modifies the image to make it look better and more realistic."
+msgstr ""
+"El post-procesado modifica la imagen para que tenga un aspecto mejor y más "
+"realista."
 
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:192
+msgctxt "StartupScreen"
+msgid ""
+"Particle Quality|Low:Artifact occurs when a particle intersects other "
+"objects.|Medium:Particle intersects objects smoothly.|High:Particle "
+"intersects objects smoothly, and some objects casts their shadow to "
+"particles."
+msgstr ""
+"Calidad de partículas|Bajo:Artefactos se producen cuando una partícula "
+"intersecta otros objetos.|Medio:Las partículas intersectan objetos "
+"suavemente.|Alto:Las partículas intersectan objetos suavemente, y algunos "
+"objetos proyectan su sombra a las partículas."
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:199
+msgctxt "StartupScreen"
+msgid "Volumetric Fog"
+msgstr "Niebla volumétrica"
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:200
+msgctxt "StartupScreen"
+msgid "None"
+msgstr "Ninguno"
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:201
+msgctxt "StartupScreen"
+msgid "Disables the volumetric fog effect."
+msgstr "Desactiva el efecto de niebla volumétrica."
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:202
+msgctxt "StartupScreen"
+msgid "Level 1"
+msgstr "Nivel 1"
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:203
+msgctxt "StartupScreen"
+msgid "Applies local illumination to the fog."
+msgstr "Aplica iluminación local a la niebla."
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:204
+msgctxt "StartupScreen"
+msgid "Level 2"
+msgstr "Nivel 2"
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:205
+msgctxt "StartupScreen"
+msgid "Applies both local illumination and global illumination to the fog."
+msgstr ""
+"Aplica tanto la iluminación local como la iluminación global a la niebla."
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:206
+msgctxt "StartupScreen"
+msgid "Warning: '{0}' must be enabled."
+msgstr "Advertencia: '{0}' debe estar activado."
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:213
+msgctxt "StartupScreen"
+msgid "Dynamic Lights"
+msgstr "Luces dinámicas"
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:214
+msgctxt "StartupScreen"
+msgid ""
+"Gives some objects an ability to emit light to give them an energy-emitting "
+"impression."
+msgstr ""
+"Otorga a algunos objetos la capacidad de emitir luz para darles una "
+"impresión de emisores de energía."
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:217
+msgctxt "StartupScreen"
+msgid "Shadows"
+msgstr "Sombras"
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:218
+msgctxt "StartupScreen"
+msgid "Non-static object casts a shadow."
+msgstr "Los objetos no estáticos proyectan una sombra."
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:221
+msgctxt "StartupScreen"
+msgid "Physically Based Lighting"
+msgstr "Iluminación basada en la física"
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:222
+msgctxt "StartupScreen"
+msgid ""
+"Uses more accurate approximation techniques to decide the brightness of "
+"objects."
+msgstr ""
+"Utiliza técnicas de aproximación más precisas para decidir el brillo de los "
+"objetos."
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:229
+msgctxt "StartupScreen"
+msgid "Direct Lights"
+msgstr "Luces directas"
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:230
+msgctxt "StartupScreen"
+msgid ""
+"Controls how light encounting a material and atmosphere directly affects its "
+"appearance."
+msgstr ""
+"Controla cómo la luz llega a un material y el ambiente afecta directamente a "
+"su aspecto."
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:239
+msgctxt "StartupScreen"
+msgid ""
+"Water Shader|None:Water is rendered in the same way that normal blocks are "
+"done.|Level 1:Refraction and the reflected Sun are simulated.|Level 2:Waving "
+"water is simulated as well as reflection and refraction.|Level 3:Reflections "
+"and refractions are rendered at the highest quality using screen-space "
+"techniques."
+msgstr ""
+"Water Shader|None:Water is rendered in the same way that normal blocks are "
+"done.|Level 1:Refraction and the reflected Sun are simulated.|Level 2:Waving "
+"water is simulated as well as reflection and refraction.|Level 3:Reflections "
+"and refractions are rendered at the highest quality using screen-space "
+"techniques."
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:242
+msgctxt "StartupScreen"
+msgid "Med"
+msgstr "Med"
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:247
+msgctxt "StartupScreen"
+msgid "Shader Effects"
+msgstr "Efectos del sombreador"
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:248
+msgctxt "StartupScreen"
+msgid "Special effects."
+msgstr "Efectos especiales."
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:263
+msgctxt "StartupScreen"
+msgid ""
+"Fast Mode:Reduces the image resolution to make the rendering faster.|Off|2x|"
+"4x"
+msgstr ""
+"Modo Rápido:Reduce la resolución de la imagen para hacer un rendimiento mas "
+"rápido.|Apagado|2x|4x"
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:473
+msgctxt "StartupScreen"
+msgid "Audio Settings"
+msgstr "Ajustes de audio"
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:478
+msgctxt "StartupScreen"
+msgid "Backend"
+msgstr "Motor"
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:481
+msgctxt "StartupScreen"
+msgid "OpenAL"
+msgstr "OpenAL"
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:487
+msgctxt "StartupScreen"
+msgid ""
+"Uses an OpenAL-capable sound card to process sound. In most cases where "
+"there isn't such a sound card, software emulation is used."
+msgstr ""
+"Utiliza una tarjeta de sonido compatible con OpenAL para procesar el sonido. "
+"En la mayoría de los casos en los que no existe tal tarjeta de sonido, se "
+"utiliza la emulación por software."
+
+#. ! The name of audio driver that outputs no audio.
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:498
+msgctxt "StartupScreen"
+msgid "Null"
+msgstr "Nulo"
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:501
+msgctxt "StartupScreen"
+msgid "Disables audio output."
+msgstr "Desactivar salida de audio."
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:511
+msgctxt "StartupScreen"
+msgid "Volume"
+msgstr "Volumen"
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:516
+msgctxt "StartupScreen"
+msgid "Polyphonics"
+msgstr "Polifónicos"
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:518
+msgctxt "StartupScreen"
+msgid ""
+"Specifies how many sounds can be played simultaneously. Higher value needs "
+"more processing power, so setting this too high might cause an overload "
+"(especially with a software emulation)."
+msgstr ""
+"Especifica cuántos sonidos pueden reproducirse simultáneamente. Un valor más "
+"alto necesita más potencia de procesamiento, por lo que un valor demasiado "
+"alto podría causar una sobrecarga (especialmente con una emulación de "
+"software)."
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:524
+msgctxt "StartupScreen"
+msgid "EAX"
+msgstr "EAX"
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:526
+msgctxt "StartupScreen"
+msgid ""
+"Enables extended features provided by the OpenAL driver to create more "
+"ambience."
+msgstr ""
+"Activa las funciones ampliadas que ofrece el controlador OpenAL para crear "
+"más ambiente."
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:536
+msgctxt "StartupScreen"
+msgid "Output Device"
+msgstr "Output Device"
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:596
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:598
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:610
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:857
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:871
+msgctxt "StartupScreen"
+msgid "System default"
+msgstr "Predeterminado del sistema"
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:652
+msgctxt "StartupScreen"
+msgid "Language"
+msgstr "Lenguaje"
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:664
+msgctxt "StartupScreen"
+msgid "Tools"
+msgstr "Herramientas"
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:667
+msgctxt "StartupScreen"
+msgid "Reset All Settings"
+msgstr "Restablecer todos los ajustes"
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:676
+msgctxt "StartupScreen"
+msgid "Open Config Folder in Explorer"
+msgstr "Abrir carpeta de configuración en el explorador"
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:678
+msgctxt "StartupScreen"
+msgid "Reveal Config Folder in Finder"
+msgstr "Revelar carpeta de configuración en el buscador"
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:680
+msgctxt "StartupScreen"
+msgid "Browse Config Folder"
+msgstr "Explorar carpeta de configuración"
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:687
+msgctxt "StartupScreen"
+msgid "Demo Recording"
+msgstr "Grabador de demos"
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:690
+msgctxt "StartupScreen"
+msgid "Automatically record every game"
+msgstr "Grabar automáticamente todos los juegos"
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:698
+msgctxt "StartupScreen"
+msgid "Delete oldest demos when limit is reached"
+msgstr "Eliminar las demos más antiguas cuando se alcance el límite"
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:705
+msgctxt "StartupScreen"
+msgid "Max stored demos"
+msgstr "Límite de demos guardadas"
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:718
+msgctxt "StartupScreen"
+msgid "Demos Folder"
+msgstr "Carpeta de demos"
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:723
+msgctxt "StartupScreen"
+msgid "Open Demos Folder in Explorer"
+msgstr "Abrir carpeta de demos en el explorador"
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:725
+msgctxt "StartupScreen"
+msgid "Reveal Demos Folder in Finder"
+msgstr "Revelar carpeta de demos en el buscador"
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:727
+msgctxt "StartupScreen"
+msgid "Browse Demos Folder"
+msgstr "Explorar la carpeta de demos"
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:761
+msgctxt "StartupScreen"
+msgid "An unknown error has occurred while opening the demos directory."
+msgstr "Se ha producido un error desconocido al abrir el directorio de demos."
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:771
+msgctxt "StartupScreen"
+msgid "An unknown error has occurred while opening the config directory."
+msgstr ""
+"Se ha producido un error desconocido al abrir el directorio de "
+"configuraciones."
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:779
+msgctxt "StartupScreen"
+msgid ""
+"Are you sure to reset all settings? They include (but are not limited to):"
+msgstr ""
+"¿Está seguro de restablecer todos los ajustes? Incluyen (pero no se limitan "
+"a):"
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:781
+msgctxt "StartupScreen"
+msgid "All graphics/audio settings"
+msgstr "Todos los ajustes de gráficos/audio"
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:782
+msgctxt "StartupScreen"
+msgid "All key bindings"
+msgstr "Todas las teclas asignadas"
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:783
+msgctxt "StartupScreen"
+msgid "Your player name"
+msgstr "Tu nombre de jugador"
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:787
+#: Resources/Scripts/Gui/StartupScreen/MainMenu.as:126
+msgctxt "StartupScreen"
+msgid "Advanced"
+msgstr "Avanzado"
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:786
+msgctxt "StartupScreen"
+msgid ""
+"Other advanced settings only accessible through '{0}' tab and in-game "
+"commands."
+msgstr ""
+"Otros ajustes avanzados sólo accesibles a través de la pestaña '{0}' y desde "
+"los comandos en el juego."
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:855
+msgctxt "StartupScreen"
+msgid "Unknown ({0})"
+msgstr "Desconocido ({0})"
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:920
+msgctxt "StartupScreen"
+msgid "Copy to Clipboard"
+msgstr "Copiar al portapapeles"
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:948
+msgctxt "StartupScreen"
+msgid "Advanced Settings"
+msgstr "Configuración avanzada"
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:956
+msgctxt "StartupScreen"
+msgid "Filter"
+msgstr "Filtro"
+
+#: Resources/Scripts/Gui/StartupScreen/MainMenu.as:57
+msgctxt "StartupScreen"
+msgid "Start"
+msgstr "Iniciar"
+
+#: Resources/Scripts/Gui/StartupScreen/MainMenu.as:65
 msgctxt "StartupScreen"
 msgid "GitHub Repository"
 msgstr "Página de GitHub"
 
+#: Resources/Scripts/Gui/StartupScreen/MainMenu.as:74
 msgctxt "StartupScreen"
 msgid "Compatible Mods"
 msgstr "Mods Compatibles"
 
-#: Resources/Scripts/Gui/StartupScreen/MainMenu.as:127
+#: Resources/Scripts/Gui/StartupScreen/MainMenu.as:83
+msgctxt "StartupScreen"
+msgid "Skip this screen next time"
+msgstr "Saltar esta pantalla la próxima vez"
+
+#: Resources/Scripts/Gui/StartupScreen/MainMenu.as:122
+msgctxt "StartupScreen"
+msgid "Graphics"
+msgstr "Gráficos"
+
+#: Resources/Scripts/Gui/StartupScreen/MainMenu.as:123
+msgctxt "StartupScreen"
+msgid "Audio"
+msgstr "Audio"
+
+#: Resources/Scripts/Gui/StartupScreen/MainMenu.as:124
+msgctxt "StartupScreen"
+msgid "Generic"
+msgstr "General"
+
+#: Resources/Scripts/Gui/StartupScreen/MainMenu.as:125
+msgctxt "StartupScreen"
+msgid "System Info"
+msgstr "Información del sistema"
+
+#: Resources/Scripts/Gui/StartupScreen/MainMenu.as:138
+#: Resources/Scripts/Gui/StartupScreen/MainMenu.as:148
 msgctxt "StartupScreen"
 msgid "An unknown error has occurred while opening this url."
 msgstr "Se ha producido un error desconocido al abrir esta URL."
 
-#: Resources/Scripts/Gui/Preferences.as:1211
-msgctxt "Preferences"
-msgid "HUD Ammo Style"
-msgstr "Estilo de munición del HUD"
-
-#: Resources/Scripts/Gui/Preferences.as:1213
-msgctxt "Preferences"
-msgid "SIMPLE"
-msgstr "Simple"
-
-#: Resources/Scripts/Gui/Preferences.as:1249
-msgctxt "Preferences"
-msgid "Killfeed Icons"
-msgstr "Iconos del killfeed"
-
-#: Resources/Scripts/Gui/Preferences.as:1225
-msgctxt "Preferences"
-msgid "Save Final Score Screenshot"
-msgstr "Guardar captura del marcador final"
-
-#: Resources/Scripts/Gui/Preferences.as:1340
-msgctxt "Preferences"
-msgid "Reflex Sight"
-msgstr "Mira reflectora"
-
-#: Resources/Scripts/Gui/Preferences.as:1342
-msgctxt "Preferences"
-msgid "Dot"
-msgstr "Punto"
-
-#: Resources/Scripts/Gui/Preferences.as:1343
-msgctxt "Preferences"
-msgid "Cross"
-msgstr "Cruz"
-
-#: Resources/Scripts/Gui/Preferences.as:1403
-msgctxt "Preferences"
-msgid "Object Outlines"
-msgstr "Contornos de objetos"
-
-#: Resources/Scripts/Gui/Preferences.as:1489
-msgctxt "Preferences"
-msgid "Master Volume Up"
-msgstr "Subir volumen general"
-
-#: Resources/Scripts/Gui/Preferences.as:1490
-msgctxt "Preferences"
-msgid "Master Volume Down"
-msgstr "Bajar volumen general"
-
-#: Resources/Scripts/Gui/Preferences.as:1220
-msgctxt "Preferences"
-msgid "Gameplay"
-msgstr "Jugabilidad"
-
-#: Resources/Scripts/Gui/Preferences.as:1221
-msgctxt "Preferences"
-msgid "Classic Weapon Recoil"
-msgstr "Retroceso clásico del arma"
-
-#: Resources/Scripts/Gui/Preferences.as:1222
-msgctxt "Preferences"
-msgid "Classic Sprinting"
-msgstr "Sprint clásico"
-
-msgctxt "Preferences"
-msgid "Force Spectator Mode"
-msgstr "Forzar modo espectador"
-
-msgctxt "Preferences"
-msgid "Network Graph"
-msgstr "Monitor de red"
-
-#: Resources/Scripts/Gui/Preferences.as:1226
-msgctxt "Preferences"
-msgid "Debug Block Cursor"
-msgstr "Depurar cursor de bloques"
-
-#: Resources/Scripts/Gui/Preferences.as:1227
-msgctxt "Preferences"
-msgid "Debug Weapon Anchor Points"
-msgstr "Depurar puntos de anclaje del arma"
-
-#: Resources/Scripts/Gui/Preferences.as:1228
-msgctxt "Preferences"
-msgid "Debug Players Hitbox"
-msgstr "Depurar hitbox de jugadores"
-
-#: Resources/Scripts/Gui/Preferences.as:1197
-msgctxt "Preferences"
-msgid "Water Splash"
-msgstr "Salpicaduras de agua"
-
-#: Resources/Scripts/Gui/Preferences.as:1247
-msgctxt "Preferences"
-msgid "Skip dead players (death cam)"
-msgstr "Omitir muertos (cám. de muerte)"
-
-#: Resources/Scripts/Gui/Preferences.as:1283
-msgctxt "Preferences"
-msgid "Screenshot Format"
-msgstr "Formato de captura de pantalla"
-
-#: Sources/Client/Client_Draw.cpp:958
-msgctxt "Client"
-msgid "Respawning in: {0}"
-msgstr "Reapareciendo en: {0}"
-
-#: Sources/Client/Client_Input.cpp:354
-msgctxt "Client"
-msgid "Volume: {0}%"
-msgstr "Volumen: {0}%"
-
-msgctxt "Client"
-msgid "[Enter]"
-msgstr "[Intro]"
-
-msgctxt "Client"
-msgid "[Esc]"
-msgstr "[Esc]"
-
-msgctxt "Client"
-msgid "LEFT CTRL"
-msgstr "CTRL IZQ"
-
-msgctxt "Client"
-msgid "RIGHT CTRL"
-msgstr "CTRL DER"
-
-msgctxt "Client"
-msgid "LEFT ALT"
-msgstr "ALT IZQ"
-
-msgctxt "Client"
-msgid "RIGHT ALT"
-msgstr "ALT DER"
-
-msgctxt "Client"
-msgid "CAPSLOCK"
-msgstr "BLOQ MAYÚS"
-
-msgctxt "Client"
-msgid "HOME"
-msgstr "INICIO"
-
-msgctxt "Client"
-msgid "SPACE"
-msgstr "ESPACIO"
-
-#: Sources/Client/Client_Draw.cpp:1260
-msgctxt "Client"
-msgid "[{0}] Grab color"
-msgstr "[{0}] Capturar color"
-
-#: Sources/Client/Client_Draw.cpp:1258
-msgctxt "Client"
-msgid "[{0}/{1}] Navigate up/down"
-msgstr "[{0}/{1}] Navegar arriba/abajo"
-
-#: Sources/Client/Client_Draw.cpp:1256
-msgctxt "Client"
-msgid "[{0}/{1}] Navigate left/right"
-msgstr "[{0}/{1}] Navegar izq./derecha"
-
-#: Sources/Client/Client_Draw.cpp:1261
-msgctxt "Client"
-msgid "[{0}] Toggle extended palette"
-msgstr "[{0}] Alternar paleta extendida"
-
-msgctxt "Client"
-msgid "You are taking damage. Find solid ground!"
-msgstr "Estás recibiendo daño. ¡Busca un terreno firme!"
-
-#: Sources/Client/Client_NetHandler.cpp:111
-msgctxt "Client"
-msgid "You are connected with {0} ({2}) on {1}"
-msgstr "Estás conectado con {0} ({2}) en {1}"
+#~ msgctxt "Client"
+#~ msgid "{0}"
+#~ msgstr "{0}"
