@@ -23,6 +23,9 @@
 
 #include <Core/Math.h>
 
+#define GRENADE_DAMAGE_RADIUS 16
+#define GRENADE_DAMAGE_SCALAR 4096
+
 namespace spades {
 	namespace client {
 		class World;
@@ -42,16 +45,19 @@ namespace spades {
 
 		public:
 			Grenade(World&, int ownerId, Vector3 pos, Vector3 vel, float fuse);
-			int GetOwnerId() const { return ownerId; }
 			~Grenade();
 
 			/** @return true when exploded. */
 			bool Update(float dt);
 
-			/** @return -1 if dropped under water, non-zero if bounced, 2 when sound should be
-			 * played. */
+			/** @return -1 if dropped under water, 1 if bounced, 2 when sound should be played. */
 			int MoveGrenade(float fsynctics);
 
+			// adapted from: https://github.com/piqueserver/piqueserver/blob/master/pyspades/world.pyx#L368
+			/** @return damage given to a player standing at ``playerPosition``.*/
+			int GetDamage(const Vector3& playerPosition) const;
+
+			int GetOwnerId() const { return ownerId; }
 			Vector3 GetPosition() const { return position; }
 			Vector3 GetVelocity() const { return velocity; }
 			Quaternion GetOrientation() const { return orientation; }

@@ -88,7 +88,7 @@ namespace spades {
 			velocity.z += fsynctics;
 			position += velocity * f;
 
-			Handle<GameMap> m = world.GetMap();
+			const Handle<GameMap> m = world.GetMap();
 
 			// Collision
 			IntVector3 lp = position.Floor();
@@ -120,6 +120,20 @@ namespace spades {
 			}
 
 			return ret;
+		}
+
+		int Grenade::GetDamage(const Vector3& playerPosition) const {
+			const Vector3 diff = playerPosition - position;
+			if (fabsf(diff.x) < GRENADE_DAMAGE_RADIUS &&
+				fabsf(diff.y) < GRENADE_DAMAGE_RADIUS &&
+				fabsf(diff.z) < GRENADE_DAMAGE_RADIUS) {
+				const float distSqr = diff.GetSquaredLength();
+				if (distSqr == 0.0F)
+					return 100;
+				// calculate damage based on distance from grenade.
+				return std::min((int)ceilf(GRENADE_DAMAGE_SCALAR / distSqr), 100);
+			}
+			return 0; // player is outside the explosion radius.
 		}
 	} // namespace client
 } // namespace spades
