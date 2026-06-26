@@ -503,7 +503,7 @@ namespace spades {
 				// --- Mods panel contents ---
 				{
 					@modsDownloadButton = spades::ui::Button(Manager);
-					modsDownloadButton.Caption = _Tr("MainScreen", "Download official mods…");
+					modsDownloadButton.Caption = _Tr("MainScreen", "Download official mods...");
 					modsDownloadButton.Bounds = AABB2(contentsLeft, 200.0F, 240.0F, 30.0F);
 					@modsDownloadButton.Activated = spades::ui::EventHandler(this.OnDownloadModsPressed);
 					modsPanel.AddChild(modsDownloadButton);
@@ -731,7 +731,7 @@ namespace spades {
 				int total = modsHelper.GetRefreshTotal();
 				string item = modsHelper.GetRefreshCurrentItem();
 				if (total <= 0) {
-					modsStatusLabel.Text = _Tr("MainScreen", "Fetching mod list…");
+					modsStatusLabel.Text = _Tr("MainScreen", "Fetching mod list...");
 					modsProgressBar.Fraction = 0.0F;
 				} else {
 					string label = "" + done + " / " + total;
