@@ -10,12 +10,12 @@ jobs:
     runs-on: windows-2022
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           submodules: true
 
       - name: Cache vcpkg and dependencies
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: |
             vcpkg/installed
@@ -57,12 +57,12 @@ jobs:
     runs-on: windows-2022
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           submodules: true
 
       - name: Cache vcpkg and dependencies
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: |
             vcpkg/installed
@@ -108,12 +108,12 @@ jobs:
       MACOSX_DEPLOYMENT_TARGET: "12.0"
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           submodules: true
 
       - name: Cache vcpkg and dependencies
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: |
             vcpkg/installed
@@ -159,12 +159,12 @@ jobs:
       MACOSX_DEPLOYMENT_TARGET: "12.0"
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           submodules: recursive
 
       - name: Cache vcpkg and dependencies
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: |
             vcpkg/installed
@@ -208,7 +208,7 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           submodules: true
 
@@ -230,7 +230,7 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           submodules: true
 
