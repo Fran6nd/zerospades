@@ -1605,12 +1605,13 @@ namespace spades {
 			if (blocks.empty())
 				return;
 
+			const auto& origin = MakeVector3(blocks[0]) + 0.5F;
+
 			Handle<IAudioChunk> c = audioDevice->RegisterSound("Sounds/Misc/BlockBounce.opus");
 			AddLocalEntity(stmp::make_unique<FallingBlock>(this, c.GetPointerOrNull(), blocks));
 
 			if (!IsMuted()) {
-				Vector3 origin = MakeVector3(blocks[0]) + 0.5F;
-				Handle<IAudioChunk> c = audioDevice->RegisterSound("Sounds/Misc/BlockFall.opus");
+				c = audioDevice->RegisterSound("Sounds/Misc/BlockFall.opus");
 				audioDevice->Play(c.GetPointerOrNull(), origin, AudioParam());
 			}
 		}
@@ -1618,7 +1619,7 @@ namespace spades {
 		void Client::GrenadeBounced(const Grenade& g) {
 			SPADES_MARK_FUNCTION();
 
-			Vector3 origin = g.GetPosition();
+			const auto& origin = g.GetPosition();
 
 			if (!IsMuted() && origin.z < 63.0F) {
 				Handle<IAudioChunk> c =
@@ -1640,7 +1641,7 @@ namespace spades {
 		void Client::GrenadeExploded(const Grenade& g) {
 			SPADES_MARK_FUNCTION();
 
-			Vector3 origin = g.GetPosition();
+			const auto& origin = g.GetPosition();
 
 			if (origin.z >= 63.0F) {
 				GrenadeExplosionUnderwater(origin);
@@ -1703,6 +1704,74 @@ namespace spades {
 					if (map->CastRay(soundPos, MakeVector3(0, 0, 1), 8.0F, outPos))
 						soundPos.z = (float)outPos.z - 0.2F;
 					audioDevice->Play(c.GetPointerOrNull(), soundPos, param);
+				}
+			}
+
+			// add grenade damage numbers, values can differ from server
+			if ((int)cg_damageIndicators >= 2) {
+				stmp::optional<Player&> maybeLocalPlayer = world->GetLocalPlayer();
+				if (!maybeLocalPlayer)
+					return; // no local player
+
+				Player& localPlayer = maybeLocalPlayer.value();
+				if (g.GetOwnerId() != localPlayer.GetId())
+					return; // not our grenade
+
+				bool isFFA = world->IsModeFFA();
+
+				for (size_t i = 0; i < world->GetNumPlayerSlots(); i++) {
+					auto maybePlayer = world->GetPlayer(static_cast<unsigned int>(i));
+					if (!maybePlayer)
+						continue;
+
+					Player& player = maybePlayer.value();
+					if (player.IsLocalPlayer())
+						continue;
+					if (!player.IsAlive() || player.IsSpectator())
+						continue;
+
+					bool isFriendlyFire = player.IsTeammate(localPlayer) && !isFFA;
+					if (isFriendlyFire)
+						continue;
+
+					const auto& playerPos = player.GetEye();
+					const int dmg = g.GetDamage(playerPos);
+					if (dmg <= 0)
+						continue;
+
+					Vector3 dir = g.GetPosition() - playerPos;
+					const float dist = dir.GetLength();
+					dir = dir.Normalize();
+
+					IntVector3 hitPos;
+					if (map->CastRay(playerPos, dir, dist, hitPos))
+						continue;
+
+					// check if victim is behind a wall
+					const auto& eye = lastSceneDef.viewOrigin;
+					const auto& toVictim = playerPos - eye;
+					const float distToVictim = toVictim.GetLength();
+					GameMap::RayCastResult mapResult;
+					mapResult = map->CastRay2(eye, toVictim, (int)distToVictim + 1);
+					if (mapResult.hit && (mapResult.hitPos - eye).GetLength() < distToVictim)
+						continue;
+
+					// add damage number
+					DamageIndicator indicator;
+					indicator.damage = dmg;
+					indicator.playerId = player.GetId();
+					indicator.position = playerPos;
+					indicator.crit = dmg >= 100;
+					indicator.velocity.x = 0.0F;
+					indicator.velocity.y = 0.0F;
+					indicator.velocity.z = -2.0F;
+					indicator.fade = indicator.crit ? 2.0F : 1.5F;
+					indicator.lastHitTime = time;
+					damageIndicators.push_back(indicator);
+
+					// spawn hitmark
+					hitFeedbackIconState = 1.0F;
+					hitFeedbackFriendly = isFriendlyFire;
 				}
 			}
 		}
