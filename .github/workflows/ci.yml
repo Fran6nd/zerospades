@@ -265,3 +265,128 @@ jobs:
           name: zerospades-linux-ubuntu
           path: build/bin/
           if-no-files-found: warn
+
+  publish-nightly:
+    name: Publish nightly release
+    runs-on: ubuntu-22.04
+    needs:
+      - build-windows-x86
+      - build-windows-x64
+      - build-macos-intel
+      - build-macos-arm
+      - build-linux-nix
+      - build-linux-ubuntu
+    if: |
+      success() &&
+      (github.event_name == 'push' && github.ref == 'refs/heads/main' ||
+       github.event_name == 'workflow_dispatch')
+    concurrency:
+      group: nightly-release
+      cancel-in-progress: true
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v8
+        with:
+          path: artifacts
+
+      - name: Package artifacts
+        id: package
+        run: |
+          SHORT_SHA="$(git rev-parse --short HEAD)"
+          echo "short_sha=${SHORT_SHA}" >> "$GITHUB_OUTPUT"
+
+          mkdir -p release-assets
+          cd artifacts
+
+          BINARIES_LIST=""
+          for name in $(find . -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort); do
+            zip_name="${name/zerospades-/zerospades-${SHORT_SHA}-}"
+            echo "Zipping $name as ${zip_name}.zip..."
+            (cd "$name" && zip -r "../../release-assets/${zip_name}.zip" .)
+
+            case "$name" in
+              zerospades-linux-nix) desc="for Linux (built via Nix)." ;;
+              zerospades-linux-ubuntu) desc="for Linux (Ubuntu-based builds)." ;;
+              zerospades-macos-intel) desc="for Intel Macs." ;;
+              zerospades-macos-arm64) desc="for Apple Silicon Macs (M1 and later)." ;;
+              zerospades-windows-x64) desc="for 64-bit Windows." ;;
+              zerospades-windows-x86) desc="for 32-bit Windows." ;;
+              *) desc="binary package." ;;
+            esac
+            printf -v list_line '* **%s.zip**: %s\n' "$zip_name" "$desc"
+            BINARIES_LIST="${BINARIES_LIST}${list_line}"
+          done
+
+          {
+            echo "binaries_list<<EOF"
+            printf '%s' "$BINARIES_LIST"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Update nightly tag
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -f nightly
+          git push origin nightly --force
+
+      - name: Update nightly release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BINARIES_LIST: ${{ steps.package.outputs.binaries_list }}
+          SHORT_SHA: ${{ steps.package.outputs.short_sha }}
+        run: |
+          RELEASE_TITLE="ZeroSpades Nightly - ${SHORT_SHA}"
+
+          # Find the latest official tag (sorted by semantic version), ignoring "nightly"
+          LATEST_OFFICIAL_TAG="$(git tag --list 'v*' --sort=-v:refname | head -n 1)"
+
+          REPO_URL="https://github.com/${{ github.repository }}"
+
+          if [ -n "$LATEST_OFFICIAL_TAG" ]; then
+            DISCLAIMER="These binaries are from an automatic development build and they may be unstable. For a stable version, see the [latest official release](${REPO_URL}/releases/latest)."
+          else
+            DISCLAIMER="These binaries are from an automatic development build"
+          fi
+
+          # Build the "## Binaries" section from the list generated in the previous step
+          BINARIES_SECTION="$(printf '## Binaries\nFollowing binary packages are provided:\n%s' "$BINARIES_LIST")"
+
+          if [ -n "$LATEST_OFFICIAL_TAG" ]; then
+            echo "Last official tag found: $LATEST_OFFICIAL_TAG"
+            NOTES_FLAGS=(--generate-notes --notes-start-tag "$LATEST_OFFICIAL_TAG")
+          else
+            echo "No official tag found yet; using placeholder changelog."
+            PLACEHOLDER_NOTES="$(printf 'No official release exists yet, so no changelog is available.')"
+            NOTES_FLAGS=(--notes "$PLACEHOLDER_NOTES")
+          fi
+
+          # Make sure there is at least one zip to publish before touching the release
+          if ! ls release-assets/*.zip >/dev/null 2>&1; then
+            echo "::error::No zip files found in release-assets/. Aborting before touching the existing nightly release."
+            exit 1
+          fi
+
+          if gh release view nightly --repo "${{ github.repository }}" >/dev/null 2>&1; then
+            gh release delete nightly --repo "${{ github.repository }}" --yes --cleanup-tag
+          fi
+
+          gh release create nightly \
+            --repo "${{ github.repository }}" \
+            --title "$RELEASE_TITLE" \
+            --prerelease \
+            --target "${{ github.sha }}" \
+            "${NOTES_FLAGS[@]}" \
+            release-assets/*.zip
+
+          # Prepend the disclaimer and the Binaries section before the generated changelog
+          CURRENT_NOTES="$(gh release view nightly --repo "${{ github.repository }}" --json body --jq .body)"
+          printf '%s\n%s\n##\n%s' "$DISCLAIMER" "$BINARIES_SECTION" "$CURRENT_NOTES" > full_notes.md
+          gh release edit nightly --repo "${{ github.repository }}" --notes-file full_notes.md
