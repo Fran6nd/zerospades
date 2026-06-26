@@ -67,7 +67,7 @@ namespace spades {
 			}
 			{
 				spades::ui::Label label(Manager);
-				label.Text = _Tr("CreateProfileScreen", "Welcome to OpenSpades");
+				label.Text = _Tr("CreateProfileScreen", "Welcome to ZeroSpades");
 				@label.Font = fontManager.HeadingFont;
 				label.Bounds = AABB2(contentsLeft, ContentsTop + 10.0F, contentsWidth, 32.0F);
 				label.Alignment = Vector2(0.0F, 0.5F);
