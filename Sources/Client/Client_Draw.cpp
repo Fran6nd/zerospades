@@ -646,10 +646,9 @@ namespace spades {
 			// camera coincides with the player's eye (e.g. mid-spectator-switch);
 			// skip the raycast since direction is undefined
 			GameMap::RayCastResult mapResult;
-			if (dir.GetSquaredLength() < 1.0e-6F) {
+			if (dir.GetSquaredLength() < 1.0E-6F) {
 				mapResult.hit = false;
 			} else {
-				dir = dir.Normalize();
 				mapResult = map->CastRay2(eye, dir, 256);
 			}
 
