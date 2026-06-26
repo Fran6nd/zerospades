@@ -14,7 +14,7 @@
  GNU General Public License for more details.
 
  You should have received a copy of the GNU General Public License
- along with OpenSpades.  If not, see <http://www.gnu.org/licenses/>.
+ along with OpenSpades.	 If not, see <http://www.gnu.org/licenses/>.
 
  */
 
@@ -27,6 +27,9 @@ namespace spades {
 		class FontManagerRegistrar : public ScriptObjectRegistrar {
 			static IFont* GetSmallFont(FontManager* self) {
 				return Handle<IFont>{self->GetSmallFont()}.Unmanage();
+			}
+			static IFont* GetSmallGuiFont(FontManager* self) {
+				return Handle<IFont>{self->GetSmallGuiFont()}.Unmanage();
 			}
 			static IFont* GetGuiFont(FontManager* self) {
 				return Handle<IFont>{self->GetGuiFont()}.Unmanage();
@@ -52,31 +55,33 @@ namespace spades {
 						r = eng->RegisterObjectType("FontManager", 0, asOBJ_REF);
 						manager->CheckError(r);
 						r = eng->RegisterObjectBehaviour("FontManager", asBEHAVE_ADDREF, "void f()",
-						                                 asMETHOD(FontManager, AddRef),
-						                                 asCALL_THISCALL);
+														 asMETHOD(FontManager, AddRef),
+														 asCALL_THISCALL);
 						manager->CheckError(r);
 						r = eng->RegisterObjectBehaviour("FontManager", asBEHAVE_RELEASE,
-						                                 "void f()", asMETHOD(FontManager, Release),
-						                                 asCALL_THISCALL);
+														 "void f()", asMETHOD(FontManager, Release),
+														 asCALL_THISCALL);
 						manager->CheckError(r);
-						r =
-						  eng->RegisterObjectMethod("FontManager", "Font@ get_SmallFont() property",
-						                            asFUNCTION(GetSmallFont), asCALL_CDECL_OBJLAST);
+						r = eng->RegisterObjectMethod("FontManager", "Font@ get_SmallFont() property",
+													asFUNCTION(GetSmallFont), asCALL_CDECL_OBJLAST);
+						manager->CheckError(r);
+						r = eng->RegisterObjectMethod("FontManager", "Font@ get_SmallGuiFont() property",
+													asFUNCTION(GetSmallGuiFont), asCALL_CDECL_OBJLAST);
 						manager->CheckError(r);
 						r = eng->RegisterObjectMethod("FontManager", "Font@ get_GuiFont() property property",
-						                              asFUNCTION(GetGuiFont), asCALL_CDECL_OBJLAST);
+													  asFUNCTION(GetGuiFont), asCALL_CDECL_OBJLAST);
 						manager->CheckError(r);
 						r = eng->RegisterObjectMethod("FontManager", "Font@ get_HeadingFont() property",
-						                              asFUNCTION(GetHeadingFont),
-						                              asCALL_CDECL_OBJLAST);
+													  asFUNCTION(GetHeadingFont),
+													  asCALL_CDECL_OBJLAST);
 						manager->CheckError(r);
 						r =
 						  eng->RegisterObjectMethod("FontManager", "Font@ get_LargeFont() property",
-						                            asFUNCTION(GetLargeFont), asCALL_CDECL_OBJLAST);
+													asFUNCTION(GetLargeFont), asCALL_CDECL_OBJLAST);
 						manager->CheckError(r);
 						r = eng->RegisterObjectMethod("FontManager", "Font@ get_SquareDesignFont() property",
-						                              asFUNCTION(GetSquareDesignFont),
-						                              asCALL_CDECL_OBJLAST);
+													  asFUNCTION(GetSquareDesignFont),
+													  asCALL_CDECL_OBJLAST);
 						manager->CheckError(r);
 
 						break;

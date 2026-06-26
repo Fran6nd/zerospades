@@ -14,7 +14,7 @@
  GNU General Public License for more details.
 
  You should have received a copy of the GNU General Public License
- along with OpenSpades.  If not, see <http://www.gnu.org/licenses/>.
+ along with OpenSpades.	 If not, see <http://www.gnu.org/licenses/>.
 
  */
 
@@ -80,6 +80,7 @@ namespace spades {
 			mediumFont = Handle<ngclient::FTFont>::New(renderer, instance.guiFontSet, 24.0F, 24.0F).Cast<IFont>();
 			headingFont = Handle<ngclient::FTFont>::New(renderer, instance.guiFontSet, 20.0F, 20.0F).Cast<IFont>();
 			guiFont = Handle<ngclient::FTFont>::New(renderer, instance.guiFontSet, 16.0F, 20.0F).Cast<IFont>();
+			smallGuiFont = Handle<ngclient::FTFont>::New(renderer, instance.guiFontSet, 12.0F, 16.0F).Cast<IFont>();
 			smallFont = Handle<ngclient::FTFont>::New(renderer, instance.sysFontSet, 8.0F, 10.0F).Cast<IFont>();
 		}
 

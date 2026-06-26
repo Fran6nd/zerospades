@@ -14,7 +14,7 @@
  GNU General Public License for more details.
 
  You should have received a copy of the GNU General Public License
- along with OpenSpades.  If not, see <http://www.gnu.org/licenses/>.
+ along with OpenSpades.	 If not, see <http://www.gnu.org/licenses/>.
 
  */
 
@@ -34,6 +34,7 @@ namespace spades {
 			IFont& GetMediumFont() { return *mediumFont; }
 			IFont& GetHeadingFont() { return *headingFont; }
 			IFont& GetGuiFont() { return *guiFont; }
+			IFont& GetSmallGuiFont() { return *smallGuiFont; }
 			IFont& GetSmallFont() { return *smallFont; }
 
 		protected:
@@ -45,6 +46,7 @@ namespace spades {
 			Handle<IFont> mediumFont;
 			Handle<IFont> headingFont;
 			Handle<IFont> guiFont;
+			Handle<IFont> smallGuiFont;
 			Handle<IFont> smallFont;
 		};
 	} // namespace client
