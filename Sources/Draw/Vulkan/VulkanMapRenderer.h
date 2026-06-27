@@ -79,6 +79,9 @@ namespace spades {
 			// Shader programs/pipelines
 			VkPipeline depthonlyPipeline;
 			VkPipeline basicPipeline;
+			// Reversed-winding sibling of basicPipeline for the water reflection
+			// (mirror) pass, whose negative-Z scale flips triangle winding.
+			VkPipeline basicMirrorPipeline;
 			VkPipeline dlightPipeline;
 			VkPipeline backfacePipeline;
 
