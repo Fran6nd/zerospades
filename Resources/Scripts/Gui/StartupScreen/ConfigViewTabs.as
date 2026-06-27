@@ -32,13 +32,16 @@ namespace spades {
 
 		spades::ui::CheckBox@ fullscreenCheck;
 		spades::ui::RadioButton@ driverOpenGL;
+		spades::ui::RadioButton@ driverVulkan;
 		spades::ui::RadioButton@ driverSoftware;
 
 		spades::ui::TextViewer@ helpView;
 		StartupScreenConfigView@ configViewGL;
+		StartupScreenConfigView@ configViewVulkan;
 		StartupScreenConfigView@ configViewSoftware;
 
 		private ConfigItem r_renderer("r_renderer");
+		private ConfigItem r_vulkan("r_vulkan");
 		private ConfigItem r_fullscreen("r_fullscreen");
 
 		StartupScreenGraphicsTab(StartupScreenUI@ ui, Vector2 size) {
@@ -85,7 +88,7 @@ namespace spades {
 			{
 				spades::ui::RadioButton e(Manager);
 				e.Caption = _Tr("StartupScreen", "OpenGL");
-				e.Bounds = AABB2(160.0F, 30.0F, 140.0F, 24.0F);
+				e.Bounds = AABB2(110.0F, 30.0F, 90.0F, 24.0F);
 				e.GroupName = "driver";
 				HelpHandler(
 					helpView,
@@ -99,8 +102,23 @@ namespace spades {
 			}
 			{
 				spades::ui::RadioButton e(Manager);
+				e.Caption = _Tr("StartupScreen", "Vulkan");
+				e.Bounds = AABB2(205.0F, 30.0F, 90.0F, 24.0F);
+				e.GroupName = "driver";
+				HelpHandler(
+					helpView,
+					_Tr("StartupScreen",
+						"Vulkan renderer uses modern graphics API for improved "
+						"performance and compatibility on macOS via MoltenVK."))
+					.Watch(e);
+				@e.Activated = spades::ui::EventHandler(this.OnDriverVulkan);
+				AddChild(e);
+				@driverVulkan = e;
+			}
+			{
+				spades::ui::RadioButton e(Manager);
 				e.Caption = _Tr("StartupScreen", "Software");
-				e.Bounds = AABB2(310.0F, 30.0F, 140.0F, 24.0F);
+				e.Bounds = AABB2(300.0F, 30.0F, 100.0F, 24.0F);
 				e.GroupName = "driver";
 				HelpHandler(
 					helpView,
@@ -119,13 +137,13 @@ namespace spades {
 
 				// TODO: Add r_temporalAA when it's more complete
 				cfg.AddRow(StartupScreenConfigSelectItemEditor(
-					ui, StartupScreenGraphicsAntialiasConfig(ui), "0|2|4|fxaa",
+					ui, StartupScreenGraphicsAntialiasConfig(ui), "0|2|4|8|fxaa",
 					_Tr("StartupScreen",
 						"Antialiasing:Enables a technique to improve the appearance of high-contrast edges.\n\n"
 						"MSAA: Performs antialiasing by generating an intermediate high-resolution image. "
 						"Looks best, but doesn't cope with some settings.\n\n"
 						"FXAA: Performs antialiasing by smoothing artifacts out as a post-process.|"
-						"Off|MSAA 2x|4x|FXAA")));
+						"Off|MSAA 2x|4x|8x|FXAA")));
 
 				cfg.AddRow(StartupScreenConfigCheckItemEditor(
 					ui, StartupScreenConfig(ui, "r_radiosity"), "0", "1",
@@ -255,6 +273,147 @@ namespace spades {
 				@configViewGL = cfg;
 			}
 
+			// Vulkan config view: same cvars as the OpenGL view (they share r_*),
+			// so the two tabs expose identical buttons and editing one updates the other.
+			{
+				StartupScreenConfigView cfg(Manager);
+
+				cfg.AddRow(StartupScreenConfigSelectItemEditor(
+					ui, StartupScreenGraphicsAntialiasConfig(ui), "0|2|4|8|fxaa",
+					_Tr("StartupScreen",
+						"Antialiasing:Enables a technique to improve the appearance of high-contrast edges.\n\n"
+						"MSAA: Performs antialiasing by generating an intermediate high-resolution image. "
+						"Looks best, but doesn't cope with some settings.\n\n"
+						"FXAA: Performs antialiasing by smoothing artifacts out as a post-process.|"
+						"Off|MSAA 2x|4x|8x|FXAA")));
+
+				cfg.AddRow(StartupScreenConfigCheckItemEditor(
+					ui, StartupScreenConfig(ui, "r_radiosity"), "0", "1",
+					_Tr("StartupScreen", "Global Illumination"),
+					_Tr("StartupScreen",
+						"Enables a physically based simulation of light path for more realistic lighting.")));
+
+				cfg.AddRow(StartupScreenConfigCheckItemEditor(
+					ui, StartupScreenConfig(ui, "r_hdr"), "0", "1",
+					_Tr("StartupScreen", "Linear HDR Rendering"),
+					_Tr("StartupScreen", "Uses a number representation which allows wider dynamic range during rendering process. "
+						"Additionally, this allows color calculation whose value is in linear correspondence with actual energy, "
+						"that is, physically accurate blending can be achieved.")));
+
+				cfg.AddRow(StartupScreenConfigSelectItemEditor(
+					ui, StartupScreenConfig(ui, "r_vsync"), "0|1|-1",
+					_Tr("StartupScreen",
+						"Vertical Sync:Synchronizes screen updates to a monitor's refresh rate.|" "Off|" "On|" "Adaptive")));
+
+				{
+					StartupScreenComplexConfig cplx;
+					cplx.AddEditor(StartupScreenConfigCheckItemEditor(
+						ui, StartupScreenConfig(ui, "r_cameraBlur"), "0", "1",
+						_Tr("StartupScreen", "Camera Blur"),
+						_Tr("StartupScreen", "Blurs the screen when you turn quickly.")));
+					cplx.AddEditor(StartupScreenConfigCheckItemEditor(
+						ui, StartupScreenConfig(ui, "r_bloom"), "0", "1",
+						_Tr("StartupScreen", "Lens Scattering Filter"),
+						_Tr("StartupScreen", "Simulates light being scattered by dust on the camera lens.")));
+					cplx.AddEditor(StartupScreenConfigCheckItemEditor(
+						ui, StartupScreenConfig(ui, "r_lensFlare"), "0", "1",
+						_Tr("StartupScreen", "Lens Flare"),
+						_Tr("StartupScreen", "The Sun causes lens flare.")));
+					cplx.AddEditor(StartupScreenConfigCheckItemEditor(
+						ui, StartupScreenConfig(ui, "r_lensFlareDynamic"), "0", "1",
+						_Tr("StartupScreen", "Flares for Dynamic Lights."),
+						_Tr("StartupScreen", "Enables lens flare for light sources other than the Sun.")));
+					cplx.AddEditor(StartupScreenConfigCheckItemEditor(
+						ui, StartupScreenConfig(ui, "r_colorCorrection"), "0", "1",
+						_Tr("StartupScreen", "Color Correction"),
+						_Tr("StartupScreen", "Applies cinematic color correction to make the image look better.")));
+					cplx.AddEditor(StartupScreenConfigCheckItemEditor(
+						ui, StartupScreenConfig(ui, "r_depthOfField"), "0", "1",
+						_Tr("StartupScreen", "Depth of Field"),
+						_Tr("StartupScreen", "Blurs out-of-focus objects.")));
+					cplx.AddEditor(StartupScreenConfigCheckItemEditor(
+						ui, StartupScreenConfig(ui, "r_ssao"), "0", "1",
+						_Tr("StartupScreen", "Screen Space Ambient Occlusion"),
+						_Tr("StartupScreen", "Simulates soft shadows that occur between nearby objects.")));
+
+					cplx.AddPreset(StartupScreenComplexConfigPreset(_Tr("StartupScreen", "Low"), "0|0|0|0|0|0|0"));
+					cplx.AddPreset(StartupScreenComplexConfigPreset(_Tr("StartupScreen", "Medium"), "1|0|1|0|1|0|0"));
+					cplx.AddPreset(StartupScreenComplexConfigPreset(_Tr("StartupScreen", "High"), "1|1|1|1|1|1|0"));
+					cplx.AddPreset(StartupScreenComplexConfigPreset(_Tr("StartupScreen", "Ultra"), "1|1|1|1|1|1|1"));
+
+					cfg.AddRow(StartupScreenConfigComplexItemEditor(
+						ui, cplx, _Tr("StartupScreen", "Post-process"),
+						_Tr("StartupScreen", "Post-process modifies the image to make it look better and " "more realistic.")));
+				}
+
+				cfg.AddRow(StartupScreenConfigSelectItemEditor(
+					ui, StartupScreenConfig(ui, "r_softParticles"), "0|1|2",
+					_Tr("StartupScreen",
+						"Particle Quality|"
+						"Low:Artifact occurs when a particle intersects other objects.|"
+						"Medium:Particle intersects objects smoothly.|"
+						"High:Particle intersects objects smoothly, and some objects casts " "their shadow to particles.")));
+
+				cfg.AddRow(StartupScreenConfigSelectItemEditor(
+					ui, StartupScreenConfig(ui, "r_fogShadow"), "0|1|2",
+					_Tr("StartupScreen", "Volumetric Fog") + "|" +
+					_Tr("StartupScreen", "None") + ":" +
+					_Tr("StartupScreen", "Disables the volumetric fog effect.") + "|" +
+					_Tr("StartupScreen", "Level 1") + ":"  +
+					_Tr("StartupScreen", "Applies local illumination to the fog.") + "|" +
+					_Tr("StartupScreen", "Level 2") + ":"  +
+					_Tr("StartupScreen", "Applies both local illumination and global illumination to the fog.") + "\n\n" +
+					_Tr("StartupScreen", "Warning: '{0}' must be enabled.", _Tr("StartupScreen", "Global Illumination"))));
+
+				{
+					StartupScreenComplexConfig cplx;
+					cplx.AddEditor(StartupScreenConfigCheckItemEditor(
+						ui, StartupScreenConfig(ui, "r_dlights"), "0", "1",
+						_Tr("StartupScreen", "Dynamic Lights"),
+						_Tr("StartupScreen", "Gives some objects an ability to emit light to give them " "an energy-emitting impression.")));
+					cplx.AddEditor(StartupScreenConfigCheckItemEditor(
+						ui, StartupScreenConfig(ui, "r_modelShadows"), "0", "1",
+						_Tr("StartupScreen", "Shadows"),
+						_Tr("StartupScreen", "Non-static object casts a shadow.")));
+					cplx.AddEditor(StartupScreenConfigCheckItemEditor(
+						ui, StartupScreenConfig(ui, "r_physicalLighting"), "0", "1",
+						_Tr("StartupScreen", "Physically Based Lighting"),
+						_Tr("StartupScreen", "Uses more accurate approximation techniques to decide the brightness of objects.")));
+
+					cplx.AddPreset(StartupScreenComplexConfigPreset(_Tr("StartupScreen", "Low"), "1|0|0"));
+					cplx.AddPreset(StartupScreenComplexConfigPreset(_Tr("StartupScreen", "Medium"), "1|1|0"));
+					cplx.AddPreset(StartupScreenComplexConfigPreset(_Tr("StartupScreen", "High"), "1|1|1"));
+
+					cfg.AddRow(StartupScreenConfigComplexItemEditor(
+						ui, cplx, _Tr("StartupScreen", "Direct Lights"),
+						_Tr("StartupScreen", "Controls how light encounting a material and atmosphere directly " "affects its appearance.")));
+				}
+
+				{
+					StartupScreenComplexConfig cplx;
+
+					cplx.AddEditor(StartupScreenConfigSelectItemEditor(
+						ui, StartupScreenConfig(ui, "r_water"), "0|1|2|3",
+						_Tr("StartupScreen",
+							"Water Shader|" "None:Water is rendered in the same way that normal blocks are done.|" "Level 1:Refraction and the reflected Sun are simulated.|" "Level 2:Waving water is simulated as well as reflection and refraction.|" "Level 3:Reflections and refractions are rendered at the highest quality using screen-space techniques.")));
+
+					cplx.AddPreset(StartupScreenComplexConfigPreset(_Tr("StartupScreen", "Low"), "0"));
+					cplx.AddPreset(StartupScreenComplexConfigPreset(_Tr("StartupScreen", "Med"), "1"));
+					cplx.AddPreset(StartupScreenComplexConfigPreset(_Tr("StartupScreen", "High"), "2"));
+					cplx.AddPreset(StartupScreenComplexConfigPreset(_Tr("StartupScreen", "Ultra"), "3"));
+
+					cfg.AddRow(StartupScreenConfigComplexItemEditor(
+						ui, cplx, _Tr("StartupScreen", "Shader Effects"),
+						_Tr("StartupScreen", "Special effects.")));
+				}
+
+				cfg.Finalize();
+				cfg.SetHelpTextHandler(HelpTextHandler(this.HandleHelpText));
+				cfg.Bounds = AABB2(0.0F, 60.0F, mainWidth, size.y - 60.0F);
+				AddChild(cfg);
+				@configViewVulkan = cfg;
+			}
+
 			{
 				StartupScreenConfigView cfg(Manager);
 
@@ -273,10 +432,17 @@ namespace spades {
 		private void HandleHelpText(string text) { helpView.Text = text; }
 
 		private void OnDriverOpenGL(spades::ui::UIElement@) {
+			r_vulkan.IntValue = 0;
+			r_renderer.StringValue = "gl";
+			LoadConfig();
+		}
+		private void OnDriverVulkan(spades::ui::UIElement@) {
+			r_vulkan.IntValue = 1;
 			r_renderer.StringValue = "gl";
 			LoadConfig();
 		}
 		private void OnDriverSoftware(spades::ui::UIElement@) {
+			r_vulkan.IntValue = 0;
 			r_renderer.StringValue = "sw";
 			LoadConfig();
 		}
@@ -287,19 +453,30 @@ namespace spades {
 
 		void LoadConfig() {
 			resEdit.LoadConfig();
-			if (r_renderer.StringValue == "sw") {
+			// r_vulkan overrides r_renderer at runtime (see SDLRunner::GetRendererType),
+			// so check it first to keep the UI consistent with what actually runs.
+			if (r_vulkan.IntValue != 0 || r_renderer.StringValue == "vulkan") {
+				driverVulkan.Check();
+				configViewGL.Visible = false;
+				configViewVulkan.Visible = true;
+				configViewSoftware.Visible = false;
+			} else if (r_renderer.StringValue == "sw") {
 				driverSoftware.Check();
 				configViewGL.Visible = false;
+				configViewVulkan.Visible = false;
 				configViewSoftware.Visible = true;
 			} else {
 				driverOpenGL.Check();
 				configViewGL.Visible = true;
+				configViewVulkan.Visible = false;
 				configViewSoftware.Visible = false;
 			}
 			fullscreenCheck.Toggled = r_fullscreen.IntValue != 0;
 			driverOpenGL.Enable = ui.helper.CheckConfigCapability("r_renderer", "gl").length == 0;
+			driverVulkan.Enable = ui.helper.CheckConfigCapability("r_renderer", "vulkan").length == 0;
 			driverSoftware.Enable = ui.helper.CheckConfigCapability("r_renderer", "sw").length == 0;
 			configViewGL.LoadConfig();
+			configViewVulkan.LoadConfig();
 			configViewSoftware.LoadConfig();
 		}
 	}
