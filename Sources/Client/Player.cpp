@@ -453,11 +453,23 @@ namespace spades {
 						&& (mapResult.hitBlock + mapResult.normal).z < maxDepth;
 					blockCursorActive = false;
 
+					// Walk the ray in/out to find the nearest buildable cell, but
+					// never adopt a missed cast: CastRay2 with a too-short ray (down
+					// to 0 steps when the target is right at the feet) returns hit ==
+					// false, and using its hitBlock would corrupt blockCursorPos.
 					int dist = 11;
-					for (; (dist >= 1) && InBuildRange(mapResult.hitBlock + mapResult.normal); dist--)
-						mapResult = map->CastRay2(muzzle, dir, dist);
-					for (; (dist < 12) && InBuildRange(mapResult.hitBlock + mapResult.normal); dist++)
-						mapResult = map->CastRay2(muzzle, dir, dist);
+					for (; (dist >= 1) && InBuildRange(mapResult.hitBlock + mapResult.normal); dist--) {
+						GameMap::RayCastResult r = map->CastRay2(muzzle, dir, dist);
+						if (!r.hit)
+							break;
+						mapResult = r;
+					}
+					for (; (dist >= 1) && (dist < 12) && InBuildRange(mapResult.hitBlock + mapResult.normal); dist++) {
+						GameMap::RayCastResult r = map->CastRay2(muzzle, dir, dist);
+						if (!r.hit)
+							break;
+						mapResult = r;
+					}
 					blockCursorPos = mapResult.hitBlock + mapResult.normal;
 				}
 			} else if (tool == ToolBlock) {
