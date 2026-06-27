@@ -619,13 +619,17 @@ namespace spades {
 						continue;
 				}
 
-				// Switch to mirrored pipeline when the model matrix has a negative determinant
+				// Switch to mirrored pipeline when the effective winding is reversed.
+				// A negative-determinant model matrix reverses winding; so does the
+				// water reflection (mirror) pass, which scales the whole scene by
+				// negative Z. XOR the two so culling stays correct when either — or
+				// both — apply (matches GL toggling glFrontFace for the mirror pass).
 				{
 					const auto& ax = param.matrix.GetAxis(0);
 					const auto& ay = param.matrix.GetAxis(1);
 					const auto& az = param.matrix.GetAxis(2);
 					bool isMirrored = Vector3::Dot(Vector3::Cross(ax, ay), az) < 0.0F;
-					bindPipeline(isMirrored ? activeMirroredPipeline : activePipeline);
+					bindPipeline((isMirrored != mirror) ? activeMirroredPipeline : activePipeline);
 				}
 
 				// Compute final MVP matrix

@@ -45,6 +45,7 @@ namespace spades {
 		      chunkInfos(nullptr),
 		      depthonlyPipeline(VK_NULL_HANDLE),
 		      basicPipeline(VK_NULL_HANDLE),
+		      basicMirrorPipeline(VK_NULL_HANDLE),
 		      dlightPipeline(VK_NULL_HANDLE),
 		      backfacePipeline(VK_NULL_HANDLE),
 		      pipelineLayout(VK_NULL_HANDLE),
@@ -215,8 +216,15 @@ namespace spades {
 			c.y >>= VulkanMapChunk::SizeBits;
 			c.z >>= VulkanMapChunk::SizeBits;
 
-			// Bind the basic pipeline
-			vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, basicPipeline);
+			// Bind the basic pipeline. The water reflection (mirror) pass reflects
+			// the scene across the water plane with a negative-Z scale, which
+			// reverses triangle winding — render it with the reversed-winding
+			// sibling so back-face culling stays correct (GL flips glFrontFace here).
+			VkPipeline sunlightPipeline =
+			  (renderer.IsRenderingMirror() && basicMirrorPipeline != VK_NULL_HANDLE)
+			    ? basicMirrorPipeline
+			    : basicPipeline;
+			vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, sunlightPipeline);
 
 			// Draw from nearest to farthest for optimal depth testing
 			// Include all vertical chunks
@@ -707,6 +715,19 @@ namespace spades {
 
 			result = vkCreateGraphicsPipelines(vkDevice, renderer.GetPipelineCache(), 1, &pipelineInfo, nullptr, &basicPipeline);
 
+			// Reversed-winding sibling for the water reflection (mirror) pass. The
+			// mirror view applies a negative-Z scale that flips triangle winding,
+			// so the front face must be reversed to keep back-face culling correct
+			// (matches GL toggling glFrontFace between the normal and mirror passes).
+			if (result == VK_SUCCESS) {
+				VkPipelineRasterizationStateCreateInfo mirrorRasterizer = rasterizer;
+				mirrorRasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+				VkGraphicsPipelineCreateInfo mirrorPipelineInfo = pipelineInfo;
+				mirrorPipelineInfo.pRasterizationState = &mirrorRasterizer;
+				result = vkCreateGraphicsPipelines(vkDevice, renderer.GetPipelineCache(), 1,
+				                                   &mirrorPipelineInfo, nullptr, &basicMirrorPipeline);
+			}
+
 			// Cleanup shader modules
 			vkDestroyShaderModule(vkDevice, vertShaderModule, nullptr);
 			vkDestroyShaderModule(vkDevice, fragShaderModule, nullptr);
@@ -866,6 +887,11 @@ namespace spades {
 			if (basicPipeline != VK_NULL_HANDLE) {
 				vkDestroyPipeline(vkDevice, basicPipeline, nullptr);
 				basicPipeline = VK_NULL_HANDLE;
+			}
+
+			if (basicMirrorPipeline != VK_NULL_HANDLE) {
+				vkDestroyPipeline(vkDevice, basicMirrorPipeline, nullptr);
+				basicMirrorPipeline = VK_NULL_HANDLE;
 			}
 
 			if (dlightPipeline != VK_NULL_HANDLE) {
