@@ -212,7 +212,14 @@ void main() {
 	// a thin animated wavy line inside the rendered water. Dropping the
 	// branch — same fix as Water/Water2.vk.fs — and using the SSR-marched
 	// refractTargetSS/depth as-is removes the discontinuity entirely.
-	vec3 sampledViewCoord = vec3(mix(waterPC.fovTan.zw, waterPC.fovTan.xy, refractTargetSS), 1.0) * -depth;
+	//
+	// fovTan carries OpenGL's screen-Y sign while refractTargetSS is a Vulkan
+	// texture UV (Y inverted), so the reconstruction needs the GL-convention
+	// UV (1 - y) to recover the correct view-space Y — otherwise the envelope
+	// distance below is computed against a Y-mirrored point (matches the
+	// reflection plane-test fix; texture sampling still uses the real UV).
+	vec2 refractReconSS = vec2(refractTargetSS.x, 1.0 - refractTargetSS.y);
+	vec3 sampledViewCoord = vec3(mix(waterPC.fovTan.zw, waterPC.fovTan.xy, refractReconSS), 1.0) * -depth;
 
 	float envelope = min(distance(v_viewPosition * vec3(-1.0, 1.0, 1.0), sampledViewCoord) * 0.8, 1.0);
 	envelope = 1.0 - (1.0 - envelope) * (1.0 - envelope);
