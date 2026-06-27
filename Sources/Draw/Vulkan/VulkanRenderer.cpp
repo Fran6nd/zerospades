@@ -2015,23 +2015,28 @@ namespace spades {
 		// particles work at every sample count.
 		bool useSoftParticles = spriteRenderer && spriteRenderer->IsSoftParticles();
 
-			// Render sprites (non-soft mode: inside offscreen pass with hardware depth test)
-			if (!useSoftParticles) {
-				if (spriteRenderer) {
+			// Long sprites (tracers + the weapon reflex reticle), non-soft particles
+			// and debug lines are transparent and must be drawn AFTER the water pass,
+			// otherwise the water surface paints over them wherever it sits in front
+			// of their background (matches the GL order: water -> debug -> particles).
+			// When the water pass will run, defer them to it (same render pass, the
+			// pipelines are render-pass-compatible); otherwise draw them here.
+			const bool willRenderWater = (int)r_water > 0 && waterRenderer && framebufferManager &&
+			                             framebufferManager->GetMirrorColorImage();
+
+			if (!willRenderWater) {
+				if (!useSoftParticles && spriteRenderer)
 					spriteRenderer->Render(commandBuffer, imageIndex);
-				}
-			}
-			// Long sprites always use hardware depth test (pipeline requires depth attachment)
-			if (longSpriteRenderer) {
-				longSpriteRenderer->Render(commandBuffer, imageIndex);
+				if (longSpriteRenderer)
+					longSpriteRenderer->Render(commandBuffer, imageIndex);
+				RenderDebugLines(commandBuffer);
+				debugLines.clear();
 			}
 
 			// Clear for next frame
 			if (modelRenderer) {
 				modelRenderer->Clear();
 			}
-			RenderDebugLines(commandBuffer);
-			debugLines.clear();
 			lights.clear();
 
 			// End offscreen render pass (scene without water is now complete)
@@ -2192,11 +2197,13 @@ namespace spades {
 					0, 0, nullptr, 0, nullptr, msaaScene ? 1u : 2u, barriers);
 			}
 
-			// Clear sprites after rendering (whether soft or not)
-			if (spriteRenderer) {
+			// Clear transparent buffers once they've been drawn. Soft particles were
+			// drawn above; long sprites and non-soft particles deferred to the water
+			// pass are cleared there instead (see below).
+			if (spriteRenderer && (useSoftParticles || !willRenderWater)) {
 				spriteRenderer->Clear();
 			}
-			if (longSpriteRenderer) {
+			if (longSpriteRenderer && !willRenderWater) {
 				longSpriteRenderer->Clear();
 			}
 
@@ -2268,7 +2275,42 @@ namespace spades {
 
 				vkCmdBeginRenderPass(commandBuffer, &waterRenderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 				waterRenderer->RenderSunlightPass(commandBuffer);
+
+				// Deferred transparent stage (see the offscreen pass): long sprites
+				// (tracers + reflex reticle), non-soft particles and debug lines are
+				// drawn here, over the finished water, so it can't occlude them. The
+				// water render pass is render-pass-compatible with the offscreen one,
+				// so these pipelines are valid as-is. Set viewport/scissor explicitly
+				// (Y-flipped, as elsewhere) rather than relying on inherited state.
+				{
+					VkViewport tvp{};
+					tvp.x = 0.0f;
+					tvp.y = static_cast<float>(renderHeight);
+					tvp.width = static_cast<float>(renderWidth);
+					tvp.height = -static_cast<float>(renderHeight);
+					tvp.minDepth = 0.0f;
+					tvp.maxDepth = 1.0f;
+					vkCmdSetViewport(commandBuffer, 0, 1, &tvp);
+					VkRect2D tsc{};
+					tsc.offset = {0, 0};
+					tsc.extent = {static_cast<uint32_t>(renderWidth), static_cast<uint32_t>(renderHeight)};
+					vkCmdSetScissor(commandBuffer, 0, 1, &tsc);
+
+					if (!useSoftParticles && spriteRenderer)
+						spriteRenderer->Render(commandBuffer, imageIndex);
+					if (longSpriteRenderer)
+						longSpriteRenderer->Render(commandBuffer, imageIndex);
+					RenderDebugLines(commandBuffer);
+					debugLines.clear();
+				}
+
 				vkCmdEndRenderPass(commandBuffer);
+
+				// Clear the deferred transparent buffers now that they've been drawn.
+				if (!useSoftParticles && spriteRenderer)
+					spriteRenderer->Clear();
+				if (longSpriteRenderer)
+					longSpriteRenderer->Clear();
 
 				// Transition color and depth back to SHADER_READ_ONLY for the post-process chain.
 				VkImageMemoryBarrier waterPostBarriers[2]{};
