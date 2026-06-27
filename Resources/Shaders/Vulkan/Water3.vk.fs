@@ -295,8 +295,16 @@ void main() {
 	bool reflectedSky = depth > 0.99999;
 	depth = decodeDepth(depth, waterPC.zNearFar.x, waterPC.zNearFar.y);
 
-	// make sure the reflection is from the above the water plane
-	sampledViewCoord = vec3(mix(waterPC.fovTan.zw, waterPC.fovTan.xy, reflectTargetSS), 1.0) * -depth;
+	// make sure the reflection is from above the water plane.
+	// fovTan carries OpenGL's screen-Y sign, but reflectTargetSS is a Vulkan
+	// texture UV (Y inverted: vk_ss.y = 1 - gl_ss.y). Reconstructing the view
+	// coordinate straight from the Vulkan UV negates sampledViewCoord.y, which
+	// flips the sign of the plane test's dominant term at grazing angles — so
+	// validReflection wrongly failed and the reflection fell back to sky. Feed
+	// the GL-convention UV (1 - y) so the test matches the OpenGL reference.
+	// (Texture sampling below still uses the real Vulkan UV reflectTargetSS.)
+	vec2 reflectReconSS = vec2(reflectTargetSS.x, 1.0 - reflectTargetSS.y);
+	sampledViewCoord = vec3(mix(waterPC.fovTan.zw, waterPC.fovTan.xy, reflectReconSS), 1.0) * -depth;
 	float planeDistance = dot(vec4(sampledViewCoord, 1.0), waterPC.waterPlane);
 	bool validReflection = planeDistance > 0.0;
 
