@@ -52,38 +52,36 @@ Fog → DoF → Bloom → FXAA → LensFlare → AutoExposure → ColorCorrectio
 
 ## Bugs
 
-- [~] **Player shadows — half done.** Models now *render* into the cascaded
-      shadow map with a dedicated pipeline (`CreateShadowPipeline`) + shader
-      ([ModelShadowMap.vert](../../../Resources/Shaders/Vulkan/ModelShadowMap.vert)),
-      pushing the full per-instance light-space MVP (origin baked in). The
-      shared map-chunk shadow pipeline couldn't be reused (chunk vertex
-      stride 20 B vs model `sizeof(Vertex)`; translation-only `vec3` push).
-      Plumbed the per-slice light matrix + render pass through
-      `VulkanModelRenderer::RenderShadowMapPass`, gated on `r_modelShadows`.
+- [x] **Player/grenade shadows (ground).** Dynamic models cast sun shadows
+      onto the terrain. Pipeline:
+      - Models render into a dedicated, models-only cascaded shadow map
+        (`CreateShadowPipeline` + [ModelShadowMap.vert]) pushing the full
+        per-instance light-space MVP (origin baked in). The map-chunk shadow
+        pipeline couldn't be reused (chunk stride 20 B vs model `sizeof(Vertex)`;
+        translation-only `vec3` push). Gated on `r_modelShadows`.
+      - `BuildMatrix` rebuilt to a sun-aligned frustum-fit ortho (ported from
+        `GLBasicShadowMapRenderer`) emitting Vulkan [0,1] Z, with the Z **flipped**
+        so 0 = sun side (z is down in this engine, so the `LESS` test keeps the
+        occluder nearest the sun).
+      - Always-present sampling descriptor set on the shadow renderer: per-frame
+        cascade-matrix UBO (+ `enabled` flag) + the 3 D32 depth maps + sampler.
+        `enabled=0` when `r_fogShadow` off → shader returns lit.
+      - `BasicMap.frag` `EvaluteModelShadow()` (first-in-bounds cascade →
+        compare) multiplied into the sun term, matching the dormant
+        `Shadow/Common.vk.fs` design.
 
-      **But the cascaded shadow map is never SAMPLED by any lit shader.**
-      The lit shaders ([BasicMap.frag], [BasicModelVertexColor.frag]) read
-      only the 512² top-down `mapShadowTexture` (voxel-column occlusion —
-      blocks only). The dormant `Shadow/Common.vk.fs` scaffolding
-      (`VisibilityOfSunLight = EvaluateMapShadow() * EvaluteModelShadow()`)
-      shows the intended design but `EvaluteModelShadow()` was never built.
-      Remaining work to make dynamic (player/grenade) shadows visible:
-      1. **Reimplement `VulkanShadowMapRenderer::BuildMatrix` correctly.** Two
-         problems: (a) it projects along the VIEW direction
-         (`sceneDef.viewAxis[2]`), not the sun — GL projects along
-         `lightDir = normalize(0,-1,-1)` and fits the camera frustum into a
-         tight sun-aligned ortho box (see `GLBasicShadowMapRenderer::BuildMatrix`).
-         As-is the shadow is cast along the camera axis, not the sun. (b) Z maps
-         to ~[-0.5,0.5] (GL [-1,1]); Vulkan clips Z to [0,1], so the near half of
-         each cascade is clipped during the shadow render. Port GL's
-         frustum-fitting + emit Vulkan [0,1] Z; sampling must use the same Z.
-      2. Always-present sampling resources on the shadow renderer: per-frame
-         UBO (`mat4 cascade[3]` + `enabled` flag) + the 3 D32 images + sampler,
-         as one descriptor set. `enabled=0` when `r_fogShadow` off → shader
-         returns lit (no pipeline variants needed).
-      3. Wire into lit shaders (map → model → Phys): VS projects worldPos by
-         each cascade matrix; FS "first in-bounds cascade" select → compare →
-         multiply into the sun term.
+      Three real bugs were fixed along the way: the shadow depth images had a
+      COLOR-aspect view (unsamplable — `CreateImageView(VK_IMAGE_ASPECT_DEPTH_BIT)`
+      now); the shadow render pass lacked an outgoing write→sample dependency;
+      and the map-chunk-inherited depth bias caused a lateral offset (now 0 —
+      no self-shadowing in the models-only cascade).
+
+      Remaining (optional polish):
+      - [ ] **Model self-shadowing** — wire the same cascade sampling into
+            [BasicModelVertexColor.vert/frag] so models are shaded by other
+            models (they already receive terrain shadows via `mapShadowTexture`).
+      - [ ] **Phys lit variants** — `BasicMapPhys`, `BasicModelVertexColorPhys`
+            (only active under `r_physicalLighting`).
 
 ## Stubs
 
