@@ -42,6 +42,7 @@
 #include <ZeroSpades.h>
 
 DEFINE_SPADES_SETTING(cl_serverListUrl, "http://services.buildandshoot.com/serverlist.json");
+DEFINE_SPADES_SETTING(cl_serverListUrlFallback, "https://checkpoint.aos.coffee/serverlist.json");
 
 namespace spades {
 	extern std::string g_pendingMapName;
@@ -145,35 +146,54 @@ namespace spades {
 				ReturnResult(std::move(resp));
 			}
 
+			// Performs a single HTTP GET against `url`, appending the response
+			// body to `buffer`. Returns the cURL result code so the caller can
+			// decide whether to fall back to another URL.
+			CURLcode FetchUrl(const char* url) {
+				std::unique_ptr<CURL, CURLEasyDeleter> cHandle{curl_easy_init()};
+				if (!cHandle)
+					SPRaise("Failed to create cURL object.");
+
+				size_t (*curlWriteCallback)(void*, size_t, size_t, ServerListQuery*) =
+				  [](void* ptr, size_t size, size_t nmemb, ServerListQuery* self) -> size_t {
+					size_t numBytes = size * nmemb;
+					self->buffer.append(reinterpret_cast<char*>(ptr), numBytes);
+					return numBytes;
+				};
+				curl_easy_setopt(cHandle.get(), CURLOPT_USERAGENT, PACKAGE_STRING);
+				curl_easy_setopt(cHandle.get(), CURLOPT_URL, url);
+				curl_easy_setopt(cHandle.get(), CURLOPT_WRITEFUNCTION, curlWriteCallback);
+				curl_easy_setopt(cHandle.get(), CURLOPT_WRITEDATA, this);
+				curl_easy_setopt(cHandle.get(), CURLOPT_LOW_SPEED_TIME, 30l);
+				curl_easy_setopt(cHandle.get(), CURLOPT_LOW_SPEED_LIMIT, 15l);
+				curl_easy_setopt(cHandle.get(), CURLOPT_CONNECTTIMEOUT, 30l);
+				return curl_easy_perform(cHandle.get());
+			}
+
 		public:
-			ServerListQuery(MainScreenHelper *owner) : owner{owner} {}
+			ServerListQuery(MainScreenHelper* owner) : owner{owner} {}
 
 			void Run() override {
 				try {
-					std::unique_ptr<CURL, CURLEasyDeleter> cHandle{curl_easy_init()};
-					if (cHandle) {
-						size_t (*curlWriteCallback)(void *, size_t, size_t, ServerListQuery *) =
-						  [](void *ptr, size_t size, size_t nmemb,
-							 ServerListQuery *self) -> size_t {
-							size_t numBytes = size * nmemb;
-							self->buffer.append(reinterpret_cast<char *>(ptr), numBytes);
-							return numBytes;
-						};
-						curl_easy_setopt(cHandle.get(), CURLOPT_USERAGENT, PACKAGE_STRING);
-						curl_easy_setopt(cHandle.get(), CURLOPT_URL, cl_serverListUrl.CString());
-						curl_easy_setopt(cHandle.get(), CURLOPT_WRITEFUNCTION, curlWriteCallback);
-						curl_easy_setopt(cHandle.get(), CURLOPT_WRITEDATA, this);
-						curl_easy_setopt(cHandle.get(), CURLOPT_LOW_SPEED_TIME, 30l);
-						curl_easy_setopt(cHandle.get(), CURLOPT_LOW_SPEED_LIMIT, 15l);
-						curl_easy_setopt(cHandle.get(), CURLOPT_CONNECTTIMEOUT, 30l);
-						auto reqret = curl_easy_perform(cHandle.get());
-						if (CURLE_OK == reqret) {
-							ProcessResponse();
-						} else {
-							SPRaise("HTTP request error (%s).", curl_easy_strerror(reqret));
-						}
+					const std::string primaryUrl = cl_serverListUrl.CString();
+					const std::string fallbackUrl = cl_serverListUrlFallback.CString();
+
+					auto reqret = FetchUrl(primaryUrl.c_str());
+
+					// Primary endpoint unreachable (timeout, DNS failure, non-OK
+					// transfer, etc.) -- retry once against the fallback mirror
+					// before giving up.
+					if (CURLE_OK != reqret && !fallbackUrl.empty() && fallbackUrl != primaryUrl) {
+						SPLog("[!] Primary server list (%s) failed: %s. Trying fallback (%s).",
+							  primaryUrl.c_str(), curl_easy_strerror(reqret), fallbackUrl.c_str());
+						buffer.clear();
+						reqret = FetchUrl(fallbackUrl.c_str());
+					}
+
+					if (CURLE_OK == reqret) {
+						ProcessResponse();
 					} else {
-						SPRaise("Failed to create cURL object.");
+						SPRaise("HTTP request error (%s).", curl_easy_strerror(reqret));
 					}
 				} catch (std::exception &ex) {
 					auto lst = stmp::make_unique<MainScreenServerList>();
