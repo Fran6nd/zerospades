@@ -1788,6 +1788,10 @@ namespace spades {
 		// Render shadow maps BEFORE starting main render pass (shadow maps use their own render passes)
 		if (sceneUsedInThisFrame && shadowMapRenderer && r_fogShadow) {
 			shadowMapRenderer->Render(commandBuffer);
+		} else if (shadowMapRenderer) {
+			// Cascade not rendered this frame: keep the sampling UBO marked disabled
+			// so the lit shaders skip (stale) model-shadow lookups.
+			shadowMapRenderer->SetSamplingDisabled();
 		}
 
 		// Render mirror pass for water reflections (r_water >= 2)
