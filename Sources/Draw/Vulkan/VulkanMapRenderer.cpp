@@ -21,6 +21,7 @@
 #include "VulkanMapRenderer.h"
 #include "VulkanMapChunk.h"
 #include "VulkanRenderer.h"
+#include "VulkanShadowMapRenderer.h"
 #include "VulkanBuffer.h"
 #include "VulkanImage.h"
 #include "VulkanImageWrapper.h"
@@ -225,6 +226,16 @@ namespace spades {
 			    ? basicMirrorPipeline
 			    : basicPipeline;
 			vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, sunlightPipeline);
+
+			// Bind the model-shadow sampling set (set 1) once for the whole pass; the
+			// per-chunk set-0 binds don't disturb it. The UBO's enabled flag tells the
+			// shader whether the cascade was rendered this frame.
+			VulkanShadowMapRenderer* smr = renderer.GetShadowMapRenderer();
+			if (smr && smr->GetSamplingDescriptorSet() != VK_NULL_HANDLE) {
+				VkDescriptorSet samplingSet = smr->GetSamplingDescriptorSet();
+				vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+				                        pipelineLayout, 1, 1, &samplingSet, 0, nullptr);
+			}
 
 			// Draw from nearest to farthest for optimal depth testing
 			// Include all vertical chunks
@@ -682,10 +693,20 @@ namespace spades {
 				pushConstantRange.size = sizeof(MapSolidPushConstantsBasic);
 			}
 
+			// Set 1 = the shadow renderer's model-shadow sampling layout (cascade UBO +
+			// depth maps), so the lit shaders can fold in dynamic model shadows. The
+			// shadow renderer is created before the map renderer (see SetGameMap).
+			VulkanShadowMapRenderer* smr = renderer.GetShadowMapRenderer();
+			VkDescriptorSetLayout setLayouts[2] = {
+			    descriptorSetLayout,
+			    smr ? smr->GetSamplingSetLayout() : VK_NULL_HANDLE,
+			};
+			SPAssert(setLayouts[1] != VK_NULL_HANDLE);
+
 			VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
 			pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-			pipelineLayoutInfo.setLayoutCount = 1;
-			pipelineLayoutInfo.pSetLayouts = &descriptorSetLayout;
+			pipelineLayoutInfo.setLayoutCount = 2;
+			pipelineLayoutInfo.pSetLayouts = setLayouts;
 			pipelineLayoutInfo.pushConstantRangeCount = 1;
 			pipelineLayoutInfo.pPushConstantRanges = &pushConstantRange;
 

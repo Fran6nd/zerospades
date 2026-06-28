@@ -29,6 +29,12 @@ layout(push_constant) uniform PushConstants {
 	vec3 fogColor;
 } pushConstants;
 
+// Set 1: model-shadow cascade matrices (owned by VulkanShadowMapRenderer).
+layout(set = 1, binding = 0) uniform ShadowSampling {
+	mat4 cascadeMatrix[3];
+	int enabled;
+} shadowSampling;
+
 layout(location = 0) in uvec3 positionAttribute;
 layout(location = 1) in uvec2 aoCoordAttribute;
 layout(location = 2) in uvec3 colorAttribute;  // colorRed, colorGreen, colorBlue
@@ -43,6 +49,9 @@ layout(location = 5) out vec3 aoCoord;         // 3D coords into ambient-occlusi
 layout(location = 6) out vec3 radiosityTextureCoord; // 3D coords into radiosity textures
 layout(location = 7) out vec3 normalVarying;   // per-face normal in world space
 layout(location = 8) out vec2 ambientOcclusionCoord; // 2D coords into Gfx/AmbientOcclusion atlas
+layout(location = 9) out vec3 modelShadowCoord0;     // light-clip coords per cascade
+layout(location = 10) out vec3 modelShadowCoord1;
+layout(location = 11) out vec3 modelShadowCoord2;
 
 void main() {
 	// Convert uint8 position to float
@@ -100,4 +109,10 @@ void main() {
 	// Radiosity 3D-texture coords (matches GL MapRadiosity.vs).
 	radiosityTextureCoord = worldPos.xyz / vec3(512.0, 512.0, 64.0);
 	normalVarying = normalFloat;
+
+	// Per-cascade light-clip coords for model-shadow sampling. Ortho => w == 1,
+	// so .xyz is the clip coord (xy in [-1,1], z in [0,1]).
+	modelShadowCoord0 = (shadowSampling.cascadeMatrix[0] * worldPos).xyz;
+	modelShadowCoord1 = (shadowSampling.cascadeMatrix[1] * worldPos).xyz;
+	modelShadowCoord2 = (shadowSampling.cascadeMatrix[2] * worldPos).xyz;
 }

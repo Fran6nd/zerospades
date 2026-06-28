@@ -119,13 +119,23 @@ namespace spades {
 			subpass.colorAttachmentCount = 0;
 			subpass.pDepthStencilAttachment = &depthAttachmentRef;
 
-			VkSubpassDependency dependency{};
-			dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
-			dependency.dstSubpass = 0;
-			dependency.srcStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
-			dependency.dstStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
-			dependency.srcAccessMask = 0;
-			dependency.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+			VkSubpassDependency dependencies[2]{};
+			// Incoming: serialize depth writes against the prior frame.
+			dependencies[0].srcSubpass = VK_SUBPASS_EXTERNAL;
+			dependencies[0].dstSubpass = 0;
+			dependencies[0].srcStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+			dependencies[0].dstStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+			dependencies[0].srcAccessMask = 0;
+			dependencies[0].dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+			// Outgoing: make the written depth available to the lit shaders that sample
+			// this map later in the frame (the layout transition alone doesn't make the
+			// writes visible to FRAGMENT_SHADER reads on a TBDR GPU).
+			dependencies[1].srcSubpass = 0;
+			dependencies[1].dstSubpass = VK_SUBPASS_EXTERNAL;
+			dependencies[1].srcStageMask = VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+			dependencies[1].dstStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+			dependencies[1].srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+			dependencies[1].dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
 
 			VkRenderPassCreateInfo renderPassInfo{};
 			renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
@@ -133,8 +143,8 @@ namespace spades {
 			renderPassInfo.pAttachments = &depthAttachment;
 			renderPassInfo.subpassCount = 1;
 			renderPassInfo.pSubpasses = &subpass;
-			renderPassInfo.dependencyCount = 1;
-			renderPassInfo.pDependencies = &dependency;
+			renderPassInfo.dependencyCount = 2;
+			renderPassInfo.pDependencies = dependencies;
 
 			if (vkCreateRenderPass(device->GetDevice(), &renderPassInfo, nullptr, &renderPass) != VK_SUCCESS) {
 				SPRaise("Failed to create shadow map render pass");
@@ -153,6 +163,12 @@ namespace spades {
 					VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
 					VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
 				);
+
+				// VulkanImage's constructor builds a COLOR-aspect view by default; a
+				// D32 depth image needs a DEPTH-aspect view to work as both a depth
+				// attachment and a sampled texture (the framebuffer manager does the
+				// same for its depth images).
+				shadowMapImages[i]->CreateImageView(VK_IMAGE_ASPECT_DEPTH_BIT);
 
 				VkImageView attachments[] = { shadowMapImages[i]->GetImageView() };
 
@@ -727,9 +743,13 @@ namespace spades {
 
 			// world -> OBB-local [0,1]^3.
 			matrix = obb.m.InversedFast();
-			// XY: [0,1] -> [-1,1] (Vulkan clip XY). Z: keep [0,1] (Vulkan clip Z).
-			matrix = Matrix4::Scale(2.0f, 2.0f, 1.0f) * matrix;
-			matrix = Matrix4::Translate(-1.0f, -1.0f, 0.0f) * matrix;
+			// XY: [0,1] -> [-1,1] (Vulkan clip XY). Z: flip to [0,1] with 0 = sun side,
+			// because local-z increases TOWARD the sun (z is down in this engine, so
+			// higher/closer-to-sun points have the larger lightDir projection). The
+			// LESS depth test then keeps the occluder nearest the sun; without the flip
+			// it kept the farthest surface and shadows landed on the sun side.
+			matrix = Matrix4::Scale(2.0f, 2.0f, -1.0f) * matrix;
+			matrix = Matrix4::Translate(-1.0f, -1.0f, 1.0f) * matrix;
 			// Shrink XY slightly for edge padding; leave Z exact.
 			matrix = Matrix4::Scale(0.98f, 0.98f, 1.0f) * matrix;
 		}
@@ -790,8 +810,11 @@ namespace spades {
 				vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout,
 					0, 1, &descriptorSets[i], 0, nullptr);
 
-				// Set depth bias for shadow mapping (reduces shadow acne)
-				vkCmdSetDepthBias(commandBuffer, 1.25f, 0.0f, 1.75f);
+				// No depth bias: the cascade is models-only and only the ground samples
+				// it (no model self-shadowing yet), so there's no acne to fight, and a
+				// large bias would shift the stored depth — visible as a lateral shadow
+				// offset along the slanted sun direction.
+				vkCmdSetDepthBias(commandBuffer, 0.0f, 0.0f, 0.0f);
 
 				// The cascade is models-only: terrain sun shadows come from the
 				// separate 512² top-down mapShadowTexture, so this map need only carry
