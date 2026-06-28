@@ -35,6 +35,7 @@
 #include <vector>
 
 SPADES_SETTING(r_shadowMapSize);
+SPADES_SETTING(r_modelShadows);
 
 namespace spades {
 	namespace draw {
@@ -550,10 +551,13 @@ namespace spades {
 					mapRenderer->RenderShadowMapPass(commandBuffer, pipelineLayout);
 				}
 
-				// Render model shadow pass
+				// Render model shadow pass. Models use their own shadow pipeline
+				// (full per-instance transform), so they get this slice's light-space
+				// matrix and the render pass for lazy pipeline creation. Gated on
+				// r_modelShadows to match GL (GLShadowMapShader skips models when off).
 				VulkanModelRenderer* modelRenderer = renderer.GetModelRenderer();
-				if (modelRenderer) {
-					modelRenderer->RenderShadowMapPass(commandBuffer);
+				if (modelRenderer && (int)r_modelShadows) {
+					modelRenderer->RenderShadowMapPass(commandBuffer, matrices[i], renderPass);
 				}
 
 				vkCmdEndRenderPass(commandBuffer);

@@ -51,12 +51,14 @@ namespace spades {
 			models[model->renderId].params.push_back(param);
 		}
 
-		void VulkanModelRenderer::RenderShadowMapPass(VkCommandBuffer commandBuffer) {
+		void VulkanModelRenderer::RenderShadowMapPass(VkCommandBuffer commandBuffer,
+		                                              const Matrix4& lightMatrix,
+		                                              VkRenderPass shadowRenderPass) {
 			SPADES_MARK_FUNCTION();
 
 			for (const auto& m : models) {
 				VulkanModel* model = m.model;
-				model->RenderShadowMapPass(commandBuffer, m.params);
+				model->RenderShadowMapPass(commandBuffer, m.params, lightMatrix, shadowRenderPass);
 			}
 		}
 

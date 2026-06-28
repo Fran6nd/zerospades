@@ -93,6 +93,8 @@ namespace spades {
 				VkPipeline mirroredGhostColorPipeline; // same as ghostColorPipeline, VK_CULL_MODE_FRONT_BIT
 				VkPipelineLayout pipelineLayout;
 				VkPipelineLayout dlightPipelineLayout;
+				VkPipelineLayout shadowMapPipelineLayout;
+				VkRenderPass shadowMapRenderPass;     // render pass shadowMapPipeline was built against
 				VkDescriptorSetLayout descriptorSetLayout;
 				bool physicalLighting;
 
@@ -104,6 +106,8 @@ namespace spades {
 				                  ghostColorPipeline(VK_NULL_HANDLE), mirroredGhostColorPipeline(VK_NULL_HANDLE),
 				                  pipelineLayout(VK_NULL_HANDLE),
 				                  dlightPipelineLayout(VK_NULL_HANDLE),
+				                  shadowMapPipelineLayout(VK_NULL_HANDLE),
+				                  shadowMapRenderPass(VK_NULL_HANDLE),
 				                  descriptorSetLayout(VK_NULL_HANDLE),
 				                  physicalLighting(false) {}
 			};
@@ -139,6 +143,7 @@ namespace spades {
 			void BuildVertices(VoxelModel*);
 			void GenerateTexture();
 			void CreatePipeline(VkRenderPass renderPass);
+			void CreateShadowPipeline(VkRenderPass shadowRenderPass);
 
 		protected:
 			~VulkanOptimizedVoxelModel();
@@ -153,7 +158,9 @@ namespace spades {
 			               std::vector<client::ModelRenderParam> params,
 			               bool ghostPass) override;
 			void RenderShadowMapPass(VkCommandBuffer commandBuffer,
-			                         std::vector<client::ModelRenderParam> params) override;
+			                         std::vector<client::ModelRenderParam> params,
+			                         const Matrix4& lightMatrix,
+			                         VkRenderPass shadowRenderPass) override;
 			void RenderSunlightPass(VkCommandBuffer commandBuffer,
 			                        std::vector<client::ModelRenderParam> params,
 			                        bool ghostPass) override;

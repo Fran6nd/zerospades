@@ -52,10 +52,14 @@ Fog → DoF → Bloom → FXAA → LensFlare → AutoExposure → ColorCorrectio
 
 ## Bugs
 
-- [ ] **Player shadows missing.** `VulkanOptimizedVoxelModel::RenderShadowMapPass`
-      ([VulkanOptimizedVoxelModel.cpp:540](VulkanOptimizedVoxelModel.cpp#L540))
-      issues `vkCmdDrawIndexed` per instance with no per-instance push
-      constant — every model lands at the same shadow-space origin.
+- [x] **Player shadows.** Models now render into the shadow map with a
+      dedicated pipeline (`CreateShadowPipeline`) and shader
+      ([ModelShadowMap.vert](../../../Resources/Shaders/Vulkan/ModelShadowMap.vert)),
+      pushing the full per-instance light-space MVP. The shared map-chunk
+      shadow pipeline couldn't be reused: its vertex stride is the chunk's
+      (20 B vs the model's `sizeof(Vertex)`) and its push constant is a
+      translation-only `vec3`. Plumbed the per-slice light matrix +
+      render pass through `VulkanModelRenderer::RenderShadowMapPass`.
 
 ## Stubs
 
@@ -75,14 +79,16 @@ remaining deltas vs GL.
 ### Scene passes still calling `GetFogColor()` instead of `GetFogColorForSolidPass()`
 
 GL fades opaque geometry to BLACK when `r_fogShadow` is on so the
-post-process can re-add in-scattered light. Already fixed for
-`VulkanMapChunk::RenderSunlightPass` and
-`VulkanOptimizedVoxelModel::RenderSunlightPass`. Still using the
-unconditional `GetFogColor()`:
+post-process can re-add in-scattered light. Done for
+`VulkanMapChunk::RenderSunlightPass`,
+`VulkanOptimizedVoxelModel::RenderSunlightPass` and
+`VulkanOptimizedVoxelModel::Prerender`.
 
-- [ ] [VulkanLongSpriteRenderer.cpp:424](VulkanLongSpriteRenderer.cpp#L424) — tracers.
-- [ ] [VulkanSpriteRenderer.cpp:506](VulkanSpriteRenderer.cpp#L506) — sprites / particles.
-- [ ] [VulkanOptimizedVoxelModel.cpp:464](VulkanOptimizedVoxelModel.cpp#L464) — depth-only `Prerender`.
+Tracers and sprites/particles intentionally keep `GetFogColor()`: GL's
+`GLLongSpriteRenderer`, `GLSpriteRenderer` and `GLSoftSpriteRenderer`
+all use the non-solid `GetFogColor()`, so the Vulkan code already
+matches — switching them to the solid-pass colour would *diverge* from
+GL (fade tracers/particles to black under `r_fogShadow`).
 
 ### `BasicMap.frag` (non-physical lighting)
 

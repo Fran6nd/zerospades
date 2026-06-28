@@ -77,6 +77,11 @@ namespace spades {
 				vkDestroyPipeline(vkDevice, sharedPipeline.shadowMapPipeline, nullptr);
 				sharedPipeline.shadowMapPipeline = VK_NULL_HANDLE;
 			}
+			if (sharedPipeline.shadowMapPipelineLayout != VK_NULL_HANDLE) {
+				vkDestroyPipelineLayout(vkDevice, sharedPipeline.shadowMapPipelineLayout, nullptr);
+				sharedPipeline.shadowMapPipelineLayout = VK_NULL_HANDLE;
+			}
+			sharedPipeline.shadowMapRenderPass = VK_NULL_HANDLE;
 			if (sharedPipeline.ghostDepthPipeline != VK_NULL_HANDLE) {
 				vkDestroyPipeline(vkDevice, sharedPipeline.ghostDepthPipeline, nullptr);
 				sharedPipeline.ghostDepthPipeline = VK_NULL_HANDLE;
@@ -461,7 +466,10 @@ namespace spades {
 
 			const Matrix4& projectionViewMatrix = renderer.GetProjectionViewMatrix();
 			const auto& eye = renderer.GetSceneDef().viewOrigin;
-			Vector3 fogCol = renderer.GetFogColor();
+			// Match GL (GLOptimizedVoxelModel): models fade to BLACK under r_fogShadow
+			// so the fog post-process re-adds in-scattered light. Same as the sunlight
+			// pass below.
+			Vector3 fogCol = renderer.GetFogColorForSolidPass();
 			fogCol *= fogCol; // linearize
 			float fogDist = renderer.GetFogDistance();
 
@@ -516,7 +524,9 @@ namespace spades {
 		}
 
 		void VulkanOptimizedVoxelModel::RenderShadowMapPass(VkCommandBuffer commandBuffer,
-		                                                    std::vector<client::ModelRenderParam> params) {
+		                                                    std::vector<client::ModelRenderParam> params,
+		                                                    const Matrix4& lightMatrix,
+		                                                    VkRenderPass shadowRenderPass) {
 			SPADES_MARK_FUNCTION();
 
 			if (numIndices == 0 || !vertexBuffer || !indexBuffer)
@@ -524,6 +534,20 @@ namespace spades {
 
 			if (params.empty())
 				return;
+
+			// Models can't share the map-chunk shadow pipeline (chunk vertex stride +
+			// translation-only push constant). Build/refresh a dedicated one carrying
+			// the full per-instance MVP. Lazy + rebuilt only if the shadow render pass
+			// changed (e.g. shadow map recreated).
+			if (sharedPipeline.shadowMapPipeline == VK_NULL_HANDLE ||
+			    sharedPipeline.shadowMapRenderPass != shadowRenderPass) {
+				CreateShadowPipeline(shadowRenderPass);
+			}
+			if (sharedPipeline.shadowMapPipeline == VK_NULL_HANDLE)
+				return;
+
+			vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+			                  sharedPipeline.shadowMapPipeline);
 
 			// Bind vertex buffer
 			VkBuffer vb = vertexBuffer->GetBuffer();
@@ -533,12 +557,208 @@ namespace spades {
 			// Bind index buffer
 			vkCmdBindIndexBuffer(commandBuffer, indexBuffer->GetBuffer(), 0, VK_INDEX_TYPE_UINT32);
 
-			// Render each model instance
+			// Render each shadow-casting instance with its own light-space MVP.
+			// The sunlight path transforms local vertices as param.matrix * (pos +
+			// origin) (see BasicModelVertexColor.vert), so bake the origin offset into
+			// the matrix here rather than into the shader. mvp maps model-space ->
+			// light clip space.
+			Matrix4 originMatrix = Matrix4::Translate(origin);
 			for (const auto& param : params) {
 				if (param.depthHack || !param.castShadow || param.ghost)
 					continue;
+				Matrix4 mvp = lightMatrix * param.matrix * originMatrix;
+				vkCmdPushConstants(commandBuffer, sharedPipeline.shadowMapPipelineLayout,
+				                   VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(Matrix4), &mvp);
 				vkCmdDrawIndexed(commandBuffer, numIndices, 1, 0, 0, 0);
 			}
+		}
+
+		void VulkanOptimizedVoxelModel::CreateShadowPipeline(VkRenderPass shadowRenderPass) {
+			SPADES_MARK_FUNCTION();
+
+			VkDevice vkDevice = device->GetDevice();
+
+			// Tear down a stale pipeline/layout if the render pass changed.
+			if (sharedPipeline.shadowMapPipeline != VK_NULL_HANDLE) {
+				vkDeviceWaitIdle(vkDevice);
+				vkDestroyPipeline(vkDevice, sharedPipeline.shadowMapPipeline, nullptr);
+				sharedPipeline.shadowMapPipeline = VK_NULL_HANDLE;
+			}
+			if (sharedPipeline.shadowMapPipelineLayout != VK_NULL_HANDLE) {
+				vkDestroyPipelineLayout(vkDevice, sharedPipeline.shadowMapPipelineLayout, nullptr);
+				sharedPipeline.shadowMapPipelineLayout = VK_NULL_HANDLE;
+			}
+
+			// Depth-only vertex shader; reuse the empty map-chunk shadow fragment shader.
+			auto LoadSPIRVFile = [](const char* filename) -> std::vector<uint32_t> {
+				std::unique_ptr<IStream> stream = FileManager::OpenForReading(filename);
+				if (!stream) {
+					SPRaise("Failed to open shader file: %s", filename);
+				}
+				size_t size = stream->GetLength();
+				std::vector<uint32_t> code(size / 4);
+				stream->Read(code.data(), size);
+				return code;
+			};
+
+			std::vector<uint32_t> vertCode = LoadSPIRVFile("Shaders/Vulkan/ModelShadowMap.vert.spv");
+			std::vector<uint32_t> fragCode = LoadSPIRVFile("Shaders/Vulkan/ShadowMap.frag.spv");
+
+			VkShaderModuleCreateInfo vertInfo{};
+			vertInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+			vertInfo.codeSize = vertCode.size() * sizeof(uint32_t);
+			vertInfo.pCode = vertCode.data();
+			VkShaderModule vertModule;
+			if (vkCreateShaderModule(vkDevice, &vertInfo, nullptr, &vertModule) != VK_SUCCESS) {
+				SPRaise("Failed to create model shadow vertex shader module");
+			}
+
+			VkShaderModuleCreateInfo fragInfo{};
+			fragInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+			fragInfo.codeSize = fragCode.size() * sizeof(uint32_t);
+			fragInfo.pCode = fragCode.data();
+			VkShaderModule fragModule;
+			if (vkCreateShaderModule(vkDevice, &fragInfo, nullptr, &fragModule) != VK_SUCCESS) {
+				vkDestroyShaderModule(vkDevice, vertModule, nullptr);
+				SPRaise("Failed to create model shadow fragment shader module");
+			}
+
+			VkPipelineShaderStageCreateInfo vertStage{};
+			vertStage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+			vertStage.stage = VK_SHADER_STAGE_VERTEX_BIT;
+			vertStage.module = vertModule;
+			vertStage.pName = "main";
+
+			VkPipelineShaderStageCreateInfo fragStage{};
+			fragStage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+			fragStage.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+			fragStage.module = fragModule;
+			fragStage.pName = "main";
+
+			VkPipelineShaderStageCreateInfo shaderStages[] = {vertStage, fragStage};
+
+			// Vertex input: model format, position (uint8 x,y,z) at location 0 only.
+			VkVertexInputBindingDescription binding{};
+			binding.binding = 0;
+			binding.stride = sizeof(Vertex);
+			binding.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+
+			VkVertexInputAttributeDescription attr{};
+			attr.binding = 0;
+			attr.location = 0;
+			attr.format = VK_FORMAT_R8G8B8_UINT;
+			attr.offset = offsetof(Vertex, x);
+
+			VkPipelineVertexInputStateCreateInfo vertexInput{};
+			vertexInput.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+			vertexInput.vertexBindingDescriptionCount = 1;
+			vertexInput.pVertexBindingDescriptions = &binding;
+			vertexInput.vertexAttributeDescriptionCount = 1;
+			vertexInput.pVertexAttributeDescriptions = &attr;
+
+			VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
+			inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+			inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+			inputAssembly.primitiveRestartEnable = VK_FALSE;
+
+			VkPipelineViewportStateCreateInfo viewportState{};
+			viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+			viewportState.viewportCount = 1;
+			viewportState.scissorCount = 1;
+
+			VkPipelineRasterizationStateCreateInfo rasterizer{};
+			rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+			rasterizer.depthClampEnable = VK_FALSE;
+			rasterizer.rasterizerDiscardEnable = VK_FALSE;
+			rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
+			rasterizer.lineWidth = 1.0f;
+			// Models carry arbitrary (incl. negative-determinant) transforms, so cull
+			// nothing: a depth-only caster must not drop faces based on winding.
+			rasterizer.cullMode = VK_CULL_MODE_NONE;
+			rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+			rasterizer.depthBiasEnable = VK_TRUE; // bias value set dynamically by the caller
+
+			VkPipelineMultisampleStateCreateInfo multisampling{};
+			multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+			multisampling.sampleShadingEnable = VK_FALSE;
+			multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+
+			VkPipelineDepthStencilStateCreateInfo depthStencil{};
+			depthStencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+			depthStencil.depthTestEnable = VK_TRUE;
+			depthStencil.depthWriteEnable = VK_TRUE;
+			depthStencil.depthCompareOp = VK_COMPARE_OP_LESS;
+			depthStencil.depthBoundsTestEnable = VK_FALSE;
+			depthStencil.stencilTestEnable = VK_FALSE;
+
+			// Depth-only pass: no colour attachments.
+			VkPipelineColorBlendStateCreateInfo colorBlending{};
+			colorBlending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+			colorBlending.logicOpEnable = VK_FALSE;
+			colorBlending.attachmentCount = 0;
+			colorBlending.pAttachments = nullptr;
+
+			VkDynamicState dynamicStates[] = {
+				VK_DYNAMIC_STATE_VIEWPORT,
+				VK_DYNAMIC_STATE_SCISSOR,
+				VK_DYNAMIC_STATE_DEPTH_BIAS
+			};
+			VkPipelineDynamicStateCreateInfo dynamicState{};
+			dynamicState.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+			dynamicState.dynamicStateCount = 3;
+			dynamicState.pDynamicStates = dynamicStates;
+
+			// Pipeline layout: no descriptor sets, single mat4 push constant (the MVP).
+			VkPushConstantRange pushRange{};
+			pushRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+			pushRange.offset = 0;
+			pushRange.size = sizeof(Matrix4);
+
+			VkPipelineLayoutCreateInfo layoutInfo{};
+			layoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+			layoutInfo.setLayoutCount = 0;
+			layoutInfo.pSetLayouts = nullptr;
+			layoutInfo.pushConstantRangeCount = 1;
+			layoutInfo.pPushConstantRanges = &pushRange;
+
+			if (vkCreatePipelineLayout(vkDevice, &layoutInfo, nullptr,
+			                           &sharedPipeline.shadowMapPipelineLayout) != VK_SUCCESS) {
+				vkDestroyShaderModule(vkDevice, vertModule, nullptr);
+				vkDestroyShaderModule(vkDevice, fragModule, nullptr);
+				SPRaise("Failed to create model shadow pipeline layout");
+			}
+
+			VkGraphicsPipelineCreateInfo pipelineInfo{};
+			pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+			pipelineInfo.stageCount = 2;
+			pipelineInfo.pStages = shaderStages;
+			pipelineInfo.pVertexInputState = &vertexInput;
+			pipelineInfo.pInputAssemblyState = &inputAssembly;
+			pipelineInfo.pViewportState = &viewportState;
+			pipelineInfo.pRasterizationState = &rasterizer;
+			pipelineInfo.pMultisampleState = &multisampling;
+			pipelineInfo.pDepthStencilState = &depthStencil;
+			pipelineInfo.pColorBlendState = &colorBlending;
+			pipelineInfo.pDynamicState = &dynamicState;
+			pipelineInfo.layout = sharedPipeline.shadowMapPipelineLayout;
+			pipelineInfo.renderPass = shadowRenderPass;
+			pipelineInfo.subpass = 0;
+			pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
+
+			VkResult result = vkCreateGraphicsPipelines(vkDevice, renderer.GetPipelineCache(), 1,
+			                                            &pipelineInfo, nullptr,
+			                                            &sharedPipeline.shadowMapPipeline);
+
+			vkDestroyShaderModule(vkDevice, vertModule, nullptr);
+			vkDestroyShaderModule(vkDevice, fragModule, nullptr);
+
+			if (result != VK_SUCCESS) {
+				vkDestroyPipelineLayout(vkDevice, sharedPipeline.shadowMapPipelineLayout, nullptr);
+				sharedPipeline.shadowMapPipelineLayout = VK_NULL_HANDLE;
+				SPRaise("Failed to create model shadow graphics pipeline");
+			}
+
+			sharedPipeline.shadowMapRenderPass = shadowRenderPass;
 		}
 
 		void VulkanOptimizedVoxelModel::RenderSunlightPass(VkCommandBuffer commandBuffer,
