@@ -353,19 +353,19 @@ jobs:
           if [ -n "$LATEST_OFFICIAL_TAG" ]; then
             DISCLAIMER="These binaries are from an automatic development build and they may be unstable. For a stable version, see the [latest official release](${REPO_URL}/releases/latest)."
           else
-            DISCLAIMER="These binaries are from an automatic development build"
+            DISCLAIMER="These binaries are from an automatic development build and they may be unstable."
           fi
 
           # Build the "## Binaries" section from the list generated in the previous step
           BINARIES_SECTION="$(printf '## Binaries\nFollowing binary packages are provided:\n%s' "$BINARIES_LIST")"
 
+          # Build a single "Full Changelog" comparison link instead of the full generated notes
           if [ -n "$LATEST_OFFICIAL_TAG" ]; then
             echo "Last official tag found: $LATEST_OFFICIAL_TAG"
-            NOTES_FLAGS=(--generate-notes --notes-start-tag "$LATEST_OFFICIAL_TAG")
+            CHANGELOG_LINE="**Full Changelog**: ${REPO_URL}/compare/${LATEST_OFFICIAL_TAG}...nightly"
           else
             echo "No official tag found yet; using placeholder changelog."
-            PLACEHOLDER_NOTES="$(printf 'No official release exists yet, so no changelog is available.')"
-            NOTES_FLAGS=(--notes "$PLACEHOLDER_NOTES")
+            CHANGELOG_LINE="No official release exists yet, so no changelog is available."
           fi
 
           # Make sure there is at least one zip to publish before touching the release
@@ -378,15 +378,12 @@ jobs:
             gh release delete nightly --repo "${{ github.repository }}" --yes --cleanup-tag
           fi
 
+          printf '%s\n\n%s\n\n---\n\n%s' "$DISCLAIMER" "$CHANGELOG_LINE" "$BINARIES_SECTION" > full_notes.md
+
           gh release create nightly \
             --repo "${{ github.repository }}" \
             --title "$RELEASE_TITLE" \
             --prerelease \
             --target "${{ github.sha }}" \
-            "${NOTES_FLAGS[@]}" \
+            --notes-file full_notes.md \
             release-assets/*.zip
-
-          # Prepend the disclaimer and the Binaries section before the generated changelog
-          CURRENT_NOTES="$(gh release view nightly --repo "${{ github.repository }}" --json body --jq .body)"
-          printf '%s\n%s\n##\n%s' "$DISCLAIMER" "$BINARIES_SECTION" "$CURRENT_NOTES" > full_notes.md
-          gh release edit nightly --repo "${{ github.repository }}" --notes-file full_notes.md
