@@ -31,6 +31,7 @@
 #include <Core/FileManager.h>
 #include <Core/IStream.h>
 #include <Client/SceneDefinition.h>
+#include <cmath>
 #include <cstring>
 #include <vector>
 
@@ -467,23 +468,115 @@ namespace spades {
 			}
 		}
 
+		namespace {
+			// Frustum-fit shadow ortho helpers, ported from GLBasicShadowMapRenderer.
+			struct ShadowSegment {
+				float low, high;
+				bool empty;
+				ShadowSegment() : low(0.0f), high(0.0f), empty(true) {}
+				void operator+=(float v) {
+					if (empty) {
+						low = high = v;
+						empty = false;
+					} else {
+						low = std::min(low, v);
+						high = std::max(high, v);
+					}
+				}
+			};
+
+			Vector3 FrustumCoord(const client::SceneDefinition& def, float x, float y, float z) {
+				x *= z;
+				y *= z;
+				return def.viewOrigin + def.viewAxis[0] * x + def.viewAxis[1] * y + def.viewAxis[2] * z;
+			}
+
+			// Where a sun ray through `base` (along `dir`) crosses the map's lower/upper
+			// vertical planes, expressed as a lightDir-distance range.
+			ShadowSegment ZRange(Vector3 base, Vector3 dir, const Plane3& plane1, const Plane3& plane2) {
+				ShadowSegment seg;
+				seg += plane1.GetDistanceTo(base) / Vector3::Dot(dir, plane1.n);
+				seg += plane2.GetDistanceTo(base) / Vector3::Dot(dir, plane2.n);
+				return seg;
+			}
+		} // namespace
+
 		void VulkanShadowMapRenderer::BuildMatrix(float near, float far) {
 			SPADES_MARK_FUNCTION();
 
-			const auto& sceneDef = renderer.GetSceneDef();
-			Vector3 eye = sceneDef.viewOrigin;
-			Vector3 direction = sceneDef.viewAxis[2];
-			Vector3 up = sceneDef.viewAxis[1];
+			// Sun-aligned cascaded ortho. We orient the box along the SUN direction
+			// (not the camera) and fit the camera frustum slice [near,far] into it,
+			// matching GLBasicShadowMapRenderer::BuildMatrix. Unlike GL (which emits
+			// [-1,1] clip Z), the final remap leaves clip Z in [0,1] — Vulkan clips Z
+			// to [0,1], so a GL-style [-1,1] mapping would discard the near half of
+			// every cascade during the depth-only render. Local Z 0 = sun side, so a
+			// LESS depth test keeps the surface closest to the sun (the occluder).
+			Vector3 lightDir = MakeVector3(0, -1, -1).Normalize();
+			Vector3 up = MakeVector3(0, 0, 1);
+			Vector3 side = Vector3::Cross(up, lightDir).Normalize();
+			up = Vector3::Cross(lightDir, side).Normalize();
 
-			// Build orthographic shadow matrix
-			float size = (far - near) * 0.5f;
-			Vector3 center = eye + direction * (near + far) * 0.5f;
-			matrix = Matrix4::FromAxis(-direction, up, Vector3::Cross(-direction, up), center);
-			matrix = Matrix4::Scale(1.0f / size, 1.0f / size, 1.0f / (far - near)) * matrix;
+			const client::SceneDefinition& def = renderer.GetSceneDef();
+			float tanX = std::tan(def.fovX * 0.5f);
+			float tanY = std::tan(def.fovY * 0.5f);
 
-			// Build OBB for culling
-			obb = OBB3(matrix);
-			vpWidth = vpHeight = size * 2.0f;
+			Vector3 frustum[8];
+			frustum[0] = FrustumCoord(def, tanX, tanY, near);
+			frustum[1] = FrustumCoord(def, tanX, -tanY, near);
+			frustum[2] = FrustumCoord(def, -tanX, tanY, near);
+			frustum[3] = FrustumCoord(def, -tanX, -tanY, near);
+			frustum[4] = FrustumCoord(def, tanX, tanY, far);
+			frustum[5] = FrustumCoord(def, tanX, -tanY, far);
+			frustum[6] = FrustumCoord(def, -tanX, tanY, far);
+			frustum[7] = FrustumCoord(def, -tanX, -tanY, far);
+
+			// XY bounds of the frustum in light space (side/up axes).
+			float minX, maxX, minY, maxY;
+			minX = maxX = Vector3::Dot(frustum[0], side);
+			minY = maxY = Vector3::Dot(frustum[0], up);
+			for (int i = 1; i < 8; i++) {
+				float x = Vector3::Dot(frustum[i], side);
+				float y = Vector3::Dot(frustum[i], up);
+				minX = std::min(minX, x);
+				maxX = std::max(maxX, x);
+				minY = std::min(minY, y);
+				maxY = std::max(maxY, y);
+			}
+
+			// Depth (lightDir) bounds: cover the frustum corners and the map's vertical
+			// slab (z in [-4, 64]) so casters above/below the slice still register.
+			ShadowSegment seg;
+			Plane3 plane1(0, 0, 1, -4.0f);
+			Plane3 plane2(0, 0, 1, 64.0f);
+			const Vector3 corners[4] = {
+				side * minX + up * minY, side * minX + up * maxY,
+				side * maxX + up * minY, side * maxX + up * maxY,
+			};
+			for (const Vector3& c : corners) {
+				ShadowSegment z = ZRange(c, lightDir, plane1, plane2);
+				seg += z.low;
+				seg += z.high;
+			}
+			for (int i = 0; i < 8; i++)
+				seg += Vector3::Dot(frustum[i], lightDir);
+
+			// Box: origin at (minX, minY, seg.low); axes span the fitted extents.
+			Vector3 origin = side * minX + up * minY + lightDir * seg.low;
+			Vector3 axis1 = side * (maxX - minX);
+			Vector3 axis2 = up * (maxY - minY);
+			Vector3 axis3 = lightDir * (seg.high - seg.low);
+
+			obb = OBB3(Matrix4::FromAxis(axis1, axis2, axis3, origin));
+			vpWidth = 2.0f / axis1.GetLength();
+			vpHeight = 2.0f / axis2.GetLength();
+
+			// world -> OBB-local [0,1]^3.
+			matrix = obb.m.InversedFast();
+			// XY: [0,1] -> [-1,1] (Vulkan clip XY). Z: keep [0,1] (Vulkan clip Z).
+			matrix = Matrix4::Scale(2.0f, 2.0f, 1.0f) * matrix;
+			matrix = Matrix4::Translate(-1.0f, -1.0f, 0.0f) * matrix;
+			// Shrink XY slightly for edge padding; leave Z exact.
+			matrix = Matrix4::Scale(0.98f, 0.98f, 1.0f) * matrix;
 		}
 
 		void VulkanShadowMapRenderer::Render(VkCommandBuffer commandBuffer) {
