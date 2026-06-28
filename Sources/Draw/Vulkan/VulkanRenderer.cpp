@@ -2018,7 +2018,8 @@ namespace spades {
 			// Long sprites (tracers + the weapon reflex reticle), non-soft particles
 			// and debug lines are transparent and must be drawn AFTER the water pass,
 			// otherwise the water surface paints over them wherever it sits in front
-			// of their background (matches the GL order: water -> debug -> particles).
+			// of their background (matches GL, which draws these transparent overlays
+			// after water). Drawn here in the order particles -> long sprites -> debug.
 			// When the water pass will run, defer them to it (same render pass, the
 			// pipelines are render-pass-compatible); otherwise draw them here.
 			const bool willRenderWater = (int)r_water > 0 && waterRenderer && framebufferManager &&
@@ -2074,92 +2075,12 @@ namespace spades {
 					framebufferManager->GetResolvedDepthImage().GetPointerOrNull());
 			}
 
-			if (useSoftParticles) {
-				// Soft particles: transition depth to shader-readable, render sprites
-				// in a color-only pass sampling the depth texture
-
-				// Transition depth to SHADER_READ_ONLY for sampling. Skipped under
-				// MSAA: the depth was already transitioned and resolved above, and the
-				// sprites sample the resolved depth via GetResolvedDepthImage().
-				if (!msaaScene) {
-					VkImageMemoryBarrier depthBarrier{};
-					depthBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-					depthBarrier.oldLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-					depthBarrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-					depthBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-					depthBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-					depthBarrier.image = offscreenDepth->GetImage();
-					depthBarrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
-					depthBarrier.subresourceRange.baseMipLevel = 0;
-					depthBarrier.subresourceRange.levelCount = 1;
-					depthBarrier.subresourceRange.baseArrayLayer = 0;
-					depthBarrier.subresourceRange.layerCount = 1;
-					depthBarrier.srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-					depthBarrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-
-					vkCmdPipelineBarrier(commandBuffer,
-						VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
-						VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-						0, 0, nullptr, 0, nullptr, 1, &depthBarrier);
-				}
-
-				// Begin sprite render pass (color-only, preserves existing content)
-				VkRenderPassBeginInfo spriteRenderPassInfo{};
-				spriteRenderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-				spriteRenderPassInfo.renderPass = framebufferManager->GetSpriteRenderPass();
-				spriteRenderPassInfo.framebuffer = framebufferManager->GetSpriteFramebuffer();
-				spriteRenderPassInfo.renderArea.offset = {0, 0};
-				spriteRenderPassInfo.renderArea.extent = {static_cast<uint32_t>(renderWidth), static_cast<uint32_t>(renderHeight)};
-				spriteRenderPassInfo.clearValueCount = 0;
-				spriteRenderPassInfo.pClearValues = nullptr;
-
-				vkCmdBeginRenderPass(commandBuffer, &spriteRenderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
-
-				// Set viewport and scissor
-				VkViewport spriteViewport{};
-				spriteViewport.x = 0.0f;
-				spriteViewport.y = static_cast<float>(renderHeight);
-				spriteViewport.width = static_cast<float>(renderWidth);
-				spriteViewport.height = -static_cast<float>(renderHeight);
-				spriteViewport.minDepth = 0.0f;
-				spriteViewport.maxDepth = 1.0f;
-				vkCmdSetViewport(commandBuffer, 0, 1, &spriteViewport);
-
-				VkRect2D spriteScissor{};
-				spriteScissor.offset = {0, 0};
-				spriteScissor.extent = {static_cast<uint32_t>(renderWidth), static_cast<uint32_t>(renderHeight)};
-				vkCmdSetScissor(commandBuffer, 0, 1, &spriteScissor);
-
-				// Render soft sprites
-				if (spriteRenderer) {
-					spriteRenderer->Render(commandBuffer, imageIndex);
-				}
-
-				vkCmdEndRenderPass(commandBuffer);
-
-				// Transition color to SHADER_READ_ONLY for water/post-processing
-				// (depth is already in SHADER_READ_ONLY)
-				VkImageMemoryBarrier colorBarrier{};
-				colorBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-				colorBarrier.oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-				colorBarrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-				colorBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-				colorBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-				colorBarrier.image = offscreenColor->GetImage();
-				colorBarrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-				colorBarrier.subresourceRange.baseMipLevel = 0;
-				colorBarrier.subresourceRange.levelCount = 1;
-				colorBarrier.subresourceRange.baseArrayLayer = 0;
-				colorBarrier.subresourceRange.layerCount = 1;
-				colorBarrier.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-				colorBarrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-
-				vkCmdPipelineBarrier(commandBuffer,
-					VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-					VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-					0, 0, nullptr, 0, nullptr, 1, &colorBarrier);
-			} else {
-				// Non-soft: transition both color and depth to shader read-only
+			{
+				// Transition both colour and depth to shader read-only so the water
+				// pass and the depth-reading post filters can sample them. Soft
+				// particles are NOT drawn here: they sample scene depth and so must be
+				// drawn after the water pass (otherwise water occludes them), in a
+				// color-only pass below — see the relocated soft-particle pass.
 				VkImageMemoryBarrier barriers[2]{};
 				barriers[0].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
 				barriers[0].oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
@@ -2197,10 +2118,10 @@ namespace spades {
 					0, 0, nullptr, 0, nullptr, msaaScene ? 1u : 2u, barriers);
 			}
 
-			// Clear transparent buffers once they've been drawn. Soft particles were
-			// drawn above; long sprites and non-soft particles deferred to the water
-			// pass are cleared there instead (see below).
-			if (spriteRenderer && (useSoftParticles || !willRenderWater)) {
+			// Clear transparent buffers once they've been drawn. Non-soft particles
+			// drawn in the offscreen pass (no water) are cleared here; soft particles
+			// and the water-deferred buffers are cleared after they're drawn below.
+			if (spriteRenderer && !useSoftParticles && !willRenderWater) {
 				spriteRenderer->Clear();
 			}
 			if (longSpriteRenderer && !willRenderWater) {
@@ -2346,6 +2267,82 @@ namespace spades {
 					VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
 					VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
 					0, 0, nullptr, 0, nullptr, 2, waterPostBarriers);
+			}
+
+			// Soft particles (smoke/blood) are drawn here, after water, so the water
+			// surface can't occlude them — same reason long sprites/non-soft particles
+			// are deferred into the water pass above. They can't share the water pass:
+			// they sample scene depth in the shader, which is bound as a depth
+			// attachment there (a feedback loop). So they render in their own
+			// color-only pass that samples the depth texture (GetResolvedDepthImage).
+			// Colour and depth are both in SHADER_READ_ONLY here (every branch above
+			// ends that way), in the still-multisampled scene image (the MSAA resolve
+			// is below), so soft particles are included in that resolve.
+			if (useSoftParticles && spriteRenderer) {
+				// Move colour back to COLOR_ATTACHMENT for the sprite pass; depth stays
+				// SHADER_READ for sampling.
+				VkImageMemoryBarrier toColor{};
+				toColor.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+				toColor.oldLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+				toColor.newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+				toColor.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+				toColor.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+				toColor.image = offscreenColor->GetImage();
+				toColor.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
+				toColor.srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
+				toColor.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+				vkCmdPipelineBarrier(commandBuffer,
+					VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+					VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+					0, 0, nullptr, 0, nullptr, 1, &toColor);
+
+				// Begin sprite render pass (color-only, LOAD preserves the scene)
+				VkRenderPassBeginInfo spriteRenderPassInfo{};
+				spriteRenderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+				spriteRenderPassInfo.renderPass = framebufferManager->GetSpriteRenderPass();
+				spriteRenderPassInfo.framebuffer = framebufferManager->GetSpriteFramebuffer();
+				spriteRenderPassInfo.renderArea.offset = {0, 0};
+				spriteRenderPassInfo.renderArea.extent = {static_cast<uint32_t>(renderWidth), static_cast<uint32_t>(renderHeight)};
+				spriteRenderPassInfo.clearValueCount = 0;
+				spriteRenderPassInfo.pClearValues = nullptr;
+
+				vkCmdBeginRenderPass(commandBuffer, &spriteRenderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+
+				VkViewport spriteViewport{};
+				spriteViewport.x = 0.0f;
+				spriteViewport.y = static_cast<float>(renderHeight);
+				spriteViewport.width = static_cast<float>(renderWidth);
+				spriteViewport.height = -static_cast<float>(renderHeight);
+				spriteViewport.minDepth = 0.0f;
+				spriteViewport.maxDepth = 1.0f;
+				vkCmdSetViewport(commandBuffer, 0, 1, &spriteViewport);
+
+				VkRect2D spriteScissor{};
+				spriteScissor.offset = {0, 0};
+				spriteScissor.extent = {static_cast<uint32_t>(renderWidth), static_cast<uint32_t>(renderHeight)};
+				vkCmdSetScissor(commandBuffer, 0, 1, &spriteScissor);
+
+				spriteRenderer->Render(commandBuffer, imageIndex);
+
+				vkCmdEndRenderPass(commandBuffer);
+
+				// Back to SHADER_READ_ONLY for the MSAA resolve / post-process chain.
+				VkImageMemoryBarrier toRead{};
+				toRead.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+				toRead.oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+				toRead.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+				toRead.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+				toRead.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+				toRead.image = offscreenColor->GetImage();
+				toRead.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
+				toRead.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+				toRead.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+				vkCmdPipelineBarrier(commandBuffer,
+					VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+					VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+					0, 0, nullptr, 0, nullptr, 1, &toRead);
+
+				spriteRenderer->Clear();
 			}
 
 			// Under MSAA, resolve the final multisampled scene colour for the
