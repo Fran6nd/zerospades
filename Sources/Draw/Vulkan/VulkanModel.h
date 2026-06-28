@@ -35,9 +35,13 @@ namespace spades {
 		public:
 			VulkanModel();
 
-			/** Renders for shadow map */
+			/** Renders for shadow map. lightMatrix is the slice's light-space
+			 * projection-view matrix; shadowRenderPass is the shadow map render pass
+			 * the caller has begun (used for lazy pipeline creation). */
 			virtual void RenderShadowMapPass(VkCommandBuffer commandBuffer,
-			                                 std::vector<client::ModelRenderParam> params) = 0;
+			                                 std::vector<client::ModelRenderParam> params,
+			                                 const Matrix4& lightMatrix,
+			                                 VkRenderPass shadowRenderPass) = 0;
 
 			/** Renders only in depth buffer (optional) */
 			virtual void Prerender(VkCommandBuffer commandBuffer,
