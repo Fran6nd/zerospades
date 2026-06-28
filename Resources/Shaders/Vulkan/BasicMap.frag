@@ -33,6 +33,15 @@ layout(set = 0, binding = 4) uniform sampler3D radiosityTextureY;
 layout(set = 0, binding = 5) uniform sampler3D radiosityTextureZ;
 layout(set = 0, binding = 6) uniform sampler2D ambientOcclusionAtlas; // Gfx/AmbientOcclusion.png
 
+// Set 1: dynamic model-shadow cascades (owned by VulkanShadowMapRenderer).
+layout(set = 1, binding = 0) uniform ShadowSampling {
+	mat4 cascadeMatrix[3];
+	int enabled;
+} shadowSampling;
+layout(set = 1, binding = 1) uniform sampler2D modelShadowMap0;
+layout(set = 1, binding = 2) uniform sampler2D modelShadowMap1;
+layout(set = 1, binding = 3) uniform sampler2D modelShadowMap2;
+
 layout(location = 0) in vec4 color;           // xyz = linearized vertex color, w = sun lambert
 layout(location = 1) in vec3 ambientLight;     // hemisphere ambient fallback (unused, kept for VS↔FS compat)
 layout(location = 2) in vec3 fogDensity;
@@ -42,8 +51,34 @@ layout(location = 5) in vec3 aoCoord;          // 3D coords into AO texture
 layout(location = 6) in vec3 radiosityTextureCoord; // 3D coords into radiosity textures
 layout(location = 7) in vec3 normalVarying;    // surface normal in world space
 layout(location = 8) in vec2 ambientOcclusionCoord; // 2D coords into AO atlas
+layout(location = 9) in vec3 modelShadowCoord0;     // light-clip coords per cascade
+layout(location = 10) in vec3 modelShadowCoord1;
+layout(location = 11) in vec3 modelShadowCoord2;
 
 layout(location = 0) out vec4 fragColor;
+
+// Sample one cascade. Returns 1 lit, 0 shadowed, or -1 if the fragment is
+// outside this cascade's box (caller falls through to the next, coarser one).
+float SampleModelCascade(sampler2D tex, vec3 c) {
+	vec2 uv = c.xy * 0.5 + 0.5; // clip [-1,1] -> texcoord [0,1]
+	if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0 || c.z < 0.0 || c.z > 1.0)
+		return -1.0;
+	float stored = texture(tex, uv).r;
+	// Local Z 0 = sun side; an occluder with smaller stored depth is nearer the
+	// sun, so this fragment is shadowed. Bias avoids self-shadow acne.
+	return (stored < c.z - 0.0015) ? 0.0 : 1.0;
+}
+
+// Dynamic (player/grenade) shadow term, combined multiplicatively with the
+// map shadow. Finest cascade first; outside all cascades = lit.
+float EvaluteModelShadow() {
+	if (shadowSampling.enabled == 0)
+		return 1.0;
+	float v = SampleModelCascade(modelShadowMap0, modelShadowCoord0);
+	if (v < 0.0) v = SampleModelCascade(modelShadowMap1, modelShadowCoord1);
+	if (v < 0.0) v = SampleModelCascade(modelShadowMap2, modelShadowCoord2);
+	return (v < 0.0) ? 1.0 : v;
+}
 
 // Linear (RGB10A2) decode of radiosity values. Mirrors GL MapRadiosity.fs
 // DecodeRadiosityValue, but only the high-precision (linear) branch — the
@@ -58,6 +93,9 @@ void main() {
 	// Map shadow (matches GL Map.fs: EvaluateMapShadow)
 	float shadowVal = texture(mapShadowTexture, shadowCoord.xy).w;
 	float shadow = (shadowVal < shadowCoord.z - 0.0001) ? 0.0 : 1.0;
+
+	// Fold in dynamic model shadows (GL: VisibilityOfSunLight = map * model).
+	shadow *= EvaluteModelShadow();
 
 	vec3 nrm = normalize(normalVarying);
 	vec3 vertexColor = color.xyz;
