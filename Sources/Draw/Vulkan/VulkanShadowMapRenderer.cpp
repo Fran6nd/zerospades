@@ -32,6 +32,8 @@
 #include <Core/IStream.h>
 #include <Client/SceneDefinition.h>
 #include <cmath>
+#include <cstddef>
+#include <cstdint>
 #include <cstring>
 #include <vector>
 
@@ -41,6 +43,16 @@ SPADES_SETTING(r_modelShadows);
 namespace spades {
 	namespace draw {
 
+		namespace {
+			// std140-compatible UBO consumed by the lit shaders' EvaluteModelShadow().
+			// mat4[N] are 16-byte aligned; enabled follows the array.
+			struct SamplingUniforms {
+				Matrix4 cascadeMatrix[VulkanShadowMapRenderer::NumSlices];
+				int32_t enabled;
+				int32_t pad[3];
+			};
+		} // namespace
+
 		VulkanShadowMapRenderer::VulkanShadowMapRenderer(VulkanRenderer& r)
 		: renderer(r),
 		  device(r.GetDevice()),
@@ -48,7 +60,11 @@ namespace spades {
 		  pipelineLayout(VK_NULL_HANDLE),
 		  descriptorSetLayout(VK_NULL_HANDLE),
 		  pipeline(VK_NULL_HANDLE),
-		  descriptorPool(VK_NULL_HANDLE) {
+		  descriptorPool(VK_NULL_HANDLE),
+		  samplingSetLayout(VK_NULL_HANDLE),
+		  samplingPool(VK_NULL_HANDLE),
+		  samplingDescriptorSet(VK_NULL_HANDLE),
+		  samplingSampler(VK_NULL_HANDLE) {
 			SPADES_MARK_FUNCTION();
 
 			textureSize = (int)r_shadowMapSize;
@@ -69,6 +85,7 @@ namespace spades {
 				CreateFramebuffers();
 				CreatePipeline();
 				CreateDescriptorSets();
+				CreateSamplingResources();
 			} catch (...) {
 				DestroyResources();
 				throw;
@@ -424,10 +441,148 @@ namespace spades {
 			SPLog("Shadow map descriptor sets created successfully");
 		}
 
+		void VulkanShadowMapRenderer::CreateSamplingResources() {
+			SPADES_MARK_FUNCTION();
+
+			VkDevice vkDevice = device->GetDevice();
+
+			// Depth sampler. Border = opaque white so out-of-cascade lookups read the
+			// far plane (1.0) and resolve to "lit". NEAREST: manual depth compare can't
+			// linearly filter depth values.
+			VkSamplerCreateInfo samplerInfo{};
+			samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+			samplerInfo.magFilter = VK_FILTER_NEAREST;
+			samplerInfo.minFilter = VK_FILTER_NEAREST;
+			samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
+			samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
+			samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
+			samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
+			samplerInfo.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
+			samplerInfo.maxLod = 0.0f;
+			if (vkCreateSampler(vkDevice, &samplerInfo, nullptr, &samplingSampler) != VK_SUCCESS) {
+				SPRaise("Failed to create shadow sampling sampler");
+			}
+
+			// Cascade-matrix UBO (host-visible, updated each frame). Start disabled.
+			samplingUniformBuffer = Handle<VulkanBuffer>::New(
+				device, sizeof(SamplingUniforms),
+				VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+				VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+			{
+				SamplingUniforms init{};
+				init.enabled = 0;
+				void* dst = samplingUniformBuffer->Map();
+				memcpy(dst, &init, sizeof(init));
+				samplingUniformBuffer->Unmap();
+			}
+
+			// Layout: binding 0 = UBO (read in VS + FS), bindings 1..N = depth maps (FS).
+			std::vector<VkDescriptorSetLayoutBinding> bindings;
+			VkDescriptorSetLayoutBinding uboBinding{};
+			uboBinding.binding = 0;
+			uboBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+			uboBinding.descriptorCount = 1;
+			uboBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+			bindings.push_back(uboBinding);
+			for (int i = 0; i < NumSlices; i++) {
+				VkDescriptorSetLayoutBinding texBinding{};
+				texBinding.binding = (uint32_t)(1 + i);
+				texBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+				texBinding.descriptorCount = 1;
+				texBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+				bindings.push_back(texBinding);
+			}
+
+			VkDescriptorSetLayoutCreateInfo layoutInfo{};
+			layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+			layoutInfo.bindingCount = (uint32_t)bindings.size();
+			layoutInfo.pBindings = bindings.data();
+			if (vkCreateDescriptorSetLayout(vkDevice, &layoutInfo, nullptr, &samplingSetLayout) != VK_SUCCESS) {
+				SPRaise("Failed to create shadow sampling descriptor set layout");
+			}
+
+			VkDescriptorPoolSize poolSizes[2]{};
+			poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+			poolSizes[0].descriptorCount = 1;
+			poolSizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+			poolSizes[1].descriptorCount = NumSlices;
+
+			VkDescriptorPoolCreateInfo poolInfo{};
+			poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+			poolInfo.poolSizeCount = 2;
+			poolInfo.pPoolSizes = poolSizes;
+			poolInfo.maxSets = 1;
+			if (vkCreateDescriptorPool(vkDevice, &poolInfo, nullptr, &samplingPool) != VK_SUCCESS) {
+				SPRaise("Failed to create shadow sampling descriptor pool");
+			}
+
+			VkDescriptorSetAllocateInfo allocInfo{};
+			allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+			allocInfo.descriptorPool = samplingPool;
+			allocInfo.descriptorSetCount = 1;
+			allocInfo.pSetLayouts = &samplingSetLayout;
+			if (vkAllocateDescriptorSets(vkDevice, &allocInfo, &samplingDescriptorSet) != VK_SUCCESS) {
+				SPRaise("Failed to allocate shadow sampling descriptor set");
+			}
+
+			// The depth images never change, so write the whole set once here; only the
+			// UBO contents are updated per frame.
+			VkDescriptorBufferInfo bufInfo{};
+			bufInfo.buffer = samplingUniformBuffer->GetBuffer();
+			bufInfo.offset = 0;
+			bufInfo.range = sizeof(SamplingUniforms);
+
+			std::vector<VkDescriptorImageInfo> imageInfos(NumSlices);
+			std::vector<VkWriteDescriptorSet> writes;
+
+			VkWriteDescriptorSet uboWrite{};
+			uboWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+			uboWrite.dstSet = samplingDescriptorSet;
+			uboWrite.dstBinding = 0;
+			uboWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+			uboWrite.descriptorCount = 1;
+			uboWrite.pBufferInfo = &bufInfo;
+			writes.push_back(uboWrite);
+
+			for (int i = 0; i < NumSlices; i++) {
+				imageInfos[i].imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
+				imageInfos[i].imageView = shadowMapImages[i]->GetImageView();
+				imageInfos[i].sampler = samplingSampler;
+
+				VkWriteDescriptorSet texWrite{};
+				texWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+				texWrite.dstSet = samplingDescriptorSet;
+				texWrite.dstBinding = (uint32_t)(1 + i);
+				texWrite.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+				texWrite.descriptorCount = 1;
+				texWrite.pImageInfo = &imageInfos[i];
+				writes.push_back(texWrite);
+			}
+
+			vkUpdateDescriptorSets(vkDevice, (uint32_t)writes.size(), writes.data(), 0, nullptr);
+
+			SPLog("Shadow sampling resources created successfully");
+		}
+
 		void VulkanShadowMapRenderer::DestroyResources() {
 			SPADES_MARK_FUNCTION();
 
 			VkDevice vkDevice = device->GetDevice();
+
+			samplingUniformBuffer = nullptr;
+			if (samplingPool != VK_NULL_HANDLE) {
+				vkDestroyDescriptorPool(vkDevice, samplingPool, nullptr);
+				samplingPool = VK_NULL_HANDLE;
+				samplingDescriptorSet = VK_NULL_HANDLE;
+			}
+			if (samplingSetLayout != VK_NULL_HANDLE) {
+				vkDestroyDescriptorSetLayout(vkDevice, samplingSetLayout, nullptr);
+				samplingSetLayout = VK_NULL_HANDLE;
+			}
+			if (samplingSampler != VK_NULL_HANDLE) {
+				vkDestroySampler(vkDevice, samplingSampler, nullptr);
+				samplingSampler = VK_NULL_HANDLE;
+			}
 
 			if (descriptorPool != VK_NULL_HANDLE) {
 				vkDestroyDescriptorPool(vkDevice, descriptorPool, nullptr);
@@ -638,11 +793,10 @@ namespace spades {
 				// Set depth bias for shadow mapping (reduces shadow acne)
 				vkCmdSetDepthBias(commandBuffer, 1.25f, 0.0f, 1.75f);
 
-				// Render map shadow pass
-				VulkanMapRenderer* mapRenderer = renderer.GetMapRenderer();
-				if (mapRenderer) {
-					mapRenderer->RenderShadowMapPass(commandBuffer, pipelineLayout);
-				}
+				// The cascade is models-only: terrain sun shadows come from the
+				// separate 512² top-down mapShadowTexture, so this map need only carry
+				// dynamic occluders. Sampling it as EvaluteModelShadow() then adds
+				// model shadows on top of the terrain term with no double-counting.
 
 				// Render model shadow pass. Models use their own shadow pipeline
 				// (full per-instance transform), so they get this slice's light-space
@@ -655,6 +809,27 @@ namespace spades {
 
 				vkCmdEndRenderPass(commandBuffer);
 			}
+
+			// Publish this frame's cascade matrices to the sampling UBO and mark it
+			// enabled so the lit shaders sample model shadows. The depth images are
+			// already in DEPTH_STENCIL_READ_ONLY_OPTIMAL (render-pass finalLayout).
+			SamplingUniforms u{};
+			for (int i = 0; i < NumSlices; i++)
+				u.cascadeMatrix[i] = matrices[i];
+			u.enabled = 1;
+			void* dst = samplingUniformBuffer->Map();
+			memcpy(dst, &u, sizeof(u));
+			samplingUniformBuffer->Unmap();
+		}
+
+		void VulkanShadowMapRenderer::SetSamplingDisabled() {
+			// Cascade not rendered this frame (r_fogShadow off): tell the lit shaders
+			// to skip model-shadow sampling. Matrices are left stale but unread.
+			int32_t disabled = 0;
+			void* dst = samplingUniformBuffer->Map();
+			memcpy(static_cast<char*>(dst) + offsetof(SamplingUniforms, enabled),
+			       &disabled, sizeof(disabled));
+			samplingUniformBuffer->Unmap();
 		}
 
 		bool VulkanShadowMapRenderer::Cull(const AABB3& box) {
