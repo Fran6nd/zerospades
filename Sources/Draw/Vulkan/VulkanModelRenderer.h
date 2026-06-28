@@ -52,7 +52,9 @@ namespace spades {
 
 			void AddModel(VulkanModel* model, const client::ModelRenderParam& param);
 
-			void RenderShadowMapPass(VkCommandBuffer commandBuffer);
+			void RenderShadowMapPass(VkCommandBuffer commandBuffer,
+			                         const Matrix4& lightMatrix,
+			                         VkRenderPass shadowRenderPass);
 
 			void Prerender(VkCommandBuffer commandBuffer, bool ghostPass);
 			void RenderSunlightPass(VkCommandBuffer commandBuffer, bool ghostPass);
