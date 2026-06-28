@@ -906,6 +906,14 @@ namespace spades {
 				radiosityRenderer.reset();
 			}
 
+			// Initialize shadow map renderer first: the map/model sunlight pipeline
+			// layouts reference its sampling descriptor-set layout (set 1).
+			if (map) {
+				shadowMapRenderer = stmp::make_unique<VulkanShadowMapRenderer>(*this);
+			} else {
+				shadowMapRenderer.reset();
+			}
+
 			// Initialize map renderer
 			if (map) {
 				mapRenderer = stmp::make_unique<VulkanMapRenderer>(map, *this);
@@ -924,13 +932,6 @@ namespace spades {
 				}
 			} else {
 				mapRenderer.reset();
-			}
-
-			// Initialize shadow map renderer (cascaded depth maps for fog)
-			if (map) {
-				shadowMapRenderer = stmp::make_unique<VulkanShadowMapRenderer>(*this);
-			} else {
-				shadowMapRenderer.reset();
 			}
 
 			// Initialize flat map renderer (minimap)
