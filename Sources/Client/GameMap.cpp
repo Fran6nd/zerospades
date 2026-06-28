@@ -294,7 +294,10 @@ namespace spades {
 		GameMap::RayCastResult GameMap::CastRay2(spades::Vector3 v0, spades::Vector3 dir,
 		                                         int maxSteps) const {
 			SPADES_MARK_FUNCTION_DEBUG();
-			GameMap::RayCastResult result;
+			// Zero-initialize: a no-hit return (including maxSteps <= 0, where the
+			// stepping loop never runs) must leave hitBlock/normal defined rather
+			// than exposing uninitialized stack memory to callers.
+			GameMap::RayCastResult result{};
 
 			SPAssert(!v0.IsNaN());
 			SPAssert(!dir.IsNaN());
