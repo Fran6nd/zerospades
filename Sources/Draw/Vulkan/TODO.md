@@ -52,14 +52,38 @@ Fog → DoF → Bloom → FXAA → LensFlare → AutoExposure → ColorCorrectio
 
 ## Bugs
 
-- [x] **Player shadows.** Models now render into the shadow map with a
-      dedicated pipeline (`CreateShadowPipeline`) and shader
+- [~] **Player shadows — half done.** Models now *render* into the cascaded
+      shadow map with a dedicated pipeline (`CreateShadowPipeline`) + shader
       ([ModelShadowMap.vert](../../../Resources/Shaders/Vulkan/ModelShadowMap.vert)),
-      pushing the full per-instance light-space MVP. The shared map-chunk
-      shadow pipeline couldn't be reused: its vertex stride is the chunk's
-      (20 B vs the model's `sizeof(Vertex)`) and its push constant is a
-      translation-only `vec3`. Plumbed the per-slice light matrix +
-      render pass through `VulkanModelRenderer::RenderShadowMapPass`.
+      pushing the full per-instance light-space MVP (origin baked in). The
+      shared map-chunk shadow pipeline couldn't be reused (chunk vertex
+      stride 20 B vs model `sizeof(Vertex)`; translation-only `vec3` push).
+      Plumbed the per-slice light matrix + render pass through
+      `VulkanModelRenderer::RenderShadowMapPass`, gated on `r_modelShadows`.
+
+      **But the cascaded shadow map is never SAMPLED by any lit shader.**
+      The lit shaders ([BasicMap.frag], [BasicModelVertexColor.frag]) read
+      only the 512² top-down `mapShadowTexture` (voxel-column occlusion —
+      blocks only). The dormant `Shadow/Common.vk.fs` scaffolding
+      (`VisibilityOfSunLight = EvaluateMapShadow() * EvaluteModelShadow()`)
+      shows the intended design but `EvaluteModelShadow()` was never built.
+      Remaining work to make dynamic (player/grenade) shadows visible:
+      1. **Reimplement `VulkanShadowMapRenderer::BuildMatrix` correctly.** Two
+         problems: (a) it projects along the VIEW direction
+         (`sceneDef.viewAxis[2]`), not the sun — GL projects along
+         `lightDir = normalize(0,-1,-1)` and fits the camera frustum into a
+         tight sun-aligned ortho box (see `GLBasicShadowMapRenderer::BuildMatrix`).
+         As-is the shadow is cast along the camera axis, not the sun. (b) Z maps
+         to ~[-0.5,0.5] (GL [-1,1]); Vulkan clips Z to [0,1], so the near half of
+         each cascade is clipped during the shadow render. Port GL's
+         frustum-fitting + emit Vulkan [0,1] Z; sampling must use the same Z.
+      2. Always-present sampling resources on the shadow renderer: per-frame
+         UBO (`mat4 cascade[3]` + `enabled` flag) + the 3 D32 images + sampler,
+         as one descriptor set. `enabled=0` when `r_fogShadow` off → shader
+         returns lit (no pipeline variants needed).
+      3. Wire into lit shaders (map → model → Phys): VS projects worldPos by
+         each cascade matrix; FS "first in-bounds cascade" select → compare →
+         multiply into the sun term.
 
 ## Stubs
 
