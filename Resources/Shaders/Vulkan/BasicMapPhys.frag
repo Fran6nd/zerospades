@@ -35,6 +35,8 @@ layout(push_constant) uniform PushConstants {
 	float _pad;
 	vec3 fogColor;
 	float _pad2;
+	vec3 sunDirection; // points toward the sun (renderer GetSunDirection)
+	float _pad3;
 	mat4 viewMatrix;
 } pushConstants;
 
@@ -140,8 +142,8 @@ void main() {
 
 	vec3 eyeVec = -normalize(viewSpaceCoord);
 
-	// Compute view-space light direction
-	vec3 sunDir = normalize(vec3(0.0, -1.0, -1.0));
+	// Compute view-space light direction (sun from the renderer, GetSunDirection)
+	vec3 sunDir = normalize(pushConstants.sunDirection);
 	vec3 viewSpaceLight = normalize((pushConstants.viewMatrix * vec4(sunDir, 0.0)).xyz);
 
 	float dotNL = max(color.w, 0.001);

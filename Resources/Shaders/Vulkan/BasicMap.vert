@@ -27,6 +27,8 @@ layout(push_constant) uniform PushConstants {
 	vec3 viewOrigin;
 	float _pad;
 	vec3 fogColor;
+	float _pad2;
+	vec3 sunDirection; // points toward the sun (renderer GetSunDirection)
 } pushConstants;
 
 // Set 1: model-shadow cascade matrices (owned by VulkanShadowMapRenderer).
@@ -62,8 +64,9 @@ void main() {
 	// Convert int8 normal to float and normalize
 	vec3 normalFloat = normalize(vec3(normalAttribute));
 
-	// Sun direction matching OpenGL: normalize(vec3(0, -1, -1))
-	vec3 sunDir = normalize(vec3(0.0, -1.0, -1.0));
+	// Sun direction from the renderer (single source of truth; matches the
+	// shadow projection and lens flare).
+	vec3 sunDir = normalize(pushConstants.sunDirection);
 	float lambert = max(dot(normalFloat, sunDir), 0.0);
 
 	// Convert color from uint8 [0,255] to float [0,1] and linearize

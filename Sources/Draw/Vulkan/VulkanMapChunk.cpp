@@ -411,6 +411,8 @@ namespace spades {
 				pushConstants._pad = 0.0f;
 				pushConstants.fogColor = fogCol;
 				pushConstants._pad2 = 0.0f;
+				pushConstants.sunDirection = renderer.renderer.GetSunDirection();
+				pushConstants._pad3 = 0.0f;
 				pushConstants.viewMatrix = renderer.renderer.GetViewMatrix();
 
 				vkCmdPushConstants(commandBuffer, renderer.pipelineLayout,
@@ -429,6 +431,8 @@ namespace spades {
 				pushConstants.viewOrigin = eye;
 				pushConstants._pad = 0.0f;
 				pushConstants.fogColor = fogCol;
+				pushConstants._pad2 = 0.0f;
+				pushConstants.sunDirection = renderer.renderer.GetSunDirection();
 
 				vkCmdPushConstants(commandBuffer, renderer.pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT,
 				                   0, sizeof(pushConstants), &pushConstants);

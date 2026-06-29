@@ -42,18 +42,20 @@ namespace spades {
 		// always sized from the same sizeof() and can never drift. std430 aligns
 		// each vec3 to 16 bytes, hence the explicit trailing pad floats. An
 		// undersized range silently drops the tail on AMD/amdvlk (fine on MoltenVK).
-		struct MapSolidPushConstants { // physical lighting (176 bytes)
+		struct MapSolidPushConstants { // physical lighting (192 bytes)
 			Matrix4 projectionViewMatrix;
 			Vector3 modelOrigin;   float fogDistance;
 			Vector3 viewOrigin;    float _pad;
 			Vector3 fogColor;      float _pad2;
+			Vector3 sunDirection;  float _pad3; // _pad3 aligns viewMatrix to 16
 			Matrix4 viewMatrix;
 		};
-		struct MapSolidPushConstantsBasic { // non-physical lighting (108 bytes)
+		struct MapSolidPushConstantsBasic { // non-physical lighting (124 bytes)
 			Matrix4 projectionViewMatrix;
 			Vector3 modelOrigin;   float fogDistance;
 			Vector3 viewOrigin;    float _pad;
-			Vector3 fogColor;
+			Vector3 fogColor;      float _pad2;
+			Vector3 sunDirection;
 		};
 		struct MapDlightPushConstants { // dynamic light pass (224 bytes)
 			Matrix4 projectionViewMatrix;
