@@ -28,6 +28,8 @@ layout(push_constant) uniform PushConstants {
 	vec3 customColor;
 	float _pad;
 	vec3 fogColor;
+	float mirrorClipZ; // water-plane Z in the reflection pass (else +inf)
+	vec3 sunDirection; // points toward the sun (renderer GetSunDirection)
 } pushConstants;
 
 layout(location = 0) in uvec3 positionAttribute;
@@ -46,6 +48,7 @@ layout(location = 6) out vec3 aoCoord;          // 3D coords into AO texture
 layout(location = 7) out vec3 radiosityTextureCoord; // 3D coords into radiosity textures
 layout(location = 8) out vec3 normalVarying;    // world-space surface normal
 layout(location = 9) out vec2 ambientOcclusionCoord; // 2D coords into AO atlas
+layout(location = 10) out float waterClip;     // >=0 keep, <0 clip below the reflection plane
 
 // Keep gl_Position bit-identical with ModelDynamicLit.vert so the additive
 // dynamic-light pass (depth test EQUAL) matches this opaque pass's depth and
@@ -64,8 +67,8 @@ void main() {
 	// Transform normal to world space via model matrix (handles mirrored models correctly)
 	vec3 normalFloat = normalize((pushConstants.modelMatrix * vec4(normalize(vec3(normalAttribute)), 0.0)).xyz);
 
-	// Sun direction matching OpenGL: normalize(vec3(0, -1, -1))
-	vec3 sunDir = normalize(vec3(0.0, -1.0, -1.0));
+	// Sun direction from the renderer (single source of truth, GetSunDirection)
+	vec3 sunDir = normalize(pushConstants.sunDirection);
 	float lambert = max(dot(normalFloat, sunDir), 0.0);
 
 	// Ambient color matching GL GLShadowShader: fog * 0.5 with a minimum
@@ -99,4 +102,8 @@ void main() {
 	// 2D AO atlas coords (matches GL OptimizedVoxelModel.fs).  aoX/aoY are the
 	// 256-pixel-space tile + corner offsets baked per-face in EmitFace.
 	ambientOcclusionCoord = (vec2(aoXAttribute, aoYAttribute) + 0.5) * (1.0 / 256.0);
+
+	// Reflection-pass water clip: negative for fragments below the water plane.
+	// In the normal scene mirrorClipZ is +inf, so this stays positive (no clip).
+	waterClip = pushConstants.mirrorClipZ - worldPos.z;
 }

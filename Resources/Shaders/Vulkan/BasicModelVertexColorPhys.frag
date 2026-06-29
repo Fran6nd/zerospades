@@ -35,7 +35,9 @@ layout(push_constant) uniform PushConstants {
 	vec3 customColor;
 	float _pad;
 	vec3 fogColor;
-	float _pad2;
+	float mirrorClipZ; // water-plane Z in the reflection pass (else +inf)
+	vec3 sunDirection;
+	float _pad3;
 	mat4 viewMatrix;
 	vec3 viewOrigin;
 } pushConstants;
@@ -52,6 +54,7 @@ layout(location = 8) in vec3 reflectionDir;
 layout(location = 9) in vec3 aoCoord;          // 3D coords into AO texture
 layout(location = 10) in vec3 radiosityTextureCoord;
 layout(location = 11) in vec3 normalVarying;
+layout(location = 12) in float waterClip;      // <0 = below the reflection plane
 
 layout(location = 0) out vec4 fragColor;
 
@@ -114,6 +117,11 @@ float CookTorrance(vec3 eyeVec, vec3 lightVec, vec3 normal) {
 }
 
 void main() {
+	// Reflection pass: discard fragments below the water plane so underwater
+	// players never enter the mirror (waterClip is +inf-based in the scene pass).
+	if (waterClip < 0.0)
+		discard;
+
 	// Evaluate map shadow
 	float shadowVal = texture(mapShadowTexture, shadowCoord.xy).w;
 	float shadow = (shadowVal < shadowCoord.z - 0.0001) ? 0.0 : 1.0;
@@ -153,8 +161,8 @@ void main() {
 
 	vec3 eyeVec = -normalize(viewSpaceCoord);
 
-	// View-space light
-	vec3 sunDir = normalize(vec3(0.0, -1.0, -1.0));
+	// View-space light (sun direction from the renderer, GetSunDirection)
+	vec3 sunDir = normalize(pushConstants.sunDirection);
 	vec3 viewSpaceLight = normalize((pushConstants.viewMatrix * vec4(sunDir, 0.0)).xyz);
 
 	float dotNL = max(color.w, 0.001);

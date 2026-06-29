@@ -40,7 +40,9 @@ layout(push_constant) uniform PushConstants {
 	vec3 customColor;
 	float _pad;
 	vec3 fogColor;
-	float _pad2;
+	float mirrorClipZ; // water-plane Z in the reflection pass (else +inf)
+	vec3 sunDirection;
+	float _pad3;
 	mat4 viewMatrix;
 	vec3 viewOrigin;
 } pushConstants;
@@ -129,7 +131,8 @@ void main() {
 
 	vec3 eyeVec = -normalize(viewSpaceCoord);
 
-	vec3 sunDir = normalize(vec3(0.0, -1.0, -1.0));
+	// Sun direction from the renderer (single source of truth, GetSunDirection)
+	vec3 sunDir = normalize(pushConstants.sunDirection);
 	vec3 viewSpaceLight = normalize((pushConstants.viewMatrix * vec4(sunDir, 0.0)).xyz);
 
 	float dotNL = max(color.w, 0.001);
