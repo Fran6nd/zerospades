@@ -682,7 +682,7 @@ namespace spades {
 			// to [0,1], so a GL-style [-1,1] mapping would discard the near half of
 			// every cascade during the depth-only render. Local Z 0 = sun side, so a
 			// LESS depth test keeps the surface closest to the sun (the occluder).
-			Vector3 lightDir = MakeVector3(0, -1, -1).Normalize();
+			Vector3 lightDir = renderer.GetSunDirection();
 			Vector3 up = MakeVector3(0, 0, 1);
 			Vector3 side = Vector3::Cross(up, lightDir).Normalize();
 			up = Vector3::Cross(lightDir, side).Normalize();
