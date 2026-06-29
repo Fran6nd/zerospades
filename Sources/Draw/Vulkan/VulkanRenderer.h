@@ -292,6 +292,12 @@ namespace spades {
 			float GetFogDistance() { return fogDistance; }
 
 			const client::SceneDefinition& GetSceneDef() const { return sceneDef; }
+
+			// Canonical sun direction (points TOWARD the sun), matching the lens
+			// flare, water and lit shaders. Single source of truth so the shadow
+			// projection is derived from the sun rather than a duplicated constant.
+			Vector3 GetSunDirection() const { return MakeVector3(0.0F, -1.0F, -1.0F).Normalize(); }
+
 			const Matrix4& GetProjectionViewMatrix() const { return projectionViewMatrix; }
 			const Matrix4& GetViewMatrix() const { return viewMatrix; }
 			const Matrix4& GetProjectionMatrix() const { return projectionMatrix; }

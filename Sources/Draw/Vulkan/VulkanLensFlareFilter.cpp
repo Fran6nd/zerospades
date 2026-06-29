@@ -599,7 +599,7 @@ namespace spades {
 
 			// ── 1. Sun NDC position (GL convention, +Y up) ────────────
 			// Mirrors GLLensFlareFilter::Draw()'s hard-coded sun call.
-			const Vector3 sunDir = MakeVector3(0.0F, -1.0F, -1.0F);
+			const Vector3 sunDir = renderer.GetSunDirection();
 			const Vector3 sunCol = MakeVector3(1.0F, 0.9F, 0.8F);
 			constexpr bool infinityDistance = true;
 			constexpr bool renderReflections = true;
