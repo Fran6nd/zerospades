@@ -92,6 +92,11 @@ namespace spades {
 		private:
 			void CreateDescriptorPool();
 			void CreateDescriptorSets();
+			// (Re)writes the per-frame static descriptors (mainTexture, waveTexture,
+			// matrices UBO). Safe to call again after the color/wave images are
+			// (re)created post-construction — e.g. when the map loads after the
+			// renderer, which otherwise leaves mainTexture unbound (black water).
+			void RebindStaticTextures();
 			void CreateUniformBuffers();
 			void UpdateUniformBuffers(uint32_t frameIndex);
 			void CleanupDescriptorResources();

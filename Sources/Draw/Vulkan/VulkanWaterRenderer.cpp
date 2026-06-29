@@ -657,6 +657,11 @@ namespace spades {
 			// Trigger full update of water color texture
 			for (size_t i = 0; i < updateBitmap.size(); i++)
 				updateBitmap[i] = 0xffffffffUL;
+
+			// The descriptor sets may already have been created (with no images,
+			// because the map loaded after the renderer) — point them at the
+			// images we just created so mainTexture/waveTexture aren't left unbound.
+			RebindStaticTextures();
 		}
 	}
 
@@ -1362,9 +1367,16 @@ namespace spades {
 			SPRaise("Failed to allocate water descriptor sets");
 		}
 
-	// Pre-bind static descriptors that don't change between frames
-	// This reduces vkUpdateDescriptorSets overhead each frame
-	for (uint32_t i = 0; i < frameCount; i++) {
+	// Pre-bind static descriptors now that the sets exist. Re-callable so the
+	// map loading after the renderer (which (re)creates the color/wave images)
+	// can rebind them — otherwise mainTexture stays unbound and water is black.
+	RebindStaticTextures();
+}
+
+	void VulkanWaterRenderer::RebindStaticTextures() {
+	if (descriptorSets.empty())
+		return;
+	for (uint32_t i = 0; i < descriptorSets.size(); i++) {
 		std::vector<VkWriteDescriptorSet> staticWrites;
 		std::vector<VkDescriptorImageInfo> imageInfos;  // Keep alive until vkUpdateDescriptorSets
 		std::vector<VkDescriptorBufferInfo> bufferInfos; // Keep alive until vkUpdateDescriptorSets
