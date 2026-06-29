@@ -28,6 +28,8 @@ layout(push_constant) uniform PushConstants {
 	float _pad;
 	vec3 fogColor;
 	float _pad2;
+	vec3 sunDirection; // points toward the sun (renderer GetSunDirection)
+	float _pad3;
 	mat4 viewMatrix;
 } pushConstants;
 
@@ -55,8 +57,8 @@ void main() {
 
 	vec3 normalFloat = normalize(vec3(normalAttribute));
 
-	// Sun direction matching OpenGL
-	vec3 sunDir = normalize(vec3(0.0, -1.0, -1.0));
+	// Sun direction from the renderer (single source of truth, GetSunDirection)
+	vec3 sunDir = normalize(pushConstants.sunDirection);
 	float lambert = dot(normalFloat, sunDir); // NOT clamped - physical shader needs raw dot
 
 	// Linearize vertex color
