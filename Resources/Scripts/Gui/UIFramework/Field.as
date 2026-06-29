@@ -464,9 +464,22 @@ namespace spades {
 				FieldBase::MouseLeave();
 			}
 			void Render() {
-				// The box chrome lives in C++ (shared with the editor); the text /
-				// caret / selection are still drawn by FieldBase below.
-				PaintField(Manager.Renderer, ScreenPosition, Size, IsFocused, hover);
+				// render background
+				Renderer@ r = Manager.Renderer;
+				Vector2 pos = ScreenPosition;
+				Vector2 size = Size;
+
+				r.ColorNP = Vector4(0.0F, 0.0F, 0.0F, IsFocused ? 0.3F : 0.1F);
+				r.DrawImage(null, AABB2(pos.x, pos.y, size.x, size.y));
+
+				if (IsFocused)
+					r.ColorNP = Vector4(1.0F, 1.0F, 1.0F, 0.2F);
+				else if (hover)
+					r.ColorNP = Vector4(1.0F, 1.0F, 1.0F, 0.1F);
+				else
+					r.ColorNP = Vector4(1.0F, 1.0F, 1.0F, 0.06F);
+				r.DrawOutlinedRect(pos.x, pos.y, pos.x + size.x, pos.y + size.y);
+
 				FieldBase::Render();
 			}
 		}
