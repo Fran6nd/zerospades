@@ -42,14 +42,15 @@ namespace spades {
 		// hence the trailing pad floats. The non-physical solid pass pushes only the
 		// prefix up to the physical-only tail: offsetof(ModelSolidPushConstants,
 		// physicalTail). An undersized range drops the tail on AMD (fine on MoltenVK).
-		struct ModelSolidPushConstants { // physical lighting (252 bytes); 172 used non-physical
+		struct ModelSolidPushConstants { // physical lighting (268 bytes); 188 used non-physical
 			Matrix4 projectionViewMatrix;
 			Matrix4 modelMatrix;
 			Vector3 modelOrigin;   float fogDensity;
 			Vector3 customColor;   float opacity; // _pad: opacity for ghost models
-			Vector3 fogColor;
+			Vector3 fogColor;      float mirrorClipZ; // water-plane Z in the reflection pass (else +inf); also pads sunDirection to its 16B slot
+			Vector3 sunDirection;  // points toward the sun (renderer GetSunDirection)
 			// --- physical-lighting-only tail (non-physical push stops here) ---
-			float   physicalTail;  // _pad2
+			float   physicalTail;  // _pad3 — aligns viewMatrix
 			Matrix4 viewMatrix;
 			Vector3 viewOrigin;
 		};
