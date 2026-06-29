@@ -63,6 +63,7 @@ SPADES_SETTING(r_dlights);
 SPADES_SETTING(r_hdr);
 SPADES_SETTING(r_bloom);
 SPADES_SETTING(r_fogShadow);
+SPADES_SETTING(r_modelShadows);
 SPADES_SETTING(r_radiosity);
 SPADES_SETTING(r_depthOfField);
 SPADES_SETTING(r_fxaa);
@@ -1786,8 +1787,11 @@ namespace spades {
 			radiosityRenderer->Update(commandBuffer);
 		}
 
-		// Render shadow maps BEFORE starting main render pass (shadow maps use their own render passes)
-		if (sceneUsedInThisFrame && shadowMapRenderer && r_fogShadow) {
+		// Render the cascaded shadow map BEFORE the main render pass. It is now a
+		// models-only map driven by r_modelShadows alone — independent of r_fogShadow
+		// (the fog in-scatter uses the separate 512² map shadow). So model shadows
+		// work with fog off.
+		if (sceneUsedInThisFrame && shadowMapRenderer && r_modelShadows) {
 			shadowMapRenderer->Render(commandBuffer);
 		} else if (shadowMapRenderer) {
 			// Cascade not rendered this frame: keep the sampling UBO marked disabled
