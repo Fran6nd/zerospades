@@ -43,6 +43,7 @@ layout(location = 6) in vec3 aoCoord;          // 3D coords into AO texture
 layout(location = 7) in vec3 radiosityTextureCoord;
 layout(location = 8) in vec3 normalVarying;
 layout(location = 9) in vec2 ambientOcclusionCoord; // 2D coords into AO atlas
+layout(location = 10) in float waterClip;      // <0 = below the reflection plane
 
 layout(location = 0) out vec4 fragColor;
 
@@ -53,6 +54,11 @@ vec3 DecodeRadiosityValue(vec3 val) {
 }
 
 void main() {
+	// Reflection pass: discard fragments below the water plane so underwater
+	// players never enter the mirror (waterClip is +inf-based in the scene pass).
+	if (waterClip < 0.0)
+		discard;
+
 	// Evaluate map shadow (matching OpenGL Map.fs: EvaluateMapShadow)
 	float shadowVal = texture(mapShadowTexture, shadowCoord.xy).w;
 	float shadow = (shadowVal < shadowCoord.z - 0.0001) ? 0.0 : 1.0;

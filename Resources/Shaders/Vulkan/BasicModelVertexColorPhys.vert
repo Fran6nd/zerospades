@@ -28,7 +28,9 @@ layout(push_constant) uniform PushConstants {
 	vec3 customColor;
 	float _pad;
 	vec3 fogColor;
-	float _pad2;
+	float mirrorClipZ; // water-plane Z in the reflection pass (else +inf)
+	vec3 sunDirection; // points toward the sun (renderer GetSunDirection)
+	float _pad3;
 	mat4 viewMatrix;
 	vec3 viewOrigin;
 } pushConstants;
@@ -49,6 +51,7 @@ layout(location = 8) out vec3 reflectionDir;
 layout(location = 9) out vec3 aoCoord;          // 3D coords into AO texture
 layout(location = 10) out vec3 radiosityTextureCoord;
 layout(location = 11) out vec3 normalVarying;
+layout(location = 12) out float waterClip;     // >=0 keep, <0 clip below the reflection plane
 
 // Must match ModelDynamicLit.vert's gl_Position exactly: the additive dynamic-
 // light pass uses depth test EQUAL against this physical-lighting opaque pass,
@@ -68,8 +71,8 @@ void main() {
 	// Transform normal to world space
 	vec3 worldNormal = normalize((pushConstants.modelMatrix * vec4(normalFloat, 0.0)).xyz);
 
-	// Sun direction
-	vec3 sunDir = normalize(vec3(0.0, -1.0, -1.0));
+	// Sun direction from the renderer (single source of truth, GetSunDirection)
+	vec3 sunDir = normalize(pushConstants.sunDirection);
 	float lambert = dot(worldNormal, sunDir); // NOT clamped
 
 	// Ambient color matching GL GLShadowShader: fog * 0.5 with a minimum
@@ -104,4 +107,8 @@ void main() {
 	// Radiosity 3D-texture coords (matches GL MapRadiosity.vs).
 	radiosityTextureCoord = worldPos / vec3(512.0, 512.0, 64.0);
 	normalVarying = worldNormal;
+
+	// Reflection-pass water clip: negative below the water plane.
+	// mirrorClipZ is +inf in the normal scene pass, so this stays positive.
+	waterClip = pushConstants.mirrorClipZ - worldPos.z;
 }

@@ -505,6 +505,10 @@ namespace spades {
 				// Ghost depth prepass writes full color; set opacity=1.0 (blend is OFF)
 				pushConstants.opacity = ghostPass ? 1.0f : 0.0f;
 				pushConstants.fogColor = fogCol;
+				pushConstants.sunDirection = renderer.GetSunDirection();
+				// Reflection pass: clip geometry below the water plane (z=63) so
+				// underwater players can't leak into the mirror. +inf elsewhere = no clip.
+				pushConstants.mirrorClipZ = renderer.IsRenderingMirror() ? 63.0f : 1.0e9f;
 
 				uint32_t pcSize = offsetof(ModelSolidPushConstants, physicalTail);
 				VkShaderStageFlags pcStages = (ghostPass || sharedPipeline.physicalLighting)
@@ -872,6 +876,10 @@ namespace spades {
 				// Pass param.opacity as alpha for ghost models
 				pushConstants.opacity = ghostPass ? param.opacity : 0.0f;
 				pushConstants.fogColor = fogCol;
+				pushConstants.sunDirection = renderer.GetSunDirection();
+				// Reflection pass: clip geometry below the water plane (z=63) so
+				// underwater players can't leak into the mirror. +inf elsewhere = no clip.
+				pushConstants.mirrorClipZ = renderer.IsRenderingMirror() ? 63.0f : 1.0e9f;
 
 				uint32_t pcSize = offsetof(ModelSolidPushConstants, physicalTail);
 				VkShaderStageFlags pcStages = (ghostPass || sharedPipeline.physicalLighting)
