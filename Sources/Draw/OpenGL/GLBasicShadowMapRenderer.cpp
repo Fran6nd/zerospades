@@ -225,6 +225,12 @@ namespace spades {
 		void GLBasicShadowMapRenderer::Render() {
 			SPADES_MARK_FUNCTION();
 
+			// skip until the camera is initialized; a degenerate frustum would make
+			// BuildMatrix divide by a zero-length axis and produce a NaN matrix
+			const client::SceneDefinition& def = GetRenderer().GetSceneDef();
+			if (def.fovX <= 0.0F || def.fovY <= 0.0F)
+				return;
+
 			float nearDist = 0.0F;
 			for (int i = 0; i < NumSlices; i++) {
 				GLProfiler::Context profiler(GetRenderer().GetGLProfiler(), "Slice %d / %d", i + 1,
