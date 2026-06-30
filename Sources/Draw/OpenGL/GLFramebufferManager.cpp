@@ -389,6 +389,28 @@ namespace spades {
 			device.Viewport(0, 0, renderWidth, renderHeight);
 		}
 
+		void GLFramebufferManager::ResolveDepth() {
+			SPADES_MARK_FUNCTION();
+
+			// Only meaningful with MSAA: the scene renders into the multisampled depth
+			// buffer, but single-sample passes sample `renderDepthTexture`. Without this,
+			// SSAO reads a stale (previous-frame) depth, which combined with the
+			// volumetric fog produced shadows leaking through walls.
+			if (!useMultisample)
+				return;
+
+			// `useMultisample` implies `r_blitFramebuffer` (see the constructor), so the
+			// blit path is always available here.
+			int w = renderWidth;
+			int h = renderHeight;
+			device.BindFramebuffer(IGLDevice::ReadFramebuffer, multisampledFramebuffer);
+			device.BindFramebuffer(IGLDevice::DrawFramebuffer, renderFramebuffer);
+			device.BlitFramebuffer(0, 0, w, h, 0, 0, w, h, IGLDevice::DepthBufferBit,
+			                       IGLDevice::Nearest);
+			device.BindFramebuffer(IGLDevice::ReadFramebuffer, 0);
+			device.BindFramebuffer(IGLDevice::DrawFramebuffer, 0);
+		}
+
 		GLColorBuffer
 		GLFramebufferManager::PrepareForWaterRendering(IGLDevice::UInteger tempFb,
 		                                               IGLDevice::UInteger tempDepthTex) {

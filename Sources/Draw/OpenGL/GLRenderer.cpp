@@ -605,6 +605,12 @@ namespace spades {
 				}
 
 				if (needsFullDepthPrepass) {
+					// Under MSAA the prepass rendered into the multisampled depth buffer,
+					// but SSAO samples the single-sample depth texture. Resolve it now (while
+					// depth writes are still enabled) so SSAO reads this frame's depth instead
+					// of a stale one — the cause of the fog+SSAO+MSAA shadow-through-walls bug.
+					GetFramebufferManager()->ResolveDepth();
+
 					{
 						GLProfiler::Context p(*profiler, "Screen Space Ambient Occlusion");
 
