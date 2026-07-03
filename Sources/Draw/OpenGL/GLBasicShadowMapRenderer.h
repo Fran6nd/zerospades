@@ -46,7 +46,7 @@ namespace spades {
 			OBB3 obb;
 			float vpWidth, vpHeight; // used for culling
 
-			void BuildMatrix(float near, float far);
+			bool BuildMatrix(float near, float far);
 
 		public:
 			GLBasicShadowMapRenderer(GLRenderer &);

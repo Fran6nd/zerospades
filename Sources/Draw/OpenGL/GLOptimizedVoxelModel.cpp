@@ -334,7 +334,12 @@ namespace spades {
 								p3 += uu;
 								p3 += vv;
 							} else {
-								*(pixels++) = 0xFF00FF;
+								// No neighbouring voxel to take a color from. Extend the
+								// previous texel (or black) instead of stamping a magenta
+								// sentinel, so this unfilled padding doesn't bleed into the
+								// face edge under texture filtering.
+								*pixels = (x > 0) ? pixels[-1] : 0;
+								pixels++;
 								p2 += uu;
 								continue;
 							}

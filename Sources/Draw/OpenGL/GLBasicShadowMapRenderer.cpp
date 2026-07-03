@@ -136,7 +136,7 @@ namespace spades {
 			               plane2.GetDistanceTo(base) / Vector3::Dot(dir, plane2.n));
 		}
 
-		void GLBasicShadowMapRenderer::BuildMatrix(float near, float far) {
+		bool GLBasicShadowMapRenderer::BuildMatrix(float near, float far) {
 			// TODO: variable light direction?
 			Vector3 lightDir = MakeVector3(0, -1, -1).Normalize();
 			// set better up dir?
@@ -194,9 +194,20 @@ namespace spades {
 			Vector3 axis2 = up * (maxY - minY);
 			Vector3 axis3 = lightDir * (seg.high - seg.low);
 
+			// Bail out if the camera frustum is degenerate (e.g. an uninitialized
+			// scene definition during a transition). A zero-length or non-finite
+			// axis would otherwise make the projection matrix non-finite, which
+			// silently passes frustum culling (NaN compares false) and corrupts
+			// shadow rendering.
+			float len1 = axis1.GetLength();
+			float len2 = axis2.GetLength();
+			float len3 = axis3.GetLength();
+			if (!(len1 > 1.0E-6F && len2 > 1.0E-6F && len3 > 1.0E-6F))
+				return false;
+
 			obb = OBB3(Matrix4::FromAxis(axis1, axis2, axis3, origin));
-			vpWidth = 2.f / axis1.GetLength();
-			vpHeight = 2.f / axis2.GetLength();
+			vpWidth = 2.f / len1;
+			vpHeight = 2.f / len2;
 
 			// convert to projectionview matrix
 			matrix = obb.m.InversedFast();
@@ -220,10 +231,16 @@ namespace spades {
 				// SPAssert(v.z < 1.f);
 			}
 #endif
+			return true;
 		}
 
 		void GLBasicShadowMapRenderer::Render() {
 			SPADES_MARK_FUNCTION();
+
+			// skip until the camera is initialized
+			const client::SceneDefinition& def = GetRenderer().GetSceneDef();
+			if (def.fovX <= 0.0F || def.fovY <= 0.0F)
+				return;
 
 			float nearDist = 0.0F;
 			for (int i = 0; i < NumSlices; i++) {
@@ -239,7 +256,10 @@ namespace spades {
 					case 2: farDist = 150.0F; break;
 				}
 
-				BuildMatrix(nearDist, farDist);
+				// skip shadow rendering this frame if the camera isn't usable yet
+				// (e.g. an uninitialized scene definition during a transition)
+				if (!BuildMatrix(nearDist, farDist))
+					return;
 				matrices[i] = matrix;
 
 				device.BindFramebuffer(IGLDevice::Framebuffer, framebuffer[i]);

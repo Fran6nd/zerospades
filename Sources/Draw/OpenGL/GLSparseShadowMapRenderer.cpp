@@ -147,7 +147,7 @@ namespace spades {
 			               plane2.GetDistanceTo(base) / Vector3::Dot(dir, plane2.n));
 		}
 
-		void GLSparseShadowMapRenderer::BuildMatrix(float near, float far) {
+		bool GLSparseShadowMapRenderer::BuildMatrix(float near, float far) {
 			client::SceneDefinition def = GetRenderer().GetSceneDef();
 
 			// TODO: variable light direction?
@@ -203,9 +203,20 @@ namespace spades {
 			Vector3 axis2 = up * (maxY - minY);
 			Vector3 axis3 = lightDir * (seg.high - seg.low);
 
+			// Bail out if the camera frustum is degenerate (e.g. an uninitialized
+			// scene definition during a transition). A zero-length or non-finite
+			// axis would otherwise make the projection matrix non-finite, which
+			// silently passes frustum culling (NaN compares false) and corrupts
+			// shadow rendering.
+			float len1 = axis1.GetLength();
+			float len2 = axis2.GetLength();
+			float len3 = axis3.GetLength();
+			if (!(len1 > 1.0E-6F && len2 > 1.0E-6F && len3 > 1.0E-6F))
+				return false;
+
 			obb = OBB3(Matrix4::FromAxis(axis1, axis2, axis3, origin));
-			vpWidth = 2.0F / axis1.GetLength();
-			vpHeight = 2.0F / axis2.GetLength();
+			vpWidth = 2.0F / len1;
+			vpHeight = 2.0F / len2;
 
 			// convert to projectionview matrix
 			matrix = obb.m.InversedFast();
@@ -227,6 +238,7 @@ namespace spades {
 				SPAssert(v.y < 1.0F);
 			}
 #endif
+			return true;
 		}
 
 		void GLSparseShadowMapRenderer::Render() {
@@ -238,7 +250,10 @@ namespace spades {
 			if (def.fovX <= 0.0F || def.fovY <= 0.0F)
 				return;
 
-			BuildMatrix(def.zNear, def.zFar);
+			// skip if the camera frustum is degenerate (BuildMatrix would otherwise
+			// produce a non-finite matrix that corrupts the shadow map)
+			if (!BuildMatrix(def.zNear, def.zFar))
+				return;
 
 			device.BindFramebuffer(IGLDevice::Framebuffer, framebuffer);
 			device.Viewport(0, 0, textureSize, textureSize);
@@ -489,11 +504,15 @@ namespace spades {
 						OBB3 instBoundsOBB = r.matrix * instWorldBoundsOBB;
 						AABB3 instBounds = instBoundsOBB.GetBoundingAABB();
 
-						// frustrum(?) cull
-						if (instBounds.max.x < -1.0F ||
-							instBounds.max.y < -1.0F ||
-						    instBounds.min.x > 1.0F ||
-							instBounds.min.y > 1.0F)
+						// Frustum cull. Written in positive logic so that a model with a
+						// non-finite (NaN) transform — which can be submitted during scene
+						// transitions before an entity is initialized — is rejected rather
+						// than kept (every comparison with NaN is false). The basic shadow
+						// renderer's SphereCull already drops such models the same way.
+						if (!(instBounds.max.x >= -1.0F &&
+							  instBounds.max.y >= -1.0F &&
+							  instBounds.min.x <= 1.0F &&
+							  instBounds.min.y <= 1.0F))
 							continue;
 
 						inst.tile1 = ShadowMapToTileCoord(instBounds.min);
@@ -629,6 +648,12 @@ namespace spades {
 			bool TryPack() {
 				size_t rootNode = NoNode;
 				nodes.clear();
+				// AddGroupToNode holds references (Node& and the size_t& child links)
+				// into `nodes` across recursive calls that push_back into it. Reserve
+				// enough up front so the vector never reallocates mid-recursion, which
+				// would dangle those references (benign on x86, heap corruption on arm64).
+				// Each group placement creates at most two nodes.
+				nodes.reserve(groups.size() * 2 + 1);
 				for (size_t i = 0; i < groups.size(); i++) {
 					if (!AddGroupToNode(rootNode, 0, 0, mapSize, mapSize, i))
 						return false;
@@ -757,17 +782,19 @@ namespace spades {
 						Internal::Instance& inst = itnl.allInstances[mId];
 						mrend.RenderModel(inst.model, *inst.param);
 
-						AABB3 modelBounds = inst.model->GetBoundingBox();
-						Vector3 v = modelBounds.min + modelBounds.max;
-						v *= 0.5F;
-						v = (inst.param->matrix * v).GetXYZ();
-						{
-							v = (baseMatrix * v).GetXYZ();
-							SPAssert(v.x >= -1.2F);
-							SPAssert(v.y >= -1.2F);
-							SPAssert(v.x <= 1.2F);
-							SPAssert(v.y <= 1.2F);
-						}
+						// Sanity-check that the packed instance overlaps the shadow map
+						// region, consistent with the build-time frustum cull. The cull
+						// keeps an instance by bounding-box overlap, so a model close to
+						// the camera near the frustum edge can have its center outside the
+						// region while its box still overlaps; test the projected box, not
+						// the center, to match the cull.
+						OBB3 modelBounds = inst.model->GetBoundingBox();
+						AABB3 shadowBounds =
+						  (baseMatrix * (inst.param->matrix * modelBounds)).GetBoundingAABB();
+						SPAssert(shadowBounds.max.x >= -1.2F);
+						SPAssert(shadowBounds.max.y >= -1.2F);
+						SPAssert(shadowBounds.min.x <= 1.2F);
+						SPAssert(shadowBounds.min.y <= 1.2F);
 					}
 					mrend.Flush();
 				}

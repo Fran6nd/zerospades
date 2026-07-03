@@ -102,6 +102,11 @@ namespace spades {
 			/** setups device for scene rendering. */
 			void PrepareSceneRendering();
 
+			/** Resolves the multisampled depth buffer into the single-sample depth
+			 * texture (a no-op when MSAA is disabled). Used so passes that sample
+			 * `GetDepthTexture()` mid-frame (e.g. SSAO) see the current depth. */
+			void ResolveDepth();
+
 			BufferHandle PrepareForWaterRendering(IGLDevice::UInteger tempFb,
 			                                      IGLDevice::UInteger tempDepthTex);
 			BufferHandle StartPostProcessing();

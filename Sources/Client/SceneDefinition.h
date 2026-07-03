@@ -47,6 +47,15 @@ namespace spades {
 			float radialBlur;
 
 			SceneDefinition() {
+				viewportLeft = viewportTop = 0;
+				viewportWidth = viewportHeight = 0;
+				fovX = fovY = 0.0F;
+				viewOrigin = MakeVector3(0, 0, 0);
+				viewAxis[0] = MakeVector3(1, 0, 0);
+				viewAxis[1] = MakeVector3(0, 1, 0);
+				viewAxis[2] = MakeVector3(0, 0, 1);
+				zNear = zFar = 0.0F;
+				skipWorld = false;
 				depthOfFieldFocalLength = 0.0F;
 				depthOfFieldNearBlurStrength = 1.0F;
 				depthOfFieldFarBlurStrength = 0.0F;
