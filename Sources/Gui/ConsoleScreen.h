@@ -14,7 +14,7 @@
  GNU General Public License for more details.
 
  You should have received a copy of the GNU General Public License
- along with OpenSpades.  If not, see <http://www.gnu.org/licenses/>.
+ along with OpenSpades.	 If not, see <http://www.gnu.org/licenses/>.
  */
 
 #pragma once
@@ -40,7 +40,7 @@ namespace spades {
 
 		public:
 			ConsoleScreen(Handle<client::IRenderer>, Handle<client::IAudioDevice>,
-			              Handle<client::FontManager>, Handle<View>);
+						  Handle<client::FontManager>, Handle<View>);
 
 			// Implements `View`
 			void MouseEvent(float x, float y) override;
@@ -72,6 +72,8 @@ namespace spades {
 			bool ShouldInterceptInput();
 			void ToggleConsole();
 			void AddLine(const std::string&);
+
+			std::string consoleToggleKey;
 
 			/** Dump all available commands to `SPLog`. */
 			void DumpAllCommands();

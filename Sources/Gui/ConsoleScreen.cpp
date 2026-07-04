@@ -14,7 +14,7 @@
  GNU General Public License for more details.
 
  You should have received a copy of the GNU General Public License
- along with OpenSpades.  If not, see <http://www.gnu.org/licenses/>.
+ along with OpenSpades.	 If not, see <http://www.gnu.org/licenses/>.
 
  */
 #include <ScriptBindings/Config.h>
@@ -30,16 +30,16 @@
 namespace spades {
 	namespace gui {
 		ConsoleScreen::ConsoleScreen(Handle<client::IRenderer> renderer,
-		                             Handle<client::IAudioDevice> audioDevice,
-		                             Handle<client::FontManager> fontManager, Handle<View> subview)
-		    : renderer{renderer}, audioDevice{audioDevice}, subview{subview} {
+									 Handle<client::IAudioDevice> audioDevice,
+									 Handle<client::FontManager> fontManager, Handle<View> subview)
+			: renderer{renderer}, audioDevice{audioDevice}, subview{subview} {
 			SPADES_MARK_FUNCTION();
 
 			helper = Handle<ConsoleHelper>::New(this);
 
 			ScopedPrivilegeEscalation privilege;
 			static ScriptFunction uiFactory("ConsoleUI@ CreateConsoleUI(Renderer@, "
-			                                "AudioDevice@, FontManager@, ConsoleHelper@)");
+											"AudioDevice@, FontManager@, ConsoleHelper@)");
 			{
 				ScriptContextHandle ctx = uiFactory.Prepare();
 				ctx->SetArgObject(0, &*renderer);
@@ -73,14 +73,19 @@ namespace spades {
 				return subview->MouseEvent(x, y);
 			}
 		}
+
 		void ConsoleScreen::KeyEvent(const std::string& key, bool down) {
 			SPADES_MARK_FUNCTION();
 
 			// TODO: Check if "`" is correct
 			if ((key == "`" || key == "F1") && down) {
 				ToggleConsole();
+				consoleToggleKey = key;
 				return;
 			}
+
+			if (down && !consoleToggleKey.empty())
+				consoleToggleKey.clear();
 
 			if (ShouldInterceptInput()) {
 				ScopedPrivilegeEscalation privilege;
@@ -95,8 +100,14 @@ namespace spades {
 				return subview->KeyEvent(key, down);
 			}
 		}
+
 		void ConsoleScreen::TextInputEvent(const std::string& ch) {
 			SPADES_MARK_FUNCTION();
+
+			if (!consoleToggleKey.empty()) {
+				consoleToggleKey.clear();
+				return;
+			}
 
 			if (ShouldInterceptInput()) {
 				ScopedPrivilegeEscalation privilege;
@@ -110,6 +121,7 @@ namespace spades {
 				return subview->TextInputEvent(ch);
 			}
 		}
+
 		void ConsoleScreen::TextEditingEvent(const std::string& ch, int start, int len) {
 			SPADES_MARK_FUNCTION();
 
@@ -127,6 +139,7 @@ namespace spades {
 				return subview->TextEditingEvent(ch, start, len);
 			}
 		}
+
 		bool ConsoleScreen::AcceptsTextInput() {
 			SPADES_MARK_FUNCTION();
 
@@ -141,6 +154,7 @@ namespace spades {
 				return subview->AcceptsTextInput();
 			}
 		}
+
 		AABB2 ConsoleScreen::GetTextInputRect() {
 			SPADES_MARK_FUNCTION();
 
@@ -155,6 +169,7 @@ namespace spades {
 				return subview->GetTextInputRect();
 			}
 		}
+
 		void ConsoleScreen::WheelEvent(float x, float y) {
 			SPADES_MARK_FUNCTION();
 
@@ -170,6 +185,7 @@ namespace spades {
 				return subview->WheelEvent(x, y);
 			}
 		}
+
 		bool ConsoleScreen::NeedsAbsoluteMouseCoordinate() {
 			SPADES_MARK_FUNCTION();
 
@@ -262,8 +278,8 @@ namespace spades {
 		ConsoleScreen::AutocompleteCommandName(const std::string& name) {
 			SPADES_MARK_FUNCTION();
 			return MakeCandidates(g_commands, name) +
-			       ConfigConsoleResponder::AutocompleteCommandName(name) +
-			       subview->AutocompleteCommandName(name);
+				   ConfigConsoleResponder::AutocompleteCommandName(name) +
+				   subview->AutocompleteCommandName(name);
 		}
 
 		bool ConsoleScreen::ShouldInterceptInput() {
