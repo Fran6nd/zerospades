@@ -88,10 +88,12 @@ namespace spades {
 
 			switch (k.sym) {
 				case SDLK_ESCAPE: return "Escape";
-				case SDLK_LEFT: return "Left";
-				case SDLK_RIGHT: return "Right";
 				case SDLK_UP: return "Up";
 				case SDLK_DOWN: return "Down";
+				case SDLK_LEFT: return "Left";
+				case SDLK_RIGHT: return "Right";
+				case SDLK_PAGEUP: return "PageUp";
+				case SDLK_PAGEDOWN: return "PageDown";
 				case SDLK_SPACE: return " ";
 				case SDLK_TAB: return "Tab";
 				case SDLK_BACKSPACE: return "BackSpace";

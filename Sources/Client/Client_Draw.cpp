@@ -145,8 +145,20 @@ namespace spades {
 					return "LMB";
 				} else if (name == "RightMouseButton") {
 					return "RMB";
+				} else if (name == "MiddleMouseButton") {
+					return "MMB";
+				} else if (name == "MouseButton4") {
+					return "MB4";
+				} else if (name == "MouseButton5") {
+					return "MB5";
+				} else if (name == "Control") {
+					return "CTRL";
+				} else if (name == "Left Ctrl") {
+					return "LCTRL";
+				} else if (name == "Right Ctrl") {
+					return "RCTRL";
 				} else {
-					return _Tr("Client", ToUpperCase(name));
+					return ToUpperCase(name);
 				}
 			}
 		} // namespace

@@ -821,10 +821,48 @@ namespace spades {
 				text = _Tr("Preferences", "Mouse Button 4");
 			} else if (text == "MouseButton5") {
 				text = _Tr("Preferences", "Mouse Button 5");
-			} else if (!IsFocused) {
-				for (uint i = 0, len = text.length; i < len; i++)
-					text[i] = ToUpper(text[i]);
-				text = _Tr("Client", text);
+			} else if (text == "Escape") {
+				text = _Tr("Preferences", "Escape");
+			} else if (text == "Tab") {
+				text = _Tr("Preferences", "Tab");
+			} else if (text == "BackSpace") {
+				text = _Tr("Preferences", "Backspace");
+			} else if (text == "Delete") {
+				text = _Tr("Preferences", "Delete");
+			} else if (text == "Enter") {
+				text = _Tr("Preferences", "Enter");
+			} else if (text == "Space") {
+				text = _Tr("Preferences", "Space");
+			} else if (text == "Control") {
+				text = _Tr("Preferences", "Control");
+			} else if (text == "Left Ctrl") {
+				text = _Tr("Preferences", "Left Control");
+			} else if (text == "Right Ctrl") {
+				text = _Tr("Preferences", "Right Control");
+			} else if (text == "Shift") {
+				text = _Tr("Preferences", "Shift");
+			} else if (text == "Left Shift") {
+				text = _Tr("Preferences", "Left Shift");
+			} else if (text == "Right Shift") {
+				text = _Tr("Preferences", "Right Shift");
+			} else if (text == "Left Alt") {
+				text = _Tr("Preferences", "Left Alt");
+			} else if (text == "Right Alt") {
+				text = _Tr("Preferences", "Right Alt");
+			} else if (text == "Up") {
+				text = _Tr("Preferences", "Up Arrow");
+			} else if (text == "Down") {
+				text = _Tr("Preferences", "Down Arrow");
+			} else if (text == "Left") {
+				text = _Tr("Preferences", "Left Arrow");
+			} else if (text == "Right") {
+				text = _Tr("Preferences", "Right Arrow");
+			} else if (text == "PageUp") {
+				text = _Tr("Preferences", "Page Up");
+			} else if (text == "PageDown") {
+				text = _Tr("Preferences", "Page Down");
+			} else if (not IsFocused) {
+				text = ToUpperCase(text);
 			}
 
 			Vector2 txtSize = font.Measure(text);
@@ -1660,6 +1698,11 @@ namespace spades {
 			StandardPreferenceLayouter layouter(this, fontManager);
 			@layouter.HeadingNav = nav;
 
+			layouter.AddHeading(_Tr("Preferences", "World Markers"));
+			layouter.AddToggleField(_Tr("Preferences", "Damage Indicators"), "cg_damageIndicators");
+			layouter.AddToggleField(_Tr("Preferences", "Show Hover Player Names"), "cg_playerNames");
+			layouter.AddToggleField(_Tr("Preferences", "Show Dead Player Names"), "cg_playerNamesDead");
+
 			layouter.AddHeading(_Tr("Preferences", "Heads-Up Display"));
 			layouter.AddToggleField(_Tr("Preferences", "Hide HUD"), "cg_hideHud");
 			layouter.AddSliderField(_Tr("Preferences", "HUD Color"), "cg_hudColor",
@@ -1797,11 +1840,6 @@ namespace spades {
 			layouter.AddSliderField(_Tr("Preferences", "Center Dot Thickness"), "cg_scopeDotThickness",
 			1, 4, 1, ConfigNumberFormatter(0, "px"));
 			layouter.AddToggleField(_Tr("Preferences", "T Style"), "cg_scopeTStyle");
-
-			layouter.AddHeading(_Tr("Preferences", "World"));
-			layouter.AddToggleField(_Tr("Preferences", "Damage Indicators"), "cg_damageIndicators");
-			layouter.AddToggleField(_Tr("Preferences", "Show Hover Player Names"), "cg_playerNames");
-			layouter.AddToggleField(_Tr("Preferences", "Show Dead Player Names"), "cg_playerNamesDead");
 
 			layouter.FinishLayout();
 		}
@@ -1944,6 +1982,7 @@ namespace spades {
 			layouter.AddSliderField(_Tr("Preferences", "Console Scrollback Lines"), "cl_consoleScrollbackLines",
 			100, 2000, 100, ConfigNumberFormatter(0, ""));
 			ConfigField@ urlField = layouter.AddInputField(_Tr("Preferences", "Server List URL"), "cl_serverListUrl", true, true);
+			ConfigField@ urlAltField = layouter.AddInputField(_Tr("Preferences", "Server List Alt. URL"), "cl_serverListUrlFallback", true, true);
 			ConfigField@ modUrlField = layouter.AddInputField(_Tr("Preferences", "Mod List URL"), "cl_modsIndexUrl", true, true);
 			layouter.AddToggleField(_Tr("Preferences", "Allow Unicode"), "cg_unicode");
 			layouter.AddChoiceStringField(_Tr("Preferences", "Screenshot Format"), "cg_screenshotFormat",

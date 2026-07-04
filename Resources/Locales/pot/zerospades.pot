@@ -1,17 +1,3 @@
-#, fuzzy
-msgid ""
-msgstr ""
-"Project-Id-Version: \n"
-"POT-Creation-Date: \n"
-"PO-Revision-Date: \n"
-"Last-Translator: \n"
-"Language-Team: \n"
-"MIME-Version: 1.0\n"
-"Content-Type: text/plain; charset=UTF-8\n"
-"Content-Transfer-Encoding: 8bit\n"
-"X-Generator: Poedit 3.9\n"
-"X-Poedit-SourceCharset: UTF-8\n"
-
 #: Sources/Client/Client.cpp:1027
 msgctxt "Client"
 msgid "Map saved: {0}"
@@ -65,172 +51,172 @@ msgctxt "Client"
 msgid "Unbound"
 msgstr ""
 
-#: Sources/Client/Client_Draw.cpp:180
+#: Sources/Client/Client_Draw.cpp:192
 msgctxt "Client"
 msgid "Sceneshot saved: {0}"
 msgstr ""
 
-#: Sources/Client/Client_Draw.cpp:181
+#: Sources/Client/Client_Draw.cpp:193
 msgctxt "Client"
 msgid "Screenshot saved: {0}"
 msgstr ""
 
-#: Sources/Client/Client_Draw.cpp:186 Sources/Client/Client_Draw.cpp:191
+#: Sources/Client/Client_Draw.cpp:198 Sources/Client/Client_Draw.cpp:203
 msgctxt "Client"
 msgid "Screenshot failed: "
 msgstr ""
 
-#: Sources/Client/Client_Draw.cpp:256
+#: Sources/Client/Client_Draw.cpp:268
 msgctxt "Client"
 msgid "NOW LOADING"
 msgstr ""
 
-#: Sources/Client/Client_Draw.cpp:1048
+#: Sources/Client/Client_Draw.cpp:1060
 msgctxt "Client"
 msgid "[{0}] Grab color"
 msgstr ""
 
-#: Sources/Client/Client_Draw.cpp:1049
+#: Sources/Client/Client_Draw.cpp:1061
 msgctxt "Client"
 msgid "[{0}/{1}] Navigate up/down"
 msgstr ""
 
-#: Sources/Client/Client_Draw.cpp:1051
+#: Sources/Client/Client_Draw.cpp:1063
 msgctxt "Client"
 msgid "[{0}/{1}] Navigate left/right"
 msgstr ""
 
-#: Sources/Client/Client_Draw.cpp:1053
+#: Sources/Client/Client_Draw.cpp:1065
 msgctxt "Client"
 msgid "[{0}] Toggle extended palette"
 msgstr ""
 
-#: Sources/Client/Client_Draw.cpp:1061
+#: Sources/Client/Client_Draw.cpp:1073
 msgctxt "Client"
 msgid "#{0} / RGB({1}, {2}, {3})"
 msgstr ""
 
-#: Sources/Client/Client_Draw.cpp:1112
+#: Sources/Client/Client_Draw.cpp:1124
 msgctxt "Client"
 msgid "Accuracy: {0}%"
 msgstr ""
 
-#: Sources/Client/Client_Draw.cpp:1116
+#: Sources/Client/Client_Draw.cpp:1128
 msgctxt "Client"
 msgid "Kill/Death Ratio: {0}"
 msgstr ""
 
-#: Sources/Client/Client_Draw.cpp:1117
+#: Sources/Client/Client_Draw.cpp:1129
 msgctxt "Client"
 msgid "Kill Streak: {0}, Best: {1}"
 msgstr ""
 
-#: Sources/Client/Client_Draw.cpp:1118
+#: Sources/Client/Client_Draw.cpp:1130
 msgctxt "Client"
 msgid "Melee Kills: {0}"
 msgstr ""
 
-#: Sources/Client/Client_Draw.cpp:1119
+#: Sources/Client/Client_Draw.cpp:1131
 msgctxt "Client"
 msgid "Grenade Kills: {0}"
 msgstr ""
 
-#: Sources/Client/Client_Draw.cpp:1122
+#: Sources/Client/Client_Draw.cpp:1134
 msgctxt "Client"
 msgid "Blocks Placed: {0}"
 msgstr ""
 
-#: Sources/Client/Client_Draw.cpp:1456
+#: Sources/Client/Client_Draw.cpp:1468
 msgctxt "Client"
 msgid "Reloading"
 msgstr ""
 
-#: Sources/Client/Client_Draw.cpp:1458
+#: Sources/Client/Client_Draw.cpp:1470
 msgctxt "Client"
 msgid "Press [{0}] to Reload"
 msgstr ""
 
-#: Sources/Client/Client_Draw.cpp:1606
+#: Sources/Client/Client_Draw.cpp:1618
 msgctxt "Client"
 msgid "You will respawn in: {0}"
 msgstr ""
 
-#: Sources/Client/Client_Draw.cpp:1607
+#: Sources/Client/Client_Draw.cpp:1619
 msgctxt "Client"
 msgid "Waiting for respawn"
 msgstr ""
 
-#: Sources/Client/Client_Draw.cpp:1685
+#: Sources/Client/Client_Draw.cpp:1697
 msgctxt "Client"
 msgid "Following {0} [#{1}]"
 msgstr ""
 
-#: Sources/Client/Client_Draw.cpp:1690
+#: Sources/Client/Client_Draw.cpp:1702
 msgctxt "Client"
 msgid "Respawning in: {0}"
 msgstr ""
 
-#: Sources/Client/Client_Draw.cpp:1695
+#: Sources/Client/Client_Draw.cpp:1707
 msgctxt "Client"
 msgid "[{0}] Cycle camera mode"
 msgstr ""
 
-#: Sources/Client/Client_Draw.cpp:1696
+#: Sources/Client/Client_Draw.cpp:1708
 msgctxt "Client"
 msgid "[{0}/{1}] Next/Prev player"
 msgstr ""
 
-#: Sources/Client/Client_Draw.cpp:1699
+#: Sources/Client/Client_Draw.cpp:1711
 msgctxt "Client"
 msgid "[{0}] Unfollow"
 msgstr ""
 
-#: Sources/Client/Client_Draw.cpp:1702
+#: Sources/Client/Client_Draw.cpp:1714
 msgctxt "Client"
 msgid "[{0}/{1}] Follow a player"
 msgstr ""
 
-#: Sources/Client/Client_Draw.cpp:1707
+#: Sources/Client/Client_Draw.cpp:1719
 msgctxt "Client"
 msgid "[{0}/{1}] Go up/down"
 msgstr ""
 
-#: Sources/Client/Client_Draw.cpp:1711
+#: Sources/Client/Client_Draw.cpp:1723
 msgctxt "Client"
 msgid "[{0}] Toggle player names"
 msgstr ""
 
-#: Sources/Client/Client_Draw.cpp:1714
+#: Sources/Client/Client_Draw.cpp:1726
 msgctxt "Client"
 msgid "[{0}] Toggle ESP"
 msgstr ""
 
-#: Sources/Client/Client_Draw.cpp:1722
+#: Sources/Client/Client_Draw.cpp:1734
 msgctxt "Client"
 msgid "[{0}] Resume"
 msgstr ""
 
-#: Sources/Client/Client_Draw.cpp:1723
+#: Sources/Client/Client_Draw.cpp:1735
 msgctxt "Client"
 msgid "[{0}] Pause"
 msgstr ""
 
-#: Sources/Client/Client_Draw.cpp:1724
+#: Sources/Client/Client_Draw.cpp:1736
 msgctxt "Client"
 msgid "[{0}/{1}] Seek +/-5s"
 msgstr ""
 
-#: Sources/Client/Client_Draw.cpp:1729
+#: Sources/Client/Client_Draw.cpp:1741
 msgctxt "Client"
 msgid "[{0}/{1}] Speed: {2}x"
 msgstr ""
 
-#: Sources/Client/Client_Draw.cpp:1731
+#: Sources/Client/Client_Draw.cpp:1743
 msgctxt "Client"
 msgid "[{0}] Toggle Demo HUD"
 msgstr ""
 
-#: Sources/Client/Client_Draw.cpp:1733
+#: Sources/Client/Client_Draw.cpp:1745
 msgctxt "Client"
 msgid "[{0}] Select Team/Weapon"
 msgstr ""
@@ -405,112 +391,112 @@ msgctxt "Client"
 msgid "-- blocks"
 msgstr ""
 
-#: Sources/Client/Client_Update.cpp:1235 Sources/Client/LimboView.cpp:73
+#: Sources/Client/Client_Update.cpp:1232 Sources/Client/LimboView.cpp:73
 msgctxt "Client"
 msgid "Rifle"
 msgstr ""
 
-#: Sources/Client/Client_Update.cpp:1236 Sources/Client/LimboView.cpp:76
+#: Sources/Client/Client_Update.cpp:1233 Sources/Client/LimboView.cpp:76
 msgctxt "Client"
 msgid "SMG"
 msgstr ""
 
-#: Sources/Client/Client_Update.cpp:1237 Sources/Client/LimboView.cpp:79
+#: Sources/Client/Client_Update.cpp:1234 Sources/Client/LimboView.cpp:79
 msgctxt "Client"
 msgid "Shotgun"
 msgstr ""
 
-#: Sources/Client/Client_Update.cpp:1241
+#: Sources/Client/Client_Update.cpp:1238
 msgctxt "Client"
 msgid "Fall"
 msgstr ""
 
-#: Sources/Client/Client_Update.cpp:1242
+#: Sources/Client/Client_Update.cpp:1239
 msgctxt "Client"
 msgid "Melee"
 msgstr ""
 
-#: Sources/Client/Client_Update.cpp:1243
+#: Sources/Client/Client_Update.cpp:1240
 msgctxt "Client"
 msgid "Grenade"
 msgstr ""
 
-#: Sources/Client/Client_Update.cpp:1244
+#: Sources/Client/Client_Update.cpp:1241
 msgctxt "Client"
 msgid "Headshot"
 msgstr ""
 
-#: Sources/Client/Client_Update.cpp:1245
+#: Sources/Client/Client_Update.cpp:1242
 msgctxt "Client"
 msgid "Team Change"
 msgstr ""
 
-#: Sources/Client/Client_Update.cpp:1246
+#: Sources/Client/Client_Update.cpp:1243
 msgctxt "Client"
 msgid "Weapon Change"
 msgstr ""
 
-#: Sources/Client/Client_Update.cpp:1296
+#: Sources/Client/Client_Update.cpp:1293
 msgctxt "Client"
 msgid "Revenge!"
 msgstr ""
 
-#: Sources/Client/Client_Update.cpp:1304
+#: Sources/Client/Client_Update.cpp:1301
 msgctxt "Client"
 msgid "Dominating!"
 msgstr ""
 
-#: Sources/Client/Client_Update.cpp:1330
+#: Sources/Client/Client_Update.cpp:1327
 msgctxt "Client"
 msgid "You were killed by {0}"
 msgstr ""
 
-#: Sources/Client/Client_Update.cpp:1332
+#: Sources/Client/Client_Update.cpp:1329
 msgctxt "Client"
 msgid "You have killed {0}"
 msgstr ""
 
-#: Sources/Client/Client_Update.cpp:1542
+#: Sources/Client/Client_Update.cpp:1539
 msgctxt "Client"
 msgid "You hit {0} from: {1} blocks "
 msgstr ""
 
-#: Sources/Client/Client_Update.cpp:1562
+#: Sources/Client/Client_Update.cpp:1559
 msgctxt "Client"
 msgid "TORSO"
 msgstr ""
 
-#: Sources/Client/Client_Update.cpp:1563
+#: Sources/Client/Client_Update.cpp:1560
 msgctxt "Client"
 msgid "ARMS"
 msgstr ""
 
-#: Sources/Client/Client_Update.cpp:1564
+#: Sources/Client/Client_Update.cpp:1561
 msgctxt "Client"
 msgid "LEGS"
 msgstr ""
 
-#: Sources/Client/Client_Update.cpp:1565
+#: Sources/Client/Client_Update.cpp:1562
 msgctxt "Client"
 msgid "MELEE"
 msgstr ""
 
-#: Sources/Client/Client_Update.cpp:1566
+#: Sources/Client/Client_Update.cpp:1563
 msgctxt "Client"
 msgid "HEAD"
 msgstr ""
 
-#: Sources/Client/Client_Update.cpp:1897
+#: Sources/Client/Client_Update.cpp:1894
 msgctxt "Client"
 msgid "You are taking damage. Find solid ground!"
 msgstr ""
 
-#: Sources/Client/Client_Update.cpp:1915
+#: Sources/Client/Client_Update.cpp:1912
 msgctxt "Client"
 msgid "Insufficient blocks."
 msgstr ""
 
-#: Sources/Client/Client_Update.cpp:1918
+#: Sources/Client/Client_Update.cpp:1915
 msgctxt "Client"
 msgid "You cannot place a block there."
 msgstr ""
@@ -574,7 +560,7 @@ msgstr ""
 #: Sources/Client/LimboView.cpp:260
 #: Resources/Scripts/Gui/Client/ChatLogWindow.as:85
 #: Resources/Scripts/Gui/Client/ChatSayWindow.as:193
-#: Resources/Scripts/Gui/MainScreen/MainMenu.as:607
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:603
 #: Resources/Scripts/Gui/Preferences.as:116
 msgctxt "Client"
 msgid "[Esc]"
@@ -664,6 +650,56 @@ msgid_plural "{0} minutes remaining"
 msgstr[0] ""
 msgstr[1] ""
 
+#: Sources/Client/PieMenuView.cpp:194 Sources/Client/PieMenuView.cpp:202
+msgctxt "Client"
+msgid "Affirmative"
+msgstr ""
+
+#: Sources/Client/PieMenuView.cpp:195
+msgctxt "Client"
+msgid "Behind Us!"
+msgstr ""
+
+#: Sources/Client/PieMenuView.cpp:196
+msgctxt "Client"
+msgid "Spawnkiller!"
+msgstr ""
+
+#: Sources/Client/PieMenuView.cpp:197 Sources/Client/PieMenuView.cpp:205
+msgctxt "Client"
+msgid "Negative"
+msgstr ""
+
+#: Sources/Client/PieMenuView.cpp:198
+msgctxt "Client"
+msgid "Help Me Build"
+msgstr ""
+
+#: Sources/Client/PieMenuView.cpp:199
+msgctxt "Client"
+msgid "Tear It Down!"
+msgstr ""
+
+#: Sources/Client/PieMenuView.cpp:203
+msgctxt "Client"
+msgid "Behind You"
+msgstr ""
+
+#: Sources/Client/PieMenuView.cpp:204
+msgctxt "Client"
+msgid "Cover Me"
+msgstr ""
+
+#: Sources/Client/PieMenuView.cpp:206
+msgctxt "Client"
+msgid "Help Me"
+msgstr ""
+
+#: Sources/Client/PieMenuView.cpp:207
+msgctxt "Client"
+msgid "Thank You"
+msgstr ""
+
 #: Sources/Client/ScoreboardView.cpp:61 Sources/Client/ScoreboardView.cpp:418
 msgctxt "Client"
 msgid "Spectator{1}"
@@ -727,8 +763,8 @@ msgid "Send"
 msgstr ""
 
 #: Resources/Scripts/Gui/Client/ChatSayWindow.as:184
-#: Resources/Scripts/Gui/MainScreen/MainMenu.as:281
-#: Resources/Scripts/Gui/MainScreen/MainMenu.as:451
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:274
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:444
 #: Resources/Scripts/Gui/StartupScreen/MainMenu.as:58
 msgctxt "Client"
 msgid "[Enter]"
@@ -804,236 +840,236 @@ msgctxt "CreateProfileScreen"
 msgid "You can change it later in the Setup dialog."
 msgstr ""
 
-#: Resources/Scripts/Gui/MainScreen/MainMenu.as:99
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:92
 msgctxt "MainScreen"
 msgid "Rename Demo"
 msgstr ""
 
-#: Resources/Scripts/Gui/MainScreen/MainMenu.as:113
-#: Resources/Scripts/Gui/MainScreen/MainMenu.as:443
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:106
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:436
 msgctxt "MainScreen"
 msgid "Rename"
 msgstr ""
 
-#: Resources/Scripts/Gui/MainScreen/MainMenu.as:120
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:113
 msgctxt "MainScreen"
 msgid "Cancel"
 msgstr ""
 
-#: Resources/Scripts/Gui/MainScreen/MainMenu.as:280
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:273
 msgctxt "MainScreen"
 msgid "Connect"
 msgstr ""
 
-#: Resources/Scripts/Gui/MainScreen/MainMenu.as:289
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:282
 msgctxt "MainScreen"
 msgid "Quick Connect"
 msgstr ""
 
-#: Resources/Scripts/Gui/MainScreen/MainMenu.as:303
-#: Resources/Scripts/Gui/MainScreen/MainMenu.as:393
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:296
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:386
 msgctxt "MainScreen"
 msgid "0.75"
 msgstr ""
 
-#: Resources/Scripts/Gui/MainScreen/MainMenu.as:312
-#: Resources/Scripts/Gui/MainScreen/MainMenu.as:401
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:305
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:394
 msgctxt "MainScreen"
 msgid "0.76"
 msgstr ""
 
-#: Resources/Scripts/Gui/MainScreen/MainMenu.as:326
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:319
 msgctxt "MainScreen"
 msgid "Server Name"
 msgstr ""
 
-#: Resources/Scripts/Gui/MainScreen/MainMenu.as:333
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:326
 msgctxt "MainScreen"
 msgid "Slots"
 msgstr ""
 
-#: Resources/Scripts/Gui/MainScreen/MainMenu.as:341
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:334
 msgctxt "MainScreen"
 msgid "Map Name"
 msgstr ""
 
-#: Resources/Scripts/Gui/MainScreen/MainMenu.as:348
-#: Resources/Scripts/Gui/MainScreen/MainMenu.as:479
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:341
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:472
 msgctxt "MainScreen"
 msgid "Game Mode"
 msgstr ""
 
-#: Resources/Scripts/Gui/MainScreen/MainMenu.as:356
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:349
 msgctxt "MainScreen"
 msgid "Ver."
 msgstr ""
 
-#: Resources/Scripts/Gui/MainScreen/MainMenu.as:364
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:357
 msgctxt "MainScreen"
 msgid "Ping"
 msgstr ""
 
-#: Resources/Scripts/Gui/MainScreen/MainMenu.as:385
-#: Resources/Scripts/Gui/MainScreen/MainMenu.as:419
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:378
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:412
 msgctxt "MainScreen"
 msgid "Filter"
 msgstr ""
 
-#: Resources/Scripts/Gui/MainScreen/MainMenu.as:410
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:403
 msgctxt "MainScreen"
 msgid "Not Full"
 msgstr ""
 
-#: Resources/Scripts/Gui/MainScreen/MainMenu.as:429
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:422
 msgctxt "MainScreen"
 msgid "Select a demo"
 msgstr ""
 
-#: Resources/Scripts/Gui/MainScreen/MainMenu.as:436
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:429
 msgctxt "MainScreen"
 msgid "Delete"
 msgstr ""
 
-#: Resources/Scripts/Gui/MainScreen/MainMenu.as:450
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:443
 msgctxt "MainScreen"
 msgid "Play"
 msgstr ""
 
-#: Resources/Scripts/Gui/MainScreen/MainMenu.as:465
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:458
 msgctxt "MainScreen"
 msgid "Server"
 msgstr ""
 
-#: Resources/Scripts/Gui/MainScreen/MainMenu.as:472
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:465
 msgctxt "MainScreen"
 msgid "Map"
 msgstr ""
 
-#: Resources/Scripts/Gui/MainScreen/MainMenu.as:486
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:479
 msgctxt "MainScreen"
 msgid "Timestamp"
 msgstr ""
 
-#: Resources/Scripts/Gui/MainScreen/MainMenu.as:493
-#: Resources/Scripts/Gui/MainScreen/MainMenu.as:570
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:486
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:563
 msgctxt "MainScreen"
 msgid "Size"
 msgstr ""
 
-#: Resources/Scripts/Gui/MainScreen/MainMenu.as:506
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:499
 msgctxt "MainScreen"
 msgid "Download official mods..."
 msgstr ""
 
-#: Resources/Scripts/Gui/MainScreen/MainMenu.as:513
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:506
 msgctxt "MainScreen"
 msgid "Disable all"
 msgstr ""
 
-#: Resources/Scripts/Gui/MainScreen/MainMenu.as:520
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:513
 msgctxt "MainScreen"
 msgid "Apply changes"
 msgstr ""
 
-#: Resources/Scripts/Gui/MainScreen/MainMenu.as:542
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:535
 msgctxt "MainScreen"
 msgid "Status"
 msgstr ""
 
-#: Resources/Scripts/Gui/MainScreen/MainMenu.as:549
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:542
 msgctxt "MainScreen"
 msgid "Apply Order"
 msgstr ""
 
-#: Resources/Scripts/Gui/MainScreen/MainMenu.as:556
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:549
 msgctxt "MainScreen"
 msgid "Mod"
 msgstr ""
 
-#: Resources/Scripts/Gui/MainScreen/MainMenu.as:563
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:556
 msgctxt "MainScreen"
 msgid "Paks"
 msgstr ""
 
-#: Resources/Scripts/Gui/MainScreen/MainMenu.as:589
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:582
 msgctxt "MainScreen"
 msgid "Servers"
 msgstr ""
 
-#: Resources/Scripts/Gui/MainScreen/MainMenu.as:590
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:583
 msgctxt "MainScreen"
 msgid "Demos"
 msgstr ""
 
-#: Resources/Scripts/Gui/MainScreen/MainMenu.as:591
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:587
 msgctxt "MainScreen"
 msgid "Mods"
 msgstr ""
 
-#: Resources/Scripts/Gui/MainScreen/MainMenu.as:606
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:602
 msgctxt "MainScreen"
 msgid "Quit"
 msgstr ""
 
-#: Resources/Scripts/Gui/MainScreen/MainMenu.as:614
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:610
 msgctxt "MainScreen"
 msgid "Credits"
 msgstr ""
 
-#: Resources/Scripts/Gui/MainScreen/MainMenu.as:621
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:617
 msgctxt "MainScreen"
 msgid "Setup"
 msgstr ""
 
-#: Resources/Scripts/Gui/MainScreen/MainMenu.as:731
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:727
 msgctxt "MainScreen"
 msgid "Fetching mod list..."
 msgstr ""
 
-#: Resources/Scripts/Gui/MainScreen/MainMenu.as:750
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:746
 msgctxt "MainScreen"
 msgid "Press 'Apply changes' to restart and apply your mods."
 msgstr ""
 
-#: Resources/Scripts/Gui/MainScreen/MainMenu.as:760
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:756
 msgctxt "MainScreen"
 msgid "Download the official ZeroSpades mod pack?"
 msgstr ""
 
-#: Resources/Scripts/Gui/MainScreen/MainMenu.as:761
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:757
 msgctxt "MainScreen"
 msgid "These are mods reviewed and hosted by the ZeroSpades team."
 msgstr ""
 
-#: Resources/Scripts/Gui/MainScreen/MainMenu.as:762
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:758
 msgctxt "MainScreen"
 msgid "Source: "
 msgstr ""
 
-#: Resources/Scripts/Gui/MainScreen/MainMenu.as:763
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:759
 msgctxt "MainScreen"
 msgid ""
 "Files will be saved into your Mods/ folder, overwriting any existing copies."
 msgstr ""
 
-#: Resources/Scripts/Gui/MainScreen/MainMenu.as:789
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:785
 msgctxt "MainScreen"
 msgid "Disable all mods? This takes effect after a restart."
 msgstr ""
 
-#: Resources/Scripts/Gui/MainScreen/MainMenu.as:860
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:856
 msgctxt "MainScreen"
 msgid ""
 "Are you sure you want to delete '{0}'?\n"
 "This action cannot be undone."
 msgstr ""
 
-#: Resources/Scripts/Gui/MainScreen/MainMenu.as:895
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:891
 msgctxt "MainScreen"
 msgid "Failed to rename demo."
 msgstr ""
 
-#: Resources/Scripts/Gui/MainScreen/MainMenu.as:1125
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:1121
 msgctxt "MainScreen"
 msgid ""
 "You were disconnected from the server because of the following reason:\n"
@@ -1083,8 +1119,8 @@ msgid "Controls"
 msgstr ""
 
 #: Resources/Scripts/Gui/Preferences.as:109
-#: Resources/Scripts/Gui/Preferences.as:1633
-#: Resources/Scripts/Gui/Preferences.as:1914
+#: Resources/Scripts/Gui/Preferences.as:1664
+#: Resources/Scripts/Gui/Preferences.as:1945
 msgctxt "Preferences"
 msgid "Misc"
 msgstr ""
@@ -1126,8 +1162,8 @@ msgstr ""
 
 #: Resources/Scripts/Gui/Preferences.as:536
 #: Resources/Scripts/Gui/Preferences.as:591
-#: Resources/Scripts/Gui/Preferences.as:1617
-#: Resources/Scripts/Gui/Preferences.as:1729
+#: Resources/Scripts/Gui/Preferences.as:1648
+#: Resources/Scripts/Gui/Preferences.as:1765
 msgctxt "Preferences"
 msgid "Default"
 msgstr ""
@@ -1215,7 +1251,7 @@ msgstr ""
 #: Resources/Scripts/Gui/Preferences.as:622
 #: Resources/Scripts/Gui/Preferences.as:645
 #: Resources/Scripts/Gui/Preferences.as:660
-#: Resources/Scripts/Gui/Preferences.as:1730
+#: Resources/Scripts/Gui/Preferences.as:1766
 msgctxt "Preferences"
 msgid "Custom"
 msgstr ""
@@ -1240,1225 +1276,1334 @@ msgctxt "Preferences"
 msgid "Iron Sight"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:808
+#: Resources/Scripts/Gui/Preferences.as:801
 msgctxt "Preferences"
 msgid "Press Key to Bind or [Escape] to Cancel..."
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:819
+#: Resources/Scripts/Gui/Preferences.as:812
 msgctxt "Preferences"
 msgid "Unbound"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:822
+#: Resources/Scripts/Gui/Preferences.as:815
 msgctxt "Preferences"
 msgid "Left Mouse Button"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:824
+#: Resources/Scripts/Gui/Preferences.as:817
 msgctxt "Preferences"
 msgid "Right Mouse Button"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:826
+#: Resources/Scripts/Gui/Preferences.as:819
 msgctxt "Preferences"
 msgid "Middle Mouse Button"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:828
+#: Resources/Scripts/Gui/Preferences.as:821
 msgctxt "Preferences"
 msgid "Mouse Button 4"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:830
+#: Resources/Scripts/Gui/Preferences.as:823
 msgctxt "Preferences"
 msgid "Mouse Button 5"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1083
-#: Resources/Scripts/Gui/Preferences.as:1247
+#: Resources/Scripts/Gui/Preferences.as:825
+msgctxt "Preferences"
+msgid "Escape"
+msgstr ""
+
+#: Resources/Scripts/Gui/Preferences.as:827
+msgctxt "Preferences"
+msgid "Tab"
+msgstr ""
+
+#: Resources/Scripts/Gui/Preferences.as:829
+msgctxt "Preferences"
+msgid "Backspace"
+msgstr ""
+
+#: Resources/Scripts/Gui/Preferences.as:831
+msgctxt "Preferences"
+msgid "Delete"
+msgstr ""
+
+#: Resources/Scripts/Gui/Preferences.as:833
+msgctxt "Preferences"
+msgid "Enter"
+msgstr ""
+
+#: Resources/Scripts/Gui/Preferences.as:835
+msgctxt "Preferences"
+msgid "Space"
+msgstr ""
+
+#: Resources/Scripts/Gui/Preferences.as:837
+msgctxt "Preferences"
+msgid "Control"
+msgstr ""
+
+#: Resources/Scripts/Gui/Preferences.as:839
+msgctxt "Preferences"
+msgid "Left Control"
+msgstr ""
+
+#: Resources/Scripts/Gui/Preferences.as:841
+msgctxt "Preferences"
+msgid "Right Control"
+msgstr ""
+
+#: Resources/Scripts/Gui/Preferences.as:843
+msgctxt "Preferences"
+msgid "Shift"
+msgstr ""
+
+#: Resources/Scripts/Gui/Preferences.as:845
+msgctxt "Preferences"
+msgid "Left Shift"
+msgstr ""
+
+#: Resources/Scripts/Gui/Preferences.as:847
+msgctxt "Preferences"
+msgid "Right Shift"
+msgstr ""
+
+#: Resources/Scripts/Gui/Preferences.as:849
+msgctxt "Preferences"
+msgid "Left Alt"
+msgstr ""
+
+#: Resources/Scripts/Gui/Preferences.as:851
+msgctxt "Preferences"
+msgid "Right Alt"
+msgstr ""
+
+#: Resources/Scripts/Gui/Preferences.as:853
+msgctxt "Preferences"
+msgid "Up Arrow"
+msgstr ""
+
+#: Resources/Scripts/Gui/Preferences.as:855
+msgctxt "Preferences"
+msgid "Down Arrow"
+msgstr ""
+
+#: Resources/Scripts/Gui/Preferences.as:857
+msgctxt "Preferences"
+msgid "Left Arrow"
+msgstr ""
+
+#: Resources/Scripts/Gui/Preferences.as:859
+msgctxt "Preferences"
+msgid "Right Arrow"
+msgstr ""
+
+#: Resources/Scripts/Gui/Preferences.as:861
+msgctxt "Preferences"
+msgid "Page Up"
+msgstr ""
+
+#: Resources/Scripts/Gui/Preferences.as:863
+msgctxt "Preferences"
+msgid "Page Down"
+msgstr ""
+
+#: Resources/Scripts/Gui/Preferences.as:1114
+#: Resources/Scripts/Gui/Preferences.as:1278
 msgctxt "Preferences"
 msgid "No Preview Available."
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1455
-#: Resources/Scripts/Gui/Preferences.as:1462
-#: Resources/Scripts/Gui/Preferences.as:1564
-#: Resources/Scripts/Gui/Preferences.as:1569
+#: Resources/Scripts/Gui/Preferences.as:1486
+#: Resources/Scripts/Gui/Preferences.as:1493
+#: Resources/Scripts/Gui/Preferences.as:1595
+#: Resources/Scripts/Gui/Preferences.as:1600
 msgctxt "Preferences"
 msgid "ON"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1456
-#: Resources/Scripts/Gui/Preferences.as:1464
-#: Resources/Scripts/Gui/Preferences.as:1548
-#: Resources/Scripts/Gui/Preferences.as:1559
-#: Resources/Scripts/Gui/Preferences.as:1566
-#: Resources/Scripts/Gui/Preferences.as:1571
+#: Resources/Scripts/Gui/Preferences.as:1487
+#: Resources/Scripts/Gui/Preferences.as:1495
 #: Resources/Scripts/Gui/Preferences.as:1579
-#: Resources/Scripts/Gui/Preferences.as:1584
-#: Resources/Scripts/Gui/Preferences.as:1683
-#: Resources/Scripts/Gui/Preferences.as:1688
-#: Resources/Scripts/Gui/Preferences.as:1718
-#: Resources/Scripts/Gui/Preferences.as:1728
-#: Resources/Scripts/Gui/Preferences.as:1770
+#: Resources/Scripts/Gui/Preferences.as:1590
+#: Resources/Scripts/Gui/Preferences.as:1597
+#: Resources/Scripts/Gui/Preferences.as:1602
+#: Resources/Scripts/Gui/Preferences.as:1610
+#: Resources/Scripts/Gui/Preferences.as:1615
+#: Resources/Scripts/Gui/Preferences.as:1719
+#: Resources/Scripts/Gui/Preferences.as:1724
+#: Resources/Scripts/Gui/Preferences.as:1754
+#: Resources/Scripts/Gui/Preferences.as:1764
+#: Resources/Scripts/Gui/Preferences.as:1806
 msgctxt "Preferences"
 msgid "OFF"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1463
+#: Resources/Scripts/Gui/Preferences.as:1494
 msgctxt "Preferences"
 msgid "REVERSED"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1488
+#: Resources/Scripts/Gui/Preferences.as:1519
 msgctxt "Preferences"
 msgid "Reset"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1494
+#: Resources/Scripts/Gui/Preferences.as:1525
 msgctxt "Preferences"
 msgid "Randomize"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1537
+#: Resources/Scripts/Gui/Preferences.as:1568
 msgctxt "Preferences"
 msgid "Player Information"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1538
+#: Resources/Scripts/Gui/Preferences.as:1569
 msgctxt "Preferences"
 msgid "Player Name"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1544
+#: Resources/Scripts/Gui/Preferences.as:1575
 msgctxt "Preferences"
 msgid "Gameplay"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1545
+#: Resources/Scripts/Gui/Preferences.as:1576
 msgctxt "Preferences"
 msgid "Aiming Animation"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1546
+#: Resources/Scripts/Gui/Preferences.as:1577
 msgctxt "Preferences"
 msgid "FAST"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1547
-#: Resources/Scripts/Gui/Preferences.as:1558
 #: Resources/Scripts/Gui/Preferences.as:1578
-#: Resources/Scripts/Gui/Preferences.as:1583
-#: Resources/Scripts/Gui/Preferences.as:1590
-#: Resources/Scripts/Gui/Preferences.as:1594
-#: Resources/Scripts/Gui/Preferences.as:1679
+#: Resources/Scripts/Gui/Preferences.as:1589
+#: Resources/Scripts/Gui/Preferences.as:1609
+#: Resources/Scripts/Gui/Preferences.as:1614
+#: Resources/Scripts/Gui/Preferences.as:1621
+#: Resources/Scripts/Gui/Preferences.as:1625
+#: Resources/Scripts/Gui/Preferences.as:1715
 msgctxt "Preferences"
 msgid "NORMAL"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1550
+#: Resources/Scripts/Gui/Preferences.as:1581
 msgctxt "Preferences"
 msgid "Full Aim Down Sight"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1551
+#: Resources/Scripts/Gui/Preferences.as:1582
 msgctxt "Preferences"
 msgid "Classic Weapon Recoil"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1552
+#: Resources/Scripts/Gui/Preferences.as:1583
 msgctxt "Preferences"
 msgid "Classic Sprinting"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1553
+#: Resources/Scripts/Gui/Preferences.as:1584
 msgctxt "Preferences"
 msgid "Classic Zoom"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1555
+#: Resources/Scripts/Gui/Preferences.as:1586
 msgctxt "Preferences"
 msgid "Effects"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1556
+#: Resources/Scripts/Gui/Preferences.as:1587
 msgctxt "Preferences"
 msgid "Blood"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1557
+#: Resources/Scripts/Gui/Preferences.as:1588
 msgctxt "Preferences"
 msgid "MARKS"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1561
+#: Resources/Scripts/Gui/Preferences.as:1592
 msgctxt "Preferences"
 msgid "Ragdoll Corpses"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1562
+#: Resources/Scripts/Gui/Preferences.as:1593
 msgctxt "Preferences"
 msgid "Enhanced Ragdoll Physics"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1563
+#: Resources/Scripts/Gui/Preferences.as:1594
 msgctxt "Preferences"
 msgid "Bullet Tracers"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1565
-#: Resources/Scripts/Gui/Preferences.as:1570
+#: Resources/Scripts/Gui/Preferences.as:1596
+#: Resources/Scripts/Gui/Preferences.as:1601
 msgctxt "Preferences"
 msgid "3rd Person"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1568
+#: Resources/Scripts/Gui/Preferences.as:1599
 msgctxt "Preferences"
 msgid "Muzzle Flashes"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1573
+#: Resources/Scripts/Gui/Preferences.as:1604
 msgctxt "Preferences"
 msgid "Eject Bullet Casings"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1574
+#: Resources/Scripts/Gui/Preferences.as:1605
 msgctxt "Preferences"
 msgid "Hurt Screen Effects"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1575
+#: Resources/Scripts/Gui/Preferences.as:1606
 msgctxt "Preferences"
 msgid "Heal Screen Effects"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1576
+#: Resources/Scripts/Gui/Preferences.as:1607
 msgctxt "Preferences"
 msgid "Camera Shake"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1577
-#: Resources/Scripts/Gui/Preferences.as:1582
+#: Resources/Scripts/Gui/Preferences.as:1608
+#: Resources/Scripts/Gui/Preferences.as:1613
 msgctxt "Preferences"
 msgid "MORE"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1581
+#: Resources/Scripts/Gui/Preferences.as:1612
 msgctxt "Preferences"
 msgid "Particles"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1586
+#: Resources/Scripts/Gui/Preferences.as:1617
 msgctxt "Preferences"
 msgid "Water Splash"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1588
+#: Resources/Scripts/Gui/Preferences.as:1619
 msgctxt "Preferences"
 msgid "Feedbacks"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1589
+#: Resources/Scripts/Gui/Preferences.as:1620
 msgctxt "Preferences"
 msgid "Center Messages"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1591
+#: Resources/Scripts/Gui/Preferences.as:1622
 msgctxt "Preferences"
 msgid "LESS"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1593
+#: Resources/Scripts/Gui/Preferences.as:1624
 msgctxt "Preferences"
 msgid "Center Messages Size"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1595
+#: Resources/Scripts/Gui/Preferences.as:1626
 msgctxt "Preferences"
 msgid "SMALL"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1597
+#: Resources/Scripts/Gui/Preferences.as:1628
 msgctxt "Preferences"
 msgid "Ignore Chat Messages"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1598
+#: Resources/Scripts/Gui/Preferences.as:1629
 msgctxt "Preferences"
 msgid "Ignore Private Messages"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1599
+#: Resources/Scripts/Gui/Preferences.as:1630
 msgctxt "Preferences"
 msgid "Master Volume"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1601
+#: Resources/Scripts/Gui/Preferences.as:1632
 msgctxt "Preferences"
 msgid "Death Camera Volume"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1602
+#: Resources/Scripts/Gui/Preferences.as:1633
 msgctxt "Preferences"
 msgid "Respawn Beep Volume"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1603
+#: Resources/Scripts/Gui/Preferences.as:1634
 msgctxt "Preferences"
 msgid "Hit Feedback Volume"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1604
+#: Resources/Scripts/Gui/Preferences.as:1635
 msgctxt "Preferences"
 msgid "Headshot Feedback Volume"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1605
+#: Resources/Scripts/Gui/Preferences.as:1636
 msgctxt "Preferences"
 msgid "Chat Notify Sounds"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1606
+#: Resources/Scripts/Gui/Preferences.as:1637
 msgctxt "Preferences"
 msgid "Show Alerts"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1607
+#: Resources/Scripts/Gui/Preferences.as:1638
 msgctxt "Preferences"
 msgid "Show Server Alerts"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1608
+#: Resources/Scripts/Gui/Preferences.as:1639
 msgctxt "Preferences"
 msgid "Alert Sounds"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1609
+#: Resources/Scripts/Gui/Preferences.as:1640
 msgctxt "Preferences"
 msgid "Hit Log"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1610
+#: Resources/Scripts/Gui/Preferences.as:1641
 msgctxt "Preferences"
 msgid "Hit Indicator"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1612
+#: Resources/Scripts/Gui/Preferences.as:1643
 msgctxt "Preferences"
 msgid "Viewmodel"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1613
+#: Resources/Scripts/Gui/Preferences.as:1644
 msgctxt "Preferences"
 msgid "Weapon Keychains"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1615
+#: Resources/Scripts/Gui/Preferences.as:1646
 msgctxt "Preferences"
 msgid "Viewmodel Position"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1618
+#: Resources/Scripts/Gui/Preferences.as:1649
 msgctxt "Preferences"
 msgid "Balanced"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1619
+#: Resources/Scripts/Gui/Preferences.as:1650
 msgctxt "Preferences"
 msgid "Minimal"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1625
+#: Resources/Scripts/Gui/Preferences.as:1656
 msgctxt "Preferences"
 msgid "Viewmodel Alignment"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1627
+#: Resources/Scripts/Gui/Preferences.as:1658
 msgctxt "Preferences"
 msgid "Switch Viewmodel Handedness"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1628
+#: Resources/Scripts/Gui/Preferences.as:1659
 msgctxt "Preferences"
 msgid "Hide Player Arms"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1629
+#: Resources/Scripts/Gui/Preferences.as:1660
 msgctxt "Preferences"
 msgid "Hide Player Body"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1630
+#: Resources/Scripts/Gui/Preferences.as:1661
 msgctxt "Preferences"
 msgid "Classic Player Model"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1631
+#: Resources/Scripts/Gui/Preferences.as:1662
 msgctxt "Preferences"
 msgid "Classic Viewmodel"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1634
+#: Resources/Scripts/Gui/Preferences.as:1665
 msgctxt "Preferences"
 msgid "Field of View"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1636
+#: Resources/Scripts/Gui/Preferences.as:1667
 msgctxt "Preferences"
 msgid "Horizontal FOV"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1637
+#: Resources/Scripts/Gui/Preferences.as:1668
 msgctxt "Preferences"
 msgid "Environmental Audio"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1638
+#: Resources/Scripts/Gui/Preferences.as:1669
 msgctxt "Preferences"
 msgid "Skip dead players (death cam)"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1639
+#: Resources/Scripts/Gui/Preferences.as:1670
 msgctxt "Preferences"
 msgid "Save Final Score Screenshot"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1640
+#: Resources/Scripts/Gui/Preferences.as:1671
 msgctxt "Preferences"
 msgid "Debug Hit Detection"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1641
+#: Resources/Scripts/Gui/Preferences.as:1672
 msgctxt "Preferences"
 msgid "Hit Test Debugger Size"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1643
+#: Resources/Scripts/Gui/Preferences.as:1674
 msgctxt "Preferences"
 msgid "Toggle Hit Debugger Zoom"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1644
+#: Resources/Scripts/Gui/Preferences.as:1675
 msgctxt "Preferences"
 msgid "Hit Debugger Fade Time"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1646
+#: Resources/Scripts/Gui/Preferences.as:1677
 msgctxt "Preferences"
 msgid "Debug Weapon Spread"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1647
+#: Resources/Scripts/Gui/Preferences.as:1678
 msgctxt "Preferences"
 msgid "Debug Block Cursor"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1648
+#: Resources/Scripts/Gui/Preferences.as:1679
 msgctxt "Preferences"
 msgid "Debug Players Hitbox"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1649
+#: Resources/Scripts/Gui/Preferences.as:1680
 msgctxt "Preferences"
 msgid "Debug Weapon Anchor Points"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1670
-msgctxt "Preferences"
-msgid "Heads-Up Display"
-msgstr ""
-
-#: Resources/Scripts/Gui/Preferences.as:1671
-msgctxt "Preferences"
-msgid "Hide HUD"
-msgstr ""
-
-#: Resources/Scripts/Gui/Preferences.as:1672
-msgctxt "Preferences"
-msgid "HUD Color"
-msgstr ""
-
-#: Resources/Scripts/Gui/Preferences.as:1674
-#: Resources/Scripts/Gui/Preferences.as:1735
-msgctxt "Preferences"
-msgid "Custom Color"
-msgstr ""
-
-#: Resources/Scripts/Gui/Preferences.as:1676
-msgctxt "Preferences"
-msgid "HUD Edge Positions"
-msgstr ""
-
-#: Resources/Scripts/Gui/Preferences.as:1677
-msgctxt "Preferences"
-msgid "Edit"
-msgstr ""
-
-#: Resources/Scripts/Gui/Preferences.as:1678
-msgctxt "Preferences"
-msgid "HUD Ammo Style"
-msgstr ""
-
-#: Resources/Scripts/Gui/Preferences.as:1680
-msgctxt "Preferences"
-msgid "SIMPLE"
-msgstr ""
-
-#: Resources/Scripts/Gui/Preferences.as:1682
-msgctxt "Preferences"
-msgid "Show Alive Player Count"
-msgstr ""
-
-#: Resources/Scripts/Gui/Preferences.as:1684
-#: Resources/Scripts/Gui/Preferences.as:1689
-msgctxt "Preferences"
-msgid "Top"
-msgstr ""
-
-#: Resources/Scripts/Gui/Preferences.as:1685
-#: Resources/Scripts/Gui/Preferences.as:1690
-#: Resources/Scripts/Gui/Preferences.as:1719
-msgctxt "Preferences"
-msgid "Bottom"
-msgstr ""
-
-#: Resources/Scripts/Gui/Preferences.as:1687
-msgctxt "Preferences"
-msgid "Show Client Statistics"
-msgstr ""
-
-#: Resources/Scripts/Gui/Preferences.as:1692
-msgctxt "Preferences"
-msgid "Small Stats Font"
-msgstr ""
-
-#: Resources/Scripts/Gui/Preferences.as:1693
-msgctxt "Preferences"
-msgid "Show Player Statistics"
-msgstr ""
-
-#: Resources/Scripts/Gui/Preferences.as:1694
-msgctxt "Preferences"
-msgid "Show Placed Blocks"
-msgstr ""
-
-#: Resources/Scripts/Gui/Preferences.as:1695
-msgctxt "Preferences"
-msgid "Player Statistics Height"
-msgstr ""
-
-#: Resources/Scripts/Gui/Preferences.as:1697
-msgctxt "Preferences"
-msgid "Chat Height"
-msgstr ""
-
-#: Resources/Scripts/Gui/Preferences.as:1699
-msgctxt "Preferences"
-msgid "Chat Fade Time"
-msgstr ""
-
 #: Resources/Scripts/Gui/Preferences.as:1701
 msgctxt "Preferences"
-msgid "Killfeed Height"
+msgid "World Markers"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1703
-msgctxt "Preferences"
-msgid "Killfeed Fade Time"
-msgstr ""
-
-#: Resources/Scripts/Gui/Preferences.as:1705
-msgctxt "Preferences"
-msgid "Killfeed Icons"
-msgstr ""
-
-#: Resources/Scripts/Gui/Preferences.as:1706
-msgctxt "Preferences"
-msgid "Show Dominations"
-msgstr ""
-
-#: Resources/Scripts/Gui/Preferences.as:1708
-msgctxt "Preferences"
-msgid "Minimap"
-msgstr ""
-
-#: Resources/Scripts/Gui/Preferences.as:1709
-msgctxt "Preferences"
-msgid "Minimap Size"
-msgstr ""
-
-#: Resources/Scripts/Gui/Preferences.as:1711
-msgctxt "Preferences"
-msgid "Minimap Scale Mode"
-msgstr ""
-
-#: Resources/Scripts/Gui/Preferences.as:1713
-msgctxt "Preferences"
-msgid "Minimap Opacity"
-msgstr ""
-
-#: Resources/Scripts/Gui/Preferences.as:1715
-msgctxt "Preferences"
-msgid "Use Weapon Icons"
-msgstr ""
-
-#: Resources/Scripts/Gui/Preferences.as:1716
-msgctxt "Preferences"
-msgid "Use Random Colors"
-msgstr ""
-
-#: Resources/Scripts/Gui/Preferences.as:1717
-msgctxt "Preferences"
-msgid "Show Map Location"
-msgstr ""
-
-#: Resources/Scripts/Gui/Preferences.as:1720
-msgctxt "Preferences"
-msgid "Side"
-msgstr ""
-
-#: Resources/Scripts/Gui/Preferences.as:1722
-msgctxt "Preferences"
-msgid "Show Player Names"
-msgstr ""
-
-#: Resources/Scripts/Gui/Preferences.as:1724
-msgctxt "Preferences"
-msgid "Target"
-msgstr ""
-
-#: Resources/Scripts/Gui/Preferences.as:1727
-msgctxt "Preferences"
-msgid "Target Type"
-msgstr ""
-
-#: Resources/Scripts/Gui/Preferences.as:1732
-#: Resources/Scripts/Gui/Preferences.as:1776
-msgctxt "Preferences"
-msgid "Lines"
-msgstr ""
-
-#: Resources/Scripts/Gui/Preferences.as:1733
-#: Resources/Scripts/Gui/Preferences.as:1777
-msgctxt "Preferences"
-msgid "Color"
-msgstr ""
-
-#: Resources/Scripts/Gui/Preferences.as:1737
-#: Resources/Scripts/Gui/Preferences.as:1779
-msgctxt "Preferences"
-msgid "Opacity"
-msgstr ""
-
-#: Resources/Scripts/Gui/Preferences.as:1739
-#: Resources/Scripts/Gui/Preferences.as:1781
-msgctxt "Preferences"
-msgid "Length"
-msgstr ""
-
-#: Resources/Scripts/Gui/Preferences.as:1742
-#: Resources/Scripts/Gui/Preferences.as:1784
-msgctxt "Preferences"
-msgid "Thickness"
-msgstr ""
-
-#: Resources/Scripts/Gui/Preferences.as:1744
-#: Resources/Scripts/Gui/Preferences.as:1786
-msgctxt "Preferences"
-msgid "Gap"
-msgstr ""
-
-#: Resources/Scripts/Gui/Preferences.as:1746
-#: Resources/Scripts/Gui/Preferences.as:1788
-msgctxt "Preferences"
-msgid "Dynamic"
-msgstr ""
-
-#: Resources/Scripts/Gui/Preferences.as:1747
-#: Resources/Scripts/Gui/Preferences.as:1789
-msgctxt "Preferences"
-msgid "Dynamic Split Dist"
-msgstr ""
-
-#: Resources/Scripts/Gui/Preferences.as:1749
-#: Resources/Scripts/Gui/Preferences.as:1791
-msgctxt "Preferences"
-msgid "Outline"
-msgstr ""
-
-#: Resources/Scripts/Gui/Preferences.as:1750
-#: Resources/Scripts/Gui/Preferences.as:1792
-msgctxt "Preferences"
-msgid "Outline Color"
-msgstr ""
-
-#: Resources/Scripts/Gui/Preferences.as:1752
-#: Resources/Scripts/Gui/Preferences.as:1794
-msgctxt "Preferences"
-msgid "Outline Opacity"
-msgstr ""
-
-#: Resources/Scripts/Gui/Preferences.as:1754
-#: Resources/Scripts/Gui/Preferences.as:1796
-msgctxt "Preferences"
-msgid "Outline Thickness"
-msgstr ""
-
-#: Resources/Scripts/Gui/Preferences.as:1756
-#: Resources/Scripts/Gui/Preferences.as:1798
-msgctxt "Preferences"
-msgid "Rounded Corners Style"
-msgstr ""
-
-#: Resources/Scripts/Gui/Preferences.as:1757
-#: Resources/Scripts/Gui/Preferences.as:1799
-msgctxt "Preferences"
-msgid "Center Dot"
-msgstr ""
-
-#: Resources/Scripts/Gui/Preferences.as:1758
-#: Resources/Scripts/Gui/Preferences.as:1800
-msgctxt "Preferences"
-msgid "Center Dot Color"
-msgstr ""
-
-#: Resources/Scripts/Gui/Preferences.as:1760
-#: Resources/Scripts/Gui/Preferences.as:1802
-msgctxt "Preferences"
-msgid "Center Dot Opacity"
-msgstr ""
-
-#: Resources/Scripts/Gui/Preferences.as:1762
-#: Resources/Scripts/Gui/Preferences.as:1804
-msgctxt "Preferences"
-msgid "Center Dot Thickness"
-msgstr ""
-
-#: Resources/Scripts/Gui/Preferences.as:1764
-#: Resources/Scripts/Gui/Preferences.as:1806
-msgctxt "Preferences"
-msgid "T Style"
-msgstr ""
-
-#: Resources/Scripts/Gui/Preferences.as:1766
-msgctxt "Preferences"
-msgid "Scope"
-msgstr ""
-
-#: Resources/Scripts/Gui/Preferences.as:1769
-msgctxt "Preferences"
-msgid "Reflex Sight"
-msgstr ""
-
-#: Resources/Scripts/Gui/Preferences.as:1771
-msgctxt "Preferences"
-msgid "Dot"
-msgstr ""
-
-#: Resources/Scripts/Gui/Preferences.as:1772
-msgctxt "Preferences"
-msgid "Cross"
-msgstr ""
-
-#: Resources/Scripts/Gui/Preferences.as:1774
-msgctxt "Preferences"
-msgid "Scope Type"
-msgstr ""
-
-#: Resources/Scripts/Gui/Preferences.as:1808
-#: Resources/Scripts/Gui/Preferences.as:1834
-msgctxt "Preferences"
-msgid "World"
-msgstr ""
-
-#: Resources/Scripts/Gui/Preferences.as:1809
+#: Resources/Scripts/Gui/Preferences.as:1702
 msgctxt "Preferences"
 msgid "Damage Indicators"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1810
+#: Resources/Scripts/Gui/Preferences.as:1703
 msgctxt "Preferences"
 msgid "Show Hover Player Names"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1811
+#: Resources/Scripts/Gui/Preferences.as:1704
 msgctxt "Preferences"
 msgid "Show Dead Player Names"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1826
-#: Resources/Scripts/Gui/Preferences.as:1947
+#: Resources/Scripts/Gui/Preferences.as:1706
+msgctxt "Preferences"
+msgid "Heads-Up Display"
+msgstr ""
+
+#: Resources/Scripts/Gui/Preferences.as:1707
+msgctxt "Preferences"
+msgid "Hide HUD"
+msgstr ""
+
+#: Resources/Scripts/Gui/Preferences.as:1708
+msgctxt "Preferences"
+msgid "HUD Color"
+msgstr ""
+
+#: Resources/Scripts/Gui/Preferences.as:1710
+#: Resources/Scripts/Gui/Preferences.as:1771
+msgctxt "Preferences"
+msgid "Custom Color"
+msgstr ""
+
+#: Resources/Scripts/Gui/Preferences.as:1712
+msgctxt "Preferences"
+msgid "HUD Edge Positions"
+msgstr ""
+
+#: Resources/Scripts/Gui/Preferences.as:1713
+msgctxt "Preferences"
+msgid "Edit"
+msgstr ""
+
+#: Resources/Scripts/Gui/Preferences.as:1714
+msgctxt "Preferences"
+msgid "HUD Ammo Style"
+msgstr ""
+
+#: Resources/Scripts/Gui/Preferences.as:1716
+msgctxt "Preferences"
+msgid "SIMPLE"
+msgstr ""
+
+#: Resources/Scripts/Gui/Preferences.as:1718
+msgctxt "Preferences"
+msgid "Show Alive Player Count"
+msgstr ""
+
+#: Resources/Scripts/Gui/Preferences.as:1720
+#: Resources/Scripts/Gui/Preferences.as:1725
+msgctxt "Preferences"
+msgid "Top"
+msgstr ""
+
+#: Resources/Scripts/Gui/Preferences.as:1721
+#: Resources/Scripts/Gui/Preferences.as:1726
+#: Resources/Scripts/Gui/Preferences.as:1755
+msgctxt "Preferences"
+msgid "Bottom"
+msgstr ""
+
+#: Resources/Scripts/Gui/Preferences.as:1723
+msgctxt "Preferences"
+msgid "Show Client Statistics"
+msgstr ""
+
+#: Resources/Scripts/Gui/Preferences.as:1728
+msgctxt "Preferences"
+msgid "Small Stats Font"
+msgstr ""
+
+#: Resources/Scripts/Gui/Preferences.as:1729
+msgctxt "Preferences"
+msgid "Show Player Statistics"
+msgstr ""
+
+#: Resources/Scripts/Gui/Preferences.as:1730
+msgctxt "Preferences"
+msgid "Show Placed Blocks"
+msgstr ""
+
+#: Resources/Scripts/Gui/Preferences.as:1731
+msgctxt "Preferences"
+msgid "Player Statistics Height"
+msgstr ""
+
+#: Resources/Scripts/Gui/Preferences.as:1733
+msgctxt "Preferences"
+msgid "Chat Height"
+msgstr ""
+
+#: Resources/Scripts/Gui/Preferences.as:1735
+msgctxt "Preferences"
+msgid "Chat Fade Time"
+msgstr ""
+
+#: Resources/Scripts/Gui/Preferences.as:1737
+msgctxt "Preferences"
+msgid "Killfeed Height"
+msgstr ""
+
+#: Resources/Scripts/Gui/Preferences.as:1739
+msgctxt "Preferences"
+msgid "Killfeed Fade Time"
+msgstr ""
+
+#: Resources/Scripts/Gui/Preferences.as:1741
+msgctxt "Preferences"
+msgid "Killfeed Icons"
+msgstr ""
+
+#: Resources/Scripts/Gui/Preferences.as:1742
+msgctxt "Preferences"
+msgid "Show Dominations"
+msgstr ""
+
+#: Resources/Scripts/Gui/Preferences.as:1744
+msgctxt "Preferences"
+msgid "Minimap"
+msgstr ""
+
+#: Resources/Scripts/Gui/Preferences.as:1745
+msgctxt "Preferences"
+msgid "Minimap Size"
+msgstr ""
+
+#: Resources/Scripts/Gui/Preferences.as:1747
+msgctxt "Preferences"
+msgid "Minimap Scale Mode"
+msgstr ""
+
+#: Resources/Scripts/Gui/Preferences.as:1749
+msgctxt "Preferences"
+msgid "Minimap Opacity"
+msgstr ""
+
+#: Resources/Scripts/Gui/Preferences.as:1751
+msgctxt "Preferences"
+msgid "Use Weapon Icons"
+msgstr ""
+
+#: Resources/Scripts/Gui/Preferences.as:1752
+msgctxt "Preferences"
+msgid "Use Random Colors"
+msgstr ""
+
+#: Resources/Scripts/Gui/Preferences.as:1753
+msgctxt "Preferences"
+msgid "Show Map Location"
+msgstr ""
+
+#: Resources/Scripts/Gui/Preferences.as:1756
+msgctxt "Preferences"
+msgid "Side"
+msgstr ""
+
+#: Resources/Scripts/Gui/Preferences.as:1758
+msgctxt "Preferences"
+msgid "Show Player Names"
+msgstr ""
+
+#: Resources/Scripts/Gui/Preferences.as:1760
+msgctxt "Preferences"
+msgid "Target"
+msgstr ""
+
+#: Resources/Scripts/Gui/Preferences.as:1763
+msgctxt "Preferences"
+msgid "Target Type"
+msgstr ""
+
+#: Resources/Scripts/Gui/Preferences.as:1768
+#: Resources/Scripts/Gui/Preferences.as:1812
+msgctxt "Preferences"
+msgid "Lines"
+msgstr ""
+
+#: Resources/Scripts/Gui/Preferences.as:1769
+#: Resources/Scripts/Gui/Preferences.as:1813
+msgctxt "Preferences"
+msgid "Color"
+msgstr ""
+
+#: Resources/Scripts/Gui/Preferences.as:1773
+#: Resources/Scripts/Gui/Preferences.as:1815
+msgctxt "Preferences"
+msgid "Opacity"
+msgstr ""
+
+#: Resources/Scripts/Gui/Preferences.as:1775
+#: Resources/Scripts/Gui/Preferences.as:1817
+msgctxt "Preferences"
+msgid "Length"
+msgstr ""
+
+#: Resources/Scripts/Gui/Preferences.as:1778
+#: Resources/Scripts/Gui/Preferences.as:1820
+msgctxt "Preferences"
+msgid "Thickness"
+msgstr ""
+
+#: Resources/Scripts/Gui/Preferences.as:1780
+#: Resources/Scripts/Gui/Preferences.as:1822
+msgctxt "Preferences"
+msgid "Gap"
+msgstr ""
+
+#: Resources/Scripts/Gui/Preferences.as:1782
+#: Resources/Scripts/Gui/Preferences.as:1824
+msgctxt "Preferences"
+msgid "Dynamic"
+msgstr ""
+
+#: Resources/Scripts/Gui/Preferences.as:1783
+#: Resources/Scripts/Gui/Preferences.as:1825
+msgctxt "Preferences"
+msgid "Dynamic Split Dist"
+msgstr ""
+
+#: Resources/Scripts/Gui/Preferences.as:1785
+#: Resources/Scripts/Gui/Preferences.as:1827
+msgctxt "Preferences"
+msgid "Outline"
+msgstr ""
+
+#: Resources/Scripts/Gui/Preferences.as:1786
+#: Resources/Scripts/Gui/Preferences.as:1828
+msgctxt "Preferences"
+msgid "Outline Color"
+msgstr ""
+
+#: Resources/Scripts/Gui/Preferences.as:1788
+#: Resources/Scripts/Gui/Preferences.as:1830
+msgctxt "Preferences"
+msgid "Outline Opacity"
+msgstr ""
+
+#: Resources/Scripts/Gui/Preferences.as:1790
+#: Resources/Scripts/Gui/Preferences.as:1832
+msgctxt "Preferences"
+msgid "Outline Thickness"
+msgstr ""
+
+#: Resources/Scripts/Gui/Preferences.as:1792
+#: Resources/Scripts/Gui/Preferences.as:1834
+msgctxt "Preferences"
+msgid "Rounded Corners Style"
+msgstr ""
+
+#: Resources/Scripts/Gui/Preferences.as:1793
+#: Resources/Scripts/Gui/Preferences.as:1835
+msgctxt "Preferences"
+msgid "Center Dot"
+msgstr ""
+
+#: Resources/Scripts/Gui/Preferences.as:1794
+#: Resources/Scripts/Gui/Preferences.as:1836
+msgctxt "Preferences"
+msgid "Center Dot Color"
+msgstr ""
+
+#: Resources/Scripts/Gui/Preferences.as:1796
+#: Resources/Scripts/Gui/Preferences.as:1838
+msgctxt "Preferences"
+msgid "Center Dot Opacity"
+msgstr ""
+
+#: Resources/Scripts/Gui/Preferences.as:1798
+#: Resources/Scripts/Gui/Preferences.as:1840
+msgctxt "Preferences"
+msgid "Center Dot Thickness"
+msgstr ""
+
+#: Resources/Scripts/Gui/Preferences.as:1800
+#: Resources/Scripts/Gui/Preferences.as:1842
+msgctxt "Preferences"
+msgid "T Style"
+msgstr ""
+
+#: Resources/Scripts/Gui/Preferences.as:1802
+msgctxt "Preferences"
+msgid "Scope"
+msgstr ""
+
+#: Resources/Scripts/Gui/Preferences.as:1805
+msgctxt "Preferences"
+msgid "Reflex Sight"
+msgstr ""
+
+#: Resources/Scripts/Gui/Preferences.as:1807
+msgctxt "Preferences"
+msgid "Dot"
+msgstr ""
+
+#: Resources/Scripts/Gui/Preferences.as:1808
+msgctxt "Preferences"
+msgid "Cross"
+msgstr ""
+
+#: Resources/Scripts/Gui/Preferences.as:1810
+msgctxt "Preferences"
+msgid "Scope Type"
+msgstr ""
+
+#: Resources/Scripts/Gui/Preferences.as:1857
+#: Resources/Scripts/Gui/Preferences.as:1978
 msgctxt "Preferences"
 msgid "General"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1827
+#: Resources/Scripts/Gui/Preferences.as:1858
 msgctxt "Preferences"
 msgid "Render Scale"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1829
+#: Resources/Scripts/Gui/Preferences.as:1860
 msgctxt "Preferences"
 msgid "Render Scaling Filter"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1831
+#: Resources/Scripts/Gui/Preferences.as:1862
 msgctxt "Preferences"
 msgid "Rendering Statistics"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1832
+#: Resources/Scripts/Gui/Preferences.as:1863
 msgctxt "Preferences"
 msgid "Allow CPU Rendering"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1835
+#: Resources/Scripts/Gui/Preferences.as:1865
+msgctxt "Preferences"
+msgid "World"
+msgstr ""
+
+#: Resources/Scripts/Gui/Preferences.as:1866
 msgctxt "Preferences"
 msgid "Dynamic Lights"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1836
+#: Resources/Scripts/Gui/Preferences.as:1867
 msgctxt "Preferences"
 msgid "Tracers Lights"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1837
+#: Resources/Scripts/Gui/Preferences.as:1868
 msgctxt "Preferences"
 msgid "Depth Prepass"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1838
+#: Resources/Scripts/Gui/Preferences.as:1869
 msgctxt "Preferences"
 msgid "Occlusion Querying"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1839
+#: Resources/Scripts/Gui/Preferences.as:1870
 msgctxt "Preferences"
 msgid "Object Outlines"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1841
+#: Resources/Scripts/Gui/Preferences.as:1872
 msgctxt "Preferences"
 msgid "Post-processing"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1842
+#: Resources/Scripts/Gui/Preferences.as:1873
 msgctxt "Preferences"
 msgid "Depth Of Field"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1843
+#: Resources/Scripts/Gui/Preferences.as:1874
 msgctxt "Preferences"
 msgid "Camera Blur"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1844
+#: Resources/Scripts/Gui/Preferences.as:1875
 msgctxt "Preferences"
 msgid "FXAA Anti-Aliasing"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1845
+#: Resources/Scripts/Gui/Preferences.as:1876
 msgctxt "Preferences"
 msgid "Lens Flares"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1846
+#: Resources/Scripts/Gui/Preferences.as:1877
 msgctxt "Preferences"
 msgid "Flares Lights"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1847
+#: Resources/Scripts/Gui/Preferences.as:1878
 msgctxt "Preferences"
 msgid "Color Correction"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1848
+#: Resources/Scripts/Gui/Preferences.as:1879
 msgctxt "Preferences"
 msgid "Sharpening"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1850
+#: Resources/Scripts/Gui/Preferences.as:1881
 msgctxt "Preferences"
 msgid "Saturation"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1852
+#: Resources/Scripts/Gui/Preferences.as:1883
 msgctxt "Preferences"
 msgid "Exposure"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1855
+#: Resources/Scripts/Gui/Preferences.as:1886
 msgctxt "Preferences"
 msgid "Software Renderer"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1856
+#: Resources/Scripts/Gui/Preferences.as:1887
 msgctxt "Preferences"
 msgid "Thread Count"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1857
+#: Resources/Scripts/Gui/Preferences.as:1888
 msgctxt "Preferences"
 msgid " Threads"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1858
+#: Resources/Scripts/Gui/Preferences.as:1889
 msgctxt "Preferences"
 msgid "Undersampling"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1874
+#: Resources/Scripts/Gui/Preferences.as:1905
 msgctxt "Preferences"
 msgid "Weapons/Tools"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1875
+#: Resources/Scripts/Gui/Preferences.as:1906
 msgctxt "Preferences"
 msgid "Attack"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1876
+#: Resources/Scripts/Gui/Preferences.as:1907
 msgctxt "Preferences"
 msgid "Alt. Attack"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1877
+#: Resources/Scripts/Gui/Preferences.as:1908
 msgctxt "Preferences"
 msgid "Hold Aim Down Sight"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1878
+#: Resources/Scripts/Gui/Preferences.as:1909
 msgctxt "Preferences"
 msgid "Mouse Sensitivity Type"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1880
+#: Resources/Scripts/Gui/Preferences.as:1911
 msgctxt "Preferences"
 msgid "Mouse Sensitivity"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1882
+#: Resources/Scripts/Gui/Preferences.as:1913
 msgctxt "Preferences"
 msgid "ADS Mouse Sens. Scale"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1884
+#: Resources/Scripts/Gui/Preferences.as:1915
 msgctxt "Preferences"
 msgid "Mouse Acceleration"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1885
+#: Resources/Scripts/Gui/Preferences.as:1916
 msgctxt "Preferences"
 msgid "Exponential Power"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1887
+#: Resources/Scripts/Gui/Preferences.as:1918
 msgctxt "Preferences"
 msgid "Invert Y-axis Mouse Input"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1888
+#: Resources/Scripts/Gui/Preferences.as:1919
 msgctxt "Preferences"
 msgid "Reload"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1889
+#: Resources/Scripts/Gui/Preferences.as:1920
 msgctxt "Preferences"
 msgid "Equip Spade"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1890
+#: Resources/Scripts/Gui/Preferences.as:1921
 msgctxt "Preferences"
 msgid "Equip Block"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1891
+#: Resources/Scripts/Gui/Preferences.as:1922
 msgctxt "Preferences"
 msgid "Equip Weapon"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1892
+#: Resources/Scripts/Gui/Preferences.as:1923
 msgctxt "Preferences"
 msgid "Equip Grenade"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1893
+#: Resources/Scripts/Gui/Preferences.as:1924
 msgctxt "Preferences"
 msgid "Last Used Tool"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1894
+#: Resources/Scripts/Gui/Preferences.as:1925
 msgctxt "Preferences"
 msgid "Switch Tools by Wheel"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1896
+#: Resources/Scripts/Gui/Preferences.as:1927
 msgctxt "Preferences"
 msgid "Movement"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1897
+#: Resources/Scripts/Gui/Preferences.as:1928
 msgctxt "Preferences"
 msgid "Move Forward"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1898
+#: Resources/Scripts/Gui/Preferences.as:1929
 msgctxt "Preferences"
 msgid "Move Backward"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1899
+#: Resources/Scripts/Gui/Preferences.as:1930
 msgctxt "Preferences"
 msgid "Move Left"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1900
+#: Resources/Scripts/Gui/Preferences.as:1931
 msgctxt "Preferences"
 msgid "Move Right"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1901
+#: Resources/Scripts/Gui/Preferences.as:1932
 msgctxt "Preferences"
 msgid "Crouch"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1902
+#: Resources/Scripts/Gui/Preferences.as:1933
 msgctxt "Preferences"
 msgid "Sneak"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1903
+#: Resources/Scripts/Gui/Preferences.as:1934
 msgctxt "Preferences"
 msgid "Jump"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1904
+#: Resources/Scripts/Gui/Preferences.as:1935
 msgctxt "Preferences"
 msgid "Sprint"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1906
+#: Resources/Scripts/Gui/Preferences.as:1937
 msgctxt "Preferences"
 msgid "Color Palette"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1907
+#: Resources/Scripts/Gui/Preferences.as:1938
 msgctxt "Preferences"
 msgid "Capture Color"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1908
+#: Resources/Scripts/Gui/Preferences.as:1939
 msgctxt "Preferences"
 msgid "Navigate up"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1909
+#: Resources/Scripts/Gui/Preferences.as:1940
 msgctxt "Preferences"
 msgid "Navigate down"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1910
+#: Resources/Scripts/Gui/Preferences.as:1941
 msgctxt "Preferences"
 msgid "Navigate left"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1911
+#: Resources/Scripts/Gui/Preferences.as:1942
 msgctxt "Preferences"
 msgid "Navigate right"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1912
+#: Resources/Scripts/Gui/Preferences.as:1943
 msgctxt "Preferences"
 msgid "Toggle extended palette"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1915
+#: Resources/Scripts/Gui/Preferences.as:1946
 msgctxt "Preferences"
 msgid "Scoreboard"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1916
+#: Resources/Scripts/Gui/Preferences.as:1947
 msgctxt "Preferences"
 msgid "Hold Large Map"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1917
+#: Resources/Scripts/Gui/Preferences.as:1948
 msgctxt "Preferences"
 msgid "Minimap Scale"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1918
+#: Resources/Scripts/Gui/Preferences.as:1949
 msgctxt "Preferences"
 msgid "Toggle Map"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1919
+#: Resources/Scripts/Gui/Preferences.as:1950
 msgctxt "Preferences"
 msgid "Flashlight"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1920
+#: Resources/Scripts/Gui/Preferences.as:1951
 msgctxt "Preferences"
 msgid "Global Chat"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1921
+#: Resources/Scripts/Gui/Preferences.as:1952
 msgctxt "Preferences"
 msgid "Team Chat"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1922
+#: Resources/Scripts/Gui/Preferences.as:1953
 msgctxt "Preferences"
 msgid "Chat Log"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1923
+#: Resources/Scripts/Gui/Preferences.as:1954
 msgctxt "Preferences"
 msgid "Chat Zoom"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1924
+#: Resources/Scripts/Gui/Preferences.as:1955
 msgctxt "Preferences"
 msgid "Pie Menu"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1925
+#: Resources/Scripts/Gui/Preferences.as:1956
 msgctxt "Preferences"
 msgid "Limbo Menu"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1926
+#: Resources/Scripts/Gui/Preferences.as:1957
 msgctxt "Preferences"
 msgid "Save Map"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1927
+#: Resources/Scripts/Gui/Preferences.as:1958
 msgctxt "Preferences"
 msgid "Save Sceneshot"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1928
+#: Resources/Scripts/Gui/Preferences.as:1959
 msgctxt "Preferences"
 msgid "Save Screenshot"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1929
+#: Resources/Scripts/Gui/Preferences.as:1960
 msgctxt "Preferences"
 msgid "Master Volume Up"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1930
+#: Resources/Scripts/Gui/Preferences.as:1961
 msgctxt "Preferences"
 msgid "Master Volume Down"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1931
+#: Resources/Scripts/Gui/Preferences.as:1962
 msgctxt "Preferences"
 msgid "Network Graph"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1932
+#: Resources/Scripts/Gui/Preferences.as:1963
 msgctxt "Preferences"
 msgid "Force Spectator Mode"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1948
+#: Resources/Scripts/Gui/Preferences.as:1979
 msgctxt "Preferences"
 msgid "FPS Limit"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1951
+#: Resources/Scripts/Gui/Preferences.as:1982
 msgctxt "Preferences"
 msgid "Console Scrollback Lines"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1953
+#: Resources/Scripts/Gui/Preferences.as:1984
 msgctxt "Preferences"
 msgid "Server List URL"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1954
+#: Resources/Scripts/Gui/Preferences.as:1985
+msgctxt "Preferences"
+msgid "Server List Alt. URL"
+msgstr ""
+
+#: Resources/Scripts/Gui/Preferences.as:1986
 msgctxt "Preferences"
 msgid "Mod List URL"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1955
+#: Resources/Scripts/Gui/Preferences.as:1987
 msgctxt "Preferences"
 msgid "Allow Unicode"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1956
+#: Resources/Scripts/Gui/Preferences.as:1988
 msgctxt "Preferences"
 msgid "Screenshot Format"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1959
+#: Resources/Scripts/Gui/Preferences.as:1991
 msgctxt "Preferences"
 msgid "JPEG Quality"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1961
+#: Resources/Scripts/Gui/Preferences.as:1993
 msgctxt "Preferences"
 msgid "Enable Startup Window"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1963
+#: Resources/Scripts/Gui/Preferences.as:1995
 msgctxt "Preferences"
 msgid "Demo Recording"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1964
+#: Resources/Scripts/Gui/Preferences.as:1996
 msgctxt "Preferences"
 msgid "Start/Stop Recording"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1965
+#: Resources/Scripts/Gui/Preferences.as:1997
 msgctxt "Preferences"
 msgid "Auto Record"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1966
+#: Resources/Scripts/Gui/Preferences.as:1998
 msgctxt "Preferences"
 msgid "Auto Delete Old Demos"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1967
+#: Resources/Scripts/Gui/Preferences.as:1999
 msgctxt "Preferences"
 msgid "Max Stored Demos"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1970
+#: Resources/Scripts/Gui/Preferences.as:2002
 msgctxt "Preferences"
 msgid "Demo Playback"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1971
+#: Resources/Scripts/Gui/Preferences.as:2003
 msgctxt "Preferences"
 msgid "Pause/Resume"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1972
+#: Resources/Scripts/Gui/Preferences.as:2004
 msgctxt "Preferences"
 msgid "Speed Up"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1973
+#: Resources/Scripts/Gui/Preferences.as:2005
 msgctxt "Preferences"
 msgid "Slow Down"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1974
+#: Resources/Scripts/Gui/Preferences.as:2006
 msgctxt "Preferences"
 msgid "Seek Forward"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1975
+#: Resources/Scripts/Gui/Preferences.as:2007
 msgctxt "Preferences"
 msgid "Seek Backward"
 msgstr ""
 
-#: Resources/Scripts/Gui/Preferences.as:1976
+#: Resources/Scripts/Gui/Preferences.as:2008
 msgctxt "Preferences"
 msgid "Toggle Demo HUD"
 msgstr ""

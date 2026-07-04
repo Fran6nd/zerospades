@@ -190,12 +190,25 @@ namespace spades {
 				"Help Me",
 				"Thank You",
 			};
+			worldDisplayLabels = {
+				_Tr("Client", "Affirmative"),
+				_Tr("Client", "Behind Us!"),
+				_Tr("Client", "Spawnkiller!"),
+				_Tr("Client", "Negative"),
+				_Tr("Client", "Help Me Build"),
+				_Tr("Client", "Tear It Down!"),
+			};
+			playerDisplayLabels = {
+				_Tr("Client", "Affirmative"),
+				_Tr("Client", "Behind You"),
+				_Tr("Client", "Cover Me"),
+				_Tr("Client", "Negative"),
+				_Tr("Client", "Help Me"),
+				_Tr("Client", "Thank You"),
+			};
 
 			const float halfSliceRad = kSliceSpan * 0.5F - DEG2RAD(kSliceGapDeg) * 0.5F;
 			for (int i = 0; i < kSliceCount; i++) {
-				worldDisplayLabels[i] = _Tr("Client", worldLabels[i]);
-				playerDisplayLabels[i] = _Tr("Client", playerLabels[i]);
-				
 				float center = -M_PI_F * 0.5F + kSliceSpan * static_cast<float>(i);
 				sliceCenterAngles[i] = center;
 				float t1 = center - halfSliceRad;
