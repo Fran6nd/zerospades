@@ -15,7 +15,7 @@
  GNU General Public License for more details.
 
  You should have received a copy of the GNU General Public License
- along with ZeroSpades.  If not, see <http://www.gnu.org/licenses/>.
+ along with ZeroSpades.	 If not, see <http://www.gnu.org/licenses/>.
 
  */
 
@@ -64,8 +64,8 @@ namespace spades {
 					return 0.0F;
 				float frac = idxf - static_cast<float>(i);
 				float w = kHalfWidthTable[static_cast<size_t>(i)]
-				        + (kHalfWidthTable[static_cast<size_t>(i + 1)]
-				           - kHalfWidthTable[static_cast<size_t>(i)]) * frac;
+						+ (kHalfWidthTable[static_cast<size_t>(i + 1)]
+						   - kHalfWidthTable[static_cast<size_t>(i)]) * frac;
 				return w * r;
 			}
 
@@ -78,7 +78,7 @@ namespace spades {
 					if (w <= 0.0F)
 						continue;
 					r.DrawImage(nullptr, AABB2(center.x - w, center.y + static_cast<float>(y),
-					                           2.0F * w, 1.0F));
+											   2.0F * w, 1.0F));
 				}
 			}
 
@@ -100,26 +100,26 @@ namespace spades {
 						float strip = wOut - wIn;
 						if (strip > 0.0F) {
 							r.DrawImage(nullptr,
-							            AABB2(center.x - wOut,
-							                  center.y + static_cast<float>(y),
-							                  strip, 1.0F));
+										AABB2(center.x - wOut,
+											  center.y + static_cast<float>(y),
+											  strip, 1.0F));
 							r.DrawImage(nullptr,
-							            AABB2(center.x + wIn,
-							                  center.y + static_cast<float>(y),
-							                  strip, 1.0F));
+										AABB2(center.x + wIn,
+											  center.y + static_cast<float>(y),
+											  strip, 1.0F));
 						}
 					} else {
 						r.DrawImage(nullptr, AABB2(center.x - wOut,
-						                           center.y + static_cast<float>(y),
-						                           2.0F * wOut, 1.0F));
+												   center.y + static_cast<float>(y),
+												   2.0F * wOut, 1.0F));
 					}
 				}
 			}
 
 			// Annulus ∩ wedge. Rays at θ_c ± α are encoded as (s1,c1) and (s2,c2).
-			// Inside-wedge half-planes:   -x·s1 + y·c1 ≥ 0   and   x·s2 - y·c2 ≥ 0.
+			// Inside-wedge half-planes:   -x·s1 + y·c1 ≥ 0	  and	x·s2 - y·c2 ≥ 0.
 			void DrawSliceFill(IRenderer& r, Vector2 center, float rIn, float rOut,
-			                   float s1, float c1, float s2, float c2) {
+							   float s1, float c1, float s2, float c2) {
 				int yLo = static_cast<int>(floorf(-rOut));
 				int yHi = static_cast<int>(ceilf(rOut));
 				const float kInf = std::numeric_limits<float>::infinity();
@@ -155,9 +155,9 @@ namespace spades {
 						float xHi = std::min(xB, xHiW);
 						if (xHi > xLo) {
 							r.DrawImage(nullptr,
-							            AABB2(center.x + xLo,
-							                  center.y + static_cast<float>(y),
-							                  xHi - xLo, 1.0F));
+										AABB2(center.x + xLo,
+											  center.y + static_cast<float>(y),
+											  xHi - xLo, 1.0F));
 						}
 					};
 					if (yAbs < rIn) {
@@ -171,7 +171,7 @@ namespace spades {
 		} // namespace
 
 		PieMenuView::PieMenuView(Client* c, IFont* f, IFont* big)
-		    : renderer(c->GetRenderer()), font(f), bigFont(big) {
+			: renderer(c->GetRenderer()), font(f), bigFont(big) {
 			// Slice order: top, then clockwise. Affirmative/Negative occupy
 			// the same slots in both variants so the gesture transfers.
 			worldLabels = {
@@ -191,15 +191,12 @@ namespace spades {
 				"Thank You",
 			};
 
-			const float kPI = static_cast<float>(M_PI);
-			const float kSliceSpan = kPI * 2.0F / static_cast<float>(kSliceCount);
-			const float halfSliceRad = kSliceSpan * 0.5F - (kSliceGapDeg * kPI / 180.0F) * 0.5F;
+			const float halfSliceRad = kSliceSpan * 0.5F - DEG2RAD(kSliceGapDeg) * 0.5F;
 			for (int i = 0; i < kSliceCount; i++) {
 				worldDisplayLabels[i] = _Tr("Client", worldLabels[i]);
 				playerDisplayLabels[i] = _Tr("Client", playerLabels[i]);
 				
-				float center =
-					-kPI * 0.5F + kSliceSpan * static_cast<float>(i);
+				float center = -M_PI_F * 0.5F + kSliceSpan * static_cast<float>(i);
 				sliceCenterAngles[i] = center;
 				float t1 = center - halfSliceRad;
 				float t2 = center + halfSliceRad;
@@ -255,7 +252,7 @@ namespace spades {
 			static const std::string empty;
 			if (selection < 0 || selection >= kSliceCount)
 				return empty;
-			const auto& labels = (variant == Variant::Player) 
+			const auto& labels = (variant == Variant::Player)
 				? playerDisplayLabels : worldDisplayLabels;
 			return labels[static_cast<size_t>(selection)];
 		}
@@ -283,13 +280,10 @@ namespace spades {
 			// angle: 0 = up, clockwise. atan2(x, -y) gives that.
 			float angle = atan2f(cursor.x, -cursor.y);
 			if (angle < 0.0F)
-				angle += static_cast<float>(M_PI) * 2.0F;
+				angle += M_PI_F * 2.0F;
 
 			// kSliceCount equal slices, top slice centered at angle 0.
-			float span = static_cast<float>(M_PI) * 2.0F
-				/ static_cast<float>(kSliceCount);
-			int idx = static_cast<int>(
-				floorf((angle + span * 0.5F) / span)) % kSliceCount;
+			int idx = static_cast<int>(floorf((angle + kSliceSpan * 0.5F) / kSliceSpan)) % kSliceCount;
 			selection = idx;
 		}
 
@@ -299,9 +293,10 @@ namespace spades {
 
 			float sw = renderer.ScreenWidth();
 			float sh = renderer.ScreenHeight();
+			
 			Vector2 center = {sw * 0.5F, sh * 0.5F};
 
-			const auto& labels = (variant == Variant::Player) 
+			const auto& labels = (variant == Variant::Player)
 				? playerDisplayLabels : worldDisplayLabels;
 
 			// Ease-out open animation: scale from 0.85 → 1.0, alpha from 0 → 1.
@@ -325,12 +320,12 @@ namespace spades {
 				float rOutSlice = rOuter + 10.0F * h;
 				const SliceRay& rr = sliceRays[i];
 				DrawSliceFill(renderer, center, rInner, rOutSlice,
-				              rr.s1, rr.c1, rr.s2, rr.c2);
+							  rr.s1, rr.c1, rr.s2, rr.c2);
 			}
 
 			// Outer and inner outline rings (thin)
 			renderer.SetColorAlphaPremultiplied(MakeVector4(alpha * 0.5F, alpha * 0.5F,
-			                                                alpha * 0.5F, alpha * 0.5F));
+															alpha * 0.5F, alpha * 0.5F));
 			DrawAnnulusFill(renderer, center, rOuter - 1.0F, rOuter);
 			DrawAnnulusFill(renderer, center, rInner, rInner + 1.0F);
 
@@ -345,7 +340,7 @@ namespace spades {
 				Vector2 textPos = {p.x - sz.x * 0.5F, p.y - sz.y * 0.5F};
 
 				float textA = (0.85F + 0.15F * h) * alpha;
-				Vector4 textColor = MakeVector4(textA, textA, textA, textA);
+				Vector4 textColor = MakeVector4(1, 1, 1, textA);
 				Vector4 textShadow = MakeVector4(0, 0, 0, 0.6F * alpha);
 				font->DrawShadow(label, textPos, 1.0F, textColor, textShadow);
 			}
@@ -353,13 +348,13 @@ namespace spades {
 			// Center readout: currently selected slice label, scaled by its highlight
 			if (selection >= 0 && selection < kSliceCount && bigFont) {
 				float h = highlight[selection];
-				const std::string& center_label = labels[selection];
-				Vector2 sz = bigFont->Measure(center_label);
+				const std::string& centerLabel = labels[selection];
+				Vector2 sz = bigFont->Measure(centerLabel);
 				Vector2 pos = {center.x - sz.x * 0.5F, center.y - sz.y * 0.5F};
 				float a = h * alpha;
 				Vector4 col = MakeVector4(a, a, a, a);
 				Vector4 shd = MakeVector4(0, 0, 0, 0.7F * a);
-				bigFont->DrawShadow(center_label, pos, 1.0F, col, shd);
+				bigFont->DrawShadow(centerLabel, pos, 1.0F, col, shd);
 			}
 		}
 	} // namespace client

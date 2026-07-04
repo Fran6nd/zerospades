@@ -15,7 +15,7 @@
  GNU General Public License for more details.
 
  You should have received a copy of the GNU General Public License
- along with ZeroSpades.  If not, see <http://www.gnu.org/licenses/>.
+ along with ZeroSpades.	 If not, see <http://www.gnu.org/licenses/>.
 
  */
 
@@ -38,6 +38,7 @@ namespace spades {
 			enum Slice { None = -1 };
 
 			static constexpr int kSliceCount = 6;
+			static constexpr float kSliceSpan = M_PI_F * 2.0F / static_cast<float>(kSliceCount);
 
 		private:
 			IRenderer& renderer;
