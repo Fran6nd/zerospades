@@ -25,6 +25,14 @@
 
 namespace spades {
 
+	bool StringContainsCaseInsensitive(string text, string pattern) {
+		for (int i = text.length - 1; i >= 0; i--)
+			text[i] = ToLower(text[i]);
+		for (int i = pattern.length - 1; i >= 0; i--)
+			pattern[i] = ToLower(pattern[i]);
+		return text.findFirst(pattern) >= 0;
+	}
+
 	class RefreshButton : spades::ui::SimpleButton {
 		RefreshButton(spades::ui::UIManager@ manager) { super(manager); }
 		void Render() {
@@ -39,25 +47,10 @@ namespace spades {
 	}
 
 	class ProtocolButton : spades::ui::SimpleButton {
-		ProtocolButton(spades::ui::UIManager @manager) {
+		ProtocolButton(spades::ui::UIManager@ manager) {
 			super(manager);
 			Toggle = true;
 		}
-	}
-
-	uint8 ToLower(uint8 c) {
-		if (c >= uint8(0x41) and c <= uint8(0x5a)) {
-			return uint8(c - 0x41 + 0x61);
-		} else {
-			return c;
-		}
-	}
-	bool StringContainsCaseInsensitive(string text, string pattern) {
-		for (int i = text.length - 1; i >= 0; i--)
-			text[i] = ToLower(text[i]);
-		for (int i = pattern.length - 1; i >= 0; i--)
-			pattern[i] = ToLower(pattern[i]);
-		return text.findFirst(pattern) >= 0;
 	}
 
 	// Transparent container panel used for tab switching
@@ -378,7 +371,7 @@ namespace spades {
 					errorView.Visible = false;
 					serverPanel.AddChild(errorView);
 				}
-				
+
 				// Server filter footer elements
 				{
 					spades::ui::Label label(Manager);
@@ -706,7 +699,7 @@ namespace spades {
 			}
 
 			ModListModel model(Manager, modsHelper, list, orders, exists, modsCheckColWidth,
-			                   modsOrderColWidth, modsNameColWidth, modsCountColWidth, modsSizeColWidth);
+							   modsOrderColWidth, modsNameColWidth, modsCountColWidth, modsSizeColWidth);
 			@modsList.Model = model;
 			@model.ItemActivated = ModListItemEventHandler(this.OnModToggle);
 			UpdateModsStatus();
@@ -736,7 +729,7 @@ namespace spades {
 				} else {
 					string label = "" + done + " / " + total;
 					if (item.length > 0)
-						label += "  —  " + item;
+						label += "	—  " + item;
 					modsStatusLabel.Text = label;
 					modsProgressBar.Fraction = float(done) / float(total);
 				}

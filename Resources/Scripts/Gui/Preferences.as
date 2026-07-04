@@ -718,13 +718,6 @@ namespace spades {
 		}
 	}
 
-	uint8 ToUpper(uint8 c) {
-		if (c >= uint8(0x61) and c <= uint8(0x7a)) {
-			return uint8(c - 0x61 + 0x41);
-		} else {
-			return c;
-		}
-	}
 	class ConfigHotKeyField : spades::ui::UIElement {
 		ConfigItem@ config;
 		private bool hover;

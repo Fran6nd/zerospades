@@ -30,6 +30,19 @@ namespace spades {
 	int Clamp(int v, int lo, int hi) { return Min(Max(v, lo), hi); }
 	float Clamp(float v, float lo, float hi) { return Min(Max(v, lo), hi); }
 
+	uint8 ToUpper(uint8 c) { return (c >= uint8(0x61) and c <= uint8(0x7A)) ? uint8(c - 0x61 + 0x41) : c; }
+	uint8 ToLower(uint8 c) { return (c >= uint8(0x41) and c <= uint8(0x5A)) ? uint8(c - 0x41 + 0x61) : c; }
+	string ToUpperCase(string s) {
+		for (uint i = 0, len = s.length; i < len; i++)
+			s[i] = ToUpper(s[i]);
+		return s;
+	}
+	string ToLowerCase(string s) {
+		for (uint i = 0, len = s.length; i < len; i++)
+			s[i] = ToLower(s[i]);
+		return s;
+	}
+
 	class TargetParam {
 		bool drawLines;
 		bool useTStyle;
