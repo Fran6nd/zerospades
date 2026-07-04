@@ -75,8 +75,8 @@ namespace spades {
 				fbColorFormat = VK_FORMAT_R8G8B8A8_UNORM;
 			}
 
-			// Choose depth format: prefer D24_UNORM_S8_UINT, but fall back to D32_SFLOAT_S8_UINT
-			// if not supported (common on Apple Silicon / MoltenVK)
+			// Prefer D24_UNORM_S8_UINT, fall back to depth-only D32_SFLOAT
+			// (stencil is unused by this renderer).
 			VkFormatProperties formatProps;
 			vkGetPhysicalDeviceFormatProperties(device->GetPhysicalDevice(),
 			                                     VK_FORMAT_D24_UNORM_S8_UINT, &formatProps);
@@ -85,8 +85,8 @@ namespace spades {
 				fbDepthFormat = VK_FORMAT_D24_UNORM_S8_UINT;
 				SPLog("Using D24_UNORM_S8_UINT depth format");
 			} else {
-				fbDepthFormat = VK_FORMAT_D32_SFLOAT_S8_UINT;
-				SPLog("D24_UNORM_S8_UINT not supported, using D32_SFLOAT_S8_UINT depth format");
+				fbDepthFormat = VK_FORMAT_D32_SFLOAT;
+				SPLog("D24_UNORM_S8_UINT not supported, using depth-only D32_SFLOAT depth format");
 			}
 
 			CreateRenderPass();
@@ -103,15 +103,35 @@ namespace spades {
 			renderColorImage->CreateSampler(VK_FILTER_LINEAR, VK_FILTER_LINEAR,
 			                                VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, false);
 
-			renderDepthImage = Handle<VulkanImage>::New(
-			    device, renderWidth, renderHeight, fbDepthFormat,
-			    VK_IMAGE_TILING_OPTIMAL,
-			    VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT |
-			        VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
-			    VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, sampleCount);
-			renderDepthImage->CreateImageView(VK_IMAGE_ASPECT_DEPTH_BIT);
-			renderDepthImage->CreateSampler(VK_FILTER_NEAREST, VK_FILTER_NEAREST,
-			                                VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, false);
+			// No SAMPLED usage on the depth attachment at 1x: MoltenVK on Intel Macs
+			// gives the scene encoder a nil Metal depth attachment when the depth
+			// texture is renderable+sampled, silently disabling the depth test.
+			// Consumers sample sceneDepthSampleImage instead. Under MSAA the
+			// depth-resolve filter must sample the attachment, so SAMPLED stays.
+			{
+				VkImageUsageFlags depthUsage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT |
+				                               VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+				if (useMSAA)
+					depthUsage |= VK_IMAGE_USAGE_SAMPLED_BIT;
+				renderDepthImage = Handle<VulkanImage>::New(
+				    device, renderWidth, renderHeight, fbDepthFormat,
+				    VK_IMAGE_TILING_OPTIMAL, depthUsage,
+				    VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, sampleCount);
+				renderDepthImage->CreateImageView(VK_IMAGE_ASPECT_DEPTH_BIT);
+				renderDepthImage->CreateSampler(VK_FILTER_NEAREST, VK_FILTER_NEAREST,
+				                                VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, false);
+			}
+
+			if (!useMSAA) {
+				sceneDepthSampleImage = Handle<VulkanImage>::New(
+				    device, renderWidth, renderHeight, fbDepthFormat,
+				    VK_IMAGE_TILING_OPTIMAL,
+				    VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
+				    VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+				sceneDepthSampleImage->CreateImageView(VK_IMAGE_ASPECT_DEPTH_BIT);
+				sceneDepthSampleImage->CreateSampler(VK_FILTER_NEAREST, VK_FILTER_NEAREST,
+				                                     VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, false);
+			}
 
 			// Single-sample resolve targets sampled by the post-process chain. Color
 			// is filled by vkCmdResolveImage; depth by a small depth-resolve pass
@@ -711,13 +731,15 @@ namespace spades {
 			srcBarriers[0].dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
 
 			srcBarriers[1].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-			srcBarriers[1].oldLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+			srcBarriers[1].oldLayout = useMSAA ? VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+			                                   : VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 			srcBarriers[1].newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
 			srcBarriers[1].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 			srcBarriers[1].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 			srcBarriers[1].image = srcDepthImage->GetImage();
 			srcBarriers[1].subresourceRange = {VK_IMAGE_ASPECT_DEPTH_BIT, 0, 1, 0, 1};
-			srcBarriers[1].srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
+			srcBarriers[1].srcAccessMask = useMSAA ? VK_ACCESS_SHADER_READ_BIT
+			                                       : VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
 			srcBarriers[1].dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
 
 			// Transition destination images to TRANSFER_DST_OPTIMAL
@@ -883,13 +905,15 @@ namespace spades {
 			srcBarriers[0].dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
 
 			srcBarriers[1].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-			srcBarriers[1].oldLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+			srcBarriers[1].oldLayout = useMSAA ? VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+			                                   : VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 			srcBarriers[1].newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
 			srcBarriers[1].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 			srcBarriers[1].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 			srcBarriers[1].image = renderDepthImage->GetImage();
 			srcBarriers[1].subresourceRange = {VK_IMAGE_ASPECT_DEPTH_BIT, 0, 1, 0, 1};
-			srcBarriers[1].srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
+			srcBarriers[1].srcAccessMask = useMSAA ? VK_ACCESS_SHADER_READ_BIT
+			                                       : VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
 			srcBarriers[1].dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
 
 			// Transition destination images to TRANSFER_DST_OPTIMAL
@@ -954,7 +978,7 @@ namespace spades {
 
 			postBarriers[1].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
 			postBarriers[1].oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-			postBarriers[1].newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+			postBarriers[1].newLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 			postBarriers[1].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 			postBarriers[1].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 			postBarriers[1].image = renderDepthImage->GetImage();
@@ -986,6 +1010,67 @@ namespace spades {
 				VK_PIPELINE_STAGE_TRANSFER_BIT,
 				VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
 				0, 0, nullptr, 0, nullptr, 4, postBarriers);
+		}
+
+		void VulkanFramebufferManager::CopySceneDepthForSampling(VkCommandBuffer commandBuffer) {
+			SPADES_MARK_FUNCTION();
+
+			if (useMSAA)
+				return;
+
+			VkImageMemoryBarrier pre[2]{};
+			pre[0].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+			pre[0].oldLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+			pre[0].newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+			pre[0].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+			pre[0].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+			pre[0].image = renderDepthImage->GetImage();
+			pre[0].subresourceRange = {VK_IMAGE_ASPECT_DEPTH_BIT, 0, 1, 0, 1};
+			pre[0].srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+			pre[0].dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+
+			pre[1].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+			pre[1].oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+			pre[1].newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+			pre[1].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+			pre[1].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+			pre[1].image = sceneDepthSampleImage->GetImage();
+			pre[1].subresourceRange = {VK_IMAGE_ASPECT_DEPTH_BIT, 0, 1, 0, 1};
+			pre[1].srcAccessMask = 0;
+			pre[1].dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+
+			vkCmdPipelineBarrier(commandBuffer,
+				VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+				VK_PIPELINE_STAGE_TRANSFER_BIT,
+				0, 0, nullptr, 0, nullptr, 2, pre);
+
+			VkImageCopy depthCopy{};
+			depthCopy.srcSubresource = {VK_IMAGE_ASPECT_DEPTH_BIT, 0, 0, 1};
+			depthCopy.dstSubresource = {VK_IMAGE_ASPECT_DEPTH_BIT, 0, 0, 1};
+			depthCopy.extent = {(uint32_t)renderWidth, (uint32_t)renderHeight, 1};
+			vkCmdCopyImage(commandBuffer,
+			               renderDepthImage->GetImage(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+			               sceneDepthSampleImage->GetImage(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+			               1, &depthCopy);
+
+			VkImageMemoryBarrier post[2]{};
+			post[0] = pre[0];
+			post[0].oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+			post[0].newLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+			post[0].srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+			post[0].dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT |
+			                        VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+
+			post[1] = pre[1];
+			post[1].oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+			post[1].newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+			post[1].srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+			post[1].dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+
+			vkCmdPipelineBarrier(commandBuffer,
+				VK_PIPELINE_STAGE_TRANSFER_BIT,
+				VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+				0, 0, nullptr, 0, nullptr, 2, post);
 		}
 
 		VulkanFramebufferManager::BufferHandle VulkanFramebufferManager::StartPostProcessing() {
