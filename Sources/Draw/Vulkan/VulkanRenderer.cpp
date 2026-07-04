@@ -2119,12 +2119,17 @@ namespace spades {
 				barriers[1].srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
 				barriers[1].dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
 
-				// Under MSAA the depth (barriers[1]) was already transitioned to
-				// SHADER_READ and resolved above, so only transition the colour.
+				// Colour only: under MSAA the depth was already transitioned and
+				// resolved above; at 1x it stays in ATTACHMENT layout (never sampled).
 				vkCmdPipelineBarrier(commandBuffer,
 					VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
 					VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-					0, 0, nullptr, 0, nullptr, msaaScene ? 1u : 2u, barriers);
+					0, 0, nullptr, 0, nullptr, 1u, barriers);
+			}
+
+			// Depth is final here (sprites are colour-only, water doesn't write depth).
+			if (!msaaScene) {
+				framebufferManager->CopySceneDepthForSampling(commandBuffer);
 			}
 
 			// Clear transparent buffers once they've been drawn. Non-soft particles
@@ -2191,7 +2196,7 @@ namespace spades {
 				vkCmdPipelineBarrier(commandBuffer,
 					VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
 					VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
-					0, 0, nullptr, 0, nullptr, 2, backToAttachment);
+					0, 0, nullptr, 0, nullptr, msaaScene ? 2u : 1u, backToAttachment);
 
 				// Begin water render pass with LOAD_OP to preserve scene content
 				VkRenderPassBeginInfo waterRenderPassInfo{};
@@ -2275,7 +2280,7 @@ namespace spades {
 				vkCmdPipelineBarrier(commandBuffer,
 					VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
 					VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-					0, 0, nullptr, 0, nullptr, 2, waterPostBarriers);
+					0, 0, nullptr, 0, nullptr, msaaScene ? 2u : 1u, waterPostBarriers);
 			}
 
 			// Soft particles (smoke/blood) are drawn here, after water, so the water
