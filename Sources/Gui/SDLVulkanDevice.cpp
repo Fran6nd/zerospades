@@ -199,8 +199,7 @@ namespace spades {
 					// alignment; MoltenVK's argument buffers sub-allocate descriptor
 					// buffers at 16-byte offsets, so descriptors are read from wrong
 					// offsets there. Bind descriptors discretely instead.
-					mvkConfig.useMetalArgumentBuffers =
-					    static_cast<decltype(mvkConfig.useMetalArgumentBuffers)>(0); // NEVER
+					mvkConfig.useMetalArgumentBuffers = VK_FALSE;
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
 					vkSetMoltenVKConfigurationMVK(VK_NULL_HANDLE, &mvkConfig, &configSize);
