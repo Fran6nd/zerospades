@@ -96,6 +96,9 @@ namespace spades {
 			Handle<VulkanImage> renderColorImage;
 			Handle<VulkanImage> renderDepthImage;
 
+			// Sampled copy of the scene depth (the 1x attachment has no SAMPLED usage)
+			Handle<VulkanImage> sceneDepthSampleImage;
+
 			// Single-sample resolve targets for the scene attachments. Only created
 			// when useMSAA; the post-process chain and any code that *reads* the
 			// finished scene samples these instead of the multisampled attachments
@@ -155,9 +158,12 @@ namespace spades {
 				return useMSAA ? renderColorResolveImage : renderColorImage;
 			}
 			Handle<VulkanImage> GetResolvedDepthImage() {
-				return useMSAA ? renderDepthResolveImage : renderDepthImage;
+				return useMSAA ? renderDepthResolveImage : sceneDepthSampleImage;
 			}
 			bool IsMSAA() const { return useMSAA; }
+
+			// Depth in/out: ATTACHMENT_OPTIMAL; copy ends SHADER_READ_ONLY. No-op under MSAA.
+			void CopySceneDepthForSampling(VkCommandBuffer commandBuffer);
 			VkSampleCountFlagBits GetSampleCount() const { return sampleCount; }
 
 			// Resolves the multisampled scene colour into renderColorResolveImage

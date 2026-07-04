@@ -195,6 +195,12 @@ namespace spades {
 				    vkGetMoltenVKConfigurationMVK(VK_NULL_HANDLE, &mvkConfig, &configSize);
 				if (cfgRes == VK_SUCCESS || cfgRes == VK_INCOMPLETE) {
 					mvkConfig.useMTLHeap = MVK_CONFIG_USE_MTLHEAP_NEVER;
+					// Intel Mac Metal requires 256-byte constant-buffer offset
+					// alignment; MoltenVK's argument buffers sub-allocate descriptor
+					// buffers at 16-byte offsets, so descriptors are read from wrong
+					// offsets there. Bind descriptors discretely instead.
+					mvkConfig.useMetalArgumentBuffers =
+					    static_cast<decltype(mvkConfig.useMetalArgumentBuffers)>(0); // NEVER
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
 					vkSetMoltenVKConfigurationMVK(VK_NULL_HANDLE, &mvkConfig, &configSize);
