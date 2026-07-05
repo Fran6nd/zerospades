@@ -1072,43 +1072,13 @@ namespace spades {
 		void VulkanWaterRenderer::RenderDynamicLightPass(VkCommandBuffer commandBuffer, std::vector<void*> lights) {
 			SPADES_MARK_FUNCTION();
 
-			if (lights.empty() || numIndices == 0)
-				return;
-
-			// Bind pipeline for dynamic lights
-			// Note: This would use a specialized water dynamic light pipeline
-			// For now, using the sunlight pipeline as placeholder until shaders are ready
-			if (!waterPipeline)
-				return;
-
-			vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, waterPipeline->GetPipeline());
-
-			// Set viewport and scissor
-			VkExtent2D extent = device->GetSwapchainExtent();
-			VkViewport vp{};
-			vp.x = 0.0f;
-			vp.y = (float)extent.height;
-			vp.width = (float)extent.width;
-			vp.height = -(float)extent.height;
-			vp.minDepth = 0.0f;
-			vp.maxDepth = 1.0f;
-			vkCmdSetViewport(commandBuffer, 0, 1, &vp);
-
-			VkRect2D scissor{};
-			scissor.offset = {0, 0};
-			scissor.extent = extent;
-			vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
-
-			// Bind descriptor sets for textures and light uniforms
-
-			// Bind vertex/index buffers
-			VkDeviceSize offset = 0;
-			VkBuffer vbuf = vertexBuffer->GetBuffer();
-			vkCmdBindVertexBuffers(commandBuffer, 0, 1, &vbuf, &offset);
-			vkCmdBindIndexBuffer(commandBuffer, indexBuffer->GetBuffer(), 0, VK_INDEX_TYPE_UINT32);
-
-			// Draw water with dynamic lights
-			vkCmdDrawIndexed(commandBuffer, numIndices, 1, 0, 0, 0);
+			// Intentionally a no-op: the GL renderer's water has no dynamic
+			// light pass either, so parity is "no reaction to dynamic lights".
+			// The previous placeholder re-bound the sunlight pipeline and
+			// re-drew the water, which would double-shade the surface if this
+			// ever got wired into the frame graph.
+			(void)commandBuffer;
+			(void)lights;
 		}
 
 	void VulkanWaterRenderer::MarkUpdate(int x, int y) {
@@ -1521,6 +1491,9 @@ void VulkanWaterRenderer::UpdateUniformBuffers(uint32_t frameIndex) {
 
 		waterPushConstants.viewOriginVector = MakeVector4(sceneDef.viewOrigin.x, sceneDef.viewOrigin.y, sceneDef.viewOrigin.z, 0.0f);
 		waterPushConstants.displaceScale = MakeVector2(1.0f / tanf(sceneDef.fovX * 0.5f), 1.0f / tanf(sceneDef.fovY * 0.5f));
+
+		Vector3 sunDir = renderer.GetSunDirection();
+		waterPushConstants.sunDirection = MakeVector4(sunDir.x, sunDir.y, sunDir.z, 0.0f);
 	}
 
 	void VulkanWaterRenderer::CleanupDescriptorResources() {
