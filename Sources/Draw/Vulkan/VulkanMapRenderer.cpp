@@ -19,6 +19,7 @@
  */
 
 #include "VulkanMapRenderer.h"
+#include "VulkanSpirvCache.h"
 #include "VulkanMapChunk.h"
 #include "VulkanRenderer.h"
 #include "VulkanShadowMapRenderer.h"
@@ -127,7 +128,20 @@ namespace spades {
 
 		void VulkanMapRenderer::PreloadShaders(VulkanRenderer& r) {
 			SPADES_MARK_FUNCTION();
-			// TODO: Preload shaders when shader system is implemented
+			SPLog("Preloading Vulkan map shaders");
+
+			SPADES_SETTING(r_physicalLighting);
+			if ((int)r_physicalLighting != 0) {
+				SpirvCache::Preload({"Shaders/Vulkan/BasicMapPhys.vert.spv",
+				                     "Shaders/Vulkan/BasicMapPhys.frag.spv"});
+			} else {
+				SpirvCache::Preload({"Shaders/Vulkan/BasicMap.vert.spv",
+				                     "Shaders/Vulkan/BasicMap.frag.spv"});
+			}
+			SpirvCache::Preload({"Shaders/Vulkan/BasicBlockDynamicLit.vert.spv",
+			                     "Shaders/Vulkan/BasicBlockDynamicLit.frag.spv",
+			                     "Shaders/Vulkan/ShadowMap.vert.spv",
+			                     "Shaders/Vulkan/ShadowMap.frag.spv"});
 		}
 
 		void VulkanMapRenderer::GameMapChanged(int x, int y, int z, client::GameMap* map) {
@@ -453,14 +467,7 @@ namespace spades {
 
 			// Load SPIR-V shaders
 			auto LoadSPIRVFile = [](const char* filename) -> std::vector<uint32_t> {
-				std::unique_ptr<IStream> stream = FileManager::OpenForReading(filename);
-				if (!stream) {
-					SPRaise("Failed to open shader file: %s", filename);
-				}
-				size_t size = stream->GetLength();
-				std::vector<uint32_t> code(size / 4);
-				stream->Read(code.data(), size);
-				return code;
+				return SpirvCache::Load(filename);
 			};
 
 			std::vector<uint32_t> vertCode, fragCode;

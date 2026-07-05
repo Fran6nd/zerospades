@@ -64,6 +64,7 @@ namespace spades {
 				Vector4 viewOriginVector;
 				Vector2 displaceScale;
 				Vector2 _pad1;
+				Vector4 sunDirection;
 			} waterPushConstants;
 
 		public:

@@ -19,6 +19,7 @@
  */
 
 #include "VulkanOptimizedVoxelModel.h"
+#include "VulkanSpirvCache.h"
 #include "VulkanRenderer.h"
 #include "VulkanMapRenderer.h"
 #include "VulkanBuffer.h"
@@ -45,7 +46,22 @@ namespace spades {
 
 		void VulkanOptimizedVoxelModel::PreloadShaders(VulkanRenderer& renderer) {
 			SPADES_MARK_FUNCTION();
-			// TODO: Preload shaders when shader system is complete
+			SPLog("Preloading Vulkan model shaders");
+
+			SPADES_SETTING(r_physicalLighting);
+			if ((int)r_physicalLighting != 0) {
+				SpirvCache::Preload({"Shaders/Vulkan/BasicModelVertexColorPhys.vert.spv",
+				                     "Shaders/Vulkan/BasicModelVertexColorPhys.frag.spv",
+				                     "Shaders/Vulkan/BasicModelVertexColorPhysGhost.frag.spv"});
+			} else {
+				SpirvCache::Preload({"Shaders/Vulkan/BasicModelVertexColor.vert.spv",
+				                     "Shaders/Vulkan/BasicModelVertexColor.frag.spv",
+				                     "Shaders/Vulkan/BasicModelVertexColorGhost.frag.spv"});
+			}
+			SpirvCache::Preload({"Shaders/Vulkan/ModelDynamicLit.vert.spv",
+			                     "Shaders/Vulkan/ModelDynamicLit.frag.spv",
+			                     "Shaders/Vulkan/ModelShadowMap.vert.spv",
+			                     "Shaders/Vulkan/ShadowMap.frag.spv"});
 		}
 
 		void VulkanOptimizedVoxelModel::InvalidateSharedPipeline(gui::SDLVulkanDevice* device) {
@@ -595,14 +611,7 @@ namespace spades {
 
 			// Depth-only vertex shader; reuse the empty map-chunk shadow fragment shader.
 			auto LoadSPIRVFile = [](const char* filename) -> std::vector<uint32_t> {
-				std::unique_ptr<IStream> stream = FileManager::OpenForReading(filename);
-				if (!stream) {
-					SPRaise("Failed to open shader file: %s", filename);
-				}
-				size_t size = stream->GetLength();
-				std::vector<uint32_t> code(size / 4);
-				stream->Read(code.data(), size);
-				return code;
+				return SpirvCache::Load(filename);
 			};
 
 			std::vector<uint32_t> vertCode = LoadSPIRVFile("Shaders/Vulkan/ModelShadowMap.vert.spv");
@@ -1077,14 +1086,7 @@ namespace spades {
 
 			// Load SPIR-V shaders
 			auto LoadSPIRVFile = [](const char* filename) -> std::vector<uint32_t> {
-				std::unique_ptr<IStream> stream = FileManager::OpenForReading(filename);
-				if (!stream) {
-					SPRaise("Failed to open shader file: %s", filename);
-				}
-				size_t size = stream->GetLength();
-				std::vector<uint32_t> code(size / 4);
-				stream->Read(code.data(), size);
-				return code;
+				return SpirvCache::Load(filename);
 			};
 
 			std::vector<uint32_t> vertCode, fragCode;

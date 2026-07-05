@@ -70,12 +70,12 @@ layout(push_constant) uniform WaterPushConstants {
 	vec4 viewOriginVector; // use .xyz
 	vec2 displaceScale;
 	vec2 _pad1;
+	vec4 sunDirection;
 } waterPC;
 
 layout(location = 0) out vec4 fragColor;
 
-// Sun direction from OpenGL reference: (0, -1, -1) normalized
-const vec3 sunDirection = normalize(vec3(0.0, -1.0, -1.0));
+
 
 // Sun lighting: matches OpenGL implementation
 // Returns vec3(0.6) for full sunlight (shadows not implemented yet)
@@ -198,7 +198,7 @@ void main() {
 	// specular reflection
 	if (dot(sunlight, vec3(1.0)) > 0.0001) {
 		vec3 refl = reflect(ongoing, wave);
-		float spec = max(dot(refl, sunDirection), 0.0);
+		float spec = max(dot(refl, waterPC.sunDirection.xyz), 0.0);
 		spec *= spec; // ^2
 		spec *= spec; // ^4
 		spec *= spec; // ^16

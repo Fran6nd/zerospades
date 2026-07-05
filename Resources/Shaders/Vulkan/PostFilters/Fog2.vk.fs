@@ -161,8 +161,9 @@ void main() {
     vec3 radiosityContrib = radiosityFactor                          * scale
                           * pc.radiosityScale.xyz;
 
-    // Directional brightness gradient (sun at (0, -1, -1)).
-    vec3  sunDir = normalize(vec3(0.0, -1.0, -1.0));
+    // Directional brightness gradient. Sun direction packed into the free
+    // .w slots of the scale vectors (keeps push constants at 144 bytes).
+    vec3  sunDir = normalize(vec3(pc.sunlightScale.w, pc.ambientScale.w, pc.radiosityScale.w));
     float bright = dot(sunDir, normalize(worldPos.xyz));
     sunlightContrib  *= bright * 0.5 + 1.0;
     ambientContrib   *= bright * 0.5 + 1.0;
