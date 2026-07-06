@@ -47,9 +47,9 @@ namespace spades {
 		struct Fog2PushConstants {
 			float viewProjInv[16];      // [0..63]   mat4 viewProjectionMatrixInv
 			float viewOriginFogDist[4]; // [64..79]  xyz=viewOrigin, w=fogDistance
-			float sunlightScale[4];     // [80..95]  xyz used
-			float ambientScale[4];      // [96..111] xyz used
-			float radiosityScale[4];    // [112..127] xyz used
+			float sunlightScale[4];     // [80..95]  xyz scale, w = sunDir.x
+			float ambientScale[4];      // [96..111] xyz scale, w = sunDir.y
+			float radiosityScale[4];    // [112..127] xyz scale, w = sunDir.z
 			float ditherFrame[4];       // [128..143] xy=per-frame noise seed
 		};
 		static_assert(sizeof(Fog2PushConstants) == 144, "Fog2PushConstants must be 144 bytes");
@@ -509,6 +509,12 @@ namespace spades {
 				pc1.viewAxisFront[1] = def.viewAxis[2].y;
 				pc1.viewAxisFront[2] = def.viewAxis[2].z;
 
+				// Sun direction packed into the free .w slots (see Fog.vk.fs).
+				Vector3 sunDir1 = renderer.GetSunDirection();
+				pc1.viewOriginPad[3] = sunDir1.x;
+				pc1.viewAxisUp[3]    = sunDir1.y;
+				pc1.viewAxisSide[3]  = sunDir1.z;
+
 				// tan(fov/2). Y is pre-negated to flip the per-pixel view-ray
 				// direction vertically, matching the negative-height viewport
 				// used during the scene pass (the texture stores top-of-view at
@@ -578,6 +584,12 @@ namespace spades {
 				pc2.radiosityScale[0] = ft.x * radiosityBrightness + radiosityOffset;
 				pc2.radiosityScale[1] = ft.y * radiosityBrightness + radiosityOffset;
 				pc2.radiosityScale[2] = ft.z * radiosityBrightness + radiosityOffset;
+
+				// Sun direction packed into the free .w slots (see Fog2.vk.fs).
+				Vector3 sunDir = renderer.GetSunDirection();
+				pc2.sunlightScale[3]  = sunDir.x;
+				pc2.ambientScale[3]   = sunDir.y;
+				pc2.radiosityScale[3] = sunDir.z;
 
 				std::uint32_t frame = frameCounter++ % 4;
 				pc2.ditherFrame[0] = (float)(frame & 1) * 0.5F;

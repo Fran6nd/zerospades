@@ -83,6 +83,7 @@ layout(push_constant) uniform WaterPushConstants {
 	vec4 viewOriginVector; // use .xyz
 	vec2 displaceScale;
 	vec2 _pad1;
+	vec4 sunDirection;
 } waterPC;
 
 // Matrices UBO for viewMatrix (needed for SSR calculations)
@@ -99,8 +100,7 @@ layout(std140, binding = 5) uniform WaterMatricesUBO {
 
 layout(location = 0) out vec4 fragColor;
 
-// Sun direction from OpenGL reference: (0, -1, -1) normalized
-const vec3 sunDirection = normalize(vec3(0.0, -1.0, -1.0));
+
 
 // GGX distribution function for specular
 float GGXDistribution(float m, float dotHalf) {
@@ -396,7 +396,7 @@ void main() {
 	if (dot(sunlight, vec3(1.0)) > 0.0001 && reflectedSky) {
 		// can't use CockTorrance here -- CockTorrance's fresenel term
 		// is hard-coded for higher roughness values
-		vec3 lightVec = vec3(0.0, 1.0, 1.0);
+		vec3 lightVec = -waterPC.sunDirection.xyz * 1.4142135;
 		vec3 halfVec = lightVec + ongoing;
 		halfVec = (dot(halfVec, halfVec) < 0.00000000001)
 			? vec3(1.0, 0.0, 0.0) : normalize(halfVec);
