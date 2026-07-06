@@ -234,7 +234,9 @@ void main() {
     total = mix(total, fogDensFunc(zMaxTime), 0.04);
     total /= fogDensFunc(fogDistanceTime + 1e-10);
 
-    vec3 sunDir = normalize(vec3(0.0, -1.0, -1.0));
+    // Sun direction packed into the free .w slots of the view-axis vectors
+    // (filled at render time from renderer.GetSunDirection()).
+    vec3 sunDir = normalize(vec3(pc.viewOriginPad.w, pc.viewAxisUp.w, pc.viewAxisSide.w));
     float bright = dot(sunDir, normalize(viewDir));
     total *= 0.8 + bright * 0.3;
     bright = exp2(bright * 16.0 - 15.0);
