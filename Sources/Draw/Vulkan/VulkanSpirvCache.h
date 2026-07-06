@@ -1,5 +1,5 @@
 /*
- Copyright (c) 2013 Fran6nd
+ Copyright (c) 2026 Fran6nd, ZeroSpades developers.
 
  This file is part of ZeroSpades, a fork of OpenSpades.
 
