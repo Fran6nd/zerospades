@@ -41,6 +41,7 @@ layout(location = 0) in uvec3 positionAttribute;
 layout(location = 1) in uvec2 aoCoordAttribute;
 layout(location = 2) in uvec3 colorAttribute;  // colorRed, colorGreen, colorBlue
 layout(location = 3) in ivec3 normalAttribute;
+layout(location = 4) in ivec3 fixedPositionAttribute; // face-center * 2 (chunk-local)
 
 layout(location = 0) out vec4 color;          // xyz = linearized vertex color, w = sun lambert
 layout(location = 1) out vec3 ambientLight;    // ambient lighting component (hemisphere fallback)
@@ -90,7 +91,12 @@ void main() {
 	// mapShadowCoord.y -= mapShadowCoord.z (diagonal sun projection)
 	// mapShadowCoord.z /= 255.0 (normalize height)
 	// mapShadowCoord.xy /= 512.0 (normalize to texture coords)
-	vec3 wPos = worldPos.xyz;
+	// Use the face-center "fixed position" (matches GL fixedPositionAttribute)
+	// instead of the raw vertex position. Vertices lie exactly on voxel
+	// boundaries; sampling the map-shadow texture there picks the neighboring
+	// column and leaks a lit sliver along face edges (e.g. top of north faces
+	// seen from the south). The face center is safely inside the voxel.
+	vec3 wPos = vec3(fixedPositionAttribute) * 0.5 + pushConstants.modelOrigin;
 	shadowCoord = vec3(wPos.x / 512.0, (wPos.y - wPos.z) / 512.0, wPos.z / 255.0);
 
 	// Fog density based on horizontal distance (matching SW/GL implementation)
@@ -102,7 +108,7 @@ void main() {
 	// AO 3D-texture coords. World position with z+1 (the 0-th slice is the
 	// "below ground" guard plane), divided by texture extent. Map dimensions
 	// are 512x512x64 in this game, so the texture is 512x512x65.
-	aoCoord = (worldPos.xyz + vec3(0.0, 0.0, 1.0)) / vec3(512.0, 512.0, 65.0);
+	aoCoord = (wPos + vec3(0.0, 0.0, 1.0)) / vec3(512.0, 512.0, 65.0);
 
 	// 2D AO atlas coords (matches GL BasicBlock.vs). The atlas is 256x256 with
 	// 16x16 precomputed AO tiles; aoCoordAttribute holds tile_x*16 + corner
@@ -110,7 +116,7 @@ void main() {
 	ambientOcclusionCoord = (vec2(aoCoordAttribute) + 0.5) * (1.0 / 256.0);
 
 	// Radiosity 3D-texture coords (matches GL MapRadiosity.vs).
-	radiosityTextureCoord = worldPos.xyz / vec3(512.0, 512.0, 64.0);
+	radiosityTextureCoord = wPos / vec3(512.0, 512.0, 64.0);
 	normalVarying = normalFloat;
 
 	// Per-cascade light-clip coords for model-shadow sampling. Ortho => w == 1,

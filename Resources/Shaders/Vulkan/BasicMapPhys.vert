@@ -37,6 +37,7 @@ layout(location = 0) in uvec3 positionAttribute;
 layout(location = 1) in uvec2 aoCoordAttribute;
 layout(location = 2) in uvec3 colorAttribute;
 layout(location = 3) in ivec3 normalAttribute;
+layout(location = 4) in ivec3 fixedPositionAttribute; // face-center * 2 (chunk-local)
 
 layout(location = 0) out vec4 color;           // xyz = linearized vertex color, w = sun lambert (may be negative)
 layout(location = 1) out vec3 ambientLight;    // hemisphere ambient fallback
@@ -76,8 +77,10 @@ void main() {
 
 	color = vec4(vertexColor, lambert);
 
-	// Shadow coordinates
-	vec3 wPos = worldPos.xyz;
+	// Shadow coordinates — sample at the face center ("fixed position",
+	// matches GL fixedPositionAttribute) so voxel-boundary vertices don't
+	// leak the neighboring column's shadow value (lit sliver on face edges).
+	vec3 wPos = vec3(fixedPositionAttribute) * 0.5 + pushConstants.modelOrigin;
 	shadowCoord = vec3(wPos.x / 512.0, (wPos.y - wPos.z) / 512.0, wPos.z / 255.0);
 
 	// Fog
@@ -91,9 +94,9 @@ void main() {
 	viewSpaceNormal = normalize((pushConstants.viewMatrix * vec4(normalFloat, 0.0)).xyz);
 	reflectionDir = reflect(worldPos.xyz - pushConstants.viewOrigin, normalFloat);
 
-	aoCoord = (worldPos.xyz + vec3(0.0, 0.0, 1.0)) / vec3(512.0, 512.0, 65.0);
+	aoCoord = (wPos + vec3(0.0, 0.0, 1.0)) / vec3(512.0, 512.0, 65.0);
 
 	// Radiosity 3D-texture coords (matches GL MapRadiosity.vs).
-	radiosityTextureCoord = worldPos.xyz / vec3(512.0, 512.0, 64.0);
+	radiosityTextureCoord = wPos / vec3(512.0, 512.0, 64.0);
 	normalVarying = normalFloat;
 }

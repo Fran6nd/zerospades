@@ -543,7 +543,7 @@ namespace spades {
 			bindingDescription.stride = 20;
 			bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 
-			std::array<VkVertexInputAttributeDescription, 4> attributeDescriptions{};
+			std::array<VkVertexInputAttributeDescription, 5> attributeDescriptions{};
 
 			// Position (location 0) - x, y, z are uint8_t at offset 0
 			attributeDescriptions[0].binding = 0;
@@ -568,6 +568,14 @@ namespace spades {
 			attributeDescriptions[3].location = 3;
 			attributeDescriptions[3].format = VK_FORMAT_R8G8B8_SINT;
 			attributeDescriptions[3].offset = 12;
+
+			// Fixed position (location 4) - sx, sy, sz are int8_t at offset 16.
+			// Face-center * 2 (chunk-local); used for map-shadow/AO/radiosity
+			// sampling to avoid voxel-boundary bleed (lit sliver on face edges).
+			attributeDescriptions[4].binding = 0;
+			attributeDescriptions[4].location = 4;
+			attributeDescriptions[4].format = VK_FORMAT_R8G8B8_SINT;
+			attributeDescriptions[4].offset = 16;
 
 			VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
 			vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
