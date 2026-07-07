@@ -86,7 +86,9 @@ void main() {
 	customColorOut = pushConstants.customColor;
 
 	// Shadow map coordinates (sun projects diagonally along y-z)
-	shadowCoord = vec3(worldPos.x / 512.0, (worldPos.y - worldPos.z) / 512.0, worldPos.z / 255.0);
+	// Sample slightly inside the surface to avoid shadow bleed at voxel boundaries
+	vec3 shadowPos = worldPos - normalFloat * 0.05;
+	shadowCoord = vec3(shadowPos.x / 512.0, (shadowPos.y - shadowPos.z) / 512.0, shadowPos.z / 255.0);
 
 	// Fog density pre-computed on CPU from model world position
 	fogDensityOut = vec3(pushConstants.fogDensity);
