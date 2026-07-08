@@ -58,17 +58,24 @@ push field) all read it, so changing that one method moves the sun + its shadows
 + ground/model lighting together. Still hardcoded `(0,-1,-1)`:
 
 The **Phys** map lambert (`BasicMapPhys.vert/frag` via
-`MapSolidPushConstants.sunDirection`) now reads it too. Still hardcoded `(0,-1,-1)`:
+`MapSolidPushConstants.sunDirection`) now reads it too.
 
-- [ ] **Water** (`Water.frag`) and **Fog2** (`Fog2.vk.fs`) still hardcode the
-      sun; point them at the same source.
+- [x] **Water + Fog2** — already wired: `Water/Water2/Water3.vk.fs` read
+      `WaterPushConstants.sunDirection` and `Fog2.vk.fs` reads the sun packed
+      into the scale `.w` slots, both fed from `GetSunDirection()`. The old
+      TODO pointed at `Water.frag`, which is a dead file (only `*.vk.fs` are
+      loaded via `Water*.vk.program`).
+- [ ] Delete dead `Water.frag` / `Water.vert` (unreferenced, misleading —
+      still carry a hardcoded sun const).
 
 ## Stubs
 
-- [ ] [VulkanMapRenderer.cpp:126](VulkanMapRenderer.cpp#L126)
-      `PreloadShaders` is empty — first frame stutters as map pipelines build.
-- [ ] [VulkanOptimizedVoxelModel.cpp:46](VulkanOptimizedVoxelModel.cpp#L46)
-      `PreloadShaders` is empty — same story for model pipelines.
+- [x] Map/model `PreloadShaders` — no longer empty; both warm the SPIR-V
+      cache. TODO was stale.
+- [ ] `PreloadShaders` only preloads SPIR-V blobs, not `VkPipeline`s —
+      pipelines still compile lazily on first draw. If first-frame stutter
+      persists, pre-create the pipelines (needs render pass compat) or use
+      `VK_EXT_graphics_pipeline_library` / warm pipeline cache from disk.
 - [ ] [VulkanWaterRenderer.cpp:1067](VulkanWaterRenderer.cpp#L1067)
       `RenderDynamicLightPass` reuses the sunlight pipeline as a
       placeholder — water doesn't react to dynamic lights.
@@ -96,9 +103,10 @@ remaining deltas vs GL.
       [Fog.vk.fs](../../../Resources/Shaders/Vulkan/PostFilters/Fog.vk.fs)
       / [Fog.vk.vs](../../../Resources/Shaders/Vulkan/PostFilters/Fog.vk.vs)
       `length(dir.xy) < 0.0001` guard.
-- [ ] **`VulkanMapShadowRenderer::Update` re-uploads the full 512×512
-      bitmap on any change.** GL does a sub-rect upload. Perf cliff in
-      build-heavy games.
+- [x] **`VulkanMapShadowRenderer::Update` sub-rect upload** — dirty 32-texel
+      words coalesce into per-row spans, packed into staging and copied via
+      one multi-region `vkCmdCopyBufferToImage`. Falls back to full upload
+      when >25% dirty or >256 spans.
 
 ## Outline tuning (future work)
 
