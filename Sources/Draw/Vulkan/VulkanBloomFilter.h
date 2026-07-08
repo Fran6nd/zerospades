@@ -22,18 +22,23 @@
 
 #include <vector>
 #include <vulkan/vulkan.h>
+#include <Client/IImage.h>
 #include "VulkanPostProcessFilter.h"
 
 namespace spades {
 	namespace draw {
+		class VulkanBuffer;
 
-		// Bloom filter.
+		// Bloom filter (r_bloom; mirrors GLLensDustFilter, the real GL
+		// r_bloom — GLBloomFilter is dead code there).
 		//
-		// Algorithm (mirrors GLBloomFilter):
+		// Algorithm:
 		//   1. Downsample 6 levels via bilinear passthrough.
 		//   2. Composite levels back from smallest to second-largest using
 		//      mix(large, small, alpha) where alpha = sqrt(cnt/(cnt+1)).
-		//   3. Final composite: scene * 0.8 + bloom * 0.2 → output.
+		//   3. LensDust composite: scene * 0.95 + dust² * bloom * 2 + grain,
+		//      with the dust overlay texture and a per-frame 128×128 noise
+		//      texture for film grain, matching GL's LensDust.fs.
 		//
 		// Call Filter(cmd, input, output).  input must be in
 		// SHADER_READ_ONLY_OPTIMAL; output ends up in SHADER_READ_ONLY_OPTIMAL.
@@ -49,10 +54,11 @@ namespace spades {
 
 			VkDescriptorSetLayout singleSamplerDSL;
 			VkDescriptorSetLayout dualSamplerDSL;
+			VkDescriptorSetLayout quadSamplerDSL;
 
 			VkPipelineLayout downsampleLayout;  // singleSamplerDSL, no push constants
 			VkPipelineLayout upsampleLayout;    // dualSamplerDSL + push constant float alpha
-			VkPipelineLayout compositeLayout;   // dualSamplerDSL, no push constants
+			VkPipelineLayout compositeLayout;   // quadSamplerDSL + push constant vec4 noise factor
 
 			VkPipeline downsamplePipeline;
 			VkPipeline upsamplePipeline;
@@ -61,6 +67,14 @@ namespace spades {
 			static constexpr int MAX_FRAME_SLOTS = 2;
 			VkDescriptorPool perFrameDescPool[MAX_FRAME_SLOTS];
 			std::vector<VkFramebuffer> perFrameFramebuffers[MAX_FRAME_SLOTS];
+
+			// LensDust composite inputs
+			Handle<client::IImage> dustImage;      // Textures/LensDustTexture.jpg
+			Handle<VulkanImage> noiseImage;        // 128×128 RGBA8, refreshed per frame
+			Handle<VulkanBuffer> noiseStaging;
+			std::vector<uint32_t> noiseData;
+
+			void UpdateNoise(VkCommandBuffer cmd);
 
 			void InitRenderPass();
 			void InitDescriptorSetLayouts();
@@ -75,6 +89,8 @@ namespace spades {
 			                            VkImageView view);
 			VkDescriptorSet BindTextures(int frameSlot, VkDescriptorSetLayout dsl,
 			                             VkImageView view0, VkImageView view1);
+			VkDescriptorSet BindTextures4(int frameSlot, const VkImageView* views,
+			                              const VkSampler* samplers);
 
 			void DrawFullscreen(VkCommandBuffer cmd, VkRenderPass rp, VkFramebuffer fb,
 			                    uint32_t width, uint32_t height,

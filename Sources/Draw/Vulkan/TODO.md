@@ -20,7 +20,7 @@ Fog → DoF → CameraBlur → Bloom → FXAA → LensFlare → AutoExposure →
 |---|---|---|
 | `GLAutoExposureFilter` | `VulkanAutoExposureFilter` | wired (`r_hdr`) |
 | `GLBloomFilter` | — | dead code in GL (instantiated nowhere) |
-| `GLLensDustFilter` (the real `r_bloom`) | `VulkanBloomFilter` | wired but simplified — no dust texture / noise overlay |
+| `GLLensDustFilter` (the real `r_bloom`) | `VulkanBloomFilter` | wired incl. dust texture + per-frame noise grain; remaining delta: GL runs an extra Gauss1D H+V blur on the first downsample level |
 | `GLCameraBlurFilter` | `VulkanCameraBlurFilter` | wired (`r_cameraBlur` + `sceneDef.radialBlur`), between DoF and Bloom like GL |
 | `GLColorCorrectionFilter` | `VulkanColorCorrectionFilter` | wired (`r_colorCorrection`) |
 | `GLDepthOfFieldFilter` | `VulkanDepthOfFieldFilter` | wired (`r_depthOfField`) |
@@ -30,7 +30,7 @@ Fog → DoF → CameraBlur → Bloom → FXAA → LensFlare → AutoExposure →
 | `GLLensFlareFilter` | `VulkanLensFlareFilter` | wired sun path (`r_lensFlare`); **`r_lensFlareDynamic` per-light flares missing** |
 | `GLNonlinearizeFilter` | — | not needed — sRGB swapchain blit encodes for display |
 | `GLResampleBicubicFilter` | `VulkanResampleBicubicFilter` | wired (`r_scaleFilter == 2`); `r_scaleFilter == 0` now also honored via nearest blit |
-| `GLSSAOFilter` | — | **missing** (`r_ssao`) |
+| `GLSSAOFilter` | — | **missing** (`r_ssao`) — big: needs full map+model depth prepass, mid-frame depth resolve/pass split, and an SSAO sampler binding (= new set layout) in every lit map/model pipeline + shader |
 | `GLTemporalAAFilter` | — | **missing** (see AA gap above) |
 | (n/a — cavity is Vulkan-only) | `VulkanCavityOutlineFilter` | wired (`r_outlines`) |
 
