@@ -2052,11 +2052,12 @@ namespace spades {
 				debugLines.clear();
 			}
 
-			// Clear for next frame
+			// Clear for next frame. lights survives until after the
+			// post-process chain: the lens flare filter reads it for
+			// r_lensFlareDynamic.
 			if (modelRenderer) {
 				modelRenderer->Clear();
 			}
-			lights.clear();
 
 			// End offscreen render pass (scene without water is now complete)
 			vkCmdEndRenderPass(commandBuffer);
@@ -2484,6 +2485,8 @@ namespace spades {
 				cavityOutlineFilter->Filter(commandBuffer, currentInput, currentOutput);
 				std::swap(currentInput, currentOutput);
 			}
+
+			lights.clear();
 
 			// --- Resample + blit final post-process result to swapchain ---
 			// r_scaleFilter: 0 = nearest, 1 = bilinear (blit filter),

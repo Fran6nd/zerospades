@@ -27,7 +27,7 @@ Fog → DoF → CameraBlur → Bloom → FXAA → LensFlare → AutoExposure →
 | `GLFXAAFilter` | `VulkanFXAAFilter` | wired (`r_fxaa`) |
 | `GLFogFilter` / `GLFogFilter2` | `VulkanFogFilter` | wired (`r_fogShadow`) — see follow-ups below |
 | `GLLensFilter` | — | dead code in GL (unused) |
-| `GLLensFlareFilter` | `VulkanLensFlareFilter` | wired sun path (`r_lensFlare`); **`r_lensFlareDynamic` per-light flares missing** |
+| `GLLensFlareFilter` | `VulkanLensFlareFilter` | wired sun path (`r_lensFlare`) + per-light flares (`r_lensFlareDynamic`, capped at 8 per frame for descriptor budget) |
 | `GLNonlinearizeFilter` | — | not needed — sRGB swapchain blit encodes for display |
 | `GLResampleBicubicFilter` | `VulkanResampleBicubicFilter` | wired (`r_scaleFilter == 2`); `r_scaleFilter == 0` now also honored via nearest blit |
 | `GLSSAOFilter` | — | **missing** (`r_ssao`) — big: needs full map+model depth prepass, mid-frame depth resolve/pass split, and an SSAO sampler binding (= new set layout) in every lit map/model pipeline + shader |
