@@ -19,6 +19,8 @@
  */
 
 #include "VulkanBloomFilter.h"
+#include "VulkanBuffer.h"
+#include "VulkanImageWrapper.h"
 #include "VulkanFramebufferManager.h"
 #include "VulkanImage.h"
 #include "VulkanRenderer.h"
@@ -27,6 +29,7 @@
 #include <Core/Debug.h>
 #include <Core/Exception.h>
 #include <Core/FileManager.h>
+#include <Core/Math.h>
 #include <Gui/SDLVulkanDevice.h>
 #include <cmath>
 #include <cstring>
@@ -45,6 +48,7 @@ namespace spades {
 		      ppRenderPass(VK_NULL_HANDLE),
 		      singleSamplerDSL(VK_NULL_HANDLE),
 		      dualSamplerDSL(VK_NULL_HANDLE),
+		      quadSamplerDSL(VK_NULL_HANDLE),
 		      downsampleLayout(VK_NULL_HANDLE),
 		      upsampleLayout(VK_NULL_HANDLE),
 		      compositeLayout(VK_NULL_HANDLE),
@@ -62,6 +66,20 @@ namespace spades {
 			InitDescriptorSetLayouts();
 			InitPipelines();
 			InitDescriptorPools();
+
+			// LensDust composite inputs (see GLLensDustFilter).
+			dustImage = r.RegisterImage("Textures/LensDustTexture.jpg");
+
+			noiseImage = Handle<VulkanImage>::New(
+			    device, 128u, 128u, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_OPTIMAL,
+			    VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
+			    VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+			noiseImage->CreateSampler(VK_FILTER_NEAREST, VK_FILTER_NEAREST,
+			                          VK_SAMPLER_ADDRESS_MODE_REPEAT);
+			noiseStaging = Handle<VulkanBuffer>::New(
+			    device, (VkDeviceSize)(128 * 128 * 4), VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+			    VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+			noiseData.resize(128 * 128);
 		}
 
 		VulkanBloomFilter::~VulkanBloomFilter() {
@@ -84,6 +102,7 @@ namespace spades {
 			if (upsampleLayout   != VK_NULL_HANDLE) vkDestroyPipelineLayout(dev, upsampleLayout,   nullptr);
 			if (downsampleLayout != VK_NULL_HANDLE) vkDestroyPipelineLayout(dev, downsampleLayout, nullptr);
 
+			if (quadSamplerDSL   != VK_NULL_HANDLE) vkDestroyDescriptorSetLayout(dev, quadSamplerDSL,   nullptr);
 			if (dualSamplerDSL   != VK_NULL_HANDLE) vkDestroyDescriptorSetLayout(dev, dualSamplerDSL,   nullptr);
 			if (singleSamplerDSL != VK_NULL_HANDLE) vkDestroyDescriptorSetLayout(dev, singleSamplerDSL, nullptr);
 
@@ -135,7 +154,7 @@ namespace spades {
 			VkDevice dev = device->GetDevice();
 
 			auto MakeDSL = [&](uint32_t bindingCount) {
-				VkDescriptorSetLayoutBinding bindings[2]{};
+				VkDescriptorSetLayoutBinding bindings[4]{};
 				for (uint32_t i = 0; i < bindingCount; ++i) {
 					bindings[i].binding         = i;
 					bindings[i].descriptorCount = 1;
@@ -154,6 +173,7 @@ namespace spades {
 
 			singleSamplerDSL = MakeDSL(1);
 			dualSamplerDSL   = MakeDSL(2);
+			quadSamplerDSL   = MakeDSL(4);
 		}
 
 		VkShaderModule VulkanBloomFilter::LoadSPIRV(const char* path) {
@@ -239,10 +259,13 @@ namespace spades {
 					SPRaise("Failed to create upsample pipeline layout");
 			}
 			{
+				VkPushConstantRange pcr{VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(float) * 4};
 				VkPipelineLayoutCreateInfo li{};
-				li.sType          = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-				li.setLayoutCount = 1;
-				li.pSetLayouts    = &dualSamplerDSL;
+				li.sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+				li.setLayoutCount         = 1;
+				li.pSetLayouts            = &quadSamplerDSL;
+				li.pushConstantRangeCount = 1;
+				li.pPushConstantRanges    = &pcr;
 				if (vkCreatePipelineLayout(dev, &li, nullptr, &compositeLayout) != VK_SUCCESS)
 					SPRaise("Failed to create composite pipeline layout");
 			}
@@ -387,6 +410,49 @@ namespace spades {
 			return set;
 		}
 
+		VkDescriptorSet VulkanBloomFilter::BindTextures4(int frameSlot,
+		                                                  const VkImageView* views,
+		                                                  const VkSampler* samplers) {
+			VkDescriptorSetAllocateInfo ai{};
+			ai.sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+			ai.descriptorPool     = perFrameDescPool[frameSlot];
+			ai.descriptorSetCount = 1;
+			ai.pSetLayouts        = &quadSamplerDSL;
+			VkDescriptorSet set;
+			if (vkAllocateDescriptorSets(device->GetDevice(), &ai, &set) != VK_SUCCESS)
+				SPRaise("Failed to allocate bloom descriptor set");
+
+			VkDescriptorImageInfo imgs[4];
+			VkWriteDescriptorSet  writes[4]{};
+			for (int i = 0; i < 4; ++i) {
+				imgs[i] = {samplers[i] != VK_NULL_HANDLE ? samplers[i] : linearSampler,
+				           views[i], VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
+				writes[i].sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+				writes[i].dstSet          = set;
+				writes[i].dstBinding      = static_cast<uint32_t>(i);
+				writes[i].descriptorCount = 1;
+				writes[i].descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+				writes[i].pImageInfo      = &imgs[i];
+			}
+			vkUpdateDescriptorSets(device->GetDevice(), 4, writes, 0, nullptr);
+			return set;
+		}
+
+		void VulkanBloomFilter::UpdateNoise(VkCommandBuffer cmd) {
+			// Fresh 128x128 random grain every frame, like GL's UpdateNoise.
+			for (size_t i = 0; i < noiseData.size(); i++)
+				noiseData[i] = static_cast<uint32_t>(SampleRandom());
+			noiseStaging->UpdateData(noiseData.data(), noiseData.size() * sizeof(uint32_t));
+
+			noiseImage->TransitionLayout(cmd, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+			    VK_ACCESS_SHADER_READ_BIT, VK_ACCESS_TRANSFER_WRITE_BIT,
+			    VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
+			noiseImage->CopyFromBuffer(cmd, noiseStaging->GetBuffer());
+			noiseImage->TransitionLayout(cmd, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+			    VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT,
+			    VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+		}
+
 		void VulkanBloomFilter::DrawFullscreen(VkCommandBuffer cmd,
 		                                        VkRenderPass rp,
 		                                        VkFramebuffer fb,
@@ -439,6 +505,8 @@ namespace spades {
 				perFrameFramebuffers[frameSlot].clear();
 				vkResetDescriptorPool(dev, perFrameDescPool[frameSlot], 0);
 			}
+
+			UpdateNoise(cmd);
 
 			VulkanTemporaryImagePool* pool = renderer.GetTemporaryImagePool();
 
@@ -512,10 +580,30 @@ namespace spades {
 			uint32_t rw = static_cast<uint32_t>(output->GetWidth());
 			uint32_t rh = static_cast<uint32_t>(output->GetHeight());
 
+			VulkanImage* dust = nullptr;
+			if (auto* wrapper = dynamic_cast<VulkanImageWrapper*>(dustImage.GetPointerOrNull()))
+				dust = wrapper->GetVulkanImage();
+
+			// GL falls back to plain input if anything is missing; here the
+			// dust texture ships with the game, so treat absence as fatal-ish
+			// and just skip the dust term by binding the bloom texture twice.
+			VkImageView views[4] = {
+			    input->GetImageView(), levels[0]->GetImageView(),
+			    dust ? dust->GetImageView() : levels[0]->GetImageView(),
+			    noiseImage->GetImageView()};
+			VkSampler samplers[4] = {linearSampler, linearSampler,
+			                         dust ? dust->GetSampler() : linearSampler,
+			                         noiseImage->GetSampler()};
+
 			VkFramebuffer fb   = MakeFramebuffer(ppRenderPass, output, frameSlot);
-			VkDescriptorSet ds = BindTextures(frameSlot, dualSamplerDSL,
-			                                  input->GetImageView(),
-			                                  levels[0]->GetImageView());
+			VkDescriptorSet ds = BindTextures4(frameSlot, views, samplers);
+
+			// noiseTexCoordFactor, exactly as GLLensDustFilter computes it.
+			float facX = renderer.GetRenderWidth() / 128.0f;
+			float facY = renderer.GetRenderHeight() / 128.0f;
+			float noiseFactor[4] = {facX, facY, facX / 128.0f, facY / 128.0f};
+			vkCmdPushConstants(cmd, compositeLayout, VK_SHADER_STAGE_FRAGMENT_BIT,
+			                   0, sizeof(noiseFactor), noiseFactor);
 
 			DrawFullscreen(cmd, ppRenderPass, fb, rw, rh,
 			               compositePipeline, compositeLayout, ds);

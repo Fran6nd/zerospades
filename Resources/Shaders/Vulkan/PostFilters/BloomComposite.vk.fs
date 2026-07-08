@@ -20,18 +20,42 @@
 
 #version 450
 
-// Bloom final composite pass.
-// Mirrors GLBloomFilter's GammaMix call with mix1=0.8, mix2=0.2 on a linear HDR framebuffer:
-//   outColor = scene * 0.8 + bloom * 0.2
+// Bloom final composite — Vulkan port of GL's LensDust.fs (the real
+// r_bloom composite). Linear framebuffer, so GL's linearize/sqrt round
+// trip is dropped; the dust texture still gets squared to linearize it
+// (it is a plain sRGB-ish JPG).
 
-layout(binding = 0) uniform sampler2D sceneTexture;
-layout(binding = 1) uniform sampler2D bloomTexture;
+layout(binding = 0) uniform sampler2D inputTexture;
+layout(binding = 1) uniform sampler2D blurTexture1;
+layout(binding = 2) uniform sampler2D dustTexture;
+layout(binding = 3) uniform sampler2D noiseTexture;
+
+layout(push_constant) uniform LensDustPC {
+	vec4 noiseTexCoordFactor;
+} pc;
 
 layout(location = 0) in  vec2 texCoord;
 layout(location = 0) out vec4 outColor;
 
 void main() {
-    vec3 scene = texture(sceneTexture, texCoord).rgb;
-    vec3 bloom = texture(bloomTexture, texCoord).rgb;
-    outColor = vec4(scene * 0.8 + bloom * 0.2, 1.0);
+	vec3 dust1 = texture(dustTexture, texCoord).xyz;
+	dust1 *= dust1; // linearize
+
+	vec3 blur1 = texture(blurTexture1, texCoord).xyz;
+
+	vec3 sum = dust1 * blur1;
+
+	vec3 final = texture(inputTexture, texCoord).xyz;
+
+	final *= 0.95;
+	final += sum * 2.0;
+
+	// film grain
+	vec4 noiseTexCoord = texCoord.xyxy * pc.noiseTexCoordFactor;
+	float grain = texture(noiseTexture, noiseTexCoord.xy).x;
+	grain += texture(noiseTexture, noiseTexCoord.zw).x;
+	grain = fract(grain) - 0.5;
+	final += grain * 0.003;
+
+	outColor = vec4(max(final, 0.0), 1.0);
 }
