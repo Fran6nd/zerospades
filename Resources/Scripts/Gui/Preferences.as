@@ -1669,10 +1669,10 @@ namespace spades {
 			layouter.AddToggleField(_Tr("Preferences", "Skip dead players (death cam)"), "cg_skipDeadPlayersWhenDead");
 			layouter.AddToggleField(_Tr("Preferences", "Save Final Score Screenshot"), "cg_autoScreenshot");
 			layouter.AddToggleField(_Tr("Preferences", "Debug Hit Detection"), "cg_debugHitTest");
-			layouter.AddSliderField(_Tr("Preferences", "Hit Test Debugger Size"), "cg_dbgHitTestSize",
+			layouter.AddSliderField(_Tr("Preferences", "Hit Debugger Size"), "cg_debugHitTestSize",
 			64, 256, 8, ConfigNumberFormatter(0, "px"));
 			layouter.AddControl(_Tr("Preferences", "Toggle Hit Debugger Zoom"), "cg_keyToggleHitTestZoom");
-			layouter.AddSliderField(_Tr("Preferences", "Hit Debugger Fade Time"), "cg_dbgHitTestFadeTime",
+			layouter.AddSliderField(_Tr("Preferences", "Hit Debugger Fade Time"), "cg_debugHitTestFadeTime",
 			1, 20, 1, ConfigNumberFormatter(0, "s"));
 			layouter.AddToggleField(_Tr("Preferences", "Debug Weapon Spread"), "cg_debugAim");
 			layouter.AddToggleField(_Tr("Preferences", "Debug Block Cursor"), "cg_debugBlockCursor");

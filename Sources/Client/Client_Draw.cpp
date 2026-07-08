@@ -93,8 +93,8 @@ DEFINE_SPADES_SETTING(cg_playerNames, "2");
 DEFINE_SPADES_SETTING(cg_playerNameX, "0");
 DEFINE_SPADES_SETTING(cg_playerNameY, "0");
 DEFINE_SPADES_SETTING(cg_playerNamesDead, "1");
-DEFINE_SPADES_SETTING(cg_dbgHitTestSize, "128");
-DEFINE_SPADES_SETTING(cg_dbgHitTestFadeTime, "10");
+DEFINE_SPADES_SETTING(cg_debugHitTestSize, "128");
+DEFINE_SPADES_SETTING(cg_debugHitTestFadeTime, "10");
 DEFINE_SPADES_SETTING(cg_damageIndicators, "1");
 DEFINE_SPADES_SETTING(cg_hurtScreenEffects, "1");
 DEFINE_SPADES_SETTING(cg_healScreenEffects, "1");
@@ -998,7 +998,7 @@ namespace spades {
 			float sw = renderer->ScreenWidth();
 			float sh = renderer->ScreenHeight();
 
-			float cfgWndSize = cg_dbgHitTestSize;
+			float cfgWndSize = cg_debugHitTestSize;
 			Vector2 wndSize = {cfgWndSize, cfgWndSize};
 
 			Vector2 zoomedSize = {512, 512};
@@ -1029,7 +1029,7 @@ namespace spades {
 				outRect.max = MakeVector2(sw + zoomedSize.x, sh + zoomedSize.y) * 0.5F;
 			}
 
-			const float fadeOutStart = cg_dbgHitTestFadeTime;
+			const float fadeOutStart = cg_debugHitTestFadeTime;
 			const float fadeDuration = 1.0F;
 			float timeSinceLastHit = world->GetTime() - lastHitTime;
 			float fade = timeSinceLastHit - fadeOutStart;
