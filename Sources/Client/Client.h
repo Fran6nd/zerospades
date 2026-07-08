@@ -261,6 +261,13 @@ namespace spades {
 					fade(0.0F), lastHitTime(0.0F), crit(false) {}
 			};
 			std::list<DamageIndicator> damageIndicators;
+			
+			struct SoundFeedbackIndicator {
+				float fade = 0.0F;
+				float radius = 0.0F;
+				bool farSound = false;
+			};
+			std::vector<SoundFeedbackIndicator> soundFeedbackIndicators;
 
 			float GetSprintState();
 			float GetAimDownState();
@@ -404,7 +411,8 @@ namespace spades {
 			 */
 			Player& GetCameraTargetPlayer();
 
-			bool IsInFirstPersonView(int playerId);
+			bool IsPlayerBeingFollowed(int playerId);
+			bool IsPlayerInFirstPerson(int playerId);
 			
 			/**
 			 * Calculate the zoom value incorporating the effect of ADS for a first-person view.
@@ -623,6 +631,7 @@ namespace spades {
 			IAudioDevice& GetAudioDevice() { return *audioDevice; }
 
 			float GetTime() { return time; }
+			const std::vector<SoundFeedbackIndicator>& GetSoundFeedbackIndicators() { return soundFeedbackIndicators; }
 
 			bool WantsToBeClosed() override;
 			bool IsMuted();

@@ -42,6 +42,7 @@ DEFINE_SPADES_SETTING(cg_minimapCoords, "1");
 DEFINE_SPADES_SETTING(cg_minimapPlayerIcon, "1");
 DEFINE_SPADES_SETTING(cg_minimapPlayerColor, "1");
 DEFINE_SPADES_SETTING(cg_minimapPlayerNames, "0");
+DEFINE_SPADES_SETTING(cg_minimapPlayerSounds, "0");
 
 SPADES_SETTING(cg_stats);
 SPADES_SETTING(cg_statsSmallFont);
@@ -204,6 +205,38 @@ namespace spades {
 			font.DrawShadow(s, scrPos, 1.0F, col, MakeVector4(0, 0, 0, col.w));
 		}
 
+		void MapView::DrawCircle(Vector3 pos, float radius, const Vector4& col) {
+			if (pos.x < inRect.GetMinX() || pos.x > inRect.GetMaxX() ||
+				pos.y < inRect.GetMinY() || pos.y > inRect.GetMaxY())
+				return;
+
+			Vector2 scrPos = Project(Vector2{pos.x, pos.y});
+
+			Handle<IImage> img = renderer.RegisterImage("Gfx/White.tga");
+			const AABB2 lineInRect{0.0F, 0.0F, img->GetWidth(), img->GetHeight()};
+			const float lineW = 0.5F;
+
+			renderer.SetColorAlphaPremultiplied(col);
+
+			Vector2 prev = scrPos + MakeVector2(radius, 0.0F);
+			int segments = Clamp((int)radius, 8, 64);
+			for (int i = 1; i <= segments; i++) {
+				float ang = (float)i / (float)segments * M_PI_F * 2.0F;
+				Vector2 cur = scrPos + MakeVector2(cosf(ang), sinf(ang)) * radius;
+
+				Vector2 normal = (cur - prev).Normalize();
+				normal = MakeVector2(-normal.y, normal.x);
+
+				const Vector2 vt[3] = {
+					prev - normal * lineW,
+					prev + normal * lineW,
+					cur - normal * lineW
+				};
+				renderer.DrawImage(img, vt[0], vt[1], vt[2], lineInRect);
+				prev = cur;
+			}
+		}
+
 		void MapView::SwitchScale() {
 			scaleMode = (scaleMode + 1) % 4;
 			lastScale = actualScale;
@@ -269,17 +302,18 @@ namespace spades {
 			float focusPlayerAngle;
 
 			if (isFollowing) {
-				int targetId = client->GetCameraTargetPlayerId();
-				auto maybeTarget = world->GetPlayer(targetId);
+				int focusedPlayerId = client->GetCameraTargetPlayerId();
+				auto maybeTarget = world->GetPlayer(focusedPlayerId);
 				if (!maybeTarget)
 					return;
 
-				Player& player = maybeTarget.value();
-				Vector3 o = player.GetFront2D();
+				Player& p = maybeTarget.value();
+				const auto& pos = p.GetPosition();
+				const auto& ori = p.GetFront2D();
 
-				focusPlayerPos = player.GetPosition();
-				focusPlayerAngle = atan2f(o.y, o.x) + M_PI_F * 0.5F;
-				focusPlayerPtr = player;
+				focusPlayerPos = pos;
+				focusPlayerAngle = atan2f(ori.y, ori.x) + M_PI_F * 0.5F;
+				focusPlayerPtr = p;
 			} else if (isFreeCamera) {
 				focusPlayerPos = client->freeCameraState.position;
 				focusPlayerAngle = client->followAndFreeCameraState.yaw - M_PI_F * 0.5F;
@@ -311,7 +345,7 @@ namespace spades {
 			float sw = renderer.ScreenWidth();
 			float sh = renderer.ScreenHeight();
 
-			Handle<GameMap> map = world->GetMap();
+			const Handle<GameMap> map = world->GetMap();
 			SPAssert(map);
 
 			Vector2 mapSize = MakeVector2((float)map->Width(), (float)map->Height());
@@ -409,58 +443,50 @@ namespace spades {
 				}
 			}
 
-			// draw grid label
+			// draw grid labels
 			Handle<IImage> mapFont = renderer.RegisterImage("Gfx/Fonts/MapFont.tga");
 			Vector4 labelCol = MakeVector4(1, 1, 1, 1) * 0.8F * alpha;
 			for (int i = 0; i < 8; i++) {
 				float startX = (float)i * gridSize.x;
 				float endX = startX + gridSize.x;
-
 				if (startX > inRect.GetMaxX() || endX < inRect.GetMinX())
 					continue;
 
-				float fade = std::min((std::min(endX, inRect.GetMaxX())
-					  - std::max(startX, inRect.GetMinX()))
-					  / (endX - startX) * 2.0F, 1.0F);
-
+				float clampedStartX = std::max(startX, inRect.GetMinX());
+				float clampedEndX = std::min(endX, inRect.GetMaxX());
+				float overlapX = clampedEndX - clampedStartX;
+				float fade = std::min(overlapX / (endX - startX) * 2.0F, 1.0F);
 				renderer.SetColorAlphaPremultiplied(labelCol * fade);
 
-				float center = std::max(startX, inRect.GetMinX());
-				center = 0.5F * (center + std::min(endX, inRect.GetMaxX()));
-
+				float center = 0.5F * (clampedStartX + clampedEndX);
 				float wx = (center - inRect.GetMinX()) / inRect.GetWidth();
 				wx = (wx * outRect.GetWidth()) + outRect.GetMinX();
 				wx = roundf(wx); // rounded for better pixel alignment
 
 				float fntX = static_cast<float>((i & 3) * 8);
 				float fntY = static_cast<float>((i >> 2) * 8);
-
 				renderer.DrawImage(mapFont, MakeVector2(wx - 4, outRect.GetMinY() + 4),
 								   AABB2(fntX, fntY, 8, 8));
 			}
 			for (int i = 0; i < 8; i++) {
 				float startY = (float)i * gridSize.y;
 				float endY = startY + gridSize.y;
-
 				if (startY > inRect.GetMaxY() || endY < inRect.GetMinY())
 					continue;
 
-				float fade = std::min((std::min(endY, inRect.GetMaxY())
-					- std::max(startY, inRect.GetMinY()))
-					/ (endY - startY) * 2.0F, 1.0F);
-
+				float clampedStartY = std::max(startY, inRect.GetMinY());
+				float clampedEndY = std::min(endY, inRect.GetMaxY());
+				float overlapY = clampedEndY - clampedStartY;
+				float fade = std::min(overlapY / (endY - startY) * 2.0F, 1.0F);
 				renderer.SetColorAlphaPremultiplied(labelCol * fade);
 
-				float center = std::max(startY, inRect.GetMinY());
-				center = 0.5F * (center + std::min(endY, inRect.GetMaxY()));
-
+				float center = 0.5F * (clampedStartY + clampedEndY);
 				float wy = (center - inRect.GetMinY()) / inRect.GetHeight();
 				wy = (wy * outRect.GetHeight()) + outRect.GetMinY();
 				wy = roundf(wy); // rounded for better pixel alignment
 
 				float fntX = static_cast<float>((i & 3) * 8);
 				float fntY = static_cast<float>((i >> 2) * 8 + 16);
-
 				renderer.DrawImage(mapFont, MakeVector2(outRect.GetMinX() + 4, wy - 4),
 								   AABB2(fntX, fntY, 8, 8));
 			}
@@ -469,7 +495,6 @@ namespace spades {
 			Handle<IImage> tracerImg = renderer.RegisterImage("Gfx/White.tga");
 			const float tracerW = 0.5F;
 			const AABB2 tracerInRect{0.0F, 0.0F, tracerImg->GetWidth(), tracerImg->GetHeight()};
-
 			renderer.SetColorAlphaPremultiplied(MakeVector4(1, 1, 0, 1) * largeMapAlpha);
 			for (const auto& localEntity : client->localEntities) {
 				auto* const tracer = dynamic_cast<MapViewTracer*>(localEntity.get());
@@ -488,22 +513,19 @@ namespace spades {
 				auto& line3 = *line2;
 				line3.first = Project(line3.first);
 				line3.second = Project(line3.second);
-
 				if (line3.first == line3.second)
 					continue;
 
 				Vector2 normal = (line3.second - line3.first).Normalize();
-				normal = {-normal.y, normal.x};
+				normal = MakeVector2(-normal.y, normal.x);
 
-				{
-					const Vector2 vt[] = {
-						line3.first - normal * tracerW,
-						line3.first + normal * tracerW,
-						line3.second - normal * tracerW
-					};
+				const Vector2 vt[3] = {
+					line3.first - normal * tracerW,
+					line3.first + normal * tracerW,
+					line3.second - normal * tracerW
+				};
 
-					renderer.DrawImage(tracerImg, vt[0], vt[1], vt[2], tracerInRect);
-				}
+				renderer.DrawImage(tracerImg, vt[0], vt[1], vt[2], tracerInRect);
 			}
 
 			// draw player's icon
@@ -569,11 +591,11 @@ namespace spades {
 				// draw player icons
 				const auto& pos = p.GetPosition();
 				const auto& ori = p.GetFront2D();
-				float playerAngle = atan2f(ori.y, ori.x) + M_PI_F * 0.5F;
+				const float playerAngle = atan2f(ori.y, ori.x) + M_PI_F * 0.5F;
 				DrawIcon(pos, *iconImg, iconColorF, playerAngle);
 
 				// dont draw the focused player name when following non-local players
-				if (isFocusedPlayer && isFollowingNonLocal)
+				if (isFollowingNonLocal && isFocusedPlayer)
 					continue;
 
 				// draw player names
@@ -614,8 +636,31 @@ namespace spades {
 					}
 				}
 
-				if (focusPlayerIsAlive || (focusPlayerIsLocal && localPlayerIsSpectating))
+				if (focusPlayerIsAlive || (focusPlayerIsLocal && localPlayerIsSpectating)) {
 					DrawIcon(focusPlayerPos, *focusPlayerViewIcon, iconColorF * 0.7F, focusPlayerAngle);
+
+					// draw focused player sound indicators
+					if (cg_minimapPlayerSounds)	 {
+						const float worldToScreenScale = outRect.GetWidth() / inRect.GetWidth();
+						const float maxRadius = std::min(outRect.GetWidth(), outRect.GetHeight()) * 0.5F;
+						const auto& color = MakeVector4(1, 1, 1, 1);
+
+						for (const auto& indicator : client->GetSoundFeedbackIndicators()) {
+							float fade = Clamp(indicator.fade, 0.0F, 1.0F);
+							if (fade <= 0.0F)
+								continue;
+
+							const float radius = indicator.radius * worldToScreenScale;
+							if (indicator.farSound || radius > (maxRadius * 1.1F)) {
+								renderer.SetColorAlphaPremultiplied(color * fade);
+								renderer.DrawOutlinedRect(outRect.GetMinX(), outRect.GetMinY(),
+									outRect.GetMaxX(), outRect.GetMaxY(), (int)floorf(2.0F * fade));
+							} else {
+								DrawCircle(focusPlayerPos, radius, color * 0.3F * fade);
+							}
+						}
+					}
+				}
 				DrawIcon(focusPlayerPos, *iconImg, iconColorF, focusPlayerAngle);
 			} else if (localPlayerIsSpectating && isFreeCamera) {
 				// In demo free camera mode, draw a simple view indicator

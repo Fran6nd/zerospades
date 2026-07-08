@@ -31,22 +31,24 @@
 namespace spades {
 	class Bitmap;
 	class VoxelModel;
-
 	namespace client {
-
 		class GameMap;
 
 		struct ModelRenderParam {
 			/** The transformatrix matrix applied on the model. */
 			Matrix4 matrix = Matrix4::Identity();
+
 			/** Voxels having a color value `(0, 0, 0)` are replaced with
-			 *  this color. */
+			 * this color. */
 			Vector3 customColor = MakeVector3(0, 0, 0);
+
 			/** Specifies to render the model in front of other non-depth-hack
-			 *  models. Useful for first-person models. */
+			 * models. Useful for first-person models. */
 			bool depthHack = false;
+
 			/** Specifies whether the model casts a shadow. */
 			bool castShadow = true;
+
 			/**
 			 * Specifies that the model is not an actual object in the virtual world, thus does not
 			 * affect the shading of other objects and does not appear in a mirror.
@@ -58,6 +60,7 @@ namespace spades {
 			 * `ghost` implies `!castShadow`.
 			 */
 			bool ghost = false;
+
 			/** Specifies the opacity of the model. Ignored if `ghost` is `false`. */
 			float opacity = 1.0F;
 		};
@@ -70,12 +73,16 @@ namespace spades {
 
 		struct DynamicLightParam {
 			DynamicLightType type = DynamicLightTypePoint;
+
 			/** The position of the light. */
 			Vector3 origin;
+
 			/** The effective radius of the light. Objects outside this radius
 			 * is unaffected by the light. */
 			float radius;
+
 			Vector3 color;
+
 			/**
 			 * The second position of the light.
 			 *
@@ -83,11 +90,14 @@ namespace spades {
 			 * other light types, this value is ignored.
 			 */
 			Vector3 point2;
+
 			/** The basis vectors specifying the orientation of a spotlight.
-			 *  See the existing code for usage. */
+			 * See the existing code for usage. */
 			std::array<Vector3, 3> spotAxis;
+
 			/** The projected image for a spotlight. */
 			IImage* image = nullptr; // TODO: Replace this raw pointer with something
+
 			float spotAngle = 0.0F;
 
 			/** When set to `true`, the lens flare post-effect is enabled for
@@ -119,7 +129,6 @@ namespace spades {
 			virtual Handle<IModel> CreateModel(VoxelModel&) = 0;
 
 			virtual void SetGameMap(stmp::optional<GameMap&>) = 0;
-
 			virtual void SetFogDistance(float) = 0;
 			virtual void SetFogColor(Vector3) = 0;
 
@@ -129,6 +138,7 @@ namespace spades {
 			virtual void AddLight(const client::DynamicLightParam& light) = 0;
 
 			virtual void RenderModel(IModel&, const ModelRenderParam&) = 0;
+
 			virtual void AddDebugLine(Vector3 a, Vector3 b, Vector4 color) = 0;
 
 			virtual void AddSprite(IImage&, Vector3 center, float radius, float rotation) = 0;
@@ -144,10 +154,8 @@ namespace spades {
 			 * others treats this as an alpha non-premultiplied.
 			 * @deprecated */
 			virtual void SetColor(Vector4) = 0;
-
 			/** Sets color for image drawing. Always alpha premultiplied. */
 			virtual void SetColorAlphaPremultiplied(Vector4) = 0;
-
 			virtual void DrawImage(stmp::optional<IImage&>, const Vector2& outTopLeft) = 0;
 			virtual void DrawImage(stmp::optional<IImage&>, const AABB2& outRect) = 0;
 			virtual void DrawImage(stmp::optional<IImage&>, const Vector2& outTopLeft,
@@ -161,11 +169,12 @@ namespace spades {
 			void DrawFilledRect(float x0, float y0, float x1, float y1) {
 				DrawImage(nullptr, AABB2(x0, y0, x1 - x0, y1 - y0));
 			}
-			void DrawOutlinedRect(float x0, float y0, float x1, float y1) {
-				DrawFilledRect(x0, y0, x1, y0 + 1);         // top
-				DrawFilledRect(x0, y1 - 1, x1, y1);         // bottom
-				DrawFilledRect(x0, y0 + 1, x0 + 1, y1 - 1); // left
-				DrawFilledRect(x1 - 1, y0 + 1, x1, y1 - 1); // right
+
+			void DrawOutlinedRect(float x0, float y0, float x1, float y1, int thickness = 1) {
+				DrawFilledRect(x0, y0, x1, y0 + thickness);         				// top
+				DrawFilledRect(x0, y1 - thickness, x1, y1);         				// bottom
+				DrawFilledRect(x0, y0 + thickness, x0 + thickness, y1 - thickness); // left
+				DrawFilledRect(x1 - thickness, y0 + thickness, x1, y1 - thickness); // right
 			}
 
 			virtual void UpdateFlatGameMap() = 0;
@@ -173,10 +182,8 @@ namespace spades {
 
 			/** Finalizes a frame. */
 			virtual void FrameDone() = 0;
-
 			/** displays a rendered image to the screen. */
 			virtual void Flip() = 0;
-
 			/** get a rendered image. */
 			virtual Handle<Bitmap> ReadBitmap() = 0;
 

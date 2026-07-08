@@ -1286,7 +1286,7 @@ namespace spades {
 
 		bool ClientPlayer::ShouldRenderInThirdPersonView() {
 			// The player from whom's perspective the game is
-			return !client.IsInFirstPersonView(player.GetId());
+			return !client.IsPlayerInFirstPerson(player.GetId());
 		}
 
 		Vector3 ClientPlayer::GetMuzzlePosition() {

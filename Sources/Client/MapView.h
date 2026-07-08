@@ -14,7 +14,7 @@
  GNU General Public License for more details.
 
  You should have received a copy of the GNU General Public License
- along with OpenSpades.  If not, see <http://www.gnu.org/licenses/>.
+ along with OpenSpades.	 If not, see <http://www.gnu.org/licenses/>.
 
  */
 
@@ -52,6 +52,7 @@ namespace spades {
 
 			void DrawIcon(Vector3 pos, IImage& img, const Vector4&, float rotation = 0.0F);
 			void DrawText(IFont& font, std::string s, Vector3 pos, const Vector4&);
+			void DrawCircle(Vector3 pos, float radius, const Vector4&);
 
 		public:
 			MapView(Client*, bool largeMap);

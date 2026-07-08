@@ -456,6 +456,16 @@ namespace spades {
 				if (spectatorZoomState < 0.0F)
 					spectatorZoomState = 0.0F;
 			}
+
+			// update minimap sound indicators
+			for (auto it = soundFeedbackIndicators.begin(); it != soundFeedbackIndicators.end();) {
+				it->fade -= dt * 4.0F;
+				if (it->fade <= 0.0F) {
+					it = soundFeedbackIndicators.erase(it);
+					continue;
+				}
+				++it;
+			}
 		}
 
 		/** Handles movement of spectating local player. */
@@ -735,22 +745,29 @@ namespace spades {
 			SPADES_MARK_FUNCTION();
 
 			if (!IsMuted()) {
+				const int playerId = p.GetId();
+				const auto& origin = p.GetOrigin();
+
 				Handle<IAudioChunk> c = p.GetWade()
 					? audioDevice->RegisterSound("Sounds/Player/WaterJump.opus")
 					: audioDevice->RegisterSound("Sounds/Player/Jump.opus");
-				audioDevice->Play(c.GetPointerOrNull(), p.GetOrigin(), AudioParam());
+				audioDevice->Play(c.GetPointerOrNull(), origin, AudioParam());
 
-				if (!IsInFirstPersonView(p.GetId()))
-					EmitSoundIndicator(p.GetOrigin(), SoundType::Movement);
+				// register sound
+				if (!IsPlayerInFirstPerson(playerId))
+					EmitSoundIndicator(origin, SoundType::Movement);
+
+				// register minimap sound
+				if (IsPlayerBeingFollowed(playerId))
+					soundFeedbackIndicators.push_back({2.0F, 32.0F});
 			}
 		}
 
 		void Client::PlayerLanded(spades::client::Player& p, bool hurt) {
 			SPADES_MARK_FUNCTION();
 
-			auto cameraMode = GetCameraMode();
-
 			if (!IsMuted()) {
+				const int playerId = p.GetId();
 				const auto& origin = p.GetOrigin();
 
 				Handle<IAudioChunk> c = p.GetWade()
@@ -764,10 +781,12 @@ namespace spades {
 				}
 
 				// register sound
-				if (HasTargetPlayer(cameraMode) && GetCameraTargetPlayerId() == p.GetId()) {
-					if (!IsFirstPerson(cameraMode))
-						EmitSoundIndicator(origin, SoundType::Movement);
-				}
+				if (!IsPlayerInFirstPerson(playerId))
+					EmitSoundIndicator(origin, SoundType::Movement);
+
+				// register minimap sound
+				if (IsPlayerBeingFollowed(playerId))
+					soundFeedbackIndicators.push_back({3.0F, 48.0F});
 			}
 		}
 
@@ -788,18 +807,26 @@ namespace spades {
 			};
 
 			if (!IsMuted()) {
-				float sprintState = clientPlayers[p.GetId()]
-					? clientPlayers[p.GetId()]->GetSprintState() : 0.0F;
-
+				const int playerId = p.GetId();
 				const auto& origin = p.GetOrigin();
+
+				bool isFollowing = IsPlayerBeingFollowed(playerId);
+				bool isFirstPerson = IsPlayerInFirstPerson(playerId);
+
+				float sprintState = clientPlayers[playerId]
+					? clientPlayers[playerId]->GetSprintState() : 0.0F;
 
 				Handle<IAudioChunk> c =
 				  audioDevice->RegisterSound(SampleRandomElement(p.GetWade() ? wsnds : snds));
 				audioDevice->Play(c.GetPointerOrNull(), origin, AudioParam());
 
-				bool isFirstPerson = IsInFirstPersonView(p.GetId());
+				// register sound
 				if (!isFirstPerson)
 					EmitSoundIndicator(origin, SoundType::Movement);
+
+				// register minimap sound
+				if (isFollowing)
+					soundFeedbackIndicators.push_back({3.0F, 32.0F});
 
 				if (sprintState > 0.5F && !p.GetWade()) {
 					AudioParam param;
@@ -807,8 +834,13 @@ namespace spades {
 					c = audioDevice->RegisterSound(SampleRandomElement(rsnds));
 					audioDevice->Play(c.GetPointerOrNull(), origin, param);
 
+					// register sound
 					if (!isFirstPerson)
 						EmitSoundIndicator(origin, SoundType::Movement);
+
+					// register minimap sound
+					if (isFollowing)
+						soundFeedbackIndicators.push_back({3.0F, 32.0F});
 				}
 			}
 		}
@@ -816,13 +848,20 @@ namespace spades {
 		void Client::PlayerFiredWeapon(spades::client::Player& p) {
 			SPADES_MARK_FUNCTION();
 
-			if (IsInFirstPersonView(p.GetId())) {
+			const int playerId = p.GetId();
+
+			if (IsPlayerInFirstPerson(playerId)) {
 				localFireVibrationTime = time;
 			} else {
+				// register sound
 				EmitSoundIndicator(p.GetEye(), SoundType::Action);
 			}
 
-			clientPlayers.at(p.GetId())->FiredWeapon();
+			// register minimap sound
+			if (IsPlayerBeingFollowed(playerId))
+				soundFeedbackIndicators.push_back({3.0F, 0.0F, true});
+
+			clientPlayers.at(playerId)->FiredWeapon();
 		}
 
 		void Client::PlayerEjectedBrass(spades::client::Player& p) {
@@ -839,16 +878,16 @@ namespace spades {
 
 			if (!IsMuted()) {
 				Handle<IAudioChunk> c = audioDevice->RegisterSound("Sounds/Weapons/DryFire.opus");
-				if (p.IsLocalPlayer()) {
+				if (IsPlayerInFirstPerson(p.GetId())) {
 					audioDevice->PlayLocal(c.GetPointerOrNull(),
 						MakeVector3(0.4F, -0.3F, 0.5F), AudioParam());
 				} else {
-					const auto& origin = p.GetEye()
+					audioDevice->Play(c.GetPointerOrNull(),
+						p.GetEye()
 						+ p.GetFront() * 0.5F
 						- p.GetUp() * 0.3F
-						+ p.GetRight() * 0.4F;
-					audioDevice->Play(c.GetPointerOrNull(), origin, AudioParam());
-					EmitSoundIndicator(origin, SoundType::Action);
+						+ p.GetRight() * 0.4F,
+					AudioParam());
 				}
 			}
 		}
@@ -856,27 +895,41 @@ namespace spades {
 		void Client::PlayerReloadingWeapon(spades::client::Player& p) {
 			SPADES_MARK_FUNCTION();
 
-			if (!IsInFirstPersonView(p.GetId()))
-				EmitSoundIndicator(p.GetEye()
-						+ p.GetFront() * 0.4F
-						- p.GetUp() * -0.3F
-						+ p.GetRight() * 0.5F,
-						SoundType::Action);
+			const int playerId = p.GetId();
 
-			clientPlayers.at(p.GetId())->ReloadingWeapon();
+			// register sound
+			if (!IsPlayerInFirstPerson(playerId))
+				EmitSoundIndicator(p.GetEye()
+					+ p.GetFront() * 0.4F
+					- p.GetUp() * -0.3F
+					+ p.GetRight() * 0.5F,
+					SoundType::Action);
+
+			// register minimap sound
+			if (IsPlayerBeingFollowed(playerId))
+				soundFeedbackIndicators.push_back({4.0F, 32.0F});
+
+			clientPlayers.at(playerId)->ReloadingWeapon();
 		}
 
 		void Client::PlayerReloadedWeapon(spades::client::Player& p) {
 			SPADES_MARK_FUNCTION();
 
-			if (!IsInFirstPersonView(p.GetId()))
-				EmitSoundIndicator(p.GetEye()
-						+ p.GetFront() * 0.4F
-						- p.GetUp() * -0.3F
-						+ p.GetRight() * 0.5F,
-						SoundType::Action);
+			const int playerId = p.GetId();
 
-			clientPlayers.at(p.GetId())->ReloadedWeapon();
+			// register sound
+			if (!IsPlayerInFirstPerson(playerId))
+				EmitSoundIndicator(p.GetEye()
+					+ p.GetFront() * 0.4F
+					- p.GetUp() * -0.3F
+					+ p.GetRight() * 0.5F,
+					SoundType::Action);
+
+			// register minimap sound
+			if (IsPlayerBeingFollowed(playerId))
+				soundFeedbackIndicators.push_back({4.0F, 32.0F});
+
+			clientPlayers.at(playerId)->ReloadedWeapon();
 		}
 
 		void Client::PlayerChangedTool(spades::client::Player& p) {
@@ -886,6 +939,7 @@ namespace spades {
 				return; // played by ClientPlayer::Update
 
 			if (!IsMuted()) {
+				const int playerId = p.GetId();
 				const auto& origin = p.GetEye()
 						+ p.GetFront() * 0.5F
 						- p.GetUp() * 0.3F
@@ -893,15 +947,20 @@ namespace spades {
 				Handle<IAudioChunk> c = audioDevice->RegisterSound("Sounds/Weapons/Switch.opus");
 				audioDevice->Play(c.GetPointerOrNull(), origin, AudioParam());
 
-				if (!IsInFirstPersonView(p.GetId()))
+				// register sound
+				if (!IsPlayerInFirstPerson(playerId))
 					EmitSoundIndicator(origin, SoundType::Action);
+
+				// register minimap sound
+				if (IsPlayerBeingFollowed(playerId))
+					soundFeedbackIndicators.push_back({2.0F, 24.0F});
 			}
 		}
 
 		void Client::PlayerRestocked(spades::client::Player& p) {
 			if (!IsMuted()) {
 				Handle<IAudioChunk> c;
-				if (IsInFirstPersonView(p.GetId())) {
+				if (IsPlayerInFirstPerson(p.GetId())) {
 					c = audioDevice->RegisterSound("Sounds/Weapons/RestockLocal.opus");
 					audioDevice->PlayLocal(c.GetPointerOrNull(),
 						MakeVector3(0.4F, -0.3F, 0.5F), AudioParam());
@@ -913,9 +972,13 @@ namespace spades {
 					c = audioDevice->RegisterSound("Sounds/Weapons/Restock.opus");
 					audioDevice->Play(c.GetPointerOrNull(), origin, AudioParam());
 
-					if (!IsInFirstPersonView(p.GetId()))
-						EmitSoundIndicator(origin, SoundType::Action);
+					// register sound
+					EmitSoundIndicator(origin, SoundType::Action);
 				}
+
+				// register minimap sound indicator
+				if (IsPlayerBeingFollowed(p.GetId()))
+					soundFeedbackIndicators.push_back({2.0F, 24.0F});
 			}
 		}
 
@@ -924,8 +987,8 @@ namespace spades {
 
 			if (!IsMuted()) {
 				Handle<IAudioChunk> c =
-				  audioDevice->RegisterSound("Sounds/Weapons/Grenade/Fire.opus");
-				if (IsInFirstPersonView(p.GetId())) {
+					audioDevice->RegisterSound("Sounds/Weapons/Grenade/Fire.opus");
+				if (IsPlayerInFirstPerson(p.GetId())) {
 					audioDevice->PlayLocal(c.GetPointerOrNull(),
 						MakeVector3(0.4F, -0.3F, 0.5F), AudioParam());
 				} else {
@@ -935,9 +998,13 @@ namespace spades {
 						+ p.GetRight() * 0.3F;
 					audioDevice->Play(c.GetPointerOrNull(), origin, AudioParam());
 
-					if (!IsInFirstPersonView(p.GetId()))
-						EmitSoundIndicator(origin, SoundType::Action);
+					// register sound
+					EmitSoundIndicator(origin, SoundType::Action);
 				}
+
+				// register minimap sound
+				if (IsPlayerBeingFollowed(p.GetId()))
+					soundFeedbackIndicators.push_back({2.0F, 64.0F});
 			}
 		}
 
@@ -950,8 +1017,8 @@ namespace spades {
 
 			if (!IsMuted()) {
 				Handle<IAudioChunk> c =
-				  audioDevice->RegisterSound("Sounds/Weapons/Grenade/Throw.opus");
-				if (IsInFirstPersonView(p.GetId())) {
+					audioDevice->RegisterSound("Sounds/Weapons/Grenade/Throw.opus");
+				if (IsPlayerInFirstPerson(p.GetId())) {
 					audioDevice->PlayLocal(c.GetPointerOrNull(),
 						MakeVector3(0.4F, 0.1F, 0.3F), AudioParam());
 				} else {
@@ -960,8 +1027,14 @@ namespace spades {
 						- p.GetUp() * 0.2F
 						+ p.GetRight() * 0.3F;
 					audioDevice->Play(c.GetPointerOrNull(), origin, AudioParam());
+
+					// register sound
 					EmitSoundIndicator(origin, SoundType::Action);
 				}
+
+				// register minimap sound
+				if (IsPlayerBeingFollowed(p.GetId()))
+					soundFeedbackIndicators.push_back({2.0F, 48.0F});
 			}
 		}
 
@@ -970,8 +1043,8 @@ namespace spades {
 
 			if (!IsMuted()) {
 				Handle<IAudioChunk> c =
-				  audioDevice->RegisterSound("Sounds/Weapons/Spade/Miss.opus");
-				if (IsInFirstPersonView(p.GetId())) {
+					audioDevice->RegisterSound("Sounds/Weapons/Spade/Miss.opus");
+				if (IsPlayerInFirstPerson(p.GetId())) {
 					audioDevice->PlayLocal(c.GetPointerOrNull(),
 						MakeVector3(0.2F, -0.1F, 0.7F), AudioParam());
 				} else {
@@ -979,8 +1052,14 @@ namespace spades {
 						+ p.GetFront() * 0.9F
 						- p.GetUp() * 1.25F;
 					audioDevice->Play(c.GetPointerOrNull(), origin, AudioParam());
+
+					// register sound
 					EmitSoundIndicator(origin, SoundType::Action);
 				}
+
+				// register minimap sound
+				if (IsPlayerBeingFollowed(p.GetId()))
+					soundFeedbackIndicators.push_back({2.0F, 24.0F});
 			}
 		}
 
@@ -988,11 +1067,12 @@ namespace spades {
 											 IntVector3 blockPos, IntVector3 normal) {
 			SPADES_MARK_FUNCTION();
 
-			if (IsInFirstPersonView(p.GetId()))
+			bool isFirstPerson = IsPlayerInFirstPerson(p.GetId());
+			if (isFirstPerson)
 				localFireVibrationTime = time;
 
 			if (blockPos.z >= 63) {
-				Vector3 shiftedHitPos = hitPos + (MakeVector3(normal) * 0.05F);
+				const auto& shiftedHitPos = hitPos + (MakeVector3(normal) * 0.05F);
 				BulletHitWaterSurface(shiftedHitPos);
 
 				// TODO: use a better sound
@@ -1003,10 +1083,18 @@ namespace spades {
 					param.volume = 2.0F;
 					param.pitch = 0.9F + SampleRandomFloat() * 0.2F;
 					audioDevice->Play(c.GetPointerOrNull(), shiftedHitPos, param);
+
+					// register sound
+					if (!isFirstPerson)
+						EmitSoundIndicator(shiftedHitPos, SoundType::Action);
+
+					// register minimap sound
+					if (IsPlayerBeingFollowed(p.GetId()))
+						soundFeedbackIndicators.push_back({2.0F, 0.0F, true});
 				}
 			} else {
-				Vector3 origin = MakeVector3(blockPos) + 0.5F;
-				Vector3 shiftedHitPos = origin + (MakeVector3(normal) * 0.6F);
+				const auto& blockCenter = MakeVector3(blockPos) + 0.5F;
+				const auto& shiftedHitPos = blockCenter + (MakeVector3(normal) * 0.6F);
 
 				uint32_t col = map->GetColor(blockPos.x, blockPos.y, blockPos.z);
 
@@ -1022,11 +1110,16 @@ namespace spades {
 					Handle<IAudioChunk> c =
 					  audioDevice->RegisterSound("Sounds/Weapons/Spade/HitBlock.opus");
 					audioDevice->Play(c.GetPointerOrNull(), shiftedHitPos, AudioParam());
+
+					// register sound
+					if (!isFirstPerson)
+						EmitSoundIndicator(shiftedHitPos, SoundType::Action);
+
+					// register minimap sound
+					if (IsPlayerBeingFollowed(p.GetId()))
+						soundFeedbackIndicators.push_back({2.0F, 0.0F, true});
 				}
 			}
-
-			if (!IsInFirstPersonView(p.GetId()))
-				EmitSoundIndicator(hitPos, SoundType::Action);
 		}
 
 		void Client::PlayerKilledPlayer(spades::client::Player& killer,
@@ -1335,8 +1428,10 @@ namespace spades {
 
 			// don't spawn blood when in firstperson view
 			int focusedPlayerId = GetCameraTargetPlayerId();
-			if (!IsFirstPerson(GetCameraMode()) || focusedPlayerId != hurtPlayer.GetId())
-				Bleed(hitPos, focusedPlayerId == by.GetId());
+			bool byCameraPlayer = focusedPlayerId == by.GetId();
+			bool isFirstPerson = IsFirstPerson(GetCameraMode()) && focusedPlayerId == hurtPlayer.GetId();
+			if (!isFirstPerson)
+				Bleed(hitPos, byCameraPlayer);
 
 			if (hurtPlayer.IsLocalPlayer()) {
 				// don't play hit sound now;
@@ -1507,8 +1602,6 @@ namespace spades {
 		void Client::BulletHitBlock(Vector3 hitPos, IntVector3 blockPos, IntVector3 normal) {
 			SPADES_MARK_FUNCTION();
 
-			Vector3 shiftedHitPos = hitPos + (MakeVector3(normal) * 0.1F);
-
 			static constexpr std::array<const char*, 4> snds = {
 			  "Sounds/Weapons/Impacts/Ricochet1.opus", "Sounds/Weapons/Impacts/Ricochet2.opus",
 			  "Sounds/Weapons/Impacts/Ricochet3.opus", "Sounds/Weapons/Impacts/Ricochet4.opus"
@@ -1517,6 +1610,8 @@ namespace spades {
 			  "Sounds/Weapons/Impacts/Water1.opus", "Sounds/Weapons/Impacts/Water2.opus",
 			  "Sounds/Weapons/Impacts/Water3.opus", "Sounds/Weapons/Impacts/Water4.opus"
 			};
+
+			const auto& shiftedHitPos = hitPos + (MakeVector3(normal) * 0.1F);
 
 			if (blockPos.z >= 63) {
 				BulletHitWaterSurface(shiftedHitPos);
@@ -1535,8 +1630,8 @@ namespace spades {
 				int health = col >> 24;
 				uint32_t f = (std::max(health, 32) << 8) / 100;
 				col = DarkenColor(col, f);
-
 				col = map->GetColorJit(col); // randomize color
+
 				EmitBlockFragments(shiftedHitPos, IntVectorFromColor(col));
 
 				if (!IsMuted()) {
@@ -1553,7 +1648,7 @@ namespace spades {
 			}
 		}
 
-		void Client::AddBulletTracer(spades::client::Player& player,
+		void Client::AddBulletTracer(spades::client::Player& p,
 			spades::Vector3 muzzlePos, spades::Vector3 hitPos) {
 			SPADES_MARK_FUNCTION();
 
@@ -1567,7 +1662,7 @@ namespace spades {
 				return;
 
 			// If disabled, do not display bullet tracers when in firstperson perspective
-			bool isFirstPerson = IsInFirstPersonView(player.GetId());
+			bool isFirstPerson = IsPlayerInFirstPerson(p.GetId());
 			if (tracersMode == 2 && isFirstPerson)
 				return;
 
@@ -1575,13 +1670,13 @@ namespace spades {
 			// trajectory of the fired bullet (as far as the game physics is concerned), but
 			// displaying it as-is would make it seem like it was fired from a skull gun. Rewrite
 			// the starting point with the visual muzzle point of the current weapon skin.
-			Handle<ClientPlayer> clientPlayer = clientPlayers[player.GetId()];
+			Handle<ClientPlayer> clientPlayer = clientPlayers[p.GetId()];
 			muzzlePos = isFirstPerson ? clientPlayer->GetMuzzlePositionInFirstPersonView()
 									  : clientPlayer->GetMuzzlePosition();
 
 			float vel;
 			bool shotgun = false;
-			switch (player.GetWeapon().GetWeaponType()) {
+			switch (p.GetWeapon().GetWeaponType()) {
 				case RIFLE_WEAPON: vel = 700.0F; break;
 				case SMG_WEAPON: vel = 360.0F; break;
 				case SHOTGUN_WEAPON:

@@ -528,8 +528,8 @@ namespace spades {
 						r = eng->RegisterObjectMethod("Renderer", "void DrawFilledRect(float, float, float, float)",
 							asMETHODPR(IRenderer, DrawFilledRect, (float, float, float, float), void), asCALL_THISCALL);
 						manager->CheckError(r);
-						r = eng->RegisterObjectMethod("Renderer", "void DrawOutlinedRect(float, float, float, float)",
-							asMETHODPR(IRenderer, DrawOutlinedRect, (float, float, float, float), void), asCALL_THISCALL);
+						r = eng->RegisterObjectMethod("Renderer", "void DrawOutlinedRect(float, float, float, float, int thickness = 1)",
+							asMETHODPR(IRenderer, DrawOutlinedRect, (float, float, float, float, int), void), asCALL_THISCALL);
 						manager->CheckError(r);
 						r = eng->RegisterObjectMethod(
 						  "Renderer", "void DrawFlatGameMap(const AABB2&in, const AABB2& in)",

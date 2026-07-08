@@ -144,8 +144,11 @@ namespace spades {
 			return world->GetPlayer(GetCameraTargetPlayerId()).value();
 		}
 
-		bool Client::IsInFirstPersonView(int playerId) {
+		bool Client::IsPlayerInFirstPerson(int playerId) {
 			return IsFirstPerson(GetCameraMode()) && GetCameraTargetPlayerId() == playerId;
+		}
+		bool Client::IsPlayerBeingFollowed(int playerId) {
+			return HasTargetPlayer(GetCameraMode()) && GetCameraTargetPlayerId() == playerId;
 		}
 
 		float Client::GetLocalFireVibration() {

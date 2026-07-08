@@ -123,9 +123,10 @@ namespace spades {
 			corpses.clear();
 
 			damageIndicators.clear();
+			soundFeedbackIndicators.clear();
 			localEntities.clear();
 			grenadeTracers.clear();
-			
+
 			if (bloodMarks)
 				bloodMarks->Clear();
 		}
