@@ -18,6 +18,7 @@
 
  */
 
+#include <algorithm>
 #include "VulkanRenderer.h"
 #include "VulkanMapRenderer.h"
 #include "VulkanModelRenderer.h"
@@ -43,6 +44,7 @@
 #include "VulkanFogFilter.h"
 #include "VulkanDepthOfFieldFilter.h"
 #include "VulkanFXAAFilter.h"
+#include "VulkanCameraBlurFilter.h"
 #include "VulkanCavityOutlineFilter.h"
 #include "VulkanDepthResolveFilter.h"
 #include "VulkanColorCorrectionFilter.h"
@@ -67,6 +69,7 @@ SPADES_SETTING(r_modelShadows);
 SPADES_SETTING(r_radiosity);
 SPADES_SETTING(r_depthOfField);
 SPADES_SETTING(r_fxaa);
+SPADES_SETTING(r_cameraBlur);
 SPADES_SETTING(r_water);
 SPADES_SETTING(r_softParticles);
 SPADES_SETTING(r_outlines);
@@ -189,6 +192,7 @@ namespace spades {
 			fogFilter = stmp::make_unique<VulkanFogFilter>(*this);
 			depthOfFieldFilter = stmp::make_unique<VulkanDepthOfFieldFilter>(*this);
 			fxaaFilter = stmp::make_unique<VulkanFXAAFilter>(*this);
+			cameraBlurFilter = stmp::make_unique<VulkanCameraBlurFilter>(*this);
 			cavityOutlineFilter = stmp::make_unique<VulkanCavityOutlineFilter>(*this);
 			colorCorrectionFilter = stmp::make_unique<VulkanColorCorrectionFilter>(*this);
 			lensFlareFilter = stmp::make_unique<VulkanLensFlareFilter>(*this);
@@ -238,6 +242,7 @@ namespace spades {
 			colorCorrectionFilter.reset();
 			cavityOutlineFilter.reset();
 			depthResolveFilter.reset();
+			cameraBlurFilter.reset();
 			fxaaFilter.reset();
 			depthOfFieldFilter.reset();
 			fogFilter.reset();
@@ -2411,6 +2416,20 @@ namespace spades {
 				if (def.depthOfFieldFocalLength > 0.0f || def.blurVignette > 0.0f) {
 					depthOfFieldFilter->Filter(commandBuffer, currentInput, currentOutput);
 					std::swap(currentInput, currentOutput);
+				}
+			}
+
+			// Camera motion blur (+ radial blur). GL order: DoF -> CameraBlur
+			// -> Bloom. Apply() returns false when skipped (no motion), in
+			// which case currentInput passes through unchanged.
+			{
+				const client::SceneDefinition& def = GetSceneDef();
+				if ((float)r_cameraBlur > 0.0f && !def.denyCameraBlur && cameraBlurFilter &&
+				    currentInput && currentOutput) {
+					float intensity = std::min((float)r_cameraBlur * 0.2f, 1.0f);
+					if (cameraBlurFilter->Apply(commandBuffer, currentInput, currentOutput,
+					                            intensity, def.radialBlur))
+						std::swap(currentInput, currentOutput);
 				}
 			}
 
