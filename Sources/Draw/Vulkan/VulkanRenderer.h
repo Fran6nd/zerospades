@@ -62,6 +62,7 @@ namespace spades {
 		class VulkanDepthOfFieldFilter;
 		class VulkanFXAAFilter;
 		class VulkanCameraBlurFilter;
+		class VulkanResampleBicubicFilter;
 		class VulkanCavityOutlineFilter;
 		class VulkanDepthResolveFilter;
 		class VulkanColorCorrectionFilter;
@@ -174,6 +175,7 @@ namespace spades {
 		std::unique_ptr<VulkanDepthOfFieldFilter> depthOfFieldFilter;
 		std::unique_ptr<VulkanFXAAFilter> fxaaFilter;
 		std::unique_ptr<VulkanCameraBlurFilter> cameraBlurFilter;
+		std::unique_ptr<VulkanResampleBicubicFilter> resampleBicubicFilter;
 		std::unique_ptr<VulkanCavityOutlineFilter> cavityOutlineFilter;
 		std::unique_ptr<VulkanColorCorrectionFilter> colorCorrectionFilter;
 		std::unique_ptr<VulkanLensFlareFilter> lensFlareFilter;
