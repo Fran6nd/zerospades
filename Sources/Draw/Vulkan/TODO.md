@@ -29,7 +29,7 @@ Fog → DoF → CameraBlur → Bloom → FXAA → LensFlare → AutoExposure →
 | `GLLensFilter` | — | dead code in GL (unused) |
 | `GLLensFlareFilter` | `VulkanLensFlareFilter` | wired sun path (`r_lensFlare`); **`r_lensFlareDynamic` per-light flares missing** |
 | `GLNonlinearizeFilter` | — | not needed — sRGB swapchain blit encodes for display |
-| `GLResampleBicubicFilter` | — | **missing** (`r_scaleFilter == 2`) |
+| `GLResampleBicubicFilter` | `VulkanResampleBicubicFilter` | wired (`r_scaleFilter == 2`); `r_scaleFilter == 0` now also honored via nearest blit |
 | `GLSSAOFilter` | — | **missing** (`r_ssao`) |
 | `GLTemporalAAFilter` | — | **missing** (see AA gap above) |
 | (n/a — cavity is Vulkan-only) | `VulkanCavityOutlineFilter` | wired (`r_outlines`) |
@@ -76,9 +76,10 @@ The **Phys** map lambert (`BasicMapPhys.vert/frag` via
       pipelines still compile lazily on first draw. If first-frame stutter
       persists, pre-create the pipelines (needs render pass compat) or use
       `VK_EXT_graphics_pipeline_library` / warm pipeline cache from disk.
-- [ ] [VulkanWaterRenderer.cpp:1067](VulkanWaterRenderer.cpp#L1067)
-      `RenderDynamicLightPass` reuses the sunlight pipeline as a
-      placeholder — water doesn't react to dynamic lights.
+- [x] `VulkanWaterRenderer::RenderDynamicLightPass` — already an
+      intentional no-op in the code; GL water has no dynamic light pass
+      either, so "no reaction to dynamic lights" *is* parity. TODO was
+      stale (claimed it re-drew with the sunlight pipeline).
 
 ## Fog / sky parity follow-ups
 
