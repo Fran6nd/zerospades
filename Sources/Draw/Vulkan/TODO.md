@@ -13,7 +13,7 @@ capability). Remaining:
 ## Post-processing filters
 
 Wired into [VulkanRenderer.cpp](VulkanRenderer.cpp) pp-chain:
-Fog → DoF → Bloom → FXAA → LensFlare → AutoExposure → ColorCorrection
+Fog → DoF → CameraBlur → Bloom → FXAA → LensFlare → AutoExposure → ColorCorrection
 → CavityOutline.
 
 | GL filter | Vulkan equivalent | Status |
@@ -21,7 +21,7 @@ Fog → DoF → Bloom → FXAA → LensFlare → AutoExposure → ColorCorrectio
 | `GLAutoExposureFilter` | `VulkanAutoExposureFilter` | wired (`r_hdr`) |
 | `GLBloomFilter` | — | dead code in GL (instantiated nowhere) |
 | `GLLensDustFilter` (the real `r_bloom`) | `VulkanBloomFilter` | wired but simplified — no dust texture / noise overlay |
-| `GLCameraBlurFilter` | — | **missing** (`r_cameraBlur`) |
+| `GLCameraBlurFilter` | `VulkanCameraBlurFilter` | wired (`r_cameraBlur` + `sceneDef.radialBlur`), between DoF and Bloom like GL |
 | `GLColorCorrectionFilter` | `VulkanColorCorrectionFilter` | wired (`r_colorCorrection`) |
 | `GLDepthOfFieldFilter` | `VulkanDepthOfFieldFilter` | wired (`r_depthOfField`) |
 | `GLFXAAFilter` | `VulkanFXAAFilter` | wired (`r_fxaa`) |
