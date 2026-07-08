@@ -64,6 +64,7 @@ SPADES_SETTING(cg_keyAltAttack);
 SPADES_SETTING(cg_keyCrouch);
 SPADES_SETTING(cg_keyLimbo);
 SPADES_SETTING(cg_keyToggleSpectatorNames);
+SPADES_SETTING(cg_keySpectatorZoom);
 SPADES_SETTING(cg_keyStaffSpectating);
 SPADES_SETTING(cg_keyDemoPlayPause);
 SPADES_SETTING(cg_keyDemoSeekForward);
@@ -1723,7 +1724,8 @@ namespace spades {
 				addLine(_Tr("Client", "[{0}] Toggle player names", TrKey(cg_keyToggleSpectatorNames)));
 				bool isStaff = activeNet && activeNet->GetGameProperties()->isStaff;
 				if (isStaff || isDemoMode)
-					addLine(_Tr("Client", "[{0}] Toggle ESP", TrKey(cg_keyStaffSpectating)));
+					addLine(_Tr("Client", "[{0}] Toggle ESP", TrKey(cg_keyStaffSpectating)));			
+				addLine(_Tr("Client", "[{0}] Hold to Zoom", TrKey(cg_keySpectatorZoom)));
 			}
 
 			y += lh * 0.5F;
