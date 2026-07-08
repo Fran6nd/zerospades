@@ -75,8 +75,9 @@ namespace spades {
 			FT_Face face;
 			std::string data = FileManager::ReadAllBytes(fileName.c_str());
 
-			auto ret = FT_New_Memory_Face(
-			  GetFreeType(), reinterpret_cast<const FT_Byte*>(data.data()), data.size(), 0, &face);
+			auto ret = FT_New_Memory_Face(GetFreeType(),
+				reinterpret_cast<const FT_Byte*>(data.data()),
+				static_cast<FT_Long>(data.size()), 0, &face);
 
 			if (ret)
 				SPRaise("Failed to load font %s: FreeType error %d", fileName.c_str(), ret);

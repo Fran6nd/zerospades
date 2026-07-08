@@ -55,14 +55,19 @@ namespace spades {
 				}
 
 				info.type = Image;
-				info.imageRect = AABB2(x, y, w, gh);
-				info.advance = (float)adv;
+				info.imageRect = AABB2(
+					static_cast<float>(x), 
+					static_cast<float>(y), 
+					static_cast<float>(w), 
+					static_cast<float>(gh)
+				);
+				info.advance = static_cast<float>(adv);
 
 				glyphs.push_back(info);
 			}
 
 			yMin = 0.0F;
-			yMax = (float)gh;
+			yMax = static_cast<float>(gh);
 		}
 
 		Quake3Font::~Quake3Font() {
@@ -78,7 +83,7 @@ namespace spades {
 		Vector2 Quake3Font::Measure(const std::string& txt) {
 			SPADES_MARK_FUNCTION();
 
-			float x = 0.f, w = 0.f, h = (float)glyphHeight;
+			float x = 0.f, w = 0.f, h = static_cast<float>(glyphHeight);
 			for (size_t i = 0; i < txt.size();) {
 				size_t chrLen = 0;
 				uint32_t ch = GetCodePointFromUTF8String(txt, i, &chrLen);
@@ -90,7 +95,7 @@ namespace spades {
 				if (ch == 13 || ch == 10) {
 					// new line
 					x = 0.0F;
-					h += (float)glyphHeight;
+					h += static_cast<float>(glyphHeight);
 					continue;
 				}
 
@@ -143,7 +148,7 @@ namespace spades {
 				if (ch == 13 || ch == 10) {
 					// new line
 					x = 0.0F;
-					y += (float)glyphHeight;
+					y += static_cast<float>(glyphHeight);
 					continue;
 				}
 

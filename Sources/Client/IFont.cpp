@@ -108,7 +108,7 @@ namespace spades {
 				if (s->Read(&fontSize, 4) < 4)
 					SPRaise("Reading %s: file truncated", path.c_str());
 
-				this->fontSize = (float)fontSize;
+				this->fontSize = static_cast<float>(fontSize);
 				fontSizeInverse = 1.0F / fontSize;
 
 				std::vector<GlyphInfo> infos;
@@ -116,7 +116,7 @@ namespace spades {
 				size_t siz = infos.size() * sizeof(GlyphInfo);
 				if (s->Read(infos.data(), siz) < siz) {
 					SPRaise("Reading %s: file truncated: "
-						"trying to read %d byte(s)", path.c_str(), (int)siz);
+						"trying to read %zu byte(s)", path.c_str(), siz);
 				}
 
 				for (const auto& i : infos)
@@ -231,8 +231,18 @@ namespace spades {
 				scale = newScale;
 			}
 
-			AABB2 inRect(glyph.x, glyph.y, glyph.w, glyph.h);
-			AABB2 outRect(glyph.offX, glyph.offY, glyph.w, glyph.h);
+			AABB2 inRect(
+				static_cast<float>(glyph.x),
+				static_cast<float>(glyph.y),
+				static_cast<float>(glyph.w),
+				static_cast<float>(glyph.h)
+			);
+			AABB2 outRect(
+				static_cast<float>(glyph.offX),
+				static_cast<float>(glyph.offY),
+				static_cast<float>(glyph.w),
+				static_cast<float>(glyph.h)
+			);
 
 			// margin to make the border completely transparent
 			// (considering the OpenGL's linear interpolation)
