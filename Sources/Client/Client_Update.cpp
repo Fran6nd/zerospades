@@ -717,7 +717,7 @@ namespace spades {
 #pragma mark - IWorldListener Handlers
 
 		void Client::EmitSoundIndicator(Vector3 pos, SoundType type) {
-			if (!IsDemoMode())
+			if (!(IsDemoMode() && staffSpectating))
 				return;
 			AddLocalEntity(std::make_unique<SoundIndicatorEntity>(*this, pos, type));
 		}
