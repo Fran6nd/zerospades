@@ -57,10 +57,12 @@ namespace spades {
 			VkDescriptorSetLayout quadSamplerDSL;
 
 			VkPipelineLayout downsampleLayout;  // singleSamplerDSL, no push constants
+			VkPipelineLayout gaussLayout;       // singleSamplerDSL + push constant vec2 unitShift
 			VkPipelineLayout upsampleLayout;    // dualSamplerDSL + push constant float alpha
 			VkPipelineLayout compositeLayout;   // quadSamplerDSL + push constant vec4 noise factor
 
 			VkPipeline downsamplePipeline;
+			VkPipeline gaussPipeline;
 			VkPipeline upsamplePipeline;
 			VkPipeline compositePipeline;
 

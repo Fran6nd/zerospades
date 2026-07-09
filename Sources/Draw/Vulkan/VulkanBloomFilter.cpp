@@ -50,9 +50,11 @@ namespace spades {
 		      dualSamplerDSL(VK_NULL_HANDLE),
 		      quadSamplerDSL(VK_NULL_HANDLE),
 		      downsampleLayout(VK_NULL_HANDLE),
+		      gaussLayout(VK_NULL_HANDLE),
 		      upsampleLayout(VK_NULL_HANDLE),
 		      compositeLayout(VK_NULL_HANDLE),
 		      downsamplePipeline(VK_NULL_HANDLE),
+		      gaussPipeline(VK_NULL_HANDLE),
 		      upsamplePipeline(VK_NULL_HANDLE),
 		      compositePipeline(VK_NULL_HANDLE) {
 			SPADES_MARK_FUNCTION();
@@ -96,10 +98,12 @@ namespace spades {
 
 			if (compositePipeline  != VK_NULL_HANDLE) vkDestroyPipeline(dev, compositePipeline,  nullptr);
 			if (upsamplePipeline   != VK_NULL_HANDLE) vkDestroyPipeline(dev, upsamplePipeline,   nullptr);
+			if (gaussPipeline      != VK_NULL_HANDLE) vkDestroyPipeline(dev, gaussPipeline,      nullptr);
 			if (downsamplePipeline != VK_NULL_HANDLE) vkDestroyPipeline(dev, downsamplePipeline, nullptr);
 
 			if (compositeLayout  != VK_NULL_HANDLE) vkDestroyPipelineLayout(dev, compositeLayout,  nullptr);
 			if (upsampleLayout   != VK_NULL_HANDLE) vkDestroyPipelineLayout(dev, upsampleLayout,   nullptr);
+			if (gaussLayout      != VK_NULL_HANDLE) vkDestroyPipelineLayout(dev, gaussLayout,      nullptr);
 			if (downsampleLayout != VK_NULL_HANDLE) vkDestroyPipelineLayout(dev, downsampleLayout, nullptr);
 
 			if (quadSamplerDSL   != VK_NULL_HANDLE) vkDestroyDescriptorSetLayout(dev, quadSamplerDSL,   nullptr);
@@ -198,6 +202,7 @@ namespace spades {
 
 			VkShaderModule vs           = LoadSPIRV("Shaders/Vulkan/PostFilters/PassThrough.vk.vs.spv");
 			VkShaderModule passthroughFS = LoadSPIRV("Shaders/Vulkan/PostFilters/PassThrough.vk.fs.spv");
+			VkShaderModule gaussFS      = LoadSPIRV("Shaders/Vulkan/PostFilters/Gauss1DRGBA.vk.fs.spv");
 			VkShaderModule upsampleFS   = LoadSPIRV("Shaders/Vulkan/PostFilters/BloomUpsample.vk.fs.spv");
 			VkShaderModule compositeFS  = LoadSPIRV("Shaders/Vulkan/PostFilters/BloomComposite.vk.fs.spv");
 
@@ -246,6 +251,17 @@ namespace spades {
 				li.pSetLayouts    = &singleSamplerDSL;
 				if (vkCreatePipelineLayout(dev, &li, nullptr, &downsampleLayout) != VK_SUCCESS)
 					SPRaise("Failed to create downsample pipeline layout");
+			}
+			{
+				VkPushConstantRange pcr{VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(float) * 2};
+				VkPipelineLayoutCreateInfo li{};
+				li.sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+				li.setLayoutCount         = 1;
+				li.pSetLayouts            = &singleSamplerDSL;
+				li.pushConstantRangeCount = 1;
+				li.pPushConstantRanges    = &pcr;
+				if (vkCreatePipelineLayout(dev, &li, nullptr, &gaussLayout) != VK_SUCCESS)
+					SPRaise("Failed to create gauss pipeline layout");
 			}
 			{
 				VkPushConstantRange pcr{VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(float)};
@@ -306,11 +322,13 @@ namespace spades {
 			};
 
 			downsamplePipeline = MakePipeline(passthroughFS, downsampleLayout);
+			gaussPipeline      = MakePipeline(gaussFS,       gaussLayout);
 			upsamplePipeline   = MakePipeline(upsampleFS,    upsampleLayout);
 			compositePipeline  = MakePipeline(compositeFS,   compositeLayout);
 
 			vkDestroyShaderModule(dev, vs,           nullptr);
 			vkDestroyShaderModule(dev, passthroughFS,nullptr);
+			vkDestroyShaderModule(dev, gaussFS,      nullptr);
 			vkDestroyShaderModule(dev, upsampleFS,   nullptr);
 			vkDestroyShaderModule(dev, compositeFS,  nullptr);
 		}
@@ -521,6 +539,10 @@ namespace spades {
 			uint32_t prevH = static_cast<uint32_t>(input->GetHeight());
 			VkImageView srcView = input->GetImageView();
 
+			// Superseded gauss ping images; returned after recording (see below).
+			std::vector<Handle<VulkanImage>> gaussTrash;
+			gaussTrash.reserve(NUM_LEVELS);
+
 			for (int i = 0; i < NUM_LEVELS; ++i) {
 				uint32_t nw = (prevW + 1) / 2;
 				uint32_t nh = (prevH + 1) / 2;
@@ -531,6 +553,27 @@ namespace spades {
 
 				DrawFullscreen(cmd, ppRenderPass, fb, nw, nh,
 				               downsamplePipeline, downsampleLayout, ds);
+
+				// GL parity: GLLensDustFilter runs a Gauss1D H+V blur on
+				// every downsample level; without it the bloom is noticeably
+				// harder-edged than GL.
+				for (int pass = 0; pass < 2; ++pass) {
+					float unitShift[2] = {pass == 0 ? 1.0f / (float)nw : 0.0f,
+					                      pass == 0 ? 0.0f : 1.0f / (float)nh};
+					vkCmdPushConstants(cmd, gaussLayout, VK_SHADER_STAGE_FRAGMENT_BIT,
+					                   0, sizeof(unitShift), unitShift);
+
+					Handle<VulkanImage> blurred = pool->Acquire(nw, nh, colorFormat);
+					VkFramebuffer bfb   = MakeFramebuffer(ppRenderPass,
+					                                      blurred.GetPointerOrNull(), frameSlot);
+					VkDescriptorSet bds = BindTexture(frameSlot, singleSamplerDSL,
+					                                  dst->GetImageView());
+					DrawFullscreen(cmd, ppRenderPass, bfb, nw, nh,
+					               gaussPipeline, gaussLayout, bds);
+
+					gaussTrash.push_back(std::move(dst));
+					dst = std::move(blurred);
+				}
 
 				srcView = dst->GetImageView();
 				levels.push_back(std::move(dst));
@@ -609,6 +652,8 @@ namespace spades {
 			               compositePipeline, compositeLayout, ds);
 
 			// Return all temporary images (deferred to avoid pool reuse hazards).
+			for (auto& img : gaussTrash)
+				pool->Return(img.GetPointerOrNull());
 			for (auto& img : toReturn)
 				pool->Return(img.GetPointerOrNull());
 			for (auto& img : levels)
