@@ -33,6 +33,14 @@ layout(set = 0, binding = 4) uniform sampler3D radiosityTextureY;
 layout(set = 0, binding = 5) uniform sampler3D radiosityTextureZ;
 layout(set = 0, binding = 6) uniform sampler2D ambientOcclusionAtlas; // Gfx/AmbientOcclusion.png
 
+layout(set = 1, binding = 0) uniform ShadowSampling {
+	mat4 cascadeMatrix[3];
+	int enabled;
+} shadowSampling;
+layout(set = 1, binding = 1) uniform sampler2D modelShadowMap0;
+layout(set = 1, binding = 2) uniform sampler2D modelShadowMap1;
+layout(set = 1, binding = 3) uniform sampler2D modelShadowMap2;
+
 layout(location = 0) in vec4 color;           // xyz = vertexColor, w = sun lambert
 layout(location = 1) in vec3 ambientLight;     // hemisphere ambient fallback (kept for VS↔FS compat)
 layout(location = 2) in vec3 customColor;
@@ -44,8 +52,31 @@ layout(location = 7) in vec3 radiosityTextureCoord;
 layout(location = 8) in vec3 normalVarying;
 layout(location = 9) in vec2 ambientOcclusionCoord; // 2D coords into AO atlas
 layout(location = 10) in float waterClip;      // <0 = below the reflection plane
+layout(location = 11) in vec3 modelShadowCoord0;    // light-clip coords per cascade
+layout(location = 12) in vec3 modelShadowCoord1;
+layout(location = 13) in vec3 modelShadowCoord2;
 
 layout(location = 0) out vec4 fragColor;
+
+// Same cascade sampling as BasicMap.frag. Local Z 0 = sun side; a smaller
+// stored depth means an occluder nearer the sun. Bias avoids self-shadow acne
+// (models render into these cascades themselves).
+float SampleModelCascade(sampler2D tex, vec3 c) {
+	vec2 uv = c.xy * 0.5 + 0.5;
+	if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0 || c.z < 0.0 || c.z > 1.0)
+		return -1.0;
+	float stored = texture(tex, uv).r;
+	return (stored < c.z - 0.0015) ? 0.0 : 1.0;
+}
+
+float EvaluteModelShadow() {
+	if (shadowSampling.enabled == 0)
+		return 1.0;
+	float v = SampleModelCascade(modelShadowMap0, modelShadowCoord0);
+	if (v < 0.0) v = SampleModelCascade(modelShadowMap1, modelShadowCoord1);
+	if (v < 0.0) v = SampleModelCascade(modelShadowMap2, modelShadowCoord2);
+	return (v < 0.0) ? 1.0 : v;
+}
 
 vec3 DecodeRadiosityValue(vec3 val) {
 	val *= 1023.0 / 1022.0;
@@ -62,6 +93,7 @@ void main() {
 	// Evaluate map shadow (matching OpenGL Map.fs: EvaluateMapShadow)
 	float shadowVal = texture(mapShadowTexture, shadowCoord.xy).w;
 	float shadow = (shadowVal < shadowCoord.z - 0.0001) ? 0.0 : 1.0;
+	shadow *= EvaluteModelShadow(); // model-on-model cascades (set 1)
 
 	vec3 vertexColor = color.xyz;
 

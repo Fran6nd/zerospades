@@ -22,6 +22,7 @@
 #include "VulkanSpirvCache.h"
 #include "VulkanRenderer.h"
 #include "VulkanMapRenderer.h"
+#include "VulkanShadowMapRenderer.h"
 #include "VulkanBuffer.h"
 #include "VulkanImage.h"
 #include "VulkanImageWrapper.h"
@@ -471,6 +472,15 @@ namespace spades {
 					                        &shadowDs, 0, nullptr);
 				}
 			}
+			{
+				VulkanShadowMapRenderer* smr = renderer.GetShadowMapRenderer();
+				if (smr && smr->GetSamplingDescriptorSet() != VK_NULL_HANDLE) {
+					VkDescriptorSet samplingSet = smr->GetSamplingDescriptorSet();
+					vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+					                        sharedPipeline.pipelineLayout, 1, 1,
+					                        &samplingSet, 0, nullptr);
+				}
+			}
 
 			// Bind vertex buffer
 			VkBuffer vb = vertexBuffer->GetBuffer();
@@ -812,6 +822,15 @@ namespace spades {
 					vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
 					                        sharedPipeline.pipelineLayout, 0, 1,
 					                        &shadowDs, 0, nullptr);
+				}
+			}
+			{
+				VulkanShadowMapRenderer* smr = renderer.GetShadowMapRenderer();
+				if (smr && smr->GetSamplingDescriptorSet() != VK_NULL_HANDLE) {
+					VkDescriptorSet samplingSet = smr->GetSamplingDescriptorSet();
+					vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+					                        sharedPipeline.pipelineLayout, 1, 1,
+					                        &samplingSet, 0, nullptr);
 				}
 			}
 
@@ -1312,10 +1331,20 @@ namespace spades {
 				pushConstantRange.size = offsetof(ModelSolidPushConstants, physicalTail);
 			}
 
+			// Set 1 = model-shadow cascade sampling (owned by the shadow map
+			// renderer, same set the map lit pipeline binds). The Phys/ghost
+			// fragment shaders that don't declare it are still compatible with
+			// the wider layout.
+			VulkanShadowMapRenderer* smrLayout = renderer.GetShadowMapRenderer();
+			VkDescriptorSetLayout modelSetLayouts[2] = {
+			    sharedPipeline.descriptorSetLayout,
+			    smrLayout ? smrLayout->GetSamplingSetLayout() : VK_NULL_HANDLE};
+
 			VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
 			pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-			pipelineLayoutInfo.setLayoutCount = 1;
-			pipelineLayoutInfo.pSetLayouts = &sharedPipeline.descriptorSetLayout;
+			pipelineLayoutInfo.setLayoutCount =
+			    (modelSetLayouts[1] != VK_NULL_HANDLE) ? 2 : 1;
+			pipelineLayoutInfo.pSetLayouts = modelSetLayouts;
 			pipelineLayoutInfo.pushConstantRangeCount = 1;
 			pipelineLayoutInfo.pPushConstantRanges = &pushConstantRange;
 

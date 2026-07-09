@@ -40,11 +40,13 @@ Ground model shadows (player / grenade / other-players' weapons) are done:
 models render into a models-only cascaded shadow map and the map lit shader
 samples it (`BasicMap.frag` `EvaluteModelShadow()`). Remaining polish:
 
-- [ ] **Model self-shadowing** — wire the same cascade sampling into the
-      shared `BasicModelVertexColor.vert/frag`. Note that vert/frag is used by
-      the sunlight, prerender and both ghost pipelines, so all of them must
-      bind the sampling set (set 1) or break. Low value: models already receive
-      terrain shadows via `mapShadowTexture`; this only adds model-on-model.
+- [x] **Model self-shadowing** — `BasicModelVertexColor.vert/frag` now
+      declare the set-1 cascade sampling (same layout as `BasicMap`), the
+      shared model pipeline layout carries both sets, and the prerender +
+      sunlight passes bind the sampling set (covering the ghost pipelines,
+      which draw from the same passes; their frag variants simply don't
+      declare set 1, which Vulkan permits against the wider layout). The
+      UBO `enabled` flag gates sampling when no cascade was rendered.
 - [ ] **Phys lit variants** — `BasicMapPhys`, `BasicModelVertexColorPhys`
       (only active under `r_physicalLighting`).
 
