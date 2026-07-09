@@ -1069,18 +1069,6 @@ namespace spades {
 		}
 	}
 
-		void VulkanWaterRenderer::RenderDynamicLightPass(VkCommandBuffer commandBuffer, std::vector<void*> lights) {
-			SPADES_MARK_FUNCTION();
-
-			// Intentionally a no-op: the GL renderer's water has no dynamic
-			// light pass either, so parity is "no reaction to dynamic lights".
-			// The previous placeholder re-bound the sunlight pipeline and
-			// re-drew the water, which would double-shade the surface if this
-			// ever got wired into the frame graph.
-			(void)commandBuffer;
-			(void)lights;
-		}
-
 	void VulkanWaterRenderer::MarkUpdate(int x, int y) {
 			x &= w - 1;
 			y &= h - 1;
