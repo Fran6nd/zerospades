@@ -92,7 +92,15 @@ void main() {
 
     vec3 startPos = shadowOrigin;
     vec3 dir      = shadowRayDirection;
-    if (length(dir.xy) < 0.0001) dir.xy = vec2(0.0001);
+
+    // Near-vertical rays: voxelDistanceFactor -> 0, so the fog integral is
+    // ~zero anyway. Snapping dir.xy (old GL-style guard) made adjacent
+    // fragments flip between the real and snapped direction, glitching the
+    // view straight down. Skip the march instead.
+    if (length(dir.xy) < 0.0001 * length(dir)) {
+        outColor = texture(colorTexture, texCoord);
+        return;
+    }
     if (dir.x == 0.0) dir.x = 0.00001;
     if (dir.y == 0.0) dir.y = 0.00001;
     dir = normalize(dir);

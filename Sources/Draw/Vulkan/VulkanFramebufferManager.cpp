@@ -67,12 +67,28 @@ namespace spades {
 			} else if (useHdr) {
 				SPLog("Using HDR color format");
 				fbColorFormat = VK_FORMAT_R16G16B16A16_SFLOAT;
-			} else if (useHighPrec) {
-				SPLog("Using high precision color format");
-				fbColorFormat = VK_FORMAT_A2B10G10R10_UNORM_PACK32;
 			} else {
-				SPLog("Using standard RGBA8 color format");
-				fbColorFormat = VK_FORMAT_R8G8B8A8_UNORM;
+				// The lit shaders output linear color with no terminal gamma
+				// encode; an 8-bit UNORM scene FB would band badly and (until
+				// the final sRGB blit) sample ~2x too bright in filters that
+				// assume linear precision. Prefer 10-bit linear whenever the
+				// hardware allows, regardless of r_highPrec.
+				VkFormatProperties colorProps;
+				vkGetPhysicalDeviceFormatProperties(device->GetPhysicalDevice(),
+				                                    VK_FORMAT_A2B10G10R10_UNORM_PACK32,
+				                                    &colorProps);
+				const VkFormatFeatureFlags needed =
+				    VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BLEND_BIT |
+				    VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT;
+				if ((colorProps.optimalTilingFeatures & needed) == needed) {
+					SPLog(useHighPrec ? "Using high precision color format"
+					                  : "Using high precision color format "
+					                    "(auto: linear scene FB requires >8bpc)");
+					fbColorFormat = VK_FORMAT_A2B10G10R10_UNORM_PACK32;
+				} else {
+					SPLog("Using standard RGBA8 color format");
+					fbColorFormat = VK_FORMAT_R8G8B8A8_UNORM;
+				}
 			}
 
 			// Prefer D24_UNORM_S8_UINT, fall back to depth-only D32_SFLOAT
