@@ -66,6 +66,9 @@ namespace spades {
 				Vector2 _pad1;
 				Vector4 sunDirection;
 			} waterPushConstants;
+			static_assert(sizeof(WaterPushConstants) == 128,
+			              "WaterPushConstants must stay 128 bytes; the shader push_constant "
+			              "block and the reflected pipeline range depend on this std430 layout");
 
 		public:
 			VulkanWaterRenderer(VulkanRenderer& r, client::GameMap* map);
@@ -80,7 +83,6 @@ namespace spades {
 			void Prerender();
 
 			void RenderSunlightPass(VkCommandBuffer commandBuffer);
-			void RenderDynamicLightPass(VkCommandBuffer commandBuffer, std::vector<void*> lights);
 			void RenderDepthPass(VkCommandBuffer commandBuffer);
 
 			// Water update tick
