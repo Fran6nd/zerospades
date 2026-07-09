@@ -19,6 +19,7 @@
  */
 
 #include "VulkanSpriteRenderer.h"
+#include "VulkanSpirvCache.h"
 #include "VulkanRenderer.h"
 #include "VulkanImage.h"
 #include "VulkanBuffer.h"
@@ -127,17 +128,7 @@ namespace spades {
 			VkDevice vkDevice = device->GetDevice();
 
 			auto LoadSPIRVFile = [](const char* filename) -> std::vector<uint32_t> {
-				std::unique_ptr<IStream> stream = FileManager::OpenForReading(filename);
-				if (!stream) {
-					SPRaise("Failed to open shader file: %s", filename);
-				}
-
-				std::vector<uint8_t> buffer(stream->GetLength());
-				stream->Read(buffer.data(), buffer.size());
-
-				std::vector<uint32_t> code(buffer.size() / 4);
-				std::memcpy(code.data(), buffer.data(), buffer.size());
-				return code;
+				return SpirvCache::Load(filename);
 			};
 
 			const char* vertFile = softParticles ? "Shaders/Vulkan/SoftSprite.vert.spv"
