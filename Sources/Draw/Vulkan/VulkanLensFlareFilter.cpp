@@ -32,16 +32,20 @@
 #include "VulkanTemporaryImagePool.h"
 #include <Client/SceneDefinition.h>
 #include <Core/Debug.h>
+#include <Core/Settings.h>
 #include <Core/Exception.h>
 #include <Core/FileManager.h>
 #include <Core/Math.h>
 #include <Gui/SDLVulkanDevice.h>
+
+SPADES_SETTING(r_lensFlareDynamic);
 
 namespace spades {
 	namespace draw {
 
 		namespace {
 			constexpr uint32_t kVisibilityDim = 64;
+			constexpr size_t kMaxDynamicFlares = 8; // descriptor pool budget
 
 			// Push-constant blocks (must match the GLSL layout).
 
@@ -73,7 +77,6 @@ namespace spades {
 		    : VulkanPostProcessFilter(r),
 		      colorFormat(VK_FORMAT_UNDEFINED),
 		      linearSampler(VK_NULL_HANDLE),
-		      depthShadowSampler(VK_NULL_HANDLE),
 		      scannerRenderPass(VK_NULL_HANDLE),
 		      blurRenderPass(VK_NULL_HANDLE),
 		      finalRenderPass(VK_NULL_HANDLE),
@@ -133,7 +136,6 @@ namespace spades {
 			if (blurRenderPass    != VK_NULL_HANDLE) vkDestroyRenderPass(dev, blurRenderPass,    nullptr);
 			if (scannerRenderPass != VK_NULL_HANDLE) vkDestroyRenderPass(dev, scannerRenderPass, nullptr);
 
-			if (depthShadowSampler != VK_NULL_HANDLE) vkDestroySampler(dev, depthShadowSampler, nullptr);
 			if (linearSampler      != VK_NULL_HANDLE) vkDestroySampler(dev, linearSampler,      nullptr);
 		}
 
@@ -161,15 +163,13 @@ namespace spades {
 			if (vkCreateSampler(dev, &si, nullptr, &linearSampler) != VK_SUCCESS)
 				SPRaise("Failed to create lens flare linear sampler");
 
-			// Shadow-compare sampler for sampler2DShadow on the depth texture.
-			// Bilinear filtering of the comparison result gives a soft visibility
-			// disc, matching the GL `sampler2DShadow` + `CompareRefToTexture` path.
-			VkSamplerCreateInfo ss = si;
-			ss.compareEnable = VK_TRUE;
-			ss.compareOp     = VK_COMPARE_OP_LESS;
-
-			if (vkCreateSampler(dev, &ss, nullptr, &depthShadowSampler) != VK_SUCCESS)
-				SPRaise("Failed to create lens flare depth-shadow sampler");
+			// Depth is sampled as a plain texture (compare happens in the
+			// scanner shader) with the depth image's own nearest sampler.
+			// A sampler2DShadow hardware-compare sampler was used previously,
+			// but hardware depth-compare is invalid on the R32F color image
+			// that CopySceneDepthForSampling / the MSAA depth-resolve pass
+			// produce (see VulkanFramebufferManager), so the compare is done
+			// in-shader instead (LensFlareScanner.vk.fs).
 		}
 
 		void VulkanLensFlareFilter::InitRenderPasses() {
@@ -414,15 +414,14 @@ namespace spades {
 		void VulkanLensFlareFilter::InitDescriptorPools() {
 			VkDevice dev = device->GetDevice();
 
-			// Per Filter() call:
-			//   1 (scanner) + 6 (blurs) + 1 (passthrough) + up to 15 (flare draws)
-			//   ≈ 23 sets × ~2.5 image-info → round up to 32 sets / 64 samplers.
-			VkDescriptorPoolSize size{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 96};
+			// ~23 sets per flare (scanner + 6 blurs + ≤15 quads); sun +
+			// up to kMaxDynamicFlares lights + passthrough.
+			VkDescriptorPoolSize size{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 768};
 			VkDescriptorPoolCreateInfo info{};
 			info.sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
 			info.poolSizeCount = 1;
 			info.pPoolSizes    = &size;
-			info.maxSets       = 32;
+			info.maxSets       = 256;
 
 			for (int i = 0; i < MAX_FRAME_SLOTS; ++i) {
 				if (vkCreateDescriptorPool(dev, &info, nullptr, &perFrameDescPool[i]) != VK_SUCCESS)
@@ -465,7 +464,8 @@ namespace spades {
 			return fb;
 		}
 
-		VkDescriptorSet VulkanLensFlareFilter::BindShadowDepth(int frameSlot, VkImageView depthView) {
+		VkDescriptorSet VulkanLensFlareFilter::BindShadowDepth(int frameSlot, VkImageView depthView,
+		                                                        VkSampler depthSampler) {
 			VkDescriptorSetAllocateInfo ai{};
 			ai.sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
 			ai.descriptorPool     = perFrameDescPool[frameSlot];
@@ -475,7 +475,7 @@ namespace spades {
 			if (vkAllocateDescriptorSets(device->GetDevice(), &ai, &set) != VK_SUCCESS)
 				SPRaise("Failed to allocate lens flare shadow descriptor set");
 
-			VkDescriptorImageInfo img{depthShadowSampler, depthView, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
+			VkDescriptorImageInfo img{depthSampler, depthView, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
 			VkWriteDescriptorSet w{};
 			w.sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 			w.dstSet          = set;
@@ -584,7 +584,6 @@ namespace spades {
 
 			int frameSlot = static_cast<int>(renderer.GetCurrentFrameIndex());
 
-			// Reclaim per-frame resources from the previous use of this slot.
 			{
 				VkDevice dev = device->GetDevice();
 				for (VkFramebuffer fb : perFrameFramebuffers[frameSlot])
@@ -596,105 +595,104 @@ namespace spades {
 			const client::SceneDefinition& def = renderer.GetSceneDef();
 			const float outW = static_cast<float>(output->GetWidth());
 			const float outH = static_cast<float>(output->GetHeight());
+			const float fovTanX = std::tan(def.fovX * 0.5F);
+			const float fovTanY = std::tan(def.fovY * 0.5F);
 
-			// ── 1. Sun NDC position (GL convention, +Y up) ────────────
-			// Mirrors GLLensFlareFilter::Draw()'s hard-coded sun call.
-			const Vector3 sunDir = renderer.GetSunDirection();
-			const Vector3 sunCol = MakeVector3(1.0F, 0.9F, 0.8F);
-			constexpr bool infinityDistance = true;
-			constexpr bool renderReflections = true;
-
-			Vector3 sunView = {
-			    Vector3::Dot(sunDir, def.viewAxis[0]),
-			    Vector3::Dot(sunDir, def.viewAxis[1]),
-			    Vector3::Dot(sunDir, def.viewAxis[2]),
+			// One entry per flare: sun first, then per-light flares
+			// (mirrors GLLensFlareFilter::Draw being called once per source).
+			struct FlareRequest {
+				float glX, glY;        // GL NDC (+Y up)
+				float texPosX, texPosY;
+				float texSizeX, texSizeY;
+				float scanZ;
+				Vector3 color;
+				bool reflections;
+				Handle<VulkanImage> visibility;
 			};
+			std::vector<FlareRequest> requests;
 
-			const bool sunVisible = sunView.z > 0.0F;
+			auto AddRequest = [&](const Vector3& dir, const Vector3& col,
+			                      bool infinityDistance, bool reflections) {
+				Vector3 view = {
+				    Vector3::Dot(dir, def.viewAxis[0]),
+				    Vector3::Dot(dir, def.viewAxis[1]),
+				    Vector3::Dot(dir, def.viewAxis[2]),
+				};
+				if (view.z <= 0.0F)
+					return;
 
-			float sunScreenGLx = 0.0F;
-			float sunScreenGLy = 0.0F;
-			float sunTexPosX = 0.5F;
-			float sunTexPosY = 0.5F;
-			float sunTexSizeX = 0.0F;
-			float sunTexSizeY = 0.0F;
-			float scanZ = 0.9999999F;
-
-			if (sunVisible) {
-				const float fovTanX = std::tan(def.fovX * 0.5F);
-				const float fovTanY = std::tan(def.fovY * 0.5F);
-				sunScreenGLx = sunView.x / (sunView.z * fovTanX);
-				sunScreenGLy = sunView.y / (sunView.z * fovTanY);
+				FlareRequest rq{};
+				rq.glX = view.x / (view.z * fovTanX);
+				rq.glY = view.y / (view.z * fovTanY);
 
 				const float sunRadiusTan = std::tan(0.53F * 0.5F * M_PI_F / 180.0F);
-				const float sunSizeXNDC  = sunRadiusTan / fovTanX;
-				const float sunSizeYNDC  = sunRadiusTan / fovTanY;
+				// vk texcoords: row 0 on top, so flip the +Y-up GL NDC
+				rq.texPosX = rq.glX * 0.5F + 0.5F;
+				rq.texPosY = -rq.glY * 0.5F + 0.5F;
+				rq.texSizeX = (sunRadiusTan / fovTanX) * 0.5F;
+				rq.texSizeY = (sunRadiusTan / fovTanY) * 0.5F;
 
-				// Convert sunScreen to the offscreen-texture UV space.
-				// Vulkan stores row 0 at the top of the displayed scene
-				// (negative-height main viewport), so the +Y-up GL NDC
-				// needs a vertical flip: vk_y = -gl_y, then *0.5+0.5.
-				sunTexPosX = sunScreenGLx * 0.5F + 0.5F;
-				sunTexPosY = -sunScreenGLy * 0.5F + 0.5F;
-				sunTexSizeX = sunSizeXNDC * 0.5F;
-				sunTexSizeY = sunSizeYNDC * 0.5F;
-
+				rq.scanZ = 0.9999999F;
 				if (!infinityDistance) {
 					const float fnear = def.zNear;
 					const float ffar  = def.zFar;
-					const float depth = sunView.z;
-					scanZ = ffar * (fnear - depth) / (depth * (fnear - ffar));
+					const float depth = view.z;
+					rq.scanZ = ffar * (fnear - depth) / (depth * (fnear - ffar));
+				}
+
+				rq.color = col;
+				rq.reflections = reflections;
+				requests.push_back(std::move(rq));
+			};
+
+			// sun
+			AddRequest(renderer.GetSunDirection(), MakeVector3(1.0F, 0.9F, 0.8F),
+			           true, true);
+
+			// dynamic lights (r_lensFlareDynamic); culls copied from
+			// GLRenderer's dynamic-flare loop
+			if ((int)r_lensFlareDynamic) {
+				for (const auto& param : renderer.GetDynamicLights()) {
+					if (requests.size() > kMaxDynamicFlares)
+						break;
+					if (!param.useLensFlare)
+						continue;
+
+					Vector3 color = param.color * 0.6F;
+					{
+						float rad = (param.origin - def.viewOrigin).GetSquaredLength();
+						rad /= param.radius * param.radius * 18.0F;
+						if (rad > 1.0F)
+							continue;
+						color *= 1.0F - rad;
+					}
+
+					if (param.type == client::DynamicLightTypeSpotlight) {
+						Vector3 diff = (def.viewOrigin - param.origin).Normalize();
+						Vector3 lightDir = param.spotAxis[2];
+						lightDir = lightDir.Normalize();
+						float cosVal = Vector3::Dot(diff, lightDir);
+						float minCosVal = cosf(param.spotAngle * 0.5F);
+						if (cosVal < minCosVal)
+							continue;
+						color *= (cosVal - minCosVal) / (1.0F - minCosVal);
+					}
+
+					if (Vector3::Dot(def.viewAxis[2], param.origin - def.viewOrigin) < 0.0F)
+						continue;
+
+					AddRequest(param.origin - def.viewOrigin, color, false, true);
 				}
 			}
 
 			VulkanTemporaryImagePool* pool = renderer.GetTemporaryImagePool();
 
-			// ── 2. Scanner pass (skip if sun not visible) ─────────────
-			Handle<VulkanImage> visibilityImg;
+			// ── Scanner + blur per flare ──────────────────────────────
 			std::vector<Handle<VulkanImage>> blurTemps;
-			if (sunVisible && pool) {
-				visibilityImg = pool->Acquire(kVisibilityDim, kVisibilityDim, colorFormat);
-				VkFramebuffer fb = MakeFramebuffer(scannerRenderPass,
-				                                    visibilityImg.GetPointerOrNull(), frameSlot);
+			if (pool) {
+				Handle<VulkanImage> depthImg =
+				    renderer.GetFramebufferManager()->GetResolvedDepthImage();
 
-				Handle<VulkanImage> depthImg = renderer.GetFramebufferManager()->GetResolvedDepthImage();
-				VkDescriptorSet depthDS = BindShadowDepth(frameSlot, depthImg->GetImageView());
-
-				VkClearValue cv{};
-				cv.color = {{0.0f, 0.0f, 0.0f, 1.0f}};
-
-				VkRenderPassBeginInfo rpBegin{};
-				rpBegin.sType             = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-				rpBegin.renderPass        = scannerRenderPass;
-				rpBegin.framebuffer       = fb;
-				rpBegin.renderArea.extent = {kVisibilityDim, kVisibilityDim};
-				rpBegin.clearValueCount   = 1;
-				rpBegin.pClearValues      = &cv;
-
-				vkCmdBeginRenderPass(cmd, &rpBegin, VK_SUBPASS_CONTENTS_INLINE);
-
-				VkViewport viewport{0.0f, 0.0f, (float)kVisibilityDim, (float)kVisibilityDim, 0.0f, 1.0f};
-				VkRect2D   scissor{{0, 0}, {kVisibilityDim, kVisibilityDim}};
-				vkCmdSetViewport(cmd, 0, 1, &viewport);
-				vkCmdSetScissor(cmd, 0, 1, &scissor);
-
-				vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, scannerPipeline);
-				vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
-				                        scannerLayout, 0, 1, &depthDS, 0, nullptr);
-
-				ScannerPC pc{};
-				pc.scanRange[0] = sunTexPosX - sunTexSizeX;
-				pc.scanRange[1] = sunTexPosY - sunTexSizeY;
-				pc.scanRange[2] = sunTexPosX + sunTexSizeX;
-				pc.scanRange[3] = sunTexPosY + sunTexSizeY;
-				pc.scanZ        = scanZ;
-				vkCmdPushConstants(cmd, scannerLayout, VK_SHADER_STAGE_VERTEX_BIT,
-				                   0, sizeof(pc), &pc);
-
-				vkCmdDraw(cmd, 6, 1, 0, 0);
-				vkCmdEndRenderPass(cmd);
-
-				// ── 3. Three 1D-Gauss blurs (spread 1, 2, 4), x then y ─
 				auto BlurPass = [&](VulkanImage* src, VulkanImage* dst, float shiftX, float shiftY) {
 					VkFramebuffer fb2 = MakeFramebuffer(blurRenderPass, dst, frameSlot);
 					VkDescriptorSet srcDS = BindSingleTexture(frameSlot, src->GetImageView());
@@ -719,31 +717,74 @@ namespace spades {
 					vkCmdPushConstants(cmd, blurLayout, VK_SHADER_STAGE_FRAGMENT_BIT,
 					                   0, sizeof(bpc), &bpc);
 
-					vkCmdDraw(cmd, 6, 1, 0, 0);
+					// passVS is a 3-vertex fullscreen triangle
+					vkCmdDraw(cmd, 3, 1, 0, 0);
 					vkCmdEndRenderPass(cmd);
 				};
 
-				const float invDim = 1.0F / (float)kVisibilityDim;
-				const float spreads[3] = {1.0F, 2.0F, 4.0F};
-				VulkanImage* prev = visibilityImg.GetPointerOrNull();
+				for (FlareRequest& rq : requests) {
+					rq.visibility = pool->Acquire(kVisibilityDim, kVisibilityDim, colorFormat);
+					VkFramebuffer fb = MakeFramebuffer(scannerRenderPass,
+					                                    rq.visibility.GetPointerOrNull(), frameSlot);
 
-				for (int i = 0; i < 3; ++i) {
-					Handle<VulkanImage> tmpX = pool->Acquire(kVisibilityDim, kVisibilityDim, colorFormat);
-					BlurPass(prev, tmpX.GetPointerOrNull(), spreads[i] * invDim, 0.0F);
+					VkDescriptorSet depthDS = BindShadowDepth(frameSlot, depthImg->GetImageView(),
+					                                          depthImg->GetSampler());
 
-					Handle<VulkanImage> tmpY = pool->Acquire(kVisibilityDim, kVisibilityDim, colorFormat);
-					BlurPass(tmpX.GetPointerOrNull(), tmpY.GetPointerOrNull(), 0.0F, spreads[i] * invDim);
+					VkClearValue cv{};
+					cv.color = {{0.0f, 0.0f, 0.0f, 1.0f}};
 
-					blurTemps.push_back(std::move(tmpX));
-					if (i + 1 < 3) {
-						blurTemps.push_back(std::move(visibilityImg));
+					VkRenderPassBeginInfo rpBegin{};
+					rpBegin.sType             = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+					rpBegin.renderPass        = scannerRenderPass;
+					rpBegin.framebuffer       = fb;
+					rpBegin.renderArea.extent = {kVisibilityDim, kVisibilityDim};
+					rpBegin.clearValueCount   = 1;
+					rpBegin.pClearValues      = &cv;
+
+					vkCmdBeginRenderPass(cmd, &rpBegin, VK_SUBPASS_CONTENTS_INLINE);
+
+					VkViewport viewport{0.0f, 0.0f, (float)kVisibilityDim, (float)kVisibilityDim, 0.0f, 1.0f};
+					VkRect2D   scissor{{0, 0}, {kVisibilityDim, kVisibilityDim}};
+					vkCmdSetViewport(cmd, 0, 1, &viewport);
+					vkCmdSetScissor(cmd, 0, 1, &scissor);
+
+					vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, scannerPipeline);
+					vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
+					                        scannerLayout, 0, 1, &depthDS, 0, nullptr);
+
+					ScannerPC pc{};
+					pc.scanRange[0] = rq.texPosX - rq.texSizeX;
+					pc.scanRange[1] = rq.texPosY - rq.texSizeY;
+					pc.scanRange[2] = rq.texPosX + rq.texSizeX;
+					pc.scanRange[3] = rq.texPosY + rq.texSizeY;
+					pc.scanZ        = rq.scanZ;
+					vkCmdPushConstants(cmd, scannerLayout, VK_SHADER_STAGE_VERTEX_BIT,
+					                   0, sizeof(pc), &pc);
+
+					vkCmdDraw(cmd, 6, 1, 0, 0);
+					vkCmdEndRenderPass(cmd);
+
+					// three 1D-Gauss blurs (spread 1, 2, 4), x then y
+					const float invDim = 1.0F / (float)kVisibilityDim;
+					const float spreads[3] = {1.0F, 2.0F, 4.0F};
+
+					for (int i = 0; i < 3; ++i) {
+						Handle<VulkanImage> tmpX = pool->Acquire(kVisibilityDim, kVisibilityDim, colorFormat);
+						BlurPass(rq.visibility.GetPointerOrNull(), tmpX.GetPointerOrNull(),
+						         spreads[i] * invDim, 0.0F);
+
+						Handle<VulkanImage> tmpY = pool->Acquire(kVisibilityDim, kVisibilityDim, colorFormat);
+						BlurPass(tmpX.GetPointerOrNull(), tmpY.GetPointerOrNull(),
+						         0.0F, spreads[i] * invDim);
+
+						blurTemps.push_back(std::move(tmpX));
+						blurTemps.push_back(std::move(rq.visibility));
+						rq.visibility = std::move(tmpY);
 					}
-					visibilityImg = std::move(tmpY);
-					prev = visibilityImg.GetPointerOrNull();
 				}
 			}
 
-			// ── 4. Final pass: passthrough(input → output) + additive flares
+			// ── Final pass: passthrough(input → output) + additive flares
 			{
 				VkFramebuffer fb = MakeFramebuffer(finalRenderPass, output, frameSlot);
 
@@ -759,7 +800,7 @@ namespace spades {
 				vkCmdSetViewport(cmd, 0, 1, &vp2);
 				vkCmdSetScissor(cmd, 0, 1, &sc2);
 
-				// 4a. Passthrough scene → output (no blend)
+				// passthrough scene → output (no blend)
 				{
 					VkDescriptorSet inputDS = BindSingleTexture(frameSlot, input->GetImageView());
 					vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, passthroughPipeline);
@@ -768,24 +809,28 @@ namespace spades {
 					vkCmdDraw(cmd, 3, 1, 0, 0);
 				}
 
-				// 4b. Additive flare quads — only if the sun is in front of us
-				if (sunVisible && visibilityImg) {
+				if (!requests.empty())
 					vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, flareDrawPipeline);
-					VkImageView visView = visibilityImg->GetImageView();
 
-					// Flip the sun's NDC y so quads land at the right pixel row
-					// (the Y-down Vulkan framebuffer vs. the +Y-up GL math).
-					const float sx = sunScreenGLx;
-					const float sy = -sunScreenGLy;
+				// pixel-aspect-corrected sprite size, like GL:
+				//   sunSize = (0.01, 0.01); sunSize.x *= ScreenH / ScreenW
+				float baseSzx = 0.01F;
+				const float baseSzy = 0.01F;
+				const float scrW = renderer.ScreenWidth();
+				const float scrH = renderer.ScreenHeight();
+				if (scrW > 0.0F)
+					baseSzx *= scrH / scrW;
 
-					// Pixel-aspect-corrected sprite size.  Matches GL:
-					//   sunSize = (0.01, 0.01); sunSize.x *= ScreenH / ScreenW.
-					float szx = 0.01F;
-					float szy = 0.01F;
-					const float scrW = renderer.ScreenWidth();
-					const float scrH = renderer.ScreenHeight();
-					if (scrW > 0.0F)
-						szx *= scrH / scrW;
+				for (const FlareRequest& rq : requests) {
+					if (!rq.visibility)
+						continue;
+
+					VkImageView visView = rq.visibility->GetImageView();
+					const float sx = rq.glX;
+					const float sy = -rq.glY; // vk Y-down framebuffer
+					const float szx = baseSzx;
+					const float szy = baseSzy;
+					const Vector3 sunCol = rq.color;
 
 					const float sqLen = sx * sx + sy * sy;
 					const float aroundness  = sqLen * 0.6F;
@@ -806,14 +851,14 @@ namespace spades {
 					float dr[4];
 					float color[3];
 
-					// — Sun glow ring (flare4 + white)
+					// sun glow ring (flare4 + white)
 					CenteredRange(sx, sy, szx * 256.0F, szy * 256.0F, dr);
 					color[0] = sunCol.x * 0.04F;
 					color[1] = sunCol.y * 0.03F;
 					color[2] = sunCol.z * 0.04F;
 					DrawFlareQuad(cmd, frameSlot, visView, white, flare4, dr, color);
 
-					// — Concentric white sun glows
+					// concentric white glows
 					CenteredRange(sx, sy, szx * 64.0F, szy * 64.0F, dr);
 					color[0] = sunCol.x * 0.3F; color[1] = sunCol.y * 0.3F; color[2] = sunCol.z * 0.3F;
 					DrawFlareQuad(cmd, frameSlot, visView, white, white, dr, color);
@@ -830,22 +875,21 @@ namespace spades {
 					color[0] = sunCol.x * 1.0F; color[1] = sunCol.y * 1.0F; color[2] = sunCol.z * 1.0F;
 					DrawFlareQuad(cmd, frameSlot, visView, white, white, dr, color);
 
-					// — Horizontal sun stripe (256×8 in NDC)
+					// horizontal stripe (256×8 in NDC)
 					CenteredRange(sx, sy, szx * 256.0F, szy * 8.0F, dr);
 					color[0] = sunCol.x * 0.1F;
 					color[1] = sunCol.y * 0.05F;
 					color[2] = sunCol.z * 0.1F;
 					DrawFlareQuad(cmd, frameSlot, visView, white, white, dr, color);
 
-					// — Dust ring (mask3 + white), modulated by `aroundness`
+					// dust ring (mask3 + white), modulated by aroundness
 					CenteredRange(sx, sy, szx * 188.0F, szy * 188.0F, dr);
 					color[0] = sunCol.x * 0.4F * aroundness;
 					color[1] = sunCol.y * 0.4F * aroundness;
 					color[2] = sunCol.z * 0.4F * aroundness;
 					DrawFlareQuad(cmd, frameSlot, visView, mask3, white, dr, color);
 
-					if (renderReflections) {
-						// Reflection 1 (white + flare2, mirrored through origin × 0.4)
+					if (rq.reflections) {
 						MakeRange(-(sx - szx * 18.0F) * 0.4F,
 						           -(sy - szy * 18.0F) * 0.4F,
 						           -(sx + szx * 18.0F) * 0.4F,
@@ -874,7 +918,6 @@ namespace spades {
 						color[0] = sunCol.x * 0.3F; color[1] = sunCol.y * 0.3F; color[2] = sunCol.z * 0.3F;
 						DrawFlareQuad(cmd, frameSlot, visView, white, flare2, dr, color);
 
-						// — mask2 + flare1 mirrors
 						MakeRange((sx - szx * 96.0F) * 2.3F,
 						           (sy - szy * 96.0F) * 2.3F,
 						           (sx + szx * 96.0F) * 2.3F,
@@ -893,7 +936,6 @@ namespace spades {
 						color[2] = sunCol.z * 0.1F;
 						DrawFlareQuad(cmd, frameSlot, visView, mask2, flare1, dr, color);
 
-						// — mask2 + flare3 (close mirror)
 						MakeRange((sx - szx * 18.0F) * 0.5F,
 						           (sy - szy * 18.0F) * 0.5F,
 						           (sx + szx * 18.0F) * 0.5F,
@@ -901,7 +943,6 @@ namespace spades {
 						color[0] = sunCol.x * 0.3F; color[1] = sunCol.y * 0.3F; color[2] = sunCol.z * 0.3F;
 						DrawFlareQuad(cmd, frameSlot, visView, mask2, flare3, dr, color);
 
-						// — mask1 + flare3 large aroundness ring
 						const float reflSize = 50.0F + aroundness2 * 60.0F;
 						MakeRange((sx - szx * reflSize) * -2.0F,
 						           (sy - szy * reflSize) * -2.0F,
@@ -917,13 +958,11 @@ namespace spades {
 				vkCmdEndRenderPass(cmd);
 			}
 
-			// Return temp images only after the command buffer has finished
-			// referencing them — defer Return() to end of Filter() (the pool
-			// is reused next frame, but this call is the last command-buffer
-			// recording in the chain for these images).
+			// return temps only after all recording that references them
 			if (pool) {
-				if (visibilityImg)
-					pool->Return(visibilityImg.GetPointerOrNull());
+				for (FlareRequest& rq : requests)
+					if (rq.visibility)
+						pool->Return(rq.visibility.GetPointerOrNull());
 				for (auto& tmp : blurTemps)
 					pool->Return(tmp.GetPointerOrNull());
 			}

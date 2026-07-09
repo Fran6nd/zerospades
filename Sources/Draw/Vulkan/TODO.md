@@ -13,24 +13,24 @@ capability). Remaining:
 ## Post-processing filters
 
 Wired into [VulkanRenderer.cpp](VulkanRenderer.cpp) pp-chain:
-Fog → DoF → Bloom → FXAA → LensFlare → AutoExposure → ColorCorrection
+Fog → DoF → CameraBlur → Bloom → FXAA → LensFlare → AutoExposure → ColorCorrection
 → CavityOutline.
 
 | GL filter | Vulkan equivalent | Status |
 |---|---|---|
 | `GLAutoExposureFilter` | `VulkanAutoExposureFilter` | wired (`r_hdr`) |
 | `GLBloomFilter` | — | dead code in GL (instantiated nowhere) |
-| `GLLensDustFilter` (the real `r_bloom`) | `VulkanBloomFilter` | wired but simplified — no dust texture / noise overlay |
-| `GLCameraBlurFilter` | — | **missing** (`r_cameraBlur`) |
+| `GLLensDustFilter` (the real `r_bloom`) | `VulkanBloomFilter` | wired incl. dust texture + per-frame noise grain + Gauss1D H+V blur on every downsample level (`Gauss1DRGBA.vk.fs`), matching GL |
+| `GLCameraBlurFilter` | `VulkanCameraBlurFilter` | wired (`r_cameraBlur` + `sceneDef.radialBlur`), between DoF and Bloom like GL |
 | `GLColorCorrectionFilter` | `VulkanColorCorrectionFilter` | wired (`r_colorCorrection`) |
 | `GLDepthOfFieldFilter` | `VulkanDepthOfFieldFilter` | wired (`r_depthOfField`) |
 | `GLFXAAFilter` | `VulkanFXAAFilter` | wired (`r_fxaa`) |
 | `GLFogFilter` / `GLFogFilter2` | `VulkanFogFilter` | wired (`r_fogShadow`) — see follow-ups below |
 | `GLLensFilter` | — | dead code in GL (unused) |
-| `GLLensFlareFilter` | `VulkanLensFlareFilter` | wired sun path (`r_lensFlare`); **`r_lensFlareDynamic` per-light flares missing** |
+| `GLLensFlareFilter` | `VulkanLensFlareFilter` | wired sun path (`r_lensFlare`) + per-light flares (`r_lensFlareDynamic`, capped at 8 per frame for descriptor budget) |
 | `GLNonlinearizeFilter` | — | not needed — sRGB swapchain blit encodes for display |
-| `GLResampleBicubicFilter` | — | **missing** (`r_scaleFilter == 2`) |
-| `GLSSAOFilter` | — | **missing** (`r_ssao`) |
+| `GLResampleBicubicFilter` | `VulkanResampleBicubicFilter` | wired (`r_scaleFilter == 2`); `r_scaleFilter == 0` now also honored via nearest blit |
+| `GLSSAOFilter` | — | **missing** (`r_ssao`) — big: needs full map+model depth prepass, mid-frame depth resolve/pass split, and an SSAO sampler binding (= new set layout) in every lit map/model pipeline + shader |
 | `GLTemporalAAFilter` | — | **missing** (see AA gap above) |
 | (n/a — cavity is Vulkan-only) | `VulkanCavityOutlineFilter` | wired (`r_outlines`) |
 
@@ -40,11 +40,13 @@ Ground model shadows (player / grenade / other-players' weapons) are done:
 models render into a models-only cascaded shadow map and the map lit shader
 samples it (`BasicMap.frag` `EvaluteModelShadow()`). Remaining polish:
 
-- [ ] **Model self-shadowing** — wire the same cascade sampling into the
-      shared `BasicModelVertexColor.vert/frag`. Note that vert/frag is used by
-      the sunlight, prerender and both ghost pipelines, so all of them must
-      bind the sampling set (set 1) or break. Low value: models already receive
-      terrain shadows via `mapShadowTexture`; this only adds model-on-model.
+- [x] **Model self-shadowing** — `BasicModelVertexColor.vert/frag` now
+      declare the set-1 cascade sampling (same layout as `BasicMap`), the
+      shared model pipeline layout carries both sets, and the prerender +
+      sunlight passes bind the sampling set (covering the ghost pipelines,
+      which draw from the same passes; their frag variants simply don't
+      declare set 1, which Vulkan permits against the wider layout). The
+      UBO `enabled` flag gates sampling when no cascade was rendered.
 - [ ] **Phys lit variants** — `BasicMapPhys`, `BasicModelVertexColorPhys`
       (only active under `r_physicalLighting`).
 
@@ -58,20 +60,27 @@ push field) all read it, so changing that one method moves the sun + its shadows
 + ground/model lighting together. Still hardcoded `(0,-1,-1)`:
 
 The **Phys** map lambert (`BasicMapPhys.vert/frag` via
-`MapSolidPushConstants.sunDirection`) now reads it too. Still hardcoded `(0,-1,-1)`:
+`MapSolidPushConstants.sunDirection`) now reads it too.
 
-- [ ] **Water** (`Water.frag`) and **Fog2** (`Fog2.vk.fs`) still hardcode the
-      sun; point them at the same source.
+- [x] **Water + Fog2** — already wired: `Water/Water2/Water3.vk.fs` read
+      `WaterPushConstants.sunDirection` and `Fog2.vk.fs` reads the sun packed
+      into the scale `.w` slots, both fed from `GetSunDirection()`. The old
+      TODO pointed at `Water.frag`, which is a dead file (only `*.vk.fs` are
+      loaded via `Water*.vk.program`).
+- [x] Delete dead `Water.frag` / `Water.vert` — removed.
 
 ## Stubs
 
-- [ ] [VulkanMapRenderer.cpp:126](VulkanMapRenderer.cpp#L126)
-      `PreloadShaders` is empty — first frame stutters as map pipelines build.
-- [ ] [VulkanOptimizedVoxelModel.cpp:46](VulkanOptimizedVoxelModel.cpp#L46)
-      `PreloadShaders` is empty — same story for model pipelines.
-- [ ] [VulkanWaterRenderer.cpp:1067](VulkanWaterRenderer.cpp#L1067)
-      `RenderDynamicLightPass` reuses the sunlight pipeline as a
-      placeholder — water doesn't react to dynamic lights.
+- [x] Map/model `PreloadShaders` — no longer empty; both warm the SPIR-V
+      cache. TODO was stale.
+- [ ] `PreloadShaders` only preloads SPIR-V blobs, not `VkPipeline`s —
+      pipelines still compile lazily on first draw. If first-frame stutter
+      persists, pre-create the pipelines (needs render pass compat) or use
+      `VK_EXT_graphics_pipeline_library` / warm pipeline cache from disk.
+- [x] `VulkanWaterRenderer::RenderDynamicLightPass` — already an
+      intentional no-op in the code; GL water has no dynamic light pass
+      either, so "no reaction to dynamic lights" *is* parity. TODO was
+      stale (claimed it re-drew with the sunlight pipeline).
 
 ## Fog / sky parity follow-ups
 
@@ -80,32 +89,38 @@ remaining deltas vs GL.
 
 ### `BasicMap.frag` (non-physical lighting)
 
-- [ ] Missing terminal gamma encoding. Harmless under
-      `A2B10G10R10_UNORM` (`r_highPrec=1`); if the offscreen format
-      ever falls back to `R8G8B8A8_UNORM` the linear values would
-      display ~2× too bright. Either branch on FB format or always
-      render to a linear-precision FB.
+- [x] Missing terminal gamma encoding — sidestepped: the framebuffer
+      manager now prefers `A2B10G10R10_UNORM` whenever the hardware
+      supports it (attachment-blend + sampled), even with `r_highPrec=0`.
+      `R8G8B8A8_UNORM` remains only as a last-resort fallback on hardware
+      without 10-bit render targets.
 
 ### Other
 
 - [ ] **Fog2 in-scatter dimmer than GL.** The flat `Sky.frag` fog-colour
       fill is still drawn under Fog2 as a workaround. Drop once Fog2's
-      push-constant scales / integration curve match GL.
-- [ ] **Fog filter view ray glitches looking straight down.** Likely
-      degenerate `dir.xy` from the
-      [Fog.vk.fs](../../../Resources/Shaders/Vulkan/PostFilters/Fog.vk.fs)
-      / [Fog.vk.vs](../../../Resources/Shaders/Vulkan/PostFilters/Fog.vk.vs)
-      `length(dir.xy) < 0.0001` guard.
-- [ ] **`VulkanMapShadowRenderer::Update` re-uploads the full 512×512
-      bitmap on any change.** GL does a sub-rect upload. Perf cliff in
-      build-heavy games.
+      push-constant scales / integration curve match GL. Possibly caused
+      by the same depth-read bug fixed for the lens flare scanner (see
+      `VulkanFramebufferManager::sceneDepthSampleImage`): Fog2 samples
+      the same depth texture, and a D32 depth image read through
+      `sampler2D` silently returns 0 on MoltenVK — worth re-checking
+      after that fix before spending more time here.
+- [x] **Fog filter view ray glitches looking straight down** — fixed:
+      degenerate near-vertical rays now early-out (fog integral is ~0
+      there anyway) instead of snapping `dir.xy`, which made adjacent
+      fragments flip between real and snapped directions.
+- [x] **`VulkanMapShadowRenderer::Update` sub-rect upload** — dirty 32-texel
+      words coalesce into per-row spans, packed into staging and copied via
+      one multi-region `vkCmdCopyBufferToImage`. Falls back to full upload
+      when >25% dirty or >256 spans.
 
-## Outline tuning (future work)
+## Outline tuning
 
-The cavity threshold and edge strength in
-[VulkanCavityOutlineFilter.cpp](VulkanCavityOutlineFilter.cpp) are
-constants — promote to `r_outlinesDepthThreshold` /
-`r_outlinesStrength` once defaults are confirmed across maps.
+Done: `r_outlinesDepthThreshold` (default 0.05, clamped 0.001–1) and
+`r_outlinesStrength` (default 1, clamped 0–4) are cvars defined in
+[VulkanCavityOutlineFilter.cpp](VulkanCavityOutlineFilter.cpp) and read
+every frame. Remaining: expose them in the setup-menu preferences UI
+once defaults are confirmed across maps.
 
 ## Performance / optimization
 
@@ -141,5 +156,6 @@ constants — promote to `r_outlinesDepthThreshold` /
 
 ## Build hygiene
 
-- [ ] **Committed `.spv` files drift from the GLSL.** CMake regenerates
-      them on every build, so the checked-in copies become misleading.
+- [x] **Committed `.spv` files drift from the GLSL** — deleted from the
+      tree and gitignored; `glslangValidator` is a hard build requirement
+      so CMake always regenerates them.

@@ -61,6 +61,8 @@ namespace spades {
 		class VulkanFogFilter;
 		class VulkanDepthOfFieldFilter;
 		class VulkanFXAAFilter;
+		class VulkanCameraBlurFilter;
+		class VulkanResampleBicubicFilter;
 		class VulkanCavityOutlineFilter;
 		class VulkanDepthResolveFilter;
 		class VulkanColorCorrectionFilter;
@@ -172,6 +174,8 @@ namespace spades {
 		std::unique_ptr<VulkanFogFilter> fogFilter;
 		std::unique_ptr<VulkanDepthOfFieldFilter> depthOfFieldFilter;
 		std::unique_ptr<VulkanFXAAFilter> fxaaFilter;
+		std::unique_ptr<VulkanCameraBlurFilter> cameraBlurFilter;
+		std::unique_ptr<VulkanResampleBicubicFilter> resampleBicubicFilter;
 		std::unique_ptr<VulkanCavityOutlineFilter> cavityOutlineFilter;
 		std::unique_ptr<VulkanColorCorrectionFilter> colorCorrectionFilter;
 		std::unique_ptr<VulkanLensFlareFilter> lensFlareFilter;
@@ -292,6 +296,7 @@ namespace spades {
 			float GetFogDistance() { return fogDistance; }
 
 			const client::SceneDefinition& GetSceneDef() const { return sceneDef; }
+			const std::vector<client::DynamicLightParam>& GetDynamicLights() const { return lights; }
 
 			// Canonical sun direction (points TOWARD the sun), matching the lens
 			// flare, water and lit shaders. Single source of truth so the shadow

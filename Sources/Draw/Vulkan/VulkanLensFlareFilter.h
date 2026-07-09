@@ -48,7 +48,6 @@ namespace spades {
 			VkFormat colorFormat;
 
 			VkSampler linearSampler;
-			VkSampler depthShadowSampler;
 
 			VkRenderPass scannerRenderPass;
 			VkRenderPass blurRenderPass;
@@ -88,7 +87,8 @@ namespace spades {
 
 			VkFramebuffer MakeFramebuffer(VkRenderPass rp, VulkanImage* image, int frameSlot);
 
-			VkDescriptorSet BindShadowDepth(int frameSlot, VkImageView depthView);
+			VkDescriptorSet BindShadowDepth(int frameSlot, VkImageView depthView,
+			                                VkSampler depthSampler);
 			VkDescriptorSet BindSingleTexture(int frameSlot, VkImageView view);
 			VkDescriptorSet BindFlareTextures(int frameSlot,
 			                                   VkImageView visibility,

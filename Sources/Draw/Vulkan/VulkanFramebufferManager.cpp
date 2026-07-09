@@ -67,12 +67,28 @@ namespace spades {
 			} else if (useHdr) {
 				SPLog("Using HDR color format");
 				fbColorFormat = VK_FORMAT_R16G16B16A16_SFLOAT;
-			} else if (useHighPrec) {
-				SPLog("Using high precision color format");
-				fbColorFormat = VK_FORMAT_A2B10G10R10_UNORM_PACK32;
 			} else {
-				SPLog("Using standard RGBA8 color format");
-				fbColorFormat = VK_FORMAT_R8G8B8A8_UNORM;
+				// The lit shaders output linear color with no terminal gamma
+				// encode; an 8-bit UNORM scene FB would band badly and (until
+				// the final sRGB blit) sample ~2x too bright in filters that
+				// assume linear precision. Prefer 10-bit linear whenever the
+				// hardware allows, regardless of r_highPrec.
+				VkFormatProperties colorProps;
+				vkGetPhysicalDeviceFormatProperties(device->GetPhysicalDevice(),
+				                                    VK_FORMAT_A2B10G10R10_UNORM_PACK32,
+				                                    &colorProps);
+				const VkFormatFeatureFlags needed =
+				    VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BLEND_BIT |
+				    VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT;
+				if ((colorProps.optimalTilingFeatures & needed) == needed) {
+					SPLog(useHighPrec ? "Using high precision color format"
+					                  : "Using high precision color format "
+					                    "(auto: linear scene FB requires >8bpc)");
+					fbColorFormat = VK_FORMAT_A2B10G10R10_UNORM_PACK32;
+				} else {
+					SPLog("Using standard RGBA8 color format");
+					fbColorFormat = VK_FORMAT_R8G8B8A8_UNORM;
+				}
 			}
 
 			// Prefer D24_UNORM_S8_UINT, fall back to depth-only D32_SFLOAT
@@ -123,12 +139,20 @@ namespace spades {
 			}
 
 			if (!useMSAA) {
+				// Store depth as R32_SFLOAT color image, NOT as D32_SFLOAT depth.
+				// MoltenVK translates sampler2D to Metal's texture2d<float>, but
+				// D32 depth textures require depth2d<float> — reading a D32 image
+				// through sampler2D silently returns 0 on Metal. Using R32F as the
+				// sample target (with a cross-aspect vkCmdCopyImage) lets all
+				// post-processing shaders (Fog2, LensFlare scanner, etc.) read
+				// depth as a plain float texture. The MSAA path already does this
+				// via VulkanDepthResolveFilter → R32F color target.
 				sceneDepthSampleImage = Handle<VulkanImage>::New(
-				    device, renderWidth, renderHeight, fbDepthFormat,
+				    device, renderWidth, renderHeight, VK_FORMAT_R32_SFLOAT,
 				    VK_IMAGE_TILING_OPTIMAL,
 				    VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
 				    VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-				sceneDepthSampleImage->CreateImageView(VK_IMAGE_ASPECT_DEPTH_BIT);
+				sceneDepthSampleImage->CreateImageView(VK_IMAGE_ASPECT_COLOR_BIT);
 				sceneDepthSampleImage->CreateSampler(VK_FILTER_NEAREST, VK_FILTER_NEAREST,
 				                                     VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, false);
 			}
@@ -1035,7 +1059,8 @@ namespace spades {
 			pre[1].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 			pre[1].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 			pre[1].image = sceneDepthSampleImage->GetImage();
-			pre[1].subresourceRange = {VK_IMAGE_ASPECT_DEPTH_BIT, 0, 1, 0, 1};
+			// R32F color target (not D32 depth) — see creation comment above.
+			pre[1].subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
 			pre[1].srcAccessMask = 0;
 			pre[1].dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
 
@@ -1046,7 +1071,9 @@ namespace spades {
 
 			VkImageCopy depthCopy{};
 			depthCopy.srcSubresource = {VK_IMAGE_ASPECT_DEPTH_BIT, 0, 0, 1};
-			depthCopy.dstSubresource = {VK_IMAGE_ASPECT_DEPTH_BIT, 0, 0, 1};
+			// Cross-aspect copy: D32_SFLOAT(DEPTH) → R32_SFLOAT(COLOR).
+			// Same 32-bit float bit pattern; valid since Vulkan 1.1 (maintenance1).
+			depthCopy.dstSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
 			depthCopy.extent = {(uint32_t)renderWidth, (uint32_t)renderHeight, 1};
 			vkCmdCopyImage(commandBuffer,
 			               renderDepthImage->GetImage(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,

@@ -18,6 +18,7 @@
 
  */
 
+#include <algorithm>
 #include "VulkanRenderer.h"
 #include "VulkanMapRenderer.h"
 #include "VulkanModelRenderer.h"
@@ -43,6 +44,8 @@
 #include "VulkanFogFilter.h"
 #include "VulkanDepthOfFieldFilter.h"
 #include "VulkanFXAAFilter.h"
+#include "VulkanCameraBlurFilter.h"
+#include "VulkanResampleBicubicFilter.h"
 #include "VulkanCavityOutlineFilter.h"
 #include "VulkanDepthResolveFilter.h"
 #include "VulkanColorCorrectionFilter.h"
@@ -67,6 +70,8 @@ SPADES_SETTING(r_modelShadows);
 SPADES_SETTING(r_radiosity);
 SPADES_SETTING(r_depthOfField);
 SPADES_SETTING(r_fxaa);
+SPADES_SETTING(r_cameraBlur);
+SPADES_SETTING(r_scaleFilter);
 SPADES_SETTING(r_water);
 SPADES_SETTING(r_softParticles);
 SPADES_SETTING(r_outlines);
@@ -189,6 +194,8 @@ namespace spades {
 			fogFilter = stmp::make_unique<VulkanFogFilter>(*this);
 			depthOfFieldFilter = stmp::make_unique<VulkanDepthOfFieldFilter>(*this);
 			fxaaFilter = stmp::make_unique<VulkanFXAAFilter>(*this);
+			cameraBlurFilter = stmp::make_unique<VulkanCameraBlurFilter>(*this);
+			resampleBicubicFilter = stmp::make_unique<VulkanResampleBicubicFilter>(*this);
 			cavityOutlineFilter = stmp::make_unique<VulkanCavityOutlineFilter>(*this);
 			colorCorrectionFilter = stmp::make_unique<VulkanColorCorrectionFilter>(*this);
 			lensFlareFilter = stmp::make_unique<VulkanLensFlareFilter>(*this);
@@ -238,6 +245,8 @@ namespace spades {
 			colorCorrectionFilter.reset();
 			cavityOutlineFilter.reset();
 			depthResolveFilter.reset();
+			resampleBicubicFilter.reset();
+			cameraBlurFilter.reset();
 			fxaaFilter.reset();
 			depthOfFieldFilter.reset();
 			fogFilter.reset();
@@ -2043,11 +2052,12 @@ namespace spades {
 				debugLines.clear();
 			}
 
-			// Clear for next frame
+			// Clear for next frame. lights survives until after the
+			// post-process chain: the lens flare filter reads it for
+			// r_lensFlareDynamic.
 			if (modelRenderer) {
 				modelRenderer->Clear();
 			}
-			lights.clear();
 
 			// End offscreen render pass (scene without water is now complete)
 			vkCmdEndRenderPass(commandBuffer);
@@ -2414,6 +2424,20 @@ namespace spades {
 				}
 			}
 
+			// Camera motion blur (+ radial blur). GL order: DoF -> CameraBlur
+			// -> Bloom. Apply() returns false when skipped (no motion), in
+			// which case currentInput passes through unchanged.
+			{
+				const client::SceneDefinition& def = GetSceneDef();
+				if ((float)r_cameraBlur > 0.0f && !def.denyCameraBlur && cameraBlurFilter &&
+				    currentInput && currentOutput) {
+					float intensity = std::min((float)r_cameraBlur * 0.2f, 1.0f);
+					if (cameraBlurFilter->Apply(commandBuffer, currentInput, currentOutput,
+					                            intensity, def.radialBlur))
+						std::swap(currentInput, currentOutput);
+				}
+			}
+
 			// Bloom
 			if ((int)r_bloom && bloomFilter && currentInput && currentOutput) {
 				bloomFilter->Filter(commandBuffer, currentInput, currentOutput);
@@ -2462,15 +2486,45 @@ namespace spades {
 				std::swap(currentInput, currentOutput);
 			}
 
-			// --- Blit final post-process result to swapchain ---
-			// Transition final image (currentInput) from SHADER_READ_ONLY to TRANSFER_SRC
+			lights.clear();
+
+			// --- Resample + blit final post-process result to swapchain ---
+			// r_scaleFilter: 0 = nearest, 1 = bilinear (blit filter),
+			// 2 = bicubic via VulkanResampleBicubicFilter to a swapchain-sized
+			// temp, then a 1:1 blit. Mirrors GLRenderer.cpp:1073.
+			// currentInput stays the render-res image for the screenshot
+			// mirror below; blitSrc is what actually reaches the swapchain.
+			VulkanImage* blitSrc = currentInput;
+			Handle<VulkanImage> resampledImage;
+			VkFilter blitFilter = VK_FILTER_LINEAR;
+			{
+				VkExtent2D scExtent = device->GetSwapchainExtent();
+				int sf = (int)r_scaleFilter;
+				if (sf == 0) {
+					blitFilter = VK_FILTER_NEAREST;
+				} else if (sf == 2 && resampleBicubicFilter && temporaryImagePool &&
+				           currentInput &&
+				           ((uint32_t)renderWidth != scExtent.width ||
+				            (uint32_t)renderHeight != scExtent.height)) {
+					resampledImage = temporaryImagePool->Acquire(
+					    scExtent.width, scExtent.height,
+					    framebufferManager->GetMainColorFormat());
+					if (resampledImage) {
+						resampleBicubicFilter->Filter(commandBuffer, currentInput,
+						                              resampledImage.GetPointerOrNull());
+						blitSrc = resampledImage.GetPointerOrNull();
+					}
+				}
+			}
+
+			// Transition blit source from SHADER_READ_ONLY to TRANSFER_SRC
 			VkImageMemoryBarrier barrier1{};
 			barrier1.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
 			barrier1.oldLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 			barrier1.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
 			barrier1.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 			barrier1.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-			barrier1.image = currentInput->GetImage();
+			barrier1.image = blitSrc->GetImage();
 			barrier1.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 			barrier1.subresourceRange.baseMipLevel = 0;
 			barrier1.subresourceRange.levelCount = 1;
@@ -2510,7 +2564,8 @@ namespace spades {
 			blitRegion.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 			blitRegion.srcSubresource.layerCount = 1;
 			blitRegion.srcOffsets[0] = {0, 0, 0};
-			blitRegion.srcOffsets[1] = {renderWidth, renderHeight, 1};
+			blitRegion.srcOffsets[1] = {(int32_t)blitSrc->GetWidth(),
+			                            (int32_t)blitSrc->GetHeight(), 1};
 			blitRegion.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 			blitRegion.dstSubresource.layerCount = 1;
 			blitRegion.dstOffsets[0] = {0, 0, 0};
@@ -2518,9 +2573,20 @@ namespace spades {
 			                            static_cast<int32_t>(device->GetSwapchainExtent().height), 1};
 
 			vkCmdBlitImage(commandBuffer,
-				currentInput->GetImage(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+				blitSrc->GetImage(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
 				device->GetSwapchainImage(imageIndex), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-				1, &blitRegion, VK_FILTER_LINEAR);
+				1, &blitRegion, blitFilter);
+
+			// If the bicubic pass ran, currentInput was never transitioned to
+			// TRANSFER_SRC; do it now for the screenshot mirror copy below.
+			if (blitSrc != currentInput) {
+				VkImageMemoryBarrier miBarrier = barrier1;
+				miBarrier.image = currentInput->GetImage();
+				vkCmdPipelineBarrier(commandBuffer,
+					VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+					VK_PIPELINE_STAGE_TRANSFER_BIT,
+					0, 0, nullptr, 0, nullptr, 1, &miBarrier);
+			}
 
 			// Mirror the final post-process result into renderColorImage so
 			// ReadBitmap (screenshot capture) sees what the player sees. The

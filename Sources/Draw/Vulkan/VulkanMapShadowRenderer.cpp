@@ -25,6 +25,7 @@
 #include <Client/GameMap.h>
 #include <Gui/SDLVulkanDevice.h>
 #include <Core/Debug.h>
+#include <cstring>
 
 namespace spades {
 	namespace draw {
@@ -240,7 +241,12 @@ namespace spades {
 		void VulkanMapShadowRenderer::Update(VkCommandBuffer commandBuffer) {
 			SPADES_MARK_FUNCTION();
 
-			bool anyChanges = false;
+			// Dirty 32-texel spans, coalesced per row; adjacent dirty words in
+			// the same row merge into one copy region.
+			struct Span {
+				int x, y, width;
+			};
+			std::vector<Span> spans;
 
 			for (size_t i = 0; i < updateBitmap.size(); i++) {
 				if (updateBitmap[i] == 0)
@@ -250,28 +256,72 @@ namespace spades {
 				int x = static_cast<int>((i - y * updateBitmapPitch) * 32);
 				size_t bitmapPixelPosBase = i * 32;
 
+				bool wordChanged = false;
 				for (int j = 0; j < 32; j++) {
 					uint32_t pixel = GeneratePixel(x + j, y);
 					if (bitmap[bitmapPixelPosBase + j] != pixel) {
 						bitmap[bitmapPixelPosBase + j] = pixel;
-						anyChanges = true;
+						wordChanged = true;
 					}
 				}
 
 				updateBitmap[i] = 0;
+
+				if (wordChanged) {
+					if (!spans.empty() && spans.back().y == y &&
+					    spans.back().x + spans.back().width == x) {
+						spans.back().width += 32;
+					} else {
+						spans.push_back({x, y, 32});
+					}
+				}
 			}
 
-			if (!anyChanges)
+			if (spans.empty())
 				return;
 
-			// Upload entire bitmap to staging buffer and copy to image
-			stagingBuffer->UpdateData(bitmap.data(), w * h * 4);
+			size_t dirtyTexels = 0;
+			for (const Span& s : spans)
+				dirtyTexels += (size_t)s.width;
 
 			shadowImage->TransitionLayout(commandBuffer, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
 				VK_ACCESS_SHADER_READ_BIT, VK_ACCESS_TRANSFER_WRITE_BIT,
 				VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
 
-			shadowImage->CopyFromBuffer(commandBuffer, stagingBuffer->GetBuffer());
+			// Heavy edits: one full upload beats hundreds of tiny copies.
+			if (dirtyTexels * 4 >= (size_t)w * h || spans.size() > 256) {
+				stagingBuffer->UpdateData(bitmap.data(), w * h * 4);
+				shadowImage->CopyFromBuffer(commandBuffer, stagingBuffer->GetBuffer());
+			} else {
+				// Pack dirty spans contiguously into staging, one copy region each.
+				std::vector<VkBufferImageCopy> regions;
+				regions.reserve(spans.size());
+				VkDeviceSize offset = 0;
+				char* mapped = static_cast<char*>(stagingBuffer->Map());
+				for (const Span& s : spans) {
+					std::memcpy(mapped + offset, bitmap.data() + s.y * w + s.x,
+					            (size_t)s.width * 4);
+
+					VkBufferImageCopy region{};
+					region.bufferOffset = offset;
+					region.bufferRowLength = 0;
+					region.bufferImageHeight = 0;
+					region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+					region.imageSubresource.mipLevel = 0;
+					region.imageSubresource.baseArrayLayer = 0;
+					region.imageSubresource.layerCount = 1;
+					region.imageOffset = {s.x, s.y, 0};
+					region.imageExtent = {(uint32_t)s.width, 1, 1};
+					regions.push_back(region);
+
+					offset += (VkDeviceSize)s.width * 4;
+				}
+				stagingBuffer->Unmap();
+				vkCmdCopyBufferToImage(commandBuffer, stagingBuffer->GetBuffer(),
+				                       shadowImage->GetImage(),
+				                       VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+				                       (uint32_t)regions.size(), regions.data());
+			}
 
 			shadowImage->TransitionLayout(commandBuffer, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
 				VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT,
