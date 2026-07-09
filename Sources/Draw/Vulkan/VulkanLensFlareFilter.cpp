@@ -45,7 +45,11 @@ namespace spades {
 
 		namespace {
 			constexpr uint32_t kVisibilityDim = 64;
-			constexpr size_t kMaxDynamicFlares = 8; // descriptor pool budget
+			// Max flare requests per frame: the sun plus up to eight dynamic
+			// lights. Counted as a total (not "dynamic only") so the cap holds
+			// whether or not the sun flare was added, and bounds the per-frame
+			// descriptor-pool allocation in InitDescriptorPools().
+			constexpr size_t kMaxFlares = 9;
 
 			// Push-constant blocks (must match the GLSL layout).
 
@@ -414,8 +418,8 @@ namespace spades {
 		void VulkanLensFlareFilter::InitDescriptorPools() {
 			VkDevice dev = device->GetDevice();
 
-			// ~23 sets per flare (scanner + 6 blurs + ≤15 quads); sun +
-			// up to kMaxDynamicFlares lights + passthrough.
+			// ~23 sets per flare (scanner + 6 blurs + ≤15 quads); up to
+			// kMaxFlares flares + passthrough. 256 sets leaves headroom.
 			VkDescriptorPoolSize size{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 768};
 			VkDescriptorPoolCreateInfo info{};
 			info.sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
@@ -653,7 +657,7 @@ namespace spades {
 			// GLRenderer's dynamic-flare loop
 			if ((int)r_lensFlareDynamic) {
 				for (const auto& param : renderer.GetDynamicLights()) {
-					if (requests.size() > kMaxDynamicFlares)
+					if (requests.size() >= kMaxFlares)
 						break;
 					if (!param.useLensFlare)
 						continue;
