@@ -20,7 +20,7 @@ Fog → DoF → CameraBlur → Bloom → FXAA → LensFlare → AutoExposure →
 |---|---|---|
 | `GLAutoExposureFilter` | `VulkanAutoExposureFilter` | wired (`r_hdr`) |
 | `GLBloomFilter` | — | dead code in GL (instantiated nowhere) |
-| `GLLensDustFilter` (the real `r_bloom`) | `VulkanBloomFilter` | wired incl. dust texture + per-frame noise grain; remaining delta: GL runs an extra Gauss1D H+V blur on the first downsample level |
+| `GLLensDustFilter` (the real `r_bloom`) | `VulkanBloomFilter` | wired incl. dust texture + per-frame noise grain + Gauss1D H+V blur on every downsample level (`Gauss1DRGBA.vk.fs`), matching GL |
 | `GLCameraBlurFilter` | `VulkanCameraBlurFilter` | wired (`r_cameraBlur` + `sceneDef.radialBlur`), between DoF and Bloom like GL |
 | `GLColorCorrectionFilter` | `VulkanColorCorrectionFilter` | wired (`r_colorCorrection`) |
 | `GLDepthOfFieldFilter` | `VulkanDepthOfFieldFilter` | wired (`r_depthOfField`) |
@@ -112,12 +112,13 @@ remaining deltas vs GL.
       one multi-region `vkCmdCopyBufferToImage`. Falls back to full upload
       when >25% dirty or >256 spans.
 
-## Outline tuning (future work)
+## Outline tuning
 
-The cavity threshold and edge strength in
-[VulkanCavityOutlineFilter.cpp](VulkanCavityOutlineFilter.cpp) are
-constants — promote to `r_outlinesDepthThreshold` /
-`r_outlinesStrength` once defaults are confirmed across maps.
+Done: `r_outlinesDepthThreshold` (default 0.05, clamped 0.001–1) and
+`r_outlinesStrength` (default 1, clamped 0–4) are cvars defined in
+[VulkanCavityOutlineFilter.cpp](VulkanCavityOutlineFilter.cpp) and read
+every frame. Remaining: expose them in the setup-menu preferences UI
+once defaults are confirmed across maps.
 
 ## Performance / optimization
 

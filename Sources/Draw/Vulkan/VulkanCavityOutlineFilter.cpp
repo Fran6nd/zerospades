@@ -28,8 +28,13 @@
 #include <Core/Exception.h>
 #include <Core/FileManager.h>
 #include <Core/Math.h>
+#include <Core/Settings.h>
 #include <Gui/SDLVulkanDevice.h>
+#include <algorithm>
 #include <cstring>
+
+DEFINE_SPADES_SETTING(r_outlinesStrength, "1");
+DEFINE_SPADES_SETTING(r_outlinesDepthThreshold, "0.05");
 
 namespace spades {
 	namespace draw {
@@ -348,14 +353,16 @@ namespace spades {
 			pc.zNearFarFogStrength[1] = def.zFar;
 			pc.zNearFarFogStrength[2] = renderer.GetFogDistance();
 			// Edge strength: 1.0 = fully black at peak edge.
-			pc.zNearFarFogStrength[3] = 1.0F;
+			pc.zNearFarFogStrength[3] =
+			    std::max(0.0F, std::min(4.0F, (float)r_outlinesStrength));
 
 			// Relative depth threshold. The Laplacian magnitude is normalised
 			// by the centre tap's linearised depth, so this is "fraction of
 			// view distance". 0.05 means: edges where the depth jump exceeds
 			// 5% of how far the centre is from the camera. Tuned for voxel
 			// scale (1 unit = 1 voxel cube) and typical viewing distances.
-			pc.thresholds[0] = 0.05F;
+			pc.thresholds[0] =
+			    std::max(0.001F, std::min(1.0F, (float)r_outlinesDepthThreshold));
 			pc.thresholds[1] = 0.0F;
 			pc.thresholds[2] = 0.0F;
 			pc.thresholds[3] = 0.0F;
