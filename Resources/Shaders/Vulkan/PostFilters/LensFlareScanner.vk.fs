@@ -22,14 +22,22 @@
 //
 // Port of Shaders/OpenGL/LensFlare/Scanner.fs.
 //
-// Reads a sampler2DShadow comparing scanPos.z against the offscreen
-// depth texture.  The bilinear-filtered comparison gives a soft
-// occlusion factor in [0, 1].  A radial mask trims the disc inside
-// circlePos (radius = 32 in NDC pixels).
+// Compares scanPos.z against the offscreen depth texture, done in-shader
+// rather than via a sampler2DShadow hardware compare: the depth texture
+// this samples is an R32F color image (CopySceneDepthForSampling / the
+// MSAA depth-resolve pass copy the D32 depth attachment into an R32F
+// color target, since MoltenVK maps GLSL sampler2D to Metal's
+// texture2d<float>, which cannot read a D32/depth2d<float> image — see
+// VulkanFramebufferManager::sceneDepthSampleImage). Hardware compare is
+// invalid on a color format regardless, so the compare must be manual.
+// Softness comes from the 3x Gauss blur applied afterwards.
+//
+// A radial mask trims the disc inside circlePos (radius = 32 in NDC
+// pixels).
 
 #version 450
 
-layout(binding = 0) uniform sampler2DShadow depthTexture;
+layout(binding = 0) uniform sampler2D depthTexture;
 
 layout(location = 0) in vec3 scanPos;
 layout(location = 1) in vec2 circlePos;
@@ -37,7 +45,8 @@ layout(location = 1) in vec2 circlePos;
 layout(location = 0) out vec4 outColor;
 
 void main() {
-    float val = texture(depthTexture, scanPos);
+    float depth = texture(depthTexture, scanPos.xy).x;
+    float val = step(scanPos.z, depth);
 
     // Circle trim — matches the GL Scanner.fs `radius = 32` parameter.
     float rad = length(circlePos) * 32.0;

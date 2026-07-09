@@ -77,7 +77,6 @@ namespace spades {
 		    : VulkanPostProcessFilter(r),
 		      colorFormat(VK_FORMAT_UNDEFINED),
 		      linearSampler(VK_NULL_HANDLE),
-		      depthShadowSampler(VK_NULL_HANDLE),
 		      scannerRenderPass(VK_NULL_HANDLE),
 		      blurRenderPass(VK_NULL_HANDLE),
 		      finalRenderPass(VK_NULL_HANDLE),
@@ -137,7 +136,6 @@ namespace spades {
 			if (blurRenderPass    != VK_NULL_HANDLE) vkDestroyRenderPass(dev, blurRenderPass,    nullptr);
 			if (scannerRenderPass != VK_NULL_HANDLE) vkDestroyRenderPass(dev, scannerRenderPass, nullptr);
 
-			if (depthShadowSampler != VK_NULL_HANDLE) vkDestroySampler(dev, depthShadowSampler, nullptr);
 			if (linearSampler      != VK_NULL_HANDLE) vkDestroySampler(dev, linearSampler,      nullptr);
 		}
 
@@ -165,15 +163,13 @@ namespace spades {
 			if (vkCreateSampler(dev, &si, nullptr, &linearSampler) != VK_SUCCESS)
 				SPRaise("Failed to create lens flare linear sampler");
 
-			// Shadow-compare sampler for sampler2DShadow on the depth texture.
-			// Bilinear filtering of the comparison result gives a soft visibility
-			// disc, matching the GL `sampler2DShadow` + `CompareRefToTexture` path.
-			VkSamplerCreateInfo ss = si;
-			ss.compareEnable = VK_TRUE;
-			ss.compareOp     = VK_COMPARE_OP_LESS;
-
-			if (vkCreateSampler(dev, &ss, nullptr, &depthShadowSampler) != VK_SUCCESS)
-				SPRaise("Failed to create lens flare depth-shadow sampler");
+			// Depth is sampled as a plain texture (compare happens in the
+			// scanner shader) with the depth image's own nearest sampler.
+			// A sampler2DShadow hardware-compare sampler was used previously,
+			// but hardware depth-compare is invalid on the R32F color image
+			// that CopySceneDepthForSampling / the MSAA depth-resolve pass
+			// produce (see VulkanFramebufferManager), so the compare is done
+			// in-shader instead (LensFlareScanner.vk.fs).
 		}
 
 		void VulkanLensFlareFilter::InitRenderPasses() {
@@ -468,7 +464,8 @@ namespace spades {
 			return fb;
 		}
 
-		VkDescriptorSet VulkanLensFlareFilter::BindShadowDepth(int frameSlot, VkImageView depthView) {
+		VkDescriptorSet VulkanLensFlareFilter::BindShadowDepth(int frameSlot, VkImageView depthView,
+		                                                        VkSampler depthSampler) {
 			VkDescriptorSetAllocateInfo ai{};
 			ai.sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
 			ai.descriptorPool     = perFrameDescPool[frameSlot];
@@ -478,7 +475,7 @@ namespace spades {
 			if (vkAllocateDescriptorSets(device->GetDevice(), &ai, &set) != VK_SUCCESS)
 				SPRaise("Failed to allocate lens flare shadow descriptor set");
 
-			VkDescriptorImageInfo img{depthShadowSampler, depthView, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
+			VkDescriptorImageInfo img{depthSampler, depthView, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
 			VkWriteDescriptorSet w{};
 			w.sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 			w.dstSet          = set;
@@ -720,7 +717,8 @@ namespace spades {
 					vkCmdPushConstants(cmd, blurLayout, VK_SHADER_STAGE_FRAGMENT_BIT,
 					                   0, sizeof(bpc), &bpc);
 
-					vkCmdDraw(cmd, 6, 1, 0, 0);
+					// passVS is a 3-vertex fullscreen triangle
+					vkCmdDraw(cmd, 3, 1, 0, 0);
 					vkCmdEndRenderPass(cmd);
 				};
 
@@ -729,7 +727,8 @@ namespace spades {
 					VkFramebuffer fb = MakeFramebuffer(scannerRenderPass,
 					                                    rq.visibility.GetPointerOrNull(), frameSlot);
 
-					VkDescriptorSet depthDS = BindShadowDepth(frameSlot, depthImg->GetImageView());
+					VkDescriptorSet depthDS = BindShadowDepth(frameSlot, depthImg->GetImageView(),
+					                                          depthImg->GetSampler());
 
 					VkClearValue cv{};
 					cv.color = {{0.0f, 0.0f, 0.0f, 1.0f}};
