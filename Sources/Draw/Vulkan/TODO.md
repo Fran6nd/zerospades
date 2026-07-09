@@ -98,7 +98,12 @@ remaining deltas vs GL.
 
 - [ ] **Fog2 in-scatter dimmer than GL.** The flat `Sky.frag` fog-colour
       fill is still drawn under Fog2 as a workaround. Drop once Fog2's
-      push-constant scales / integration curve match GL.
+      push-constant scales / integration curve match GL. Possibly caused
+      by the same depth-read bug fixed for the lens flare scanner (see
+      `VulkanFramebufferManager::sceneDepthSampleImage`): Fog2 samples
+      the same depth texture, and a D32 depth image read through
+      `sampler2D` silently returns 0 on MoltenVK — worth re-checking
+      after that fix before spending more time here.
 - [ ] **Fog filter view ray glitches looking straight down.** Likely
       degenerate `dir.xy` from the
       [Fog.vk.fs](../../../Resources/Shaders/Vulkan/PostFilters/Fog.vk.fs)

@@ -123,12 +123,20 @@ namespace spades {
 			}
 
 			if (!useMSAA) {
+				// Store depth as R32_SFLOAT color image, NOT as D32_SFLOAT depth.
+				// MoltenVK translates sampler2D to Metal's texture2d<float>, but
+				// D32 depth textures require depth2d<float> — reading a D32 image
+				// through sampler2D silently returns 0 on Metal. Using R32F as the
+				// sample target (with a cross-aspect vkCmdCopyImage) lets all
+				// post-processing shaders (Fog2, LensFlare scanner, etc.) read
+				// depth as a plain float texture. The MSAA path already does this
+				// via VulkanDepthResolveFilter → R32F color target.
 				sceneDepthSampleImage = Handle<VulkanImage>::New(
-				    device, renderWidth, renderHeight, fbDepthFormat,
+				    device, renderWidth, renderHeight, VK_FORMAT_R32_SFLOAT,
 				    VK_IMAGE_TILING_OPTIMAL,
 				    VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
 				    VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-				sceneDepthSampleImage->CreateImageView(VK_IMAGE_ASPECT_DEPTH_BIT);
+				sceneDepthSampleImage->CreateImageView(VK_IMAGE_ASPECT_COLOR_BIT);
 				sceneDepthSampleImage->CreateSampler(VK_FILTER_NEAREST, VK_FILTER_NEAREST,
 				                                     VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, false);
 			}
@@ -1035,7 +1043,8 @@ namespace spades {
 			pre[1].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 			pre[1].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 			pre[1].image = sceneDepthSampleImage->GetImage();
-			pre[1].subresourceRange = {VK_IMAGE_ASPECT_DEPTH_BIT, 0, 1, 0, 1};
+			// R32F color target (not D32 depth) — see creation comment above.
+			pre[1].subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
 			pre[1].srcAccessMask = 0;
 			pre[1].dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
 
@@ -1046,7 +1055,9 @@ namespace spades {
 
 			VkImageCopy depthCopy{};
 			depthCopy.srcSubresource = {VK_IMAGE_ASPECT_DEPTH_BIT, 0, 0, 1};
-			depthCopy.dstSubresource = {VK_IMAGE_ASPECT_DEPTH_BIT, 0, 0, 1};
+			// Cross-aspect copy: D32_SFLOAT(DEPTH) → R32_SFLOAT(COLOR).
+			// Same 32-bit float bit pattern; valid since Vulkan 1.1 (maintenance1).
+			depthCopy.dstSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
 			depthCopy.extent = {(uint32_t)renderWidth, (uint32_t)renderHeight, 1};
 			vkCmdCopyImage(commandBuffer,
 			               renderDepthImage->GetImage(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
