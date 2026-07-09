@@ -65,8 +65,7 @@ The **Phys** map lambert (`BasicMapPhys.vert/frag` via
       into the scale `.w` slots, both fed from `GetSunDirection()`. The old
       TODO pointed at `Water.frag`, which is a dead file (only `*.vk.fs` are
       loaded via `Water*.vk.program`).
-- [ ] Delete dead `Water.frag` / `Water.vert` (unreferenced, misleading —
-      still carry a hardcoded sun const).
+- [x] Delete dead `Water.frag` / `Water.vert` — removed.
 
 ## Stubs
 
@@ -88,11 +87,11 @@ remaining deltas vs GL.
 
 ### `BasicMap.frag` (non-physical lighting)
 
-- [ ] Missing terminal gamma encoding. Harmless under
-      `A2B10G10R10_UNORM` (`r_highPrec=1`); if the offscreen format
-      ever falls back to `R8G8B8A8_UNORM` the linear values would
-      display ~2× too bright. Either branch on FB format or always
-      render to a linear-precision FB.
+- [x] Missing terminal gamma encoding — sidestepped: the framebuffer
+      manager now prefers `A2B10G10R10_UNORM` whenever the hardware
+      supports it (attachment-blend + sampled), even with `r_highPrec=0`.
+      `R8G8B8A8_UNORM` remains only as a last-resort fallback on hardware
+      without 10-bit render targets.
 
 ### Other
 
@@ -104,11 +103,10 @@ remaining deltas vs GL.
       the same depth texture, and a D32 depth image read through
       `sampler2D` silently returns 0 on MoltenVK — worth re-checking
       after that fix before spending more time here.
-- [ ] **Fog filter view ray glitches looking straight down.** Likely
-      degenerate `dir.xy` from the
-      [Fog.vk.fs](../../../Resources/Shaders/Vulkan/PostFilters/Fog.vk.fs)
-      / [Fog.vk.vs](../../../Resources/Shaders/Vulkan/PostFilters/Fog.vk.vs)
-      `length(dir.xy) < 0.0001` guard.
+- [x] **Fog filter view ray glitches looking straight down** — fixed:
+      degenerate near-vertical rays now early-out (fog integral is ~0
+      there anyway) instead of snapping `dir.xy`, which made adjacent
+      fragments flip between real and snapped directions.
 - [x] **`VulkanMapShadowRenderer::Update` sub-rect upload** — dirty 32-texel
       words coalesce into per-row spans, packed into staging and copied via
       one multi-region `vkCmdCopyBufferToImage`. Falls back to full upload
@@ -155,5 +153,6 @@ constants — promote to `r_outlinesDepthThreshold` /
 
 ## Build hygiene
 
-- [ ] **Committed `.spv` files drift from the GLSL.** CMake regenerates
-      them on every build, so the checked-in copies become misleading.
+- [x] **Committed `.spv` files drift from the GLSL** — deleted from the
+      tree and gitignored; `glslangValidator` is a hard build requirement
+      so CMake always regenerates them.
