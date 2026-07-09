@@ -20,14 +20,14 @@ Fog → DoF → CameraBlur → Bloom → FXAA → LensFlare → AutoExposure →
 |---|---|---|
 | `GLAutoExposureFilter` | `VulkanAutoExposureFilter` | wired (`r_hdr`) |
 | `GLBloomFilter` | — | dead code in GL (instantiated nowhere) |
-| `GLLensDustFilter` (the real `r_bloom`) | `VulkanBloomFilter` | wired incl. dust texture + per-frame noise grain + Gauss1D H+V blur on every downsample level (`Gauss1DRGBA.vk.fs`), matching GL |
+| `GLLensDustFilter` (the real `r_bloom`) | `VulkanBloomFilter` | wired incl. dust texture + per-frame noise grain + Gauss1D H+V blur on every downsample level (`Gauss1DRGBA.vk.fs`). Delta: GL pre-blurs the first downsample level before building the pyramid; Vulkan skips that, so bloom is marginally sharper (needs a visual A/B before closing) |
 | `GLCameraBlurFilter` | `VulkanCameraBlurFilter` | wired (`r_cameraBlur` + `sceneDef.radialBlur`), between DoF and Bloom like GL |
 | `GLColorCorrectionFilter` | `VulkanColorCorrectionFilter` | wired (`r_colorCorrection`) |
 | `GLDepthOfFieldFilter` | `VulkanDepthOfFieldFilter` | wired (`r_depthOfField`) |
 | `GLFXAAFilter` | `VulkanFXAAFilter` | wired (`r_fxaa`) |
 | `GLFogFilter` / `GLFogFilter2` | `VulkanFogFilter` | wired (`r_fogShadow`) — see follow-ups below |
 | `GLLensFilter` | — | dead code in GL (unused) |
-| `GLLensFlareFilter` | `VulkanLensFlareFilter` | wired sun path (`r_lensFlare`) + per-light flares (`r_lensFlareDynamic`, capped at 8 per frame for descriptor budget) |
+| `GLLensFlareFilter` | `VulkanLensFlareFilter` | wired sun path (`r_lensFlare`) + per-light flares (`r_lensFlareDynamic`, capped at 9 flares/frame — sun + up to 8 dynamic lights — to bound the per-frame descriptor pool) |
 | `GLNonlinearizeFilter` | — | not needed — sRGB swapchain blit encodes for display |
 | `GLResampleBicubicFilter` | `VulkanResampleBicubicFilter` | wired (`r_scaleFilter == 2`); `r_scaleFilter == 0` now also honored via nearest blit |
 | `GLSSAOFilter` | — | **missing** (`r_ssao`) — big: needs full map+model depth prepass, mid-frame depth resolve/pass split, and an SSAO sampler binding (= new set layout) in every lit map/model pipeline + shader |
@@ -71,16 +71,18 @@ The **Phys** map lambert (`BasicMapPhys.vert/frag` via
 
 ## Stubs
 
-- [x] Map/model `PreloadShaders` — no longer empty; both warm the SPIR-V
-      cache. TODO was stale.
-- [ ] `PreloadShaders` only preloads SPIR-V blobs, not `VkPipeline`s —
-      pipelines still compile lazily on first draw. If first-frame stutter
-      persists, pre-create the pipelines (needs render pass compat) or use
-      `VK_EXT_graphics_pipeline_library` / warm pipeline cache from disk.
-- [x] `VulkanWaterRenderer::RenderDynamicLightPass` — already an
-      intentional no-op in the code; GL water has no dynamic light pass
-      either, so "no reaction to dynamic lights" *is* parity. TODO was
-      stale (claimed it re-drew with the sunlight pipeline).
+- [x] Map/model `PreloadShaders` — implemented; both warm the SPIR-V blob
+      cache (`VulkanSpirvCache`). Every Vulkan SPIR-V loader now routes through
+      that cache (map/model/shadow, image, sprite, long-sprite, sky,
+      multiply-color, debug-line), so a shader is read off disk at most once.
+- [ ] `PreloadShaders` only warms SPIR-V blobs, not `VkPipeline`s — pipelines
+      still compile lazily on first draw, so first-frame stutter is only
+      partially addressed. To close it, pre-create the pipelines (needs render
+      pass compat) or use `VK_EXT_graphics_pipeline_library` / a disk-warmed
+      pipeline cache.
+- [x] `VulkanWaterRenderer::RenderDynamicLightPass` — removed as dead code:
+      it was never called (GL water has no dynamic light pass either, so "no
+      reaction to dynamic lights" is parity). The prior no-op stub is gone.
 
 ## Fog / sky parity follow-ups
 
@@ -156,6 +158,6 @@ once defaults are confirmed across maps.
 
 ## Build hygiene
 
-- [x] **Committed `.spv` files drift from the GLSL** — deleted from the
-      tree and gitignored; `glslangValidator` is a hard build requirement
-      so CMake always regenerates them.
+- [x] **Committed `.spv` files drift from the GLSL** — untracked
+      (`git rm --cached`) and gitignored; `glslangValidator` is a hard build
+      requirement so CMake always regenerates them in-tree.
