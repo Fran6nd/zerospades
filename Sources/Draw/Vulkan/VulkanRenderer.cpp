@@ -20,6 +20,7 @@
 
 #include <algorithm>
 #include "VulkanRenderer.h"
+#include "VulkanSpirvCache.h"
 #include "VulkanMapRenderer.h"
 #include "VulkanModelRenderer.h"
 #include "VulkanSpriteRenderer.h"
@@ -2698,14 +2699,7 @@ namespace spades {
 
 			// Load SPIR-V shaders
 			auto LoadSPIRVFile = [](const char* filename) -> std::vector<uint32_t> {
-				std::unique_ptr<IStream> stream = FileManager::OpenForReading(filename);
-				if (!stream) {
-					SPRaise("Failed to open shader file: %s", filename);
-				}
-				size_t size = stream->GetLength();
-				std::vector<uint32_t> code(size / 4);
-				stream->Read(code.data(), size);
-				return code;
+				return SpirvCache::Load(filename);
 			};
 
 			std::vector<uint32_t> vertCode = LoadSPIRVFile("Shaders/Vulkan/Sky.vert.spv");
@@ -2929,14 +2923,7 @@ namespace spades {
 
 			// Load shaders
 			auto LoadSPIRVFile = [](const char* filename) -> std::vector<uint32_t> {
-				std::unique_ptr<IStream> stream = FileManager::OpenForReading(filename);
-				if (!stream) {
-					SPRaise("Failed to open shader file: %s", filename);
-				}
-				size_t size = stream->GetLength();
-				std::vector<uint32_t> code(size / 4);
-				stream->Read(code.data(), size);
-				return code;
+				return SpirvCache::Load(filename);
 			};
 
 			std::vector<uint32_t> vertCode = LoadSPIRVFile("Shaders/Vulkan/MultiplyColor.vert.spv");
@@ -3170,13 +3157,8 @@ namespace spades {
 			VkDevice vkDevice = device->GetDevice();
 
 			// Load shaders
-			auto LoadSPV = [&](const char* path) -> std::vector<uint32_t> {
-				std::unique_ptr<IStream> s = FileManager::OpenForReading(path);
-				if (!s) SPRaise("Failed to open shader: %s", path);
-				size_t size = s->GetLength();
-				std::vector<uint32_t> code(size / 4);
-				s->Read(code.data(), size);
-				return code;
+			auto LoadSPV = [](const char* path) -> std::vector<uint32_t> {
+				return SpirvCache::Load(path);
 			};
 
 			auto vertCode = LoadSPV("Shaders/Vulkan/DebugLine.vert.spv");

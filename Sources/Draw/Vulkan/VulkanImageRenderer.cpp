@@ -19,6 +19,7 @@
  */
 
 #include "VulkanImageRenderer.h"
+#include "VulkanSpirvCache.h"
 #include "VulkanRenderer.h"
 #include "VulkanImage.h"
 #include "VulkanBuffer.h"
@@ -84,17 +85,7 @@ namespace spades {
 
 			// Load SPIR-V shaders
 			auto LoadSPIRVFile = [](const char* filename) -> std::vector<uint32_t> {
-				std::unique_ptr<IStream> stream = FileManager::OpenForReading(filename);
-				if (!stream) {
-					SPRaise("Failed to open shader file: %s", filename);
-				}
-
-				std::vector<uint8_t> buffer(stream->GetLength());
-				stream->Read(buffer.data(), buffer.size());
-
-				std::vector<uint32_t> code(buffer.size() / 4);
-				std::memcpy(code.data(), buffer.data(), buffer.size());
-				return code;
+				return SpirvCache::Load(filename);
 			};
 
 			std::vector<uint32_t> vertCode = LoadSPIRVFile("Shaders/Vulkan/BasicImage.vert.spv");
