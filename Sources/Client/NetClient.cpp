@@ -253,6 +253,7 @@ namespace spades {
 			SPLog("Connecting to %u:%u", (unsigned int)addr.host, (unsigned int)addr.port);
 
 			savedPackets.clear();
+			customKickReasonString.clear();
 
 			peer = enet_host_connect(host, &addr, 1, protocolVersion);
 			if (peer == NULL)
@@ -537,6 +538,14 @@ namespace spades {
 			return maybePlayer.value();
 		}
 
+		// Max chat packet is 255 bytes: type + playerId + chatType + msg → 252 msg bytes.
+		static constexpr size_t kKickReasonMaxBytes = 252;
+
+		void NetClient::CaptureKickReason(spades::client::NetPacketReader& r) {
+			std::string msg = StripNewlines(TrimSpaces(r.ReadRemainingString()));
+			customKickReasonString = msg.substr(0, kKickReasonMaxBytes);
+		}
+
 		std::string NetClient::DisconnectReasonString(uint32_t num) {
 			if (!customKickReasonString.empty())
 				return customKickReasonString;
@@ -572,6 +581,27 @@ namespace spades {
 					}
 				}
 					return true;
+				case PacketTypeChatMessage: {
+					// A system kick (playerId 255, ChatTypeSystem) may arrive at any
+					// connection stage. Consume it here so the Connecting
+					// branch doesn't SPRaise on "unexpected packet" and the ReceivingMap
+					// branch doesn't park it in savedPackets (which are only drained
+					// after StateData, and StateData never arrives when the server kicks
+					// before sending the map). Peek so non-kick chat falls through with
+					// an untouched reader cursor.
+					if (r.GetNumRemainingBytes() >= 2 &&
+						r.Peek(0) == 255 && r.Peek(1) == ChatTypeSystem) {
+						r.ReadByte(); // playerId
+						r.ReadByte(); // chat type
+						CaptureKickReason(r);
+						return true;
+					}
+					// Any other chat before we're fully Connected has no World to
+					// dispatch to and is not meaningful pre-game noise. Drop it.
+					if (status != NetClientStatusConnected)
+						return true;
+					return false;
+				}
 				default: return false;
 			}
 		}
@@ -1052,11 +1082,8 @@ namespace spades {
 					std::string msg = StripNewlines(TrimSpaces(r.ReadRemainingString()));
 
 					if (type == ChatTypeSystem) {
-						if (playerId == 255) {
-							customKickReasonString = msg.substr(0, 90);
-							return;
-						}
-
+						// playerId 255 is the kick-reason channel, already consumed by
+						// HandleHandshakePackets before we get here.
 						client->ServerSentMessage(false, msg);
 
 						// Speculate the best game properties based on the server generated messages
