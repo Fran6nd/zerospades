@@ -33,6 +33,7 @@
 #include "INetClient.h"
 #include "NetProtocol.h"
 #include "Player.h"
+#include "Quirks.h"
 #include <Core/Debug.h>
 #include <Core/Math.h>
 #include <Core/ServerAddress.h>
@@ -131,6 +132,28 @@ namespace spades {
 			// used for some scripts including Arena
 			IntVector3 temporaryPlayerBlockColor;
 
+			/** Quirks this client declares about itself (indexed by `Quirk`). */
+			QuirkArray localQuirks;
+			/** Last quirk overrides received from the server (all unspecified until then). */
+			QuirkArray serverQuirks;
+			/** Sent at most once per connection. */
+			bool sentQuirks;
+			/**
+			 * Set once the server engages the quirk protocol (sends a quirks packet).
+			 * While set, the client does not run the BetterSpades-style extension
+			 * negotiation: the two mechanisms are mutually exclusive per connection.
+			 */
+			bool quirksNegotiated;
+
+			/** Populate `localQuirks` with what this build of ZeroSpades declares. */
+			void InitLocalQuirks();
+			/** Send this client's quirks to the server (once, as early as possible). */
+			void SendQuirks();
+			void HandleQuirksPacket(NetPacketReader&);
+			void HandleQuirksOffPacket(NetPacketReader&);
+			/** Log the client's declared quirks or the resolved negotiation result. */
+			void LogQuirks(const char* header, bool resolved);
+
 			bool HandleHandshakePackets(NetPacketReader&);
 			void HandleExtensionPacket(NetPacketReader&);
 			void HandleGamePacket(NetPacketReader&);
@@ -175,6 +198,14 @@ namespace spades {
 			const std::shared_ptr<GameProperties>& GetGameProperties() override {
 				SPAssert(properties);
 				return properties;
+			}
+
+			/**
+			 * Effective state of a quirk for this connection, resolving what the
+			 * client declared against any override the server has sent.
+			 */
+			QuirkState GetQuirkState(Quirk q) const {
+				return ResolveQuirk(localQuirks[q], serverQuirks[q]);
 			}
 
 			void Connect(const ServerAddress& hostname);

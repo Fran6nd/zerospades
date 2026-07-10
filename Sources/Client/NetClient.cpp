@@ -216,6 +216,11 @@ namespace spades {
 
 			bandwidthMonitor.reset(new BandwidthMonitor(host));
 			demoRecorder.reset(new DemoRecorder());
+
+			serverQuirks.fill(QuirkUnspecified);
+			sentQuirks = false;
+			quirksNegotiated = false;
+			InitLocalQuirks();
 		}
 		NetClient::~NetClient() {
 			SPADES_MARK_FUNCTION();
@@ -253,6 +258,12 @@ namespace spades {
 			SPLog("Connecting to %u:%u", (unsigned int)addr.host, (unsigned int)addr.port);
 
 			savedPackets.clear();
+
+			// Fresh connection: forget any server overrides and re-arm the one-shot
+			// quirks announcement.
+			serverQuirks.fill(QuirkUnspecified);
+			sentQuirks = false;
+			quirksNegotiated = false;
 
 			peer = enet_host_connect(host, &addr, 1, protocolVersion);
 			if (peer == NULL)
@@ -395,6 +406,9 @@ namespace spades {
 				if (status == NetClientStatusConnecting) {
 					if (event.type == ENET_EVENT_TYPE_CONNECT) {
 						statusString = _Tr("NetClient", "Awaiting for state");
+						// Declare our quirks as soon as we connect. A server that does
+						// not understand the packet simply ignores it.
+						SendQuirks();
 					} else if (event.type == ENET_EVENT_TYPE_RECEIVE) {
 						auto& reader = readerOrNone.value();
 						int type = reader.GetType();
@@ -559,6 +573,8 @@ namespace spades {
 			switch (r.GetType()) {
 				case PacketTypeHandShakeInit: SendHandShakeValid(r.ReadInt()); return true;
 				case PacketTypeExtensionInfo: HandleExtensionPacket(r); return true;
+				case PacketTypeQuirks: HandleQuirksPacket(r); return true;
+				case PacketTypeQuirksOff: HandleQuirksOffPacket(r); return true;
 				case PacketTypeVersionGet: {
 					if (r.GetNumRemainingBytes() > 0) {
 						// Enhanced variant
@@ -577,6 +593,15 @@ namespace spades {
 		}
 
 		void NetClient::HandleExtensionPacket(spades::client::NetPacketReader& r) {
+			// Quirks and the BetterSpades-style extension negotiation are mutually
+			// exclusive. If the server already spoke quirks, ignore its extension
+			// advertisement and do not advertise ours back.
+			if (quirksNegotiated) {
+				SPLog("Ignoring extension info: quirk negotiation is already in use "
+				      "for this connection");
+				return;
+			}
+
 			int extCount = r.ReadByte();
 			for (int i = 0; i < extCount; i++) {
 				int extId = r.ReadByte();
@@ -1641,6 +1666,91 @@ namespace spades {
 
 			SPLog("Sending extension support.");
 			enet_peer_send(peer, 0, w.CreatePacket());
+		}
+
+		void NetClient::InitLocalQuirks() {
+			// What this build of ZeroSpades declares about itself. Every entry is a
+			// fixed capability (Off/On) verified against ZeroSpades' own behaviour, so
+			// the server does not have to guess from the version string. Declaring a
+			// quirk explicitly overrides the server's heuristics for it; leaving it
+			// `QuirkUnspecified` would fall back to those heuristics instead.
+			localQuirks.fill(QuirkUnspecified);
+
+			localQuirks[QuirkInFloor] = QuirkOff;              // spawn z uses -2.4, not -2
+			localQuirks[QuirkNoShortPlayer] = QuirkOff;        // short player data is used
+			localQuirks[QuirkScrewedDisconnectData] = QuirkOn; // disconnect code 2 = "too many connections"
+			localQuirks[QuirkOsCp437] = QuirkOn;               // OpenSpades' CP-437 variant
+			localQuirks[QuirkUtf8] = QuirkOn;                  // 0xFF-prefixed UTF-8 is understood
+			localQuirks[QuirkAscii] = QuirkOff;                // not ASCII-only
+			localQuirks[QuirkOsBactionCull] = QuirkOn;         // OpenSpades block-action culling
+			// Not the UTF8_COLOR_IMG scheme: ZeroSpades keeps gray at 0x07 and puts
+			// inline images at 0x09, rather than gray at 0x08 / images at 0x07.
+			localQuirks[QuirkUtf8ColorImg] = QuirkOff;
+			localQuirks[QuirkInsky] = QuirkOn;                 // spawn z offset of -2.4
+		}
+
+		void NetClient::LogQuirks(const char* header, bool resolved) {
+			SPLog("%s", header);
+			for (unsigned q = 0; q < QuirkLength; q++) {
+				if (resolved) {
+					SPLog("  %-22s %s", QuirkName(q),
+					      QuirkStateName(GetQuirkState(static_cast<Quirk>(q))));
+				} else {
+					SPLog("  %-22s %s", QuirkName(q), QuirkValueName(localQuirks[q]));
+				}
+			}
+		}
+
+		void NetClient::SendQuirks() {
+			SPADES_MARK_FUNCTION();
+
+			// Send at most once per connection.
+			if (sentQuirks)
+				return;
+			sentQuirks = true;
+
+			NetPacketWriter w(PacketTypeQuirks);
+			for (std::uint8_t b : EncodeQuirks(localQuirks))
+				w.WriteByte(b);
+
+			LogQuirks("Announcing client quirks to server:", false);
+			enet_peer_send(peer, 0, w.CreatePacket());
+		}
+
+		void NetClient::HandleQuirksPacket(spades::client::NetPacketReader& r) {
+			SPADES_MARK_FUNCTION();
+
+			// A quirks packet is never malformed: any byte sequence is valid, and
+			// fields for quirks we do not know are ignored by DecodeQuirks. The full
+			// packet replaces every server field.
+			std::size_t len = r.GetNumRemainingBytes();
+			std::vector<std::uint8_t> payload(len);
+			for (std::size_t i = 0; i < len; i++)
+				payload[i] = r.ReadByte();
+
+			DecodeQuirks(serverQuirks, payload.data(), payload.size());
+			quirksNegotiated = true;
+
+			LogQuirks("Server accepted quirk negotiation; effective quirks:", true);
+		}
+
+		void NetClient::HandleQuirksOffPacket(spades::client::NetPacketReader& r) {
+			SPADES_MARK_FUNCTION();
+
+			// Sparse server edits: a sequence of (byte offset, quirk byte) pairs. Each
+			// pair adjusts up to four quirks; a trailing lone byte (no value) is
+			// ignored. Only non-Unspecified fields take effect (see ApplyQuirksOffEntry).
+			int changed = 0;
+			while (r.GetNumRemainingBytes() >= 2) {
+				std::uint8_t offset = r.ReadByte();
+				std::uint8_t quirkByte = r.ReadByte();
+				ApplyQuirksOffEntry(serverQuirks, offset, quirkByte);
+				changed++;
+			}
+			quirksNegotiated = true;
+
+			SPLog("Server updated %d quirk byte(s).", changed);
+			LogQuirks("Effective quirks:", true);
 		}
 
 		void NetClient::MapLoaded() {

@@ -78,6 +78,10 @@ namespace spades {
 			PacketTypeVersionSend = 34,    // C2S
 			PacketTypeExtensionInfo = 60,
 			PacketTypePlayerProperties = 64,
+			// Client Quirks negotiation (see Quirks.h). Provisional IDs — these slots
+			// are currently unused by the 0.75/1.0 protocols; do not treat as final.
+			PacketTypeQuirks = 48,    // Client<->Server: full quirk array
+			PacketTypeQuirksOff = 49, // Server->Client: sparse (offset, byte) quirk edits
 		};
 
 		inline PlayerInput ParsePlayerInput(uint8_t bits) {
