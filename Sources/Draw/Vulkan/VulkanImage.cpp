@@ -192,6 +192,10 @@ namespace spades {
 
 		void VulkanImage::CreateSampler(VkFilter magFilter, VkFilter minFilter,
 		                                VkSamplerAddressMode addressMode, bool enableAnisotropy) {
+			if (sampler != VK_NULL_HANDLE) {
+				vkDestroySampler(device->GetDevice(), sampler, nullptr);
+				sampler = VK_NULL_HANDLE;
+			}
 			VkSamplerCreateInfo samplerInfo{};
 			samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
 			samplerInfo.magFilter = magFilter;

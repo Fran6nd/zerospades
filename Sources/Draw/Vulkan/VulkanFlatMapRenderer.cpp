@@ -20,6 +20,8 @@
 
 #include "VulkanFlatMapRenderer.h"
 #include "VulkanRenderer.h"
+#include "VulkanImage.h"
+#include "VulkanImageWrapper.h"
 #include <Gui/SDLVulkanDevice.h>
 #include <Client/GameMap.h>
 #include <Client/IImage.h>
@@ -39,6 +41,13 @@ namespace spades {
 
 			Handle<Bitmap> bmp(GenerateBitmap(0, 0, m.Width(), m.Height()), false);
 			image = renderer.CreateImage(*bmp);
+
+			auto* wrapper = dynamic_cast<VulkanImageWrapper*>(image.GetPointerOrNull());
+			if (wrapper && wrapper->GetVulkanImage()) {
+				wrapper->GetVulkanImage()->CreateSampler(
+					VK_FILTER_NEAREST, VK_FILTER_NEAREST,
+					VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, false);
+			}
 		}
 
 		VulkanFlatMapRenderer::~VulkanFlatMapRenderer() {}
