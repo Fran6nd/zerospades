@@ -134,18 +134,13 @@ namespace spades {
 
 			/** Quirks this client declares about itself (indexed by `Quirk`). */
 			QuirkArray localQuirks;
-			/** Last quirk overrides received from the server (all unspecified until then). */
-			QuirkArray serverQuirks;
+			/** Current enabledness, seeded from our defaults; the server may only
+			 * flip an entry the client declared `Either`. */
+			QuirkEnabled quirkEnabled;
 			/** Sent at most once per connection. */
 			bool sentQuirks;
-			/**
-			 * Set once the server engages the quirk protocol (sends a quirks packet).
-			 * While set, the client does not run the BetterSpades-style extension
-			 * negotiation: the two mechanisms are mutually exclusive per connection.
-			 */
-			bool quirksNegotiated;
 
-			/** Populate `localQuirks` with what this build of ZeroSpades declares. */
+			/** Set `localQuirks` and seed `quirkEnabled` with our defaults. */
 			void InitLocalQuirks();
 			/** Send this client's quirks to the server (once, as early as possible). */
 			void SendQuirks();
@@ -200,13 +195,9 @@ namespace spades {
 				return properties;
 			}
 
-			/**
-			 * Effective state of a quirk for this connection, resolving what the
-			 * client declared against any override the server has sent.
-			 */
-			QuirkState GetQuirkState(Quirk q) const {
-				return ResolveQuirk(localQuirks[q], serverQuirks[q]);
-			}
+			/** Whether a quirk is currently enabled for this connection (our
+			 * default, possibly flipped by the server for an `Either` quirk). */
+			bool IsQuirkEnabled(Quirk q) const { return quirkEnabled[q]; }
 
 			void Connect(const ServerAddress& hostname);
 			void Disconnect() override;

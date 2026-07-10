@@ -217,9 +217,7 @@ namespace spades {
 			bandwidthMonitor.reset(new BandwidthMonitor(host));
 			demoRecorder.reset(new DemoRecorder());
 
-			serverQuirks.fill(QuirkUnspecified);
 			sentQuirks = false;
-			quirksNegotiated = false;
 			InitLocalQuirks();
 		}
 		NetClient::~NetClient() {
@@ -259,11 +257,11 @@ namespace spades {
 
 			savedPackets.clear();
 
-			// Fresh connection: forget any server overrides and re-arm the one-shot
-			// quirks announcement.
-			serverQuirks.fill(QuirkUnspecified);
+			// Fresh connection: re-seed quirk enabledness to our defaults (dropping
+			// any server overrides from a previous connection) and re-arm the
+			// one-shot quirks announcement.
+			InitLocalQuirks();
 			sentQuirks = false;
-			quirksNegotiated = false;
 
 			peer = enet_host_connect(host, &addr, 1, protocolVersion);
 			if (peer == NULL)
@@ -593,15 +591,6 @@ namespace spades {
 		}
 
 		void NetClient::HandleExtensionPacket(spades::client::NetPacketReader& r) {
-			// Quirks and the BetterSpades-style extension negotiation are mutually
-			// exclusive. If the server already spoke quirks, ignore its extension
-			// advertisement and do not advertise ours back.
-			if (quirksNegotiated) {
-				SPLog("Ignoring extension info: quirk negotiation is already in use "
-				      "for this connection");
-				return;
-			}
-
 			int extCount = r.ReadByte();
 			for (int i = 0; i < extCount; i++) {
 				int extId = r.ReadByte();
@@ -1687,14 +1676,20 @@ namespace spades {
 			// inline images at 0x09, rather than gray at 0x08 / images at 0x07.
 			localQuirks[QuirkUtf8ColorImg] = QuirkOff;
 			localQuirks[QuirkInsky] = QuirkOn;                 // spawn z offset of -2.4
+
+			// Seed the enabledness state from the declarations. A fixed On/Off quirk
+			// is simply enabled/disabled; an `Either` quirk would start at the default
+			// the client wants until the server pins it (set it explicitly here if a
+			// negotiable quirk ever wants to default enabled).
+			for (unsigned q = 0; q < QuirkLength; q++)
+				quirkEnabled[q] = (localQuirks[q] == QuirkOn);
 		}
 
 		void NetClient::LogQuirks(const char* header, bool resolved) {
 			SPLog("%s", header);
 			for (unsigned q = 0; q < QuirkLength; q++) {
 				if (resolved) {
-					SPLog("  %-22s %s", QuirkName(q),
-					      QuirkStateName(GetQuirkState(static_cast<Quirk>(q))));
+					SPLog("  %-22s %s", QuirkName(q), quirkEnabled[q] ? "on" : "off");
 				} else {
 					SPLog("  %-22s %s", QuirkName(q), QuirkValueName(localQuirks[q]));
 				}
@@ -1721,17 +1716,16 @@ namespace spades {
 			SPADES_MARK_FUNCTION();
 
 			// A quirks packet is never malformed: any byte sequence is valid, and
-			// fields for quirks we do not know are ignored by DecodeQuirks. The full
-			// packet replaces every server field.
+			// fields for quirks we do not know are ignored. The server may only flip
+			// quirks we declared `Either`; our fixed On/Off declarations stand.
 			std::size_t len = r.GetNumRemainingBytes();
 			std::vector<std::uint8_t> payload(len);
 			for (std::size_t i = 0; i < len; i++)
 				payload[i] = r.ReadByte();
 
-			DecodeQuirks(serverQuirks, payload.data(), payload.size());
-			quirksNegotiated = true;
+			ApplyServerQuirks(quirkEnabled, localQuirks, payload.data(), payload.size());
 
-			LogQuirks("Server accepted quirk negotiation; effective quirks:", true);
+			LogQuirks("Server responded to quirk negotiation; effective quirks:", true);
 		}
 
 		void NetClient::HandleQuirksOffPacket(spades::client::NetPacketReader& r) {
@@ -1739,15 +1733,14 @@ namespace spades {
 
 			// Sparse server edits: a sequence of (byte offset, quirk byte) pairs. Each
 			// pair adjusts up to four quirks; a trailing lone byte (no value) is
-			// ignored. Only non-Unspecified fields take effect (see ApplyQuirksOffEntry).
+			// ignored. Only `Either` quirks are actually moved (see ApplyServerQuirksOff).
 			int changed = 0;
 			while (r.GetNumRemainingBytes() >= 2) {
 				std::uint8_t offset = r.ReadByte();
 				std::uint8_t quirkByte = r.ReadByte();
-				ApplyQuirksOffEntry(serverQuirks, offset, quirkByte);
+				ApplyServerQuirksOff(quirkEnabled, localQuirks, offset, quirkByte);
 				changed++;
 			}
-			quirksNegotiated = true;
 
 			SPLog("Server updated %d quirk byte(s).", changed);
 			LogQuirks("Effective quirks:", true);

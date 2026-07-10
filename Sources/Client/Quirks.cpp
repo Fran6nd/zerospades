@@ -23,6 +23,25 @@
 namespace spades {
 	namespace client {
 
+		namespace {
+			// Apply one server 2-bit field to a quirk's enabledness. The server may
+			// only move a quirk the client declared Either; On enables, Off disables,
+			// Unspecified/Reserved leave it unchanged.
+			void ApplyServerField(QuirkEnabled& enabled, const QuirkArray& localQuirks,
+			                      std::size_t q, std::uint8_t field) {
+				if (q >= QuirkLength)
+					return;
+				if ((localQuirks[q] & 3) != QuirkEither)
+					return;
+
+				switch (field & 3) {
+					case QuirkOn: enabled.set(q); break;
+					case QuirkOff: enabled.reset(q); break;
+					default: break; // Unspecified / Reserved: no change
+				}
+			}
+		} // namespace
+
 		std::vector<std::uint8_t> EncodeQuirks(const QuirkArray& quirks) {
 			std::vector<std::uint8_t> bytes((QuirkLength + 3) / 4, 0);
 
@@ -41,9 +60,8 @@ namespace spades {
 			return bytes;
 		}
 
-		void DecodeQuirks(QuirkArray& out, const std::uint8_t* data, std::size_t len) {
-			out.fill(QuirkUnspecified);
-
+		void ApplyServerQuirks(QuirkEnabled& enabled, const QuirkArray& localQuirks,
+		                       const std::uint8_t* data, std::size_t len) {
 			// Four quirks per byte. Clamp to the quirks we know so a longer packet's
 			// tail is ignored and we never read a field the buffer does not hold.
 			std::size_t count = len * 4;
@@ -51,19 +69,14 @@ namespace spades {
 				count = QuirkLength;
 
 			for (std::size_t i = 0; i < count; i++)
-				out[i] = (data[i / 4] >> (2 * (i % 4))) & 3;
+				ApplyServerField(enabled, localQuirks, i, (data[i / 4] >> (2 * (i % 4))) & 3);
 		}
 
-		void ApplyQuirksOffEntry(QuirkArray& serverFields, std::uint8_t offset,
-		                         std::uint8_t quirkByte) {
+		void ApplyServerQuirksOff(QuirkEnabled& enabled, const QuirkArray& localQuirks,
+		                          std::uint8_t offset, std::uint8_t quirkByte) {
 			for (unsigned j = 0; j < 4; j++) {
-				std::uint8_t field = (quirkByte >> (2 * j)) & 3;
-				if (field == QuirkUnspecified)
-					continue; // "no change" for this quirk
-
-				std::size_t index = static_cast<std::size_t>(offset) * 4 + j;
-				if (index < QuirkLength)
-					serverFields[index] = field;
+				std::size_t q = static_cast<std::size_t>(offset) * 4 + j;
+				ApplyServerField(enabled, localQuirks, q, (quirkByte >> (2 * j)) & 3);
 			}
 		}
 
@@ -89,33 +102,6 @@ namespace spades {
 				case QuirkOff: return "Off";
 				case QuirkOn: return "On";
 				default: return "?";
-			}
-		}
-
-		const char* QuirkStateName(QuirkState state) {
-			switch (state) {
-				case QuirkStateOff: return "off";
-				case QuirkStateOn: return "on";
-				case QuirkStateHeuristic: return "server-heuristic";
-				case QuirkStateClientDefault: return "client-default";
-				default: return "?";
-			}
-		}
-
-		QuirkState ResolveQuirk(std::uint8_t clientField, std::uint8_t serverField) {
-			switch (clientField & 3) {
-				case QuirkOff: return QuirkStateOff;
-				case QuirkOn: return QuirkStateOn;
-				case QuirkUnspecified: return QuirkStateHeuristic;
-				case QuirkEither:
-				default:
-					// Only Either is movable by the server; Reserved/Unspecified
-					// leave the client on its own default.
-					switch (serverField & 3) {
-						case QuirkOff: return QuirkStateOff;
-						case QuirkOn: return QuirkStateOn;
-						default: return QuirkStateClientDefault;
-					}
 			}
 		}
 
