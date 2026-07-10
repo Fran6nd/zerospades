@@ -217,7 +217,6 @@ namespace spades {
 			bandwidthMonitor.reset(new BandwidthMonitor(host));
 			demoRecorder.reset(new DemoRecorder());
 
-			sentQuirks = false;
 			InitLocalQuirks();
 		}
 		NetClient::~NetClient() {
@@ -257,11 +256,9 @@ namespace spades {
 
 			savedPackets.clear();
 
-			// Fresh connection: re-seed quirk enabledness to our defaults (dropping
-			// any server overrides from a previous connection) and re-arm the
-			// one-shot quirks announcement.
+			// Fresh connection: re-seed quirk enabledness to our defaults, dropping
+			// any server overrides from a previous connection.
 			InitLocalQuirks();
-			sentQuirks = false;
 
 			peer = enet_host_connect(host, &addr, 1, protocolVersion);
 			if (peer == NULL)
@@ -1698,11 +1695,6 @@ namespace spades {
 
 		void NetClient::SendQuirks() {
 			SPADES_MARK_FUNCTION();
-
-			// Send at most once per connection.
-			if (sentQuirks)
-				return;
-			sentQuirks = true;
 
 			NetPacketWriter w(PacketTypeQuirks);
 			for (std::uint8_t b : EncodeQuirks(localQuirks))

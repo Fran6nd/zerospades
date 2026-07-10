@@ -137,12 +137,11 @@ namespace spades {
 			/** Current enabledness, seeded from our defaults; the server may only
 			 * flip an entry the client declared `Either`. */
 			QuirkEnabled quirkEnabled;
-			/** Sent at most once per connection. */
-			bool sentQuirks;
 
 			/** Set `localQuirks` and seed `quirkEnabled` with our defaults. */
 			void InitLocalQuirks();
-			/** Send this client's quirks to the server (once, as early as possible). */
+			/** Send this client's quirks to the server. Called once, from the ENet
+			 * connect handler. */
 			void SendQuirks();
 			void HandleQuirksPacket(NetPacketReader&);
 			void HandleQuirksOffPacket(NetPacketReader&);
