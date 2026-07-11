@@ -151,6 +151,12 @@ namespace spades {
 				return (uint8_t)data[pos++];
 			}
 
+			uint8_t Peek(size_t offset = 0) const {
+				if (pos + offset >= data.size())
+					SPRaise("Received packet truncated");
+				return (uint8_t)data[pos + offset];
+			}
+
 			float ReadFloat() {
 				union {
 					float f;
