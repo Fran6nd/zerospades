@@ -70,17 +70,12 @@ namespace spades {
 				}
 			};
 
-			std::string ToLower(const std::string& s) {
-				std::string out = s;
-				std::transform(out.begin(), out.end(), out.begin(),
-				               [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
-				return out;
-			}
-
 			bool EndsWithPak(const std::string& s) {
-				std::string l = ToLower(s);
-				return l.size() >= 4 && (l.compare(l.size() - 4, 4, ".pak") == 0 ||
-				                         l.compare(l.size() - 4, 4, ".zip") == 0);
+				if (s.size() < 4)
+					return false;
+				std::string ext = s.substr(s.size() - 4);
+				return EqualsIgnoringCase(ext, ".pak")
+					|| EqualsIgnoringCase(ext, ".zip");
 			}
 
 			void MakeDir(const std::string& path) {
