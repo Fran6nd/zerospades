@@ -21,14 +21,6 @@
 namespace spades {
 	funcdef void ModListItemEventHandler(string modName);
 
-	string FormatModSize(int64 bytes) {
-		if (bytes < 1024)
-			return "" + bytes + " B";
-		if (bytes < 1024 * 1024)
-			return "" + (bytes / 1024) + " KB";
-		return "" + (bytes / (1024 * 1024)) + " MB";
-	}
-
 	class ModListItem : spades::ui::ButtonBase {
 		string modName;
 		int pakCount;
@@ -100,9 +92,9 @@ namespace spades {
 			x = pos.x + checkColWidth + orderColWidth + 2.0F;
 			Font.Draw(modName, Vector2(x, pos.y + 2.0F), 1.0F, fgcolor);
 			x = pos.x + checkColWidth + orderColWidth + nameColWidth + 2.0F;
-			Font.Draw(exists ? ("" + pakCount) : "—", Vector2(x, pos.y + 2.0F), 1.0F, fgcolor);
+			Font.Draw(exists ? ("" + pakCount) : "-", Vector2(x, pos.y + 2.0F), 1.0F, fgcolor);
 			x += countColWidth;
-			Font.Draw(exists ? FormatModSize(totalSize) : "—", Vector2(x, pos.y + 2.0F), 1.0F, fgcolor);
+			Font.Draw(exists ? FormatFileSize(totalSize) : "-", Vector2(x, pos.y + 2.0F), 1.0F, fgcolor);
 		}
 	}
 

@@ -43,6 +43,16 @@ namespace spades {
 		return s;
 	}
 
+	string FormatFileSize(int64 bytes) {
+		if (bytes < 0)
+			return "";
+		if (bytes < 1024)
+			return bytes + " B";
+		if (bytes < 1024 * 1024)
+			return (bytes / 1024) + " KB";
+		return (bytes / (1024 * 1024)) + " MB";
+	}
+
 	class TargetParam {
 		bool drawLines;
 		bool useTStyle;

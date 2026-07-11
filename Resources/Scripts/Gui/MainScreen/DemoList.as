@@ -83,17 +83,6 @@ namespace spades {
 		return result;
 	}
 
-	// Format a file size in bytes as a human-readable string.
-	string DemoFormatFileSize(int64 bytes) {
-		if (bytes < 0)
-			return "";
-		if (bytes < 1024)
-			return bytes + " B";
-		if (bytes < 1024 * 1024)
-			return (bytes / 1024) + " KB";
-		return (bytes / (1024 * 1024)) + " MB";
-	}
-
 	// -------------------------------------------------------------------------
 	// Parsed demo metadata
 
@@ -122,7 +111,7 @@ namespace spades {
 		string name = info.displayName;
 
 		int64 sz = helper.GetDemoFileSize(path);
-		info.fileSize = DemoFormatFileSize(sz);
+		info.fileSize = FormatFileSize(sz);
 
 		// The timestamp prefix occupies exactly 16 characters:
 		//	 YYYY-MM-DD-HH-MM  (positions 0-15)
