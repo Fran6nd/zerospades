@@ -729,7 +729,7 @@ namespace spades {
 				} else {
 					string label = "" + done + " / " + total;
 					if (item.length > 0)
-						label += "	—  " + item;
+						label += " — " + item;
 					modsStatusLabel.Text = label;
 					modsProgressBar.Fraction = float(done) / float(total);
 				}
