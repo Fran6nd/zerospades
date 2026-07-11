@@ -14,7 +14,7 @@
  GNU General Public License for more details.
 
  You should have received a copy of the GNU General Public License
- along with ZeroSpades.  If not, see <http://www.gnu.org/licenses/>.
+ along with ZeroSpades.	 If not, see <http://www.gnu.org/licenses/>.
 
  */
 
@@ -50,7 +50,7 @@
 #include <ZeroSpades.h>
 
 DEFINE_SPADES_SETTING(cl_modsIndexUrl,
-                      "https://api.github.com/repos/zerospades/zerospades-paks/contents/");
+					  "https://api.github.com/repos/zerospades/zerospades-paks/contents/");
 
 namespace spades {
 	namespace gui {
@@ -162,7 +162,7 @@ namespace spades {
 					return out;
 				do {
 					if (std::strcmp(fd.cFileName, ".") == 0 ||
-					    std::strcmp(fd.cFileName, "..") == 0)
+						std::strcmp(fd.cFileName, "..") == 0)
 						continue;
 					out.emplace_back(fd.cFileName);
 				} while (FindNextFileA(h, &fd));
@@ -192,7 +192,7 @@ namespace spades {
 			std::string ModsRootAbs() { return UserRoot() + "/" + kModsDir; }
 
 			std::size_t CurlWriteToString(void* ptr, std::size_t size, std::size_t nmemb,
-			                              void* userdata) {
+										  void* userdata) {
 				std::string* s = static_cast<std::string*>(userdata);
 				std::size_t n = size * nmemb;
 				s->append(static_cast<char*>(ptr), n);
@@ -200,7 +200,7 @@ namespace spades {
 			}
 
 			std::size_t CurlWriteToFile(void* ptr, std::size_t size, std::size_t nmemb,
-			                            void* userdata) {
+										void* userdata) {
 				std::FILE* f = static_cast<std::FILE*>(userdata);
 				// fwrite returns the number of whole items written; curl wants the
 				// number of bytes handled, so scale back up by the item size.
@@ -233,7 +233,7 @@ namespace spades {
 			}
 
 			std::string HttpDownloadToFile(const std::string& url,
-			                               const std::string& destAbs) {
+										   const std::string& destAbs) {
 				std::FILE* f = std::fopen(destAbs.c_str(), "wb");
 				if (!f)
 					return Format("Cannot create '{0}'", destAbs);
@@ -306,11 +306,11 @@ namespace spades {
 					std::string finalPath = dirAbs + "/" + name;
 					std::string e = HttpDownloadToFile(dl, partial);
 					if (!e.empty())
-						return Format("Download '{0}': {1}", name, e);
+						return _Tr("ModsScreenHelper", "Download '{0}': {1}", name, e);
 					std::remove(finalPath.c_str());
 					if (std::rename(partial.c_str(), finalPath.c_str()) != 0) {
 						std::remove(partial.c_str());
-						return Format("Rename '{0}' failed", name);
+						return _Tr("ModsScreenHelper", "Rename '{0}' failed", name);
 					}
 					++owner->progressDone;
 				}
@@ -331,13 +331,13 @@ namespace spades {
 					std::string body;
 					std::string err = HttpGetText(cl_modsIndexUrl.CString(), body);
 					if (!err.empty()) {
-						Done(Format("List '{0}': {1}", std::string(cl_modsIndexUrl.CString()), err));
+						Done(_Tr("ModsScreenHelper", "List '{0}': {1}", std::string(cl_modsIndexUrl.CString()), err));
 						return;
 					}
 					Json::Reader reader;
 					Json::Value root;
 					if (!reader.parse(body, root, false) || !root.isArray()) {
-						Done("Index parse failed (expected JSON array)");
+						Done(_Tr("ModsScreenHelper", "Index parse failed (expected JSON array)"));
 						return;
 					}
 
@@ -361,7 +361,7 @@ namespace spades {
 						std::string sb;
 						std::string e = HttpGetText(url, sb);
 						if (!e.empty()) {
-							Done(Format("List '{0}': {1}", name, e));
+							Done(_Tr("ModsScreenHelper", "List '{0}': {1}", name, e));
 							return;
 						}
 						Json::Value sroot;
@@ -400,7 +400,7 @@ namespace spades {
 		};
 
 		ModsScreenHelper::ModsScreenHelper()
-		    : query(nullptr), modsCached(false), progressTotal(0), progressDone(0) {
+			: query(nullptr), modsCached(false), progressTotal(0), progressDone(0) {
 			SPADES_MARK_FUNCTION();
 		}
 
@@ -481,7 +481,7 @@ namespace spades {
 				}
 			}
 			std::sort(mods.begin(), mods.end(),
-			          [](const ModEntry& a, const ModEntry& b) { return a.name < b.name; });
+					  [](const ModEntry& a, const ModEntry& b) { return a.name < b.name; });
 			modsCached = true;
 		}
 
@@ -527,8 +527,8 @@ namespace spades {
 			if (m) {
 				for (const std::string& pak : m->paks) {
 					std::string overlayPath = m->isFolder
-					    ? ("Mods/" + m->name + "/" + pak)
-					    : ("Mods/" + pak);
+						? ("Mods/" + m->name + "/" + pak)
+						: ("Mods/" + pak);
 					try {
 						auto stream = FileManager::OpenForReading(overlayPath.c_str());
 						ZipFileSystem zfs(stream.release());
@@ -592,8 +592,8 @@ namespace spades {
 					continue;
 				for (const std::string& pak : m->paks)
 					out.push_back(m->isFolder
-					    ? (std::string(kModsDir) + "/" + m->name + "/" + pak)
-					    : (std::string(kModsDir) + "/" + pak));
+						? (std::string(kModsDir) + "/" + m->name + "/" + pak)
+						: (std::string(kModsDir) + "/" + pak));
 			}
 			return out;
 		}
