@@ -11,7 +11,7 @@ finish-args:
   - --socket=pulseaudio
   - --share=network
   - --device=dri
-  - --persist=.local/share/zerospades
+  - --persist=.local/share/openspades
 cleanup:
   - /include
   - /lib/pkgconfig
