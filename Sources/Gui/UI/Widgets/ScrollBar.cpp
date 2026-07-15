@@ -126,8 +126,7 @@ namespace spades {
 			// -- ScrollBarFill --
 
 			ScrollBarFill::ScrollBarFill(ScrollBarBase* scrollBar, bool up)
-			    : ButtonBase(&scrollBar->GetManager()) {
-				(void)up; // unused
+			    : ButtonBase(&scrollBar->GetManager()), scrollBar(scrollBar), up(up) {
 				isMouseInteractive = true;
 				repeat = true;
 			}

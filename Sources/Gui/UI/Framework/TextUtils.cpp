@@ -20,9 +20,6 @@
 
 #include "TextUtils.h"
 
-#include <algorithm>
-#include <cctype>
-
 namespace spades {
 	namespace gui {
 		namespace ui {
@@ -63,26 +60,6 @@ namespace spades {
 					charIndex++;
 				}
 				return charIndex;
-			}
-
-			size_t StringCommonPrefixLength(const std::string& a, const std::string& b) {
-				size_t ln = std::min(a.size(), b.size());
-				for (size_t i = 0; i < ln; i++) {
-					if (std::tolower(static_cast<unsigned char>(a[i])) !=
-					    std::tolower(static_cast<unsigned char>(b[i])))
-						return i;
-				}
-				return ln;
-			}
-
-			std::string FormatFileSize(int64_t bytes) {
-				if (bytes < 0)
-					return "";
-				if (bytes < 1024)
-					return std::to_string(bytes) + " B";
-				if (bytes < 1024 * 1024)
-					return std::to_string(bytes / 1024) + " KB";
-				return std::to_string(bytes / (1024 * 1024)) + " MB";
 			}
 		} // namespace ui
 	} // namespace gui

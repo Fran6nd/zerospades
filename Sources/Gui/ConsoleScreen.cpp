@@ -24,17 +24,13 @@
 #include <Core/TMPUtils.h>
 
 #include "ConfigConsoleResponder.h"
-#include <Gui/Utils/ConsoleCommand.h>
-#include <Gui/Utils/ConsoleHelper.h>
+#include "ConsoleCommand.h"
+#include "ConsoleHelper.h"
 #include "ConsoleScreen.h"
 #include <Gui/UI/Console/ConsoleUI.h>
 
 namespace spades {
 	namespace gui {
-		namespace {
-			bool s_consoleOpen = false;
-		}
-
 		ConsoleScreen::ConsoleScreen(Handle<client::IRenderer> renderer,
 									 Handle<client::IAudioDevice> audioDevice,
 									 Handle<client::FontManager> fontManager, Handle<View> subview)
@@ -51,7 +47,6 @@ namespace spades {
 		ConsoleScreen::~ConsoleScreen() {
 			SPADES_MARK_FUNCTION();
 
-			s_consoleOpen = false;
 			helper->ConsoleScreenDestroyed();
 		}
 
@@ -226,11 +221,8 @@ namespace spades {
 
 		bool ConsoleScreen::ShouldInterceptInput() {
 			SPADES_MARK_FUNCTION();
-			s_consoleOpen = ui->ShouldInterceptInput();
-			return s_consoleOpen;
+			return ui->ShouldInterceptInput();
 		}
-
-		bool ConsoleScreen::IsConsoleOpen() { return s_consoleOpen; }
 
 		void ConsoleScreen::ToggleConsole() {
 			SPADES_MARK_FUNCTION();
