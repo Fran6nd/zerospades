@@ -192,6 +192,10 @@ namespace spades {
 
 		void VulkanImage::CreateSampler(VkFilter magFilter, VkFilter minFilter,
 		                                VkSamplerAddressMode addressMode, bool enableAnisotropy) {
+			// Recreates the sampler: any existing one is destroyed first. The caller
+			// must ensure the old sampler is not in flight (not referenced by a
+			// command buffer still executing), otherwise this is a use-after-free.
+			// Present callers only (re)create at image setup, before first use.
 			if (sampler != VK_NULL_HANDLE) {
 				vkDestroySampler(device->GetDevice(), sampler, nullptr);
 				sampler = VK_NULL_HANDLE;
