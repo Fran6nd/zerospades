@@ -46,7 +46,6 @@
 #include <Core/Strings.h>
 #include <Core/Thread.h>
 #include <Core/ZipFileSystem.h>
-#include <ScriptBindings/ScriptManager.h>
 #include <ZeroSpades.h>
 
 DEFINE_SPADES_SETTING(cl_modsIndexUrl,
@@ -488,16 +487,14 @@ namespace spades {
 			return nullptr;
 		}
 
-		CScriptArray* ModsScreenHelper::GetModNames() {
+		std::vector<std::string> ModsScreenHelper::GetModNames() {
 			if (!modsCached)
 				RebuildModsCache();
-			asIScriptEngine* eng = ScriptManager::GetInstance()->GetEngine();
-			asITypeInfo* t = eng->GetTypeInfoByDecl("array<string>");
-			SPAssert(t != nullptr);
-			CScriptArray* arr = CScriptArray::Create(t, static_cast<asUINT>(mods.size()));
-			for (std::size_t i = 0; i < mods.size(); ++i)
-				arr->SetValue(static_cast<asUINT>(i), &mods[i].name);
-			return arr;
+			std::vector<std::string> out;
+			out.reserve(mods.size());
+			for (const ModEntry& m : mods)
+				out.push_back(m.name);
+			return out;
 		}
 
 		int ModsScreenHelper::GetModPakCount(std::string modName) {
@@ -514,7 +511,7 @@ namespace spades {
 			return m ? m->totalSize : 0;
 		}
 
-		CScriptArray* ModsScreenHelper::GetModContents(std::string modName) {
+		std::vector<std::string> ModsScreenHelper::GetModContents(std::string modName) {
 			if (!modsCached)
 				RebuildModsCache();
 			std::vector<std::string> out;
@@ -535,25 +532,10 @@ namespace spades {
 				}
 			}
 			std::sort(out.begin(), out.end());
-			asIScriptEngine* eng = ScriptManager::GetInstance()->GetEngine();
-			asITypeInfo* t = eng->GetTypeInfoByDecl("array<string>");
-			SPAssert(t != nullptr);
-			CScriptArray* arr = CScriptArray::Create(t, static_cast<asUINT>(out.size()));
-			for (std::size_t i = 0; i < out.size(); ++i)
-				arr->SetValue(static_cast<asUINT>(i), &out[i]);
-			return arr;
+			return out;
 		}
 
-		CScriptArray* ModsScreenHelper::GetEnabledMods() {
-			std::vector<std::string> list = ReadEnabled();
-			asIScriptEngine* eng = ScriptManager::GetInstance()->GetEngine();
-			asITypeInfo* t = eng->GetTypeInfoByDecl("array<string>");
-			SPAssert(t != nullptr);
-			CScriptArray* arr = CScriptArray::Create(t, static_cast<asUINT>(list.size()));
-			for (std::size_t i = 0; i < list.size(); ++i)
-				arr->SetValue(static_cast<asUINT>(i), &list[i]);
-			return arr;
-		}
+		std::vector<std::string> ModsScreenHelper::GetEnabledMods() { return ReadEnabled(); }
 
 		// Enable a mod: drop any existing entry and append it at the end so it is
 		// applied last (and so wins conflicts). Persisted immediately; it takes
