@@ -1699,7 +1699,11 @@ namespace spades {
 			@layouter.HeadingNav = nav;
 
 			layouter.AddHeading(_Tr("Preferences", "World Markers"));
-			layouter.AddToggleField(_Tr("Preferences", "Damage Indicators"), "cg_damageIndicators");
+			layouter.AddChoiceField(_Tr("Preferences", "Damage Indicators"), "cg_damageIndicators",
+									array<string> = {_Tr("Preferences", "OFF"),
+													 _Tr("Preferences", "ON"),
+													 _Tr("Preferences", "Grenades")},
+									array<int> = {0, 1, 2});
 			layouter.AddToggleField(_Tr("Preferences", "Show Hover Player Names"), "cg_playerNames");
 			layouter.AddToggleField(_Tr("Preferences", "Show Dead Player Names"), "cg_playerNamesDead");
 
@@ -1756,6 +1760,8 @@ namespace spades {
 													 _Tr("Preferences", "Side")},
 									array<int> = {0, 1, 2});
 			layouter.AddToggleField(_Tr("Preferences", "Show Player Names"), "cg_minimapPlayerNames");
+			layouter.AddToggleField(_Tr("Preferences", "Circular Minimap"), "cg_minimapCircular");
+			layouter.AddToggleField(_Tr("Preferences", "Rotating Minimap"), "cg_minimapRotating");
 
 			layouter.AddHeading(_Tr("Preferences", "Target"));
 			layouter.AddTargetPreview();

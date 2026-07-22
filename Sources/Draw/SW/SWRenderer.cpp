@@ -1038,6 +1038,20 @@ namespace spades {
 			DrawImage(flatMapRenderer->GetImage(), outRect, inRect);
 		}
 
+		void SWRenderer::DrawFlatGameMap(const spades::Vector2& outTopLeft,
+		                                 const spades::Vector2& outTopRight,
+		                                 const spades::Vector2& outBottomLeft,
+		                                 const spades::AABB2& inRect) {
+			SPADES_MARK_FUNCTION();
+			EnsureValid();
+			EnsureSceneNotStarted();
+
+			if (!flatMapRenderer)
+				SPRaise("DrawFlatGameMap was called without an active map.");
+
+			DrawImage(flatMapRenderer->GetImage(), outTopLeft, outTopRight, outBottomLeft, inRect);
+		}
+
 		void SWRenderer::FrameDone() {
 			SPADES_MARK_FUNCTION();
 			EnsureValid();

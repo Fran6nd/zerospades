@@ -204,6 +204,12 @@ namespace spades {
 			CheckError();
 		}
 
+		void SDLGLDevice::Scissor(Integer x, Integer y, Sizei width, Sizei height) {
+			CheckExistence(glScissor);
+			glScissor(x, y, width, height);
+			CheckError();
+		}
+
 		void SDLGLDevice::ClearDepth(Float v) {
 			CheckExistence(glClearDepth);
 			glClearDepth(v);
@@ -212,6 +218,11 @@ namespace spades {
 		void SDLGLDevice::ClearColor(Float r, Float g, Float b, Float a) {
 			CheckExistence(glClearColor);
 			glClearColor(r, g, b, a);
+			CheckError();
+		}
+		void SDLGLDevice::ClearStencil(Integer s) {
+			CheckExistence(glClearStencil);
+			glClearStencil(s);
 			CheckError();
 		}
 		void SDLGLDevice::Clear(Enum bits) {
@@ -328,6 +339,8 @@ namespace spades {
 				case Texture2D: type = GL_TEXTURE_2D; break;
 				case Multisample: type = GL_MULTISAMPLE; break;
 				case FramebufferSRGB: type = GL_FRAMEBUFFER_SRGB; break;
+				case StencilTest: type = GL_STENCIL_TEST; break;
+				case ScissorTest: type = GL_SCISSOR_TEST; break;
 				default: SPInvalidEnum("state", s);
 			}
 			if (b)
@@ -435,20 +448,51 @@ namespace spades {
 			glLineWidth(w);
 			CheckError();
 		}
+
+		static GLenum ParseCompareFunc(IGLDevice::Enum func) {
+			switch (func) {
+				case IGLDevice::Never: return GL_NEVER;
+				case IGLDevice::Always: return GL_ALWAYS;
+				case IGLDevice::Less: return GL_LESS;
+				case IGLDevice::LessOrEqual: return GL_LEQUAL;
+				case IGLDevice::Equal: return GL_EQUAL;
+				case IGLDevice::Greater: return GL_GREATER;
+				case IGLDevice::GreaterOrEqual: return GL_GEQUAL;
+				case IGLDevice::NotEqual: return GL_NOTEQUAL;
+				default: SPInvalidEnum("func", func);
+			}
+		}
+
 		void SDLGLDevice::DepthFunc(Enum func) {
 			SPADES_MARK_FUNCTION();
 			CheckExistence(glDepthFunc);
-			switch (func) {
-				case Never: glDepthFunc(GL_NEVER); break;
-				case Always: glDepthFunc(GL_ALWAYS); break;
-				case Less: glDepthFunc(GL_LESS); break;
-				case LessOrEqual: glDepthFunc(GL_LEQUAL); break;
-				case Equal: glDepthFunc(GL_EQUAL); break;
-				case Greater: glDepthFunc(GL_GREATER); break;
-				case GreaterOrEqual: glDepthFunc(GL_GEQUAL); break;
-				case NotEqual: glDepthFunc(GL_NOTEQUAL); break;
-				default: SPInvalidEnum("func", func);
+			glDepthFunc(ParseCompareFunc(func));
+			CheckError();
+		}
+
+		static GLenum ParseStencilOp(IGLDevice::Enum op) {
+			switch (op) {
+				case IGLDevice::Keep: return GL_KEEP;
+				case IGLDevice::Replace: return GL_REPLACE;
+				default: SPInvalidEnum("op", op);
 			}
+		}
+		void SDLGLDevice::StencilFunc(Enum func, Integer ref, UInteger mask) {
+			SPADES_MARK_FUNCTION();
+			CheckExistence(glStencilFunc);
+			glStencilFunc(ParseCompareFunc(func), ref, mask);
+			CheckError();
+		}
+		void SDLGLDevice::StencilOp(Enum sfail, Enum dpfail, Enum dppass) {
+			SPADES_MARK_FUNCTION();
+			CheckExistence(glStencilOp);
+			glStencilOp(ParseStencilOp(sfail), ParseStencilOp(dpfail), ParseStencilOp(dppass));
+			CheckError();
+		}
+		void SDLGLDevice::StencilMask(UInteger mask) {
+			SPADES_MARK_FUNCTION();
+			CheckExistence(glStencilMask);
+			glStencilMask(mask);
 			CheckError();
 		}
 

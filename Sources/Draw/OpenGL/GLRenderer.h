@@ -211,6 +211,14 @@ namespace spades {
 			
 			void UpdateFlatGameMap() override;
 			void DrawFlatGameMap(const AABB2& outRect, const AABB2& inRect) override;
+			void DrawFlatGameMap(const Vector2& outTopLeft, const Vector2& outTopRight,
+			                     const Vector2& outBottomLeft, const AABB2& inRect) override;
+
+			void BeginClippingCircle(const Vector2& center, float radius) override;
+			void EndClippingCircle() override;
+
+			void BeginClippingRect(const AABB2& outRect) override;
+			void EndClippingRect() override;
 
 			void FrameDone() override;
 			void Flip() override;
