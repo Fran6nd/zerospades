@@ -143,11 +143,10 @@ namespace spades {
 					break;
 				case SDL_KEYDOWN:
 					if (!event.key.repeat) {
+						const SDL_Keysym& keysym = event.key.keysym;
 						// Toggle fullscreen mode
-						if (event.key.keysym.mod & KMOD_ALT &&
-							event.key.keysym.sym == SDLK_RETURN) {
+						if (keysym.mod & KMOD_ALT && keysym.sym == SDLK_RETURN) {
 							SDL_Window* window = SDL_GetWindowFromID(event.key.windowID);
-
 							if (r_fullscreen) {
 								if (!SDL_SetWindowFullscreen(window, 0))
 									r_fullscreen = 0;
@@ -161,8 +160,7 @@ namespace spades {
 							}
 							return;
 						}
-
-						view.KeyEvent(TranslateKey(event.key.keysym), true);
+						view.KeyEvent(TranslateKey(keysym), true);
 					}
 					break;
 				case SDL_KEYUP: view.KeyEvent(TranslateKey(event.key.keysym), false); break;
@@ -470,6 +468,7 @@ namespace spades {
 						sdlFlags = SDL_WINDOW_OPENGL;
 						SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
 						SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 0);
+						SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
 						if (!r_allowSoftwareRendering)
 							SDL_GL_SetAttribute(SDL_GL_ACCELERATED_VISUAL, 1);
 						break;

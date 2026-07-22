@@ -14,7 +14,7 @@
  GNU General Public License for more details.
 
  You should have received a copy of the GNU General Public License
- along with OpenSpades.  If not, see <http://www.gnu.org/licenses/>.
+ along with OpenSpades.	 If not, see <http://www.gnu.org/licenses/>.
 
  */
 
@@ -41,9 +41,11 @@ namespace spades {
 
 			void DepthRange(Float near, Float far) override;
 			void Viewport(Integer x, Integer y, Sizei width, Sizei height) override;
+			void Scissor(Integer x, Integer y, Sizei width, Sizei height) override;
 
 			void ClearDepth(Float) override;
 			void ClearColor(Float, Float, Float, Float) override;
+			void ClearStencil(Integer) override;
 			void Clear(Enum) override;
 
 			void Finish() override;
@@ -51,6 +53,10 @@ namespace spades {
 
 			void DepthMask(bool) override;
 			void ColorMask(bool r, bool g, bool b, bool a) override;
+
+			void StencilFunc(Enum func, Integer ref, UInteger mask) override;
+			void StencilOp(Enum sfail, Enum dpfail, Enum dppass) override;
+			void StencilMask(UInteger mask) override;
 
 			void PolygonMode(Enum, Enum) override;
 			void PolygonOffset(Float, Float) override;
@@ -99,19 +105,19 @@ namespace spades {
 			void TexParamater(Enum target, Enum paramater, Enum value) override;
 			void TexParamater(Enum target, Enum paramater, float value) override;
 			void TexImage2D(Enum target, Integer level, Enum internalFormat, Sizei width,
-			                Sizei height, Integer border, Enum format, Enum type,
-			                const void* data) override;
+							Sizei height, Integer border, Enum format, Enum type,
+							const void* data) override;
 			void TexImage3D(Enum target, Integer level, Enum internalFormat, Sizei width,
-			                Sizei height, Sizei depth, Integer border, Enum format, Enum type,
-			                const void* data) override;
+							Sizei height, Sizei depth, Integer border, Enum format, Enum type,
+							const void* data) override;
 			void TexSubImage2D(Enum target, Integer level, Integer x, Integer y, Sizei width,
-			                   Sizei height, Enum format, Enum type, const void* data) override;
+							   Sizei height, Enum format, Enum type, const void* data) override;
 			void TexSubImage3D(Enum target, Integer level, Integer x, Integer y, Integer z,
-			                   Sizei width, Sizei height, Sizei depth, Enum format, Enum type,
-			                   const void* data) override;
+							   Sizei width, Sizei height, Sizei depth, Enum format, Enum type,
+							   const void* data) override;
 			void CopyTexSubImage2D(Enum target, Integer level, Integer destinationX,
-			                       Integer destinationY, Integer srcX, Integer srcY, Sizei width,
-			                       Sizei height) override;
+								   Integer destinationY, Integer srcX, Integer srcY, Sizei width,
+								   Sizei height) override;
 			void GenerateMipmap(Enum target) override;
 
 			void VertexAttrib(UInteger index, Float) override;
@@ -120,30 +126,30 @@ namespace spades {
 			void VertexAttrib(UInteger index, Float, Float, Float, Float) override;
 
 			void VertexAttribPointer(UInteger index, Integer size, Enum type, bool normalized,
-			                         Sizei stride, const void*) override;
+									 Sizei stride, const void*) override;
 			void VertexAttribIPointer(UInteger index, Integer size, Enum type, Sizei stride,
-			                          const void*) override;
+									  const void*) override;
 			void EnableVertexAttribArray(UInteger index, bool) override;
 			void VertexAttribDivisor(UInteger index, UInteger divisor) override;
 
 			void DrawArrays(Enum mode, Integer first, Sizei count) override;
 			void DrawElements(Enum mode, Sizei count, Enum type, const void* indices) override;
 			void DrawArraysInstanced(Enum mode, Integer first, Sizei count,
-			                         Sizei instances) override;
+									 Sizei instances) override;
 			void DrawElementsInstanced(Enum mode, Sizei count, Enum type, const void* indices,
-			                           Sizei instances) override;
+									   Sizei instances) override;
 
 			UInteger CreateShader(Enum type) override;
 			void ShaderSource(UInteger shader, Sizei count, const char** string,
-			                  const int* len) override;
+							  const int* len) override;
 			void CompileShader(UInteger) override;
 			void DeleteShader(UInteger) override;
 			Integer GetShaderInteger(UInteger shader, Enum param) override;
 			void GetShaderInfoLog(UInteger shader, Sizei bufferSize, Sizei* length,
-			                      char* outString) override;
+								  char* outString) override;
 			Integer GetProgramInteger(UInteger program, Enum param) override;
 			void GetProgramInfoLog(UInteger program, Sizei bufferSize, Sizei* length,
-			                       char* outString) override;
+								   char* outString) override;
 
 			UInteger CreateProgram() override;
 			void AttachShader(UInteger program, UInteger shader) override;
@@ -169,24 +175,24 @@ namespace spades {
 			void DeleteRenderbuffer(UInteger) override;
 			void BindRenderbuffer(Enum target, UInteger) override;
 			void RenderbufferStorage(Enum target, Enum internalFormat, Sizei width,
-			                         Sizei height) override;
+									 Sizei height) override;
 			void RenderbufferStorage(Enum target, Sizei samples, Enum internalFormat, Sizei width,
-			                         Sizei height) override;
+									 Sizei height) override;
 
 			UInteger GenFramebuffer() override;
 			void BindFramebuffer(Enum target, UInteger framebuffer) override;
 			void DeleteFramebuffer(UInteger) override;
 			void FramebufferTexture2D(Enum target, Enum attachment, Enum texTarget,
-			                          UInteger texture, Integer level) override;
+									  UInteger texture, Integer level) override;
 			void FramebufferRenderbuffer(Enum target, Enum attachment, Enum renderbufferTarget,
-			                             UInteger renderbuffer) override;
+										 UInteger renderbuffer) override;
 			void BlitFramebuffer(Integer srcX0, Integer srcY0, Integer srcX1, Integer srcY1,
-			                     Integer dstX0, Integer dstY0, Integer dstX1, Integer dstY1,
-			                     UInteger mask, Enum filter) override;
+								 Integer dstX0, Integer dstY0, Integer dstX1, Integer dstY1,
+								 UInteger mask, Enum filter) override;
 			Enum CheckFramebufferStatus(Enum target) override;
 
 			void ReadPixels(Integer x, Integer y, Sizei width, Sizei height, Enum format, Enum type,
-			                void* data) override;
+							void* data) override;
 
 			Integer ScreenWidth() override;
 			Integer ScreenHeight() override;

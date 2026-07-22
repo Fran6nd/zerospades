@@ -14,7 +14,7 @@
  GNU General Public License for more details.
 
  You should have received a copy of the GNU General Public License
- along with OpenSpades.  If not, see <http://www.gnu.org/licenses/>.
+ along with OpenSpades.	 If not, see <http://www.gnu.org/licenses/>.
 
  */
 
@@ -75,30 +75,30 @@ namespace spades {
 		// TODO: raise error for any calls after Shutdown().
 
 		GLRenderer::GLRenderer(Handle<IGLDevice> _device)
-		    : device(std::move(_device)),
-		      map(NULL),
-		      inited(false),
-		      sceneUsedInThisFrame(false),
-		      programManager(NULL),
-		      imageManager(NULL),
-		      modelManager(NULL),
-		      mapShadowRenderer(NULL),
-		      mapRenderer(NULL),
-		      imageRenderer(NULL),
-		      flatMapRenderer(NULL),
-		      modelRenderer(NULL),
-		      spriteRenderer(NULL),
-		      longSpriteRenderer(NULL),
-		      ambientShadowRenderer(NULL),
-		      radiosityRenderer(NULL),
-		      cameraBlur(NULL),
-		      lensDustFilter(NULL),
-		      autoExposureFilter(NULL),
-		      lastColorBufferTexture(0),
-		      fogDistance(128.0F),
-		      renderingMirror(false),
-		      lastTime(0),
-		      duringSceneRendering(false) {
+			: device(std::move(_device)),
+			  map(NULL),
+			  inited(false),
+			  sceneUsedInThisFrame(false),
+			  programManager(NULL),
+			  imageManager(NULL),
+			  modelManager(NULL),
+			  mapShadowRenderer(NULL),
+			  mapRenderer(NULL),
+			  imageRenderer(NULL),
+			  flatMapRenderer(NULL),
+			  modelRenderer(NULL),
+			  spriteRenderer(NULL),
+			  longSpriteRenderer(NULL),
+			  ambientShadowRenderer(NULL),
+			  radiosityRenderer(NULL),
+			  cameraBlur(NULL),
+			  lensDustFilter(NULL),
+			  autoExposureFilter(NULL),
+			  lastColorBufferTexture(0),
+			  fogDistance(128.0F),
+			  renderingMirror(false),
+			  lastTime(0),
+			  duringSceneRendering(false) {
 			SPADES_MARK_FUNCTION();
 
 			SPAssert(device);
@@ -121,7 +121,7 @@ namespace spades {
 
 			// ready for 2d draw
 			device->BlendFunc(IGLDevice::One, IGLDevice::OneMinusSrcAlpha, IGLDevice::Zero,
-			                  IGLDevice::One);
+							  IGLDevice::One);
 			device->Enable(IGLDevice::Blend, true);
 
 			SPLog("GLRenderer started");
@@ -516,7 +516,7 @@ namespace spades {
 		}
 
 		void GLRenderer::AddLongSprite(client::IImage& img, spades::Vector3 p1, spades::Vector3 p2,
-		                               float radius) {
+									   float radius) {
 			SPADES_MARK_FUNCTION_DEBUG();
 
 			GLImage& glImage = dynamic_cast<GLImage&>(img);
@@ -563,10 +563,10 @@ namespace spades {
 			colorAttribute(program);
 
 			device->VertexAttribPointer(positionAttribute(), 3, IGLDevice::FloatType, false,
-			                            sizeof(DebugLineVertex), vertices.data());
+										sizeof(DebugLineVertex), vertices.data());
 			device->VertexAttribPointer(colorAttribute(), 4, IGLDevice::FloatType, false,
-			                            sizeof(DebugLineVertex),
-			                            (const char*)vertices.data() + sizeof(float) * 3);
+										sizeof(DebugLineVertex),
+										(const char*)vertices.data() + sizeof(float) * 3);
 
 			device->EnableVertexAttribArray(positionAttribute(), true);
 			device->EnableVertexAttribArray(colorAttribute(), true);
@@ -623,9 +623,9 @@ namespace spades {
 
 						device->BindTexture(IGLDevice::Texture2D, ssaoBufferTexture);
 						device->TexParamater(IGLDevice::Texture2D, IGLDevice::TextureMagFilter,
-						                     IGLDevice::Nearest);
+											 IGLDevice::Nearest);
 						device->TexParamater(IGLDevice::Texture2D, IGLDevice::TextureMinFilter,
-						                     IGLDevice::Nearest);
+											 IGLDevice::Nearest);
 
 						device->DepthMask(true);
 						device->Enable(IGLDevice::DepthTest, true);
@@ -648,20 +648,20 @@ namespace spades {
 			if (needsFullDepthPrepass) {
 				device->BindTexture(IGLDevice::Texture2D, ssaoBufferTexture);
 				device->TexParamater(IGLDevice::Texture2D, IGLDevice::TextureMagFilter,
-				                     IGLDevice::Linear);
+									 IGLDevice::Linear);
 				device->TexParamater(IGLDevice::Texture2D, IGLDevice::TextureMinFilter,
-				                     IGLDevice::Linear);
+									 IGLDevice::Linear);
 				ssaoBuffer.Release();
 			}
 
 			if (settings.r_dlights) {
 				GLProfiler::Context p(*profiler, "Dynamic Light Pass [%d light(s)]",
-				                      (int)lights.size());
+									  (int)lights.size());
 
 				device->DepthFunc(IGLDevice::Equal);
 				device->Enable(IGLDevice::Blend, true);
 				device->BlendFunc(IGLDevice::SrcAlpha, IGLDevice::One, IGLDevice::Zero,
-				                  IGLDevice::One);
+								  IGLDevice::One);
 
 				if (!sceneDef.skipWorld && mapRenderer)
 					mapRenderer->RenderDynamicLightPass(lights);
@@ -711,7 +711,7 @@ namespace spades {
 
 				device->Enable(IGLDevice::Blend, true);
 				device->BlendFunc(IGLDevice::SrcAlpha, IGLDevice::OneMinusSrcAlpha, IGLDevice::Zero,
-				                  IGLDevice::One);
+								  IGLDevice::One);
 
 				modelRenderer->RenderSunlightPass(true);
 			}
@@ -854,7 +854,7 @@ namespace spades {
 			// render non-mirrored scene
 			bgCol = GetFogColorForSolidPass();
 			if (settings.r_hdr)
-				bgCol *= bgCol;  // linearlize
+				bgCol *= bgCol;	 // linearlize
 
 			{
 				GLProfiler::Context p(*profiler, "Clear (Non-mirrored Scene)");
@@ -901,7 +901,7 @@ namespace spades {
 				GLProfiler::Context p(*profiler, "Particles");
 
 				device->BlendFunc(IGLDevice::One, IGLDevice::OneMinusSrcAlpha, IGLDevice::Zero,
-				                  IGLDevice::One);
+								  IGLDevice::One);
 
 				spriteRenderer->Render();
 			}
@@ -910,7 +910,7 @@ namespace spades {
 				GLProfiler::Context p(*profiler, "Long Particles");
 
 				device->BlendFunc(IGLDevice::One, IGLDevice::OneMinusSrcAlpha, IGLDevice::Zero,
-				                  IGLDevice::One);
+								  IGLDevice::One);
 
 				longSpriteRenderer->Render();
 			}
@@ -944,15 +944,15 @@ namespace spades {
 				if (settings.r_softParticles) { // softparticle is a part of postprocess
 					GLProfiler::Context p(*profiler, "Soft Particle");
 					device->BlendFunc(IGLDevice::One, IGLDevice::OneMinusSrcAlpha, IGLDevice::Zero,
-					                  IGLDevice::One);
+									  IGLDevice::One);
 					spriteRenderer->Render();
 				}
 
 				device->BlendFunc(IGLDevice::SrcAlpha, IGLDevice::OneMinusSrcAlpha, IGLDevice::Zero,
-				                  IGLDevice::One);
+								  IGLDevice::One);
 
 				if (settings.r_depthOfField &&
-				    (sceneDef.depthOfFieldFocalLength > 0.0F || sceneDef.blurVignette > 0.0F)) {
+					(sceneDef.depthOfFieldFocalLength > 0.0F || sceneDef.blurVignette > 0.0F)) {
 					GLProfiler::Context p(*profiler, "Depth of Field");
 					handle = GLDepthOfFieldFilter(*this).Filter(
 					  handle, sceneDef.depthOfFieldFocalLength, sceneDef.blurVignette,
@@ -1107,9 +1107,9 @@ namespace spades {
 					// Temporarily change the texture filter to NN
 					device->BindTexture(IGLDevice::Texture2D, handle.GetTexture());
 					device->TexParamater(IGLDevice::Texture2D, IGLDevice::TextureMagFilter,
-					                     IGLDevice::Nearest);
+										 IGLDevice::Nearest);
 					device->TexParamater(IGLDevice::Texture2D, IGLDevice::TextureMinFilter,
-					                     IGLDevice::Nearest);
+										 IGLDevice::Nearest);
 				}
 
 				device->BindFramebuffer(IGLDevice::Framebuffer, 0);
@@ -1117,8 +1117,8 @@ namespace spades {
 				device->Viewport(0, 0, (int)sw, (int)sh);
 
 				Handle<GLImage> image(new GLImage(handle.GetTexture(), device.GetPointerOrNull(),
-				                                  static_cast<float>(handle.GetWidth()),
-				                                  static_cast<float>(handle.GetHeight()), false), false);
+												  static_cast<float>(handle.GetWidth()),
+												  static_cast<float>(handle.GetHeight()), false), false);
 				SetColorAlphaPremultiplied(MakeVector4(1, 1, 1, 1));
 				DrawImage(*image, AABB2(0, sh, sw, -sh));
 				imageRenderer->Flush();
@@ -1127,9 +1127,9 @@ namespace spades {
 					// Reset the texture filter
 					device->BindTexture(IGLDevice::Texture2D, handle.GetTexture());
 					device->TexParamater(IGLDevice::Texture2D, IGLDevice::TextureMagFilter,
-					                     IGLDevice::Linear);
+										 IGLDevice::Linear);
 					device->TexParamater(IGLDevice::Texture2D, IGLDevice::TextureMinFilter,
-					                     IGLDevice::Linear);
+										 IGLDevice::Linear);
 				}
 			}
 
@@ -1152,7 +1152,7 @@ namespace spades {
 			imageRenderer->Flush();
 
 			device->BlendFunc(IGLDevice::Zero, IGLDevice::SrcColor, IGLDevice::Zero,
-			                  IGLDevice::One);
+							  IGLDevice::One);
 
 			Vector4 col = {color.x, color.y, color.z, 1};
 
@@ -1174,10 +1174,10 @@ namespace spades {
 			colorAttribute(program);
 
 			device->VertexAttribPointer(positionAttribute(), 3, IGLDevice::FloatType, false,
-			                            sizeof(DebugLineVertex), vertices);
+										sizeof(DebugLineVertex), vertices);
 			device->VertexAttribPointer(colorAttribute(), 4, IGLDevice::FloatType, false,
-			                            sizeof(DebugLineVertex),
-			                            (const char*)vertices + sizeof(float) * 3);
+										sizeof(DebugLineVertex),
+										(const char*)vertices + sizeof(float) * 3);
 
 			device->EnableVertexAttribArray(positionAttribute(), true);
 			device->EnableVertexAttribArray(colorAttribute(), true);
@@ -1192,58 +1192,58 @@ namespace spades {
 			device->EnableVertexAttribArray(colorAttribute(), false);
 
 			device->BlendFunc(IGLDevice::One, IGLDevice::OneMinusSrcAlpha, IGLDevice::Zero,
-			                  IGLDevice::One);
+							  IGLDevice::One);
 		}
 
 		void GLRenderer::DrawImage(stmp::optional<client::IImage&> image,
-		                           const spades::Vector2& outTopLeft) {
+								   const spades::Vector2& outTopLeft) {
 			SPADES_MARK_FUNCTION();
 
 			if (image == nullptr)
 				SPRaise("Size must be specified when null image is provided");
 
 			DrawImage(image,
-			          AABB2(outTopLeft.x, outTopLeft.y, image->GetWidth(), image->GetHeight()),
-			          AABB2(0, 0, image->GetWidth(), image->GetHeight()));
+					  AABB2(outTopLeft.x, outTopLeft.y, image->GetWidth(), image->GetHeight()),
+					  AABB2(0, 0, image->GetWidth(), image->GetHeight()));
 		}
 
 		void GLRenderer::DrawImage(stmp::optional<client::IImage&> image,
-		                           const spades::AABB2& outRect) {
+								   const spades::AABB2& outRect) {
 			SPADES_MARK_FUNCTION();
 
 			DrawImage(image, outRect,
-			          AABB2(0, 0, image ? image->GetWidth() : 0, image ? image->GetHeight() : 0));
+					  AABB2(0, 0, image ? image->GetWidth() : 0, image ? image->GetHeight() : 0));
 		}
 
 		void GLRenderer::DrawImage(stmp::optional<client::IImage&> image,
-		                           const spades::Vector2& outTopLeft, const spades::AABB2& inRect) {
+								   const spades::Vector2& outTopLeft, const spades::AABB2& inRect) {
 			SPADES_MARK_FUNCTION();
 
 			DrawImage(image,
-			          AABB2(outTopLeft.x, outTopLeft.y, inRect.GetWidth(), inRect.GetHeight()),
-			          inRect);
+					  AABB2(outTopLeft.x, outTopLeft.y, inRect.GetWidth(), inRect.GetHeight()),
+					  inRect);
 		}
 
 		void GLRenderer::DrawImage(stmp::optional<client::IImage&> image,
-		                           const spades::AABB2& outRect, const spades::AABB2& inRect) {
+								   const spades::AABB2& outRect, const spades::AABB2& inRect) {
 			SPADES_MARK_FUNCTION();
 
 			DrawImage(image, Vector2::Make(outRect.GetMinX(), outRect.GetMinY()),
-			          Vector2::Make(outRect.GetMaxX(), outRect.GetMinY()),
-			          Vector2::Make(outRect.GetMinX(), outRect.GetMaxY()), inRect);
+					  Vector2::Make(outRect.GetMaxX(), outRect.GetMinY()),
+					  Vector2::Make(outRect.GetMinX(), outRect.GetMaxY()), inRect);
 		}
 
 		void GLRenderer::DrawImage(stmp::optional<client::IImage&> image,
-		                           const spades::Vector2& outTopLeft,
-		                           const spades::Vector2& outTopRight,
-		                           const spades::Vector2& outBottomLeft,
-		                           const spades::AABB2& inRect) {
+								   const spades::Vector2& outTopLeft,
+								   const spades::Vector2& outTopRight,
+								   const spades::Vector2& outBottomLeft,
+								   const spades::AABB2& inRect) {
 			SPADES_MARK_FUNCTION();
 
 			EnsureSceneNotStarted();
 
 			// d = a + (b - a) + (c - a)
-			//   = b + c - a
+			//	 = b + c - a
 			Vector2 outBottomRight = outTopRight + outBottomLeft - outTopLeft;
 			GLImage* img = dynamic_cast<GLImage*>(image.get_pointer());
 			if (!img) {
@@ -1267,10 +1267,10 @@ namespace spades {
 			}
 
 			imageRenderer->Add(outTopLeft.x, outTopLeft.y, outTopRight.x, outTopRight.y,
-			                   outBottomRight.x, outBottomRight.y, outBottomLeft.x, outBottomLeft.y,
-			                   inRect.GetMinX(), inRect.GetMinY(), inRect.GetMaxX(),
-			                   inRect.GetMinY(), inRect.GetMaxX(), inRect.GetMaxY(),
-			                   inRect.GetMinX(), inRect.GetMaxY(), col.x, col.y, col.z, col.w);
+							   outBottomRight.x, outBottomRight.y, outBottomLeft.x, outBottomLeft.y,
+							   inRect.GetMinX(), inRect.GetMinY(), inRect.GetMaxX(),
+							   inRect.GetMinY(), inRect.GetMaxX(), inRect.GetMaxY(),
+							   inRect.GetMinX(), inRect.GetMaxY(), col.x, col.y, col.z, col.w);
 		}
 
 		void GLRenderer::UpdateFlatGameMap() {
@@ -1280,10 +1280,89 @@ namespace spades {
 		}
 
 		void GLRenderer::DrawFlatGameMap(const spades::AABB2& outRect,
-		                                 const spades::AABB2& inRect) {
+										 const spades::AABB2& inRect) {
 			EnsureSceneNotStarted();
 			if (flatMapRenderer)
 				flatMapRenderer->Draw(outRect, inRect);
+		}
+
+		void GLRenderer::DrawFlatGameMap(const spades::Vector2& outTopLeft,
+										 const spades::Vector2& outTopRight,
+										 const spades::Vector2& outBottomLeft,
+										 const spades::AABB2& inRect) {
+			EnsureSceneNotStarted();
+			if (flatMapRenderer)
+				flatMapRenderer->Draw(outTopLeft, outTopRight, outBottomLeft, inRect);
+		}
+
+		void GLRenderer::BeginClippingCircle(const spades::Vector2& center, float radius) {
+			SPADES_MARK_FUNCTION();
+
+			EnsureSceneNotStarted();
+			imageRenderer->Flush();
+
+			device->Enable(IGLDevice::StencilTest, true);
+			device->ClearStencil(0);
+			device->Clear(IGLDevice::StencilBufferBit);
+
+			// stamp a filled circle into the stencil buffer (value 1),
+			// without touching the color buffer.
+			device->ColorMask(false, false, false, false);
+			device->StencilMask(0xFF);
+			device->StencilFunc(IGLDevice::Always, 1, 0xFF);
+			device->StencilOp(IGLDevice::Keep, IGLDevice::Keep, IGLDevice::Replace);
+
+			SetColorAlphaPremultiplied(MakeVector4(1.0F, 1.0F, 1.0F, 1.0F));
+
+			const int segments = Clamp((int)radius, 16, 64);
+			Vector2 prev = center + MakeVector2(radius, 0.0F);
+			for (int i = 1; i <= segments; i++) {
+				const float ang = (float)i / (float)segments * M_PI_F * 2.0F;
+				const auto& cur = center + MakeVector2(cosf(ang), sinf(ang)) * radius;
+				DrawImage(nullptr, prev, cur, center, AABB2(0.0F, 0.0F, 1.0F, 1.0F));
+				prev = cur;
+			}
+
+			imageRenderer->Flush();
+
+			// subsequent draws now only show up where the stencil was stamped above.
+			device->ColorMask(true, true, true, true);
+			device->StencilFunc(IGLDevice::Equal, 1, 0xFF);
+			device->StencilOp(IGLDevice::Keep, IGLDevice::Keep, IGLDevice::Keep);
+		}
+
+		void GLRenderer::EndClippingCircle() {
+			SPADES_MARK_FUNCTION();
+
+			EnsureSceneNotStarted();
+			imageRenderer->Flush();
+
+			device->Enable(IGLDevice::StencilTest, false);
+		}
+
+		void GLRenderer::BeginClippingRect(const spades::AABB2& outRect) {
+			SPADES_MARK_FUNCTION();
+
+			EnsureSceneNotStarted();
+			imageRenderer->Flush();
+
+			const float sh = ScreenHeight();
+			const int x = (int)floorf(outRect.GetMinX());
+			const int y = (int)floorf(sh - outRect.GetMaxY());
+			const int w = (int)ceilf(outRect.GetWidth());
+			const int h = (int)ceilf(outRect.GetHeight());
+
+			device->Enable(IGLDevice::ScissorTest, true);
+			device->Scissor(x, y, std::max(0, w), std::max(0, h));
+		}
+
+		void GLRenderer::EndClippingRect() {
+			SPADES_MARK_FUNCTION();
+
+			EnsureSceneNotStarted();
+			imageRenderer->Flush();
+
+			device->Enable(IGLDevice::ScissorTest, false);
 		}
 
 		void GLRenderer::SetColor(spades::Vector4 col) {
@@ -1350,7 +1429,7 @@ namespace spades {
 
 		void GLRenderer::Prepare2DRendering(bool reset) {
 			device->BlendFunc(IGLDevice::One, IGLDevice::OneMinusSrcAlpha, IGLDevice::Zero,
-			                  IGLDevice::One);
+							  IGLDevice::One);
 			device->Enable(IGLDevice::Blend, true);
 			device->BindFramebuffer(IGLDevice::Framebuffer, 0);
 			device->Viewport(0, 0, device->ScreenWidth(), device->ScreenHeight());
@@ -1361,7 +1440,7 @@ namespace spades {
 			EnsureSceneNotStarted();
 			auto bmp = Handle<Bitmap>::New(device->ScreenWidth(), device->ScreenHeight());
 			device->ReadPixels(0, 0, device->ScreenWidth(), device->ScreenHeight(), IGLDevice::RGBA,
-			                   IGLDevice::UnsignedByte, bmp->GetPixels());
+							   IGLDevice::UnsignedByte, bmp->GetPixels());
 			return bmp;
 		}
 
@@ -1386,13 +1465,13 @@ namespace spades {
 				bx.min.z = 63.0F * 2.0F - bx.min.z;
 				bx.max.z = 63.0F * 2.0F - bx.max.z;
 				return PlaneCullTest(frustrum[0], bx) && PlaneCullTest(frustrum[1], bx) &&
-				       PlaneCullTest(frustrum[2], bx) && PlaneCullTest(frustrum[3], bx) &&
-				       PlaneCullTest(frustrum[4], bx) && PlaneCullTest(frustrum[5], bx);
+					   PlaneCullTest(frustrum[2], bx) && PlaneCullTest(frustrum[3], bx) &&
+					   PlaneCullTest(frustrum[4], bx) && PlaneCullTest(frustrum[5], bx);
 			}
 
 			return PlaneCullTest(frustrum[0], box) && PlaneCullTest(frustrum[1], box) &&
-			       PlaneCullTest(frustrum[2], box) && PlaneCullTest(frustrum[3], box) &&
-			       PlaneCullTest(frustrum[4], box) && PlaneCullTest(frustrum[5], box);
+				   PlaneCullTest(frustrum[2], box) && PlaneCullTest(frustrum[3], box) &&
+				   PlaneCullTest(frustrum[4], box) && PlaneCullTest(frustrum[5], box);
 		}
 		bool GLRenderer::SphereFrustrumCull(const Vector3& center, float radius) {
 			if (renderingMirror) {

@@ -179,6 +179,45 @@ namespace spades {
 
 			virtual void UpdateFlatGameMap() = 0;
 			virtual void DrawFlatGameMap(const AABB2& outRect, const AABB2& inRect) = 0;
+			/**
+			 * Draws the flat game map into a rotated (non axis-aligned) quad,
+			 * used for the circular/rotating minimap mode. `outTopLeft`,
+			 * `outTopRight` and `outBottomLeft` define the destination quad
+			 * the same way as the equivalent `DrawImage` overload does.
+			 */
+			virtual void DrawFlatGameMap(const Vector2& outTopLeft, const Vector2& outTopRight,
+			                             const Vector2& outBottomLeft, const AABB2& inRect) = 0;
+
+			/**
+			 * Restricts subsequent 2D drawing to a circular region on
+			 * screen, until the matching `EndClippingCircle()` call. Used
+			 * for the circular minimap so its corners show the game world
+			 * behind it instead of a solid color.
+			 *
+			 * This isn't guaranteed to be supported by every renderer
+			 * backend (e.g. it requires a stencil buffer); the default
+			 * implementation is a no-op, meaning the circular clip is
+			 * simply skipped on backends that don't override it. Calls
+			 * cannot be nested.
+			 */
+			virtual void BeginClippingCircle(const Vector2& center, float radius) {}
+			virtual void EndClippingCircle() {}
+
+			/**
+			 * Restricts subsequent 2D drawing to an axis-aligned rectangular
+			 * region on screen, until the matching `EndClippingRect()` call.
+			 * Used for minimap modes where the map content rotates within a
+			 * fixed rectangular window (e.g. a rotating rectangular
+			 * minimap), so the rotated content doesn't spill past the
+			 * window's edges.
+			 *
+			 * Like `BeginClippingCircle()`, this isn't guaranteed to be
+			 * supported by every renderer backend; the default
+			 * implementation is a no-op. Calls cannot be nested, and cannot
+			 * be mixed with `BeginClippingCircle()`.
+			 */
+			virtual void BeginClippingRect(const AABB2& outRect) {}
+			virtual void EndClippingRect() {}
 
 			/** Finalizes a frame. */
 			virtual void FrameDone() = 0;

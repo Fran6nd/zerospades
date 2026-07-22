@@ -44,15 +44,28 @@ namespace spades {
 			bool zoomed;
 
 			bool largeMap;
+			bool circularMap;
+			bool rotatingMap;
 
-			AABB2 inRect;
-			AABB2 outRect;
+			AABB2 inRect;	// world-space
+			AABB2 outRect;	// screen-space
+			Vector2 mapCenter;
+			Vector2 scrCenter;
+			float scrRadius;
+			float mapAngle;
+			Vector2 mapRotation;
 
-			Vector2 Project(const Vector2&) const;
+			Vector2 RotateMap(const Vector2& offset) const;
+			Vector2 Project(const Vector2&, bool rotated = false) const;
 
-			void DrawIcon(Vector3 pos, IImage& img, const Vector4&, float rotation = 0.0F);
-			void DrawText(IFont& font, std::string s, Vector3 pos, const Vector4&);
-			void DrawCircle(Vector3 pos, float radius, const Vector4&);
+			void DrawRotatedLine(const Vector2&, const Vector2&);
+			void DrawGridLines(const Vector2&, const AABB2&, bool rotated = false);
+
+			void DrawIcon(const Vector3& pos, IImage& img, const Vector4&, float rotation = 0.0F);
+			void DrawText(IFont& font, std::string s, const Vector3& pos, const Vector4&);
+
+			void DrawCircle(const Vector2& pos, const Vector4& col, float radius, float thickness = 1.0F);
+			void DrawMapCircle(const Vector3& pos, const Vector4&, float radius, float thickness = 1.0F);
 
 		public:
 			MapView(Client*, bool largeMap);
@@ -61,7 +74,7 @@ namespace spades {
 			void Update(float dt);
 			void SwitchScale();
 			bool IsZoomed() { return zoomed; }
-			void SetZoom(bool value) { zoomed = value; };
+			void SetZoom(bool value) { zoomed = value; }
 			std::string ToGrid(float x, float y);
 
 			void Draw();

@@ -60,6 +60,12 @@ namespace spades {
 				Blend,
 				Multisample,
 				FramebufferSRGB,
+				StencilTest,
+				ScissorTest,
+
+				// Stencil op
+				Keep,
+				Replace,
 
 				// Parameters
 				FramebufferBinding,
@@ -268,13 +274,23 @@ namespace spades {
 
 			virtual void DepthRange(Float near, Float far) = 0;
 			virtual void Viewport(Integer x, Integer y, Sizei width, Sizei height) = 0;
+			virtual void Scissor(Integer x, Integer y, Sizei width, Sizei height) = 0;
 			
 			virtual void ClearDepth(Float) = 0;
 			virtual void ClearColor(Float, Float, Float, Float) = 0;
+			virtual void ClearStencil(Integer) = 0;
 			virtual void Clear(Enum) = 0;
 
 			virtual void DepthMask(bool) = 0;
 			virtual void ColorMask(bool r, bool g, bool b, bool a) = 0;
+
+			/**
+			 * Sets the stencil test's comparison function.
+			 */
+			virtual void StencilFunc(Enum func, Integer ref, UInteger mask) = 0;
+			/** `sfail`/`dpfail`/`dppass` are one of `Keep` or `Replace`. */
+			virtual void StencilOp(Enum sfail, Enum dpfail, Enum dppass) = 0;
+			virtual void StencilMask(UInteger mask) = 0;
 
 			virtual void Finish() = 0;
 			virtual void Flush() = 0;

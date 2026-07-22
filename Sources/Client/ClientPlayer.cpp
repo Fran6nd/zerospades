@@ -224,6 +224,10 @@ namespace spades {
 			void DrawFlatGameMap(const AABB2& outRect, const AABB2& inRect) {
 				OnProhibitedAction();
 			}
+			void DrawFlatGameMap(const Vector2& outTopLeft, const Vector2& outTopRight,
+			                     const Vector2& outBottomLeft, const AABB2& inRect) {
+				OnProhibitedAction();
+			}
 
 			void FrameDone() { OnProhibitedAction(); }
 			void Flip() { OnProhibitedAction(); }

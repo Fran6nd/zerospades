@@ -533,7 +533,7 @@ namespace spades {
 						manager->CheckError(r);
 						r = eng->RegisterObjectMethod(
 						  "Renderer", "void DrawFlatGameMap(const AABB2&in, const AABB2& in)",
-						  asMETHOD(IRenderer, DrawFlatGameMap), asCALL_THISCALL);
+						  asMETHODPR(IRenderer, DrawFlatGameMap, (const AABB2&, const AABB2&), void), asCALL_THISCALL);
 						manager->CheckError(r);
 						r = eng->RegisterObjectMethod("Renderer", "void FrameDone()",
 						                              asMETHOD(IRenderer, FrameDone),
