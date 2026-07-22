@@ -1716,16 +1716,17 @@ namespace spades {
 					TrKey(cg_keyAttack), TrKey(cg_keyAltAttack)));
 			}
 
-			if (cameraMode == ClientCameraMode::Free)
+			if (cameraMode == ClientCameraMode::Free) {
 				addLine(_Tr("Client", "[{0}/{1}] Go up/down",
 					TrKey(cg_keyJump), TrKey(cg_keyCrouch)));
+				addLine(_Tr("Client", "[{0}] Hold to Zoom", TrKey(cg_keySpectatorZoom)));
+			}
 
 			if (isSpectating) {
 				addLine(_Tr("Client", "[{0}] Toggle player names", TrKey(cg_keyToggleSpectatorNames)));
 				bool isStaff = activeNet && activeNet->GetGameProperties()->isStaff;
 				if (isStaff || isDemoMode)
-					addLine(_Tr("Client", "[{0}] Toggle ESP", TrKey(cg_keyStaffSpectating)));			
-				addLine(_Tr("Client", "[{0}] Hold to Zoom", TrKey(cg_keySpectatorZoom)));
+					addLine(_Tr("Client", "[{0}] Toggle ESP", TrKey(cg_keyStaffSpectating)));
 			}
 
 			y += lh * 0.5F;
