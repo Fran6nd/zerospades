@@ -159,6 +159,8 @@ namespace spades {
 
 			void ClearCache() override;
 
+			bool IsRendererSW() const override { return true; }
+
 			void SetGameMap(stmp::optional<client::GameMap &>) override;
 			void SetFogColor(Vector3 v) override;
 			void SetFogDistance(float f) override { fogDistance = f; }

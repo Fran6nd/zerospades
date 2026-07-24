@@ -219,6 +219,13 @@ namespace spades {
 			virtual void BeginClippingRect(const AABB2& outRect) {}
 			virtual void EndClippingRect() {}
 
+			/**
+			 * Returns whether this renderer backend is the software
+			 * renderer. Used to skip features not yet supported by
+			 * SWRenderer (e.g. long sprites, circle/rect clipping).
+			 */
+			virtual bool IsRendererSW() const { return false; }
+
 			/** Finalizes a frame. */
 			virtual void FrameDone() = 0;
 			/** displays a rendered image to the screen. */
