@@ -433,7 +433,7 @@ namespace spades {
 
 		void Client::TeamWon(int teamId) {
 			// take a screenshot of the scoreboard
-			if (cg_autoScreenshot)
+			if (cg_autoScreenshot && !IsDemoMode())
 				TakeScreenShot(false, true);
 
 			std::string msg;
