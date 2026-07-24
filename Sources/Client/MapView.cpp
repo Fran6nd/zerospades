@@ -820,7 +820,8 @@ namespace spades {
 
 			// draw the focused player view
 			float aimDownState = localPlayerIsSpectating ? client->spectatorZoomState : client->GetAimDownState();
-			bool isZoomed = focusPlayerIsLocal ? aimDownState > 0.99F : (focusPlayer && focusPlayer->IsZoomed());
+			bool isNonLocalPlayerZoomed = (focusPlayer && focusPlayer->IsZoomed()) && !focusPlayerIsLocal;
+			bool isZoomed = isNonLocalPlayerZoomed || aimDownState > 0.99F;
 			Handle<IImage> focusPlayerViewIcon = isZoomed ? *playerADSViewIcon : *playerViewIcon;
 
 			if (focusPlayer) {
