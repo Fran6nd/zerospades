@@ -1,9 +1,9 @@
 //
-//  Tracer.cpp
-//  OpenSpades
+//	Tracer.cpp
+//	OpenSpades
 //
-//  Created by Tomoaki Kawada on 8/30/13.
-//  Copyright (c) 2013 yvt.jp. All rights reserved.
+//	Created by Tomoaki Kawada on 8/30/13.
+//	Copyright (c) 2013 yvt.jp. All rights reserved.
 //
 
 #include <algorithm>
@@ -12,7 +12,6 @@
 #include "IRenderer.h"
 #include "Tracer.h"
 #include <Core/Settings.h>
-#include <Draw/SW/SWRenderer.h>
 
 DEFINE_SPADES_SETTING(cg_tracerLights, "0");
 
@@ -20,8 +19,9 @@ namespace spades {
 	namespace client {
 		Tracer::Tracer(Client& _client, Vector3 p1, Vector3 p2, float bulletVel, bool shotgun)
 		    : client(_client), startPos(p1), velocity(bulletVel), shotgun(shotgun) {
-			dir = (p2 - p1).Normalize();
-			length = (p2 - p1).GetLength();
+			dir = p2 - p1;
+			length = dir.GetLength();
+			dir = dir.Normalize();
 
 			velocity *= 0.5F; // make it slower for visual effect
 
@@ -52,15 +52,10 @@ namespace spades {
 		}
 
 		void Tracer::Render3D() {
-			Vector4 col;
-			if (shotgun)
-				col = {0, 0, 0, 0.25};
-			else
-				col = {1, 0.6F, 0.2F, 0};
+			Vector4 col = shotgun ? MakeVector4(0, 0, 0, 0.25) : MakeVector4(1, 0.6F, 0.2F, 0);
 
 			IRenderer& r = client.GetRenderer();
-			if (dynamic_cast<draw::SWRenderer*>(&r)) {
-				// SWRenderer doesn't support long sprites (yet)
+			if (r.IsRendererSW()) { // SWRenderer doesn't support long sprites (yet)
 				float startDist = curDistance;
 				float endDist = curDistance + visibleLength;
 

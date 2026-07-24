@@ -518,8 +518,9 @@ namespace spades {
 			}
 
 			// The circular/rotating minimap modes only apply to the small corner minimap.
-			this->circularMap = cg_minimapCircular && !largeMap;
-			this->rotatingMap = cg_minimapRotating && !largeMap;
+			bool isSofwareRenderer = renderer.IsRendererSW(); // SWRenderer doesn't support minimap clipping (yet)
+			this->circularMap = cg_minimapCircular && !isSofwareRenderer && !largeMap;
+			this->rotatingMap = cg_minimapRotating && !isSofwareRenderer && !largeMap;
 
 			Vector2 inRange = mapWndSize * 0.5F * actualScale;
 			AABB2 inRect(center - inRange, center + inRange);
