@@ -414,7 +414,7 @@ msgstr "-- bloques"
 #: Sources/Client/Client_Update.cpp:1225 Sources/Client/LimboView.cpp:73
 msgctxt "Client"
 msgid "Rifle"
-msgstr "Rifle"
+msgstr "Fusil"
 
 #: Sources/Client/Client_Update.cpp:1226 Sources/Client/LimboView.cpp:76
 msgctxt "Client"
@@ -815,7 +815,7 @@ msgstr "Enviar"
 #: Resources/Scripts/Gui/StartupScreen/MainMenu.as:58
 msgctxt "Client"
 msgid "[Enter]"
-msgstr "[Intro]"
+msgstr "[Enter]"
 
 #: Resources/Scripts/Gui/Client/ChatSayWindow.as:192
 msgctxt "Client"
