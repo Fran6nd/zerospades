@@ -1,1769 +1,3310 @@
 msgid ""
 msgstr ""
-"Project-Id-Version: openspades\n"
-"Report-Msgid-Bugs-To: i at yvt.jp\n"
-"POT-Creation-Date: 2016-12-25 23:47-0200\n"
-"PO-Revision-Date: 2020-04-19 14:46\n"
-"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Project-Id-Version: zerospades\n"
+"POT-Creation-Date: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
 "Language-Team: Vietnamese\n"
+"Language: vi_VN\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"X-Generator: Poedit 1.8.7.1\n"
-"X-Poedit-SourceCharset: UTF-8\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
-"X-Crowdin-Project: openspades\n"
-"X-Crowdin-Language: vi\n"
-"X-Crowdin-File: openspades.pot\n"
-"Language: vi_VN\n"
+"X-Generator: Poedit 3.9\n"
+"X-Poedit-SourceCharset: UTF-8\n"
 
-#: Sources/Client/Client.cpp:585 Sources/Client/Client.cpp:586
+#: Sources/Client/Client.cpp:1027
 msgctxt "Client"
 msgid "Map saved: {0}"
-msgstr ""
+msgstr "Đã lưu bản đồ: {0}"
 
-#: Sources/Client/Client.cpp:589 Sources/Client/Client.cpp:595
-#: Sources/Client/Client.cpp:590 Sources/Client/Client.cpp:596
+#: Sources/Client/Client.cpp:1031 Sources/Client/Client.cpp:1036
 msgctxt "Client"
 msgid "Saving map failed: "
-msgstr ""
+msgstr "Lưu bản đồ thất bại: "
 
-#. ! Prefix added to global chat messages.
-#. !
-#. ! Example: [Global] playername (Red) blah blah
-#. !
-#. ! Crowdin warns that this string shouldn't be translated,
-#. ! but it actually can be.
-#. ! The extra whitespace is not a typo.
-#: Sources/Client/Client.cpp:633 Sources/Client/Client.cpp:634
-msgctxt "Client"
-msgid "[Global] "
-msgstr "[Toàn cầu] "
-
-#: Sources/Client/Client_Draw.cpp:119 Sources/Client/Client_Draw.cpp:135
-msgctxt "Client"
-msgid "Sceneshot saved: {0}"
-msgstr ""
-
-#: Sources/Client/Client_Draw.cpp:121 Sources/Client/Client_Draw.cpp:137
-msgctxt "Client"
-msgid "Screenshot saved: {0}"
-msgstr ""
-
-#: Sources/Client/Client_Draw.cpp:125 Sources/Client/Client_Draw.cpp:131
-#: Sources/Client/Client_Draw.cpp:141 Sources/Client/Client_Draw.cpp:147
-msgctxt "Client"
-msgid "Screenshot failed: "
-msgstr ""
-
-#: Sources/Client/Client_Draw.cpp:198 Sources/Client/Client_Draw.cpp:214
-msgctxt "Client"
-msgid "NOW LOADING"
-msgstr ""
-
-#: Sources/Client/Client_Draw.cpp:220 Sources/Client/Client_Draw.cpp:236
-msgctxt "Client"
-msgid "Disconnecting..."
-msgstr ""
-
-#: Sources/Client/Client_Draw.cpp:523 Sources/Client/Client_Draw.cpp:548
-msgctxt "Client"
-msgid "Out of Block"
-msgstr "Không còn khối nữa"
-
-#: Sources/Client/Client_Draw.cpp:528 Sources/Client/Client_Draw.cpp:553
-msgctxt "Client"
-msgid "Out of Grenade"
-msgstr "Không còn lựu đạn nữa"
-
-#: Sources/Client/Client_Draw.cpp:534 Sources/Client/Client_Draw.cpp:559
-msgctxt "Client"
-msgid "Reloading"
-msgstr "Đang nạp lại"
-
-#: Sources/Client/Client_Draw.cpp:536 Sources/Client/Client_Input.cpp:439
-#: Sources/Client/Client_Draw.cpp:561 Sources/Client/Client_Input.cpp:494
-msgctxt "Client"
-msgid "Out of Ammo"
-msgstr "Không còn đạn dược"
-
-#: Sources/Client/Client_Draw.cpp:539 Sources/Client/Client_Draw.cpp:564
-msgctxt "Client"
-msgid "Press [{0}] to Reload"
-msgstr "Bấm [{0}] để tải lại"
-
-#: Sources/Client/Client_Draw.cpp:584 Sources/Client/Client_Draw.cpp:608
-msgctxt "Client"
-msgid "You will respawn in: {0}"
-msgstr "Bạn sẽ sống lại trong: {0}"
-
-#: Sources/Client/Client_Draw.cpp:586 Sources/Client/Client_Draw.cpp:610
-msgctxt "Client"
-msgid "Waiting for respawn"
-msgstr "Đang chờ đợi để hồi sinh"
-
-#: Sources/Client/Client_Draw.cpp:764 Sources/Client/Client_Draw.cpp:646
-msgctxt "Client"
-msgid "Following {0}"
-msgstr "Đang đi theo {0}"
-
-#: Sources/Client/Client_Input.cpp:427 Sources/Client/Client_Input.cpp:482
-msgctxt "Client"
-msgid "Out of Blocks"
-msgstr "Không còn khối nữa"
-
-#: Sources/Client/Client_Input.cpp:451 Sources/Client/Client_Input.cpp:506
-msgctxt "Client"
-msgid "Out of Grenades"
-msgstr "Không còn lựu đạn nữa"
-
-#: Sources/Client/Client_NetHandler.cpp:89
-#: Sources/Client/Client_NetHandler.cpp:90
-msgctxt "Client"
-msgid "{0} captured {1}'s territory"
-msgstr ""
-
-#: Sources/Client/Client_NetHandler.cpp:91
-#: Sources/Client/Client_NetHandler.cpp:92
-msgctxt "Client"
-msgid "{0} captured an neutral territory"
-msgstr ""
-
-#: Sources/Client/Client_NetHandler.cpp:99
-#: Sources/Client/Client_NetHandler.cpp:100
-msgctxt "Client"
-msgid "{0} captured {1}'s Territory"
-msgstr ""
-
-#: Sources/Client/Client_NetHandler.cpp:101
-#: Sources/Client/Client_NetHandler.cpp:102
-msgctxt "Client"
-msgid "{0} captured an Neutral Territory"
-msgstr ""
-
-#: Sources/Client/Client_NetHandler.cpp:127
-#: Sources/Client/Client_NetHandler.cpp:128
-msgctxt "Client"
-msgid "{0} captured {1}'s intel"
-msgstr ""
-
-#: Sources/Client/Client_NetHandler.cpp:134
-#: Sources/Client/Client_NetHandler.cpp:135
-msgctxt "Client"
-msgid "{0} captured {1}'s Intel."
-msgstr ""
-
-#: Sources/Client/Client_NetHandler.cpp:158
-#: Sources/Client/Client_NetHandler.cpp:159
-msgctxt "Client"
-msgid "{0} picked up {1}'s intel"
-msgstr ""
-
-#: Sources/Client/Client_NetHandler.cpp:165
-#: Sources/Client/Client_NetHandler.cpp:166
-msgctxt "Client"
-msgid "{0} picked up {1}'s Intel."
-msgstr ""
-
-#: Sources/Client/Client_NetHandler.cpp:183
-#: Sources/Client/Client_NetHandler.cpp:184
-msgctxt "Client"
-msgid "{0} dropped {1}'s intel"
-msgstr ""
-
-#: Sources/Client/Client_NetHandler.cpp:190
-#: Sources/Client/Client_NetHandler.cpp:191
-msgctxt "Client"
-msgid "{0} dropped {1}'s Intel"
-msgstr ""
-
-#: Sources/Client/Client_NetHandler.cpp:237
-#: Sources/Client/Client_NetHandler.cpp:243
-#: Sources/Client/Client_NetHandler.cpp:249
-#: Sources/Client/Client_NetHandler.cpp:255
-msgctxt "Client"
-msgid "Player {0} has left"
-msgstr ""
-
-#: Sources/Client/Client_NetHandler.cpp:257
-#: Sources/Client/Client_NetHandler.cpp:264
-#: Sources/Client/Client_NetHandler.cpp:276
-#: Sources/Client/Client_NetHandler.cpp:282
-msgctxt "Client"
-msgid "{0} joined {1} team"
-msgstr ""
-
-#: Sources/Client/Client_NetHandler.cpp:294
-#: Sources/Client/Client_NetHandler.cpp:317
-msgctxt "Client"
-msgid "{0} wins!"
-msgstr "{0} thắng!"
-
-#: Sources/Client/Client_NetHandler.cpp:298
-#: Sources/Client/Client_NetHandler.cpp:321
-msgctxt "Client"
-msgid "{0} Wins!"
-msgstr "{0} Thắng!"
-
-#: Sources/Client/Client_Update.cpp:479 Sources/Client/Client_Update.cpp:505
-msgctxt "Client"
-msgid "{0} block"
-msgid_plural "{0} blocks"
-msgstr[0] "{0} khối"
-
-#: Sources/Client/Client_Update.cpp:486 Sources/Client/Client_Update.cpp:512
-msgctxt "Client"
-msgid "-- blocks"
-msgstr "-- khối"
-
-#: Sources/Client/Client_Update.cpp:842 Sources/Client/LimboView.cpp:68
-#: Sources/Client/Client_Update.cpp:868 Sources/Client/LimboView.cpp:68
-msgctxt "Client"
-msgid "Rifle"
-msgstr "Súng trường"
-
-#: Sources/Client/Client_Update.cpp:843 Sources/Client/LimboView.cpp:71
-#: Sources/Client/Client_Update.cpp:869 Sources/Client/LimboView.cpp:71
-msgctxt "Client"
-msgid "SMG"
-msgstr ""
-
-#: Sources/Client/Client_Update.cpp:844 Sources/Client/LimboView.cpp:74
-#: Sources/Client/Client_Update.cpp:870 Sources/Client/LimboView.cpp:74
-msgctxt "Client"
-msgid "Shotgun"
-msgstr "Súng săn"
-
-#. ! A cause of death shown in the kill feed.
-#: Sources/Client/Client_Update.cpp:849 Sources/Client/Client_Update.cpp:875
-msgctxt "Client"
-msgid "Fall"
-msgstr "Ngã"
-
-#. ! A cause of death shown in the kill feed.
-#: Sources/Client/Client_Update.cpp:853 Sources/Client/Client_Update.cpp:879
-msgctxt "Client"
-msgid "Melee"
-msgstr ""
-
-#: Sources/Client/Client_Update.cpp:856 Sources/Client/Client_Update.cpp:882
-msgctxt "Client"
-msgid "Grenade"
-msgstr "Lựu đạn"
-
-#. ! A cause of death shown in the kill feed.
-#: Sources/Client/Client_Update.cpp:860 Sources/Client/Client_Update.cpp:886
-msgctxt "Client"
-msgid "Headshot"
-msgstr "Bắn đầu"
-
-#. ! A cause of death shown in the kill feed.
-#: Sources/Client/Client_Update.cpp:864 Sources/Client/Client_Update.cpp:890
-msgctxt "Client"
-msgid "Team Change"
-msgstr ""
-
-#. ! A cause of death shown in the kill feed.
-#: Sources/Client/Client_Update.cpp:868 Sources/Client/Client_Update.cpp:894
-msgctxt "Client"
-msgid "Weapon Change"
-msgstr "Thay đổi súng"
-
-#: Sources/Client/Client_Update.cpp:907 Sources/Client/Client_Update.cpp:933
-msgctxt "Client"
-msgid "You have killed {0}"
-msgstr "Bạn đã giết {0}"
-
-#: Sources/Client/Client_Update.cpp:909 Sources/Client/Client_Update.cpp:935
-msgctxt "Client"
-msgid "You were killed by {0}"
-msgstr "{0} giết bạn"
-
-#: Sources/Client/Client_Update.cpp:1225 Sources/Client/Client_Update.cpp:1260
-msgctxt "Client"
-msgid "Insufficient blocks."
-msgstr "Không có đủ khối."
-
-#: Sources/Client/Client_Update.cpp:1228 Sources/Client/Client_Update.cpp:1263
-msgctxt "Client"
-msgid "You cannot place a block there."
-msgstr "Bạn không bỏ khối ở đây."
-
-#: Sources/Client/LimboView.cpp:79 Sources/Client/LimboView.cpp:79
-msgctxt "Client"
-msgid "Spawn"
-msgstr "Sinh ra"
-
-#: Sources/Client/LimboView.cpp:183 Sources/Client/LimboView.cpp:183
-msgctxt "Client"
-msgid "Select Team:"
-msgstr ""
-
-#: Sources/Client/LimboView.cpp:191 Sources/Client/LimboView.cpp:191
-msgctxt "Client"
-msgid "Select Weapon:"
-msgstr "Chọn một súng:"
-
-#: Sources/Client/NetClient.cpp:422 Sources/Client/NetClient.cpp:425
-msgctxt "NetClient"
-msgid "Connecting to the server"
-msgstr ""
-
-#: Sources/Client/NetClient.cpp:434 Sources/Client/NetClient.cpp:437
-msgctxt "NetClient"
-msgid "Not connected"
-msgstr ""
-
-#: Sources/Client/NetClient.cpp:498 Sources/Client/NetClient.cpp:516
-msgctxt "NetClient"
-msgid "Awaiting for state"
-msgstr ""
-
-#: Sources/Client/NetClient.cpp:508 Sources/Client/NetClient.cpp:1277
-#: Sources/Client/NetClient.cpp:526 Sources/Client/NetClient.cpp:1346
-msgctxt "NetClient"
-msgid "Loading snapshot"
-msgstr ""
-
-#: Sources/Client/NetClient.cpp:523 Sources/Client/NetClient.cpp:541
-msgctxt "NetClient"
-msgid "Loading snapshot ({0}/{1})"
-msgstr ""
-
-#: Sources/Client/NetClient.cpp:528 Sources/Client/NetClient.cpp:562
-#: Sources/Client/NetClient.cpp:546 Sources/Client/NetClient.cpp:609
-msgctxt "NetClient"
-msgid "Connected"
-msgstr ""
-
-#: Sources/Client/NetClient.cpp:540 Sources/Client/NetClient.cpp:575
-#: Sources/Client/NetClient.cpp:627 Sources/Client/NetClient.cpp:558
-#: Sources/Client/NetClient.cpp:622 Sources/Client/NetClient.cpp:674
-msgctxt "NetClient"
-msgid "Still loading..."
-msgstr "Vẫn đang tải..."
-
-#: Sources/Client/NetClient.cpp:543 Sources/Client/NetClient.cpp:549
-#: Sources/Client/NetClient.cpp:579 Sources/Client/NetClient.cpp:584
-#: Sources/Client/NetClient.cpp:631 Sources/Client/NetClient.cpp:636
-#: Sources/Client/NetClient.cpp:561 Sources/Client/NetClient.cpp:567
-#: Sources/Client/NetClient.cpp:626 Sources/Client/NetClient.cpp:631
-#: Sources/Client/NetClient.cpp:678 Sources/Client/NetClient.cpp:683
-msgctxt "NetClient"
-msgid "Error"
-msgstr "Lỗi"
-
-#: Sources/Client/NetClient.cpp:702 Sources/Client/NetClient.cpp:749
-msgctxt "NetClient"
-msgid "You are banned from this server."
-msgstr "Bạn bị cấm từ máy chủ."
-
-#: Sources/Client/NetClient.cpp:707 Sources/Client/NetClient.cpp:710
-#: Sources/Client/NetClient.cpp:754 Sources/Client/NetClient.cpp:757
-msgctxt "NetClient"
-msgid "You were kicked from this server."
-msgstr "Bạn đã được chuyển ra khỏi máy chủ."
-
-#: Sources/Client/NetClient.cpp:708 Sources/Client/NetClient.cpp:755
-msgctxt "NetClient"
-msgid "Incompatible client protocol version."
-msgstr ""
-
-#: Sources/Client/NetClient.cpp:709 Sources/Client/NetClient.cpp:756
-msgctxt "NetClient"
-msgid "Server full"
-msgstr "Nó đầy đủ"
-
-#: Sources/Client/NetClient.cpp:711 Sources/Client/NetClient.cpp:758
-msgctxt "NetClient"
-msgid "Unknown Reason"
-msgstr ""
-
-#: Sources/Client/ScoreboardView.cpp:63 Sources/Client/ScoreboardView.cpp:345
-#: Sources/Client/ScoreboardView.cpp:63 Sources/Client/ScoreboardView.cpp:345
-msgctxt "Client"
-msgid "Spectator{1}"
-msgid_plural "Spectators{1}"
-msgstr[0] ""
-
-#: Sources/Client/TCProgressView.cpp:151 Sources/Client/TCProgressView.cpp:151
-msgctxt "Client"
-msgid "Neutral Territory"
-msgstr "Đất trung lập"
-
-#: Sources/Client/TCProgressView.cpp:154 Sources/Client/TCProgressView.cpp:154
-msgctxt "Client"
-msgid "{0}'s Territory"
-msgstr "Đất của {0}"
-
-#: Sources/Gui/Main.cpp:548 Sources/Gui/Main.cpp:577
-msgctxt "Main"
-msgid "Localization System Loaded"
-msgstr ""
-
-#: Sources/Gui/Main.cpp:604 Sources/Gui/Runner.cpp:56 Sources/Gui/Main.cpp:633
-#: Sources/Gui/Runner.cpp:56
-msgctxt "Main"
-msgid "A serious error caused OpenSpades to stop working:\n\n"
-"{0}\n\n"
-"See SystemMessages.log for more details."
-msgstr ""
-
-#: Sources/Gui/Main.cpp:612 Sources/Gui/Runner.cpp:62 Sources/Gui/Main.cpp:641
-#: Sources/Gui/Runner.cpp:62
-msgctxt "Main"
-msgid "OpenSpades Fatal Error"
-msgstr ""
-
-#: Sources/Gui/MainScreen.cpp:225 Sources/Gui/MainScreen.cpp:220
-msgctxt "MainScreen"
-msgid "NOW LOADING"
-msgstr ""
-
-#: Resources/Scripts/Gui/ClientUI.as:198 Resources/Scripts/Gui/ClientUI.as:198
-msgctxt "Client"
-msgid "Back to Game"
-msgstr "Trở lại trò chơi"
-
-#: Resources/Scripts/Gui/ClientUI.as:205 Resources/Scripts/Gui/ClientUI.as:205
-msgctxt "Client"
-msgid "Chat Log"
-msgstr ""
-
-#: Resources/Scripts/Gui/ClientUI.as:212 Resources/Scripts/Gui/ClientUI.as:212
-msgctxt "Client"
-msgid "Setup"
-msgstr ""
-
-#: Resources/Scripts/Gui/ClientUI.as:219 Resources/Scripts/Gui/ClientUI.as:219
-msgctxt "Client"
-msgid "Disconnect"
-msgstr ""
-
-#: Resources/Scripts/Gui/ClientUI.as:484 Resources/Scripts/Gui/ClientUI.as:484
-msgctxt "Client"
-msgid "Say"
-msgstr "Nói"
-
-#: Resources/Scripts/Gui/ClientUI.as:492 Resources/Scripts/Gui/ClientUI.as:492
-msgctxt "Client"
-msgid "Cancel"
-msgstr ""
-
-#: Resources/Scripts/Gui/ClientUI.as:500 Resources/Scripts/Gui/ClientUI.as:500
-msgctxt "Client"
-msgid "Chat Text"
-msgstr ""
-
-#: Resources/Scripts/Gui/ClientUI.as:508 Resources/Scripts/Gui/ClientUI.as:508
+#: Sources/Client/Client.cpp:1065
+#: Resources/Scripts/Gui/Client/ChatSayWindow.as:211
 msgctxt "Client"
 msgid "Global"
-msgstr "Toàn cầu"
+msgstr "Toàn cục"
 
-#: Resources/Scripts/Gui/ClientUI.as:517 Resources/Scripts/Gui/ClientUI.as:517
+#: Sources/Client/Client.cpp:1065
+#: Resources/Scripts/Gui/Client/ChatSayWindow.as:220
 msgctxt "Client"
 msgid "Team"
-msgstr ""
+msgstr "Đội"
 
-#: Resources/Scripts/Gui/ClientUI.as:661 Resources/Scripts/Gui/ClientUI.as:662
-msgctxt "Client"
-msgid "Close"
-msgstr "Đóng"
-
-#: Resources/Scripts/Gui/ClientUI.as:671 Resources/Scripts/Gui/ClientUI.as:672
-msgctxt "Client"
-msgid "Say Global"
-msgstr "Nói trên toàn cầu"
-
-#: Resources/Scripts/Gui/ClientUI.as:682 Resources/Scripts/Gui/ClientUI.as:683
-msgctxt "Client"
-msgid "Say Team"
-msgstr ""
-
-#: Resources/Scripts/Gui/CreateProfileScreen.as:58
-#: Resources/Scripts/Gui/CreateProfileScreen.as:58
-msgctxt "CreateProfileScreen"
-msgid "OK"
-msgstr ""
-
-#: Resources/Scripts/Gui/CreateProfileScreen.as:70
-#: Resources/Scripts/Gui/CreateProfileScreen.as:70
-msgctxt "CreateProfileScreen"
-msgid "Decide later"
-msgstr "Quyết định sau"
-
-#: Resources/Scripts/Gui/CreateProfileScreen.as:80
-#: Resources/Scripts/Gui/CreateProfileScreen.as:80
-msgctxt "CreateProfileScreen"
-msgid "Welcome to OpenSpades"
-msgstr "Chào mừng đến với OpenSpades"
-
-#: Resources/Scripts/Gui/CreateProfileScreen.as:88
-#: Resources/Scripts/Gui/CreateProfileScreen.as:88
-msgctxt "CreateProfileScreen"
-msgid "Choose a player name:"
-msgstr "Chọn tên để chơi:"
-
-#: Resources/Scripts/Gui/CreateProfileScreen.as:96
-#: Resources/Scripts/Gui/CreateProfileScreen.as:96
-msgctxt "CreateProfileScreen"
-msgid "Player name"
-msgstr "Tên người chơi"
-
-#: Resources/Scripts/Gui/CreateProfileScreen.as:104
-#: Resources/Scripts/Gui/CreateProfileScreen.as:104
-msgctxt "CreateProfileScreen"
-msgid "You can change it later in the Setup dialog."
-msgstr ""
-
-#: Resources/Scripts/Gui/MainScreen.as:376
-#: Resources/Scripts/Gui/MainScreen.as:376
-msgctxt "MainScreen"
-msgid "Connect"
-msgstr "Kết nối"
-
-#: Resources/Scripts/Gui/MainScreen.as:384
-#: Resources/Scripts/Gui/MainScreen.as:384
-msgctxt "MainScreen"
-msgid "Quick Connect"
-msgstr ""
-
-#: Resources/Scripts/Gui/MainScreen.as:393
-#: Resources/Scripts/Gui/MainScreen.as:447
-#: Resources/Scripts/Gui/MainScreen.as:393
-#: Resources/Scripts/Gui/MainScreen.as:447
-msgctxt "MainScreen"
-msgid "0.75"
-msgstr ""
-
-#: Resources/Scripts/Gui/MainScreen.as:403
-#: Resources/Scripts/Gui/MainScreen.as:456
-#: Resources/Scripts/Gui/MainScreen.as:403
-#: Resources/Scripts/Gui/MainScreen.as:456
-msgctxt "MainScreen"
-msgid "0.76"
-msgstr ""
-
-#: Resources/Scripts/Gui/MainScreen.as:411
-#: Resources/Scripts/Gui/MainScreen.as:411
-msgctxt "MainScreen"
-msgid "Quit"
-msgstr ""
-
-#: Resources/Scripts/Gui/MainScreen.as:418
-#: Resources/Scripts/Gui/MainScreen.as:418
-msgctxt "MainScreen"
-msgid "Credits"
-msgstr ""
-
-#: Resources/Scripts/Gui/MainScreen.as:425
-#: Resources/Scripts/Gui/MainScreen.as:425
-msgctxt "MainScreen"
-msgid "Setup"
-msgstr ""
-
-#: Resources/Scripts/Gui/MainScreen.as:438
-#: Resources/Scripts/Gui/MainScreen.as:482
-#: Resources/Scripts/Gui/MainScreen.as:438
-#: Resources/Scripts/Gui/MainScreen.as:482
-msgctxt "MainScreen"
-msgid "Filter"
-msgstr ""
-
-#: Resources/Scripts/Gui/MainScreen.as:465
-#: Resources/Scripts/Gui/MainScreen.as:465
-msgctxt "MainScreen"
-msgid "Empty"
-msgstr "Không có nguoi chơi"
-
-#: Resources/Scripts/Gui/MainScreen.as:474
-#: Resources/Scripts/Gui/MainScreen.as:474
-msgctxt "MainScreen"
-msgid "Not Full"
-msgstr "Không đầy đủ"
-
-#: Resources/Scripts/Gui/MainScreen.as:494
-#: Resources/Scripts/Gui/MainScreen.as:494
-msgctxt "MainScreen"
-msgid "Server Name"
-msgstr ""
-
-#: Resources/Scripts/Gui/MainScreen.as:501
-#: Resources/Scripts/Gui/MainScreen.as:501
-msgctxt "MainScreen"
-msgid "Players"
-msgstr "Người chơi"
-
-#: Resources/Scripts/Gui/MainScreen.as:508
-#: Resources/Scripts/Gui/MainScreen.as:508
-msgctxt "MainScreen"
-msgid "Map Name"
-msgstr ""
-
-#: Resources/Scripts/Gui/MainScreen.as:515
-#: Resources/Scripts/Gui/MainScreen.as:515
-msgctxt "MainScreen"
-msgid "Game Mode"
-msgstr ""
-
-#: Resources/Scripts/Gui/MainScreen.as:522
-#: Resources/Scripts/Gui/MainScreen.as:522
-msgctxt "MainScreen"
-msgid "Ver."
-msgstr ""
-
-#: Resources/Scripts/Gui/MainScreen.as:529
-#: Resources/Scripts/Gui/MainScreen.as:529
-msgctxt "MainScreen"
-msgid "Loc."
-msgstr ""
-
-#: Resources/Scripts/Gui/MainScreen.as:787
-#: Resources/Scripts/Gui/MainScreen.as:787
-msgctxt "MainScreen"
-msgid "You were disconnected from the server because of the following reason:\n\n"
-"{0}"
-msgstr ""
-
-#: Resources/Scripts/Gui/MainScreen.as:807
-#: Resources/Scripts/Gui/MainScreen.as:807
-msgctxt "MainScreen"
-msgid "Loading..."
-msgstr ""
-
-#: Resources/Scripts/Gui/MainScreen.as:825
-#: Resources/Scripts/Gui/MainScreen.as:825
-msgctxt "MainScreen"
-msgid "Failed to fetch the server list."
-msgstr ""
-
-#: Resources/Scripts/Gui/MessageBox.as:130
-#: Resources/Scripts/Gui/MessageBox.as:144
-#: Resources/Scripts/Gui/MessageBox.as:130
-#: Resources/Scripts/Gui/MessageBox.as:144
-msgctxt "MessageBox"
-msgid "OK"
-msgstr ""
-
-#: Resources/Scripts/Gui/MessageBox.as:144
-#: Resources/Scripts/Gui/MessageBox.as:144
-msgctxt "MessageBox"
-msgid "Cancel"
-msgstr ""
-
-#: Resources/Scripts/Gui/Preferences.as:60
-#: Resources/Scripts/Gui/Preferences.as:60
-msgctxt "Preferences"
-msgid "Game Options"
-msgstr ""
-
-#: Resources/Scripts/Gui/Preferences.as:61
-#: Resources/Scripts/Gui/Preferences.as:61
-msgctxt "Preferences"
-msgid "Controls"
-msgstr "Điều khiển"
-
-#: Resources/Scripts/Gui/Preferences.as:62
-#: Resources/Scripts/Gui/Preferences.as:663
-#: Resources/Scripts/Gui/Preferences.as:708
-#: Resources/Scripts/Gui/Preferences.as:62
-#: Resources/Scripts/Gui/Preferences.as:663
-#: Resources/Scripts/Gui/Preferences.as:708
-msgctxt "Preferences"
-msgid "Misc"
-msgstr ""
-
-#: Resources/Scripts/Gui/Preferences.as:66
-#: Resources/Scripts/Gui/Preferences.as:66
-msgctxt "Preferences"
-msgid "Back"
-msgstr "Trở lại"
-
-#: Resources/Scripts/Gui/Preferences.as:407
-#: Resources/Scripts/Gui/Preferences.as:407
-msgctxt "Preferences"
-msgid "Press Key to Bind or [Escape] to Cancel..."
-msgstr ""
-
-#: Resources/Scripts/Gui/Preferences.as:418
-#: Resources/Scripts/Gui/Preferences.as:418
-msgctxt "Preferences"
-msgid "Space"
-msgstr ""
-
-#: Resources/Scripts/Gui/Preferences.as:420
-#: Resources/Scripts/Gui/Preferences.as:420
-msgctxt "Preferences"
-msgid "Unbound"
-msgstr ""
-
-#: Resources/Scripts/Gui/Preferences.as:423
-#: Resources/Scripts/Gui/Preferences.as:423
-msgctxt "Preferences"
-msgid "Shift"
-msgstr ""
-
-#: Resources/Scripts/Gui/Preferences.as:425
-#: Resources/Scripts/Gui/Preferences.as:425
-msgctxt "Preferences"
-msgid "Control"
-msgstr ""
-
-#: Resources/Scripts/Gui/Preferences.as:427
-#: Resources/Scripts/Gui/Preferences.as:427
-msgctxt "Preferences"
-msgid "Meta"
-msgstr ""
-
-#: Resources/Scripts/Gui/Preferences.as:429
-#: Resources/Scripts/Gui/Preferences.as:429
-msgctxt "Preferences"
-msgid "Alt"
-msgstr ""
-
-#: Resources/Scripts/Gui/Preferences.as:431
-#: Resources/Scripts/Gui/Preferences.as:431
-msgctxt "Preferences"
-msgid "Left Mouse Button"
-msgstr ""
-
-#: Resources/Scripts/Gui/Preferences.as:433
-#: Resources/Scripts/Gui/Preferences.as:433
-msgctxt "Preferences"
-msgid "Right Mouse Button"
-msgstr ""
-
-#: Resources/Scripts/Gui/Preferences.as:435
-#: Resources/Scripts/Gui/Preferences.as:435
-msgctxt "Preferences"
-msgid "Middle Mouse Button"
-msgstr ""
-
-#: Resources/Scripts/Gui/Preferences.as:437
-#: Resources/Scripts/Gui/Preferences.as:437
-msgctxt "Preferences"
-msgid "Mouse Button 4"
-msgstr ""
-
-#: Resources/Scripts/Gui/Preferences.as:439
-#: Resources/Scripts/Gui/Preferences.as:439
-msgctxt "Preferences"
-msgid "Mouse Button 5"
-msgstr ""
-
-#: Resources/Scripts/Gui/Preferences.as:613
-#: Resources/Scripts/Gui/Preferences.as:619
-#: Resources/Scripts/Gui/Preferences.as:613
-#: Resources/Scripts/Gui/Preferences.as:619
-msgctxt "Preferences"
-msgid "ON"
-msgstr "BẬT"
-
-#: Resources/Scripts/Gui/Preferences.as:613
-#: Resources/Scripts/Gui/Preferences.as:619
-#: Resources/Scripts/Gui/Preferences.as:648
-#: Resources/Scripts/Gui/Preferences.as:651
-#: Resources/Scripts/Gui/Preferences.as:613
-#: Resources/Scripts/Gui/Preferences.as:619
-#: Resources/Scripts/Gui/Preferences.as:648
-#: Resources/Scripts/Gui/Preferences.as:651
-msgctxt "Preferences"
-msgid "OFF"
-msgstr "TẮT"
-
-#: Resources/Scripts/Gui/Preferences.as:619
-#: Resources/Scripts/Gui/Preferences.as:619
-msgctxt "Preferences"
-msgid "REVERSED"
-msgstr ""
-
-#: Resources/Scripts/Gui/Preferences.as:637
-#: Resources/Scripts/Gui/Preferences.as:637
-msgctxt "Preferences"
-msgid "Player Information"
-msgstr ""
-
-#: Resources/Scripts/Gui/Preferences.as:638
-#: Resources/Scripts/Gui/Preferences.as:638
-msgctxt "Preferences"
-msgid "Player Name"
-msgstr "Tên người chơi"
-
-#: Resources/Scripts/Gui/Preferences.as:642
-#: Resources/Scripts/Gui/Preferences.as:642
-msgctxt "Preferences"
-msgid "Effects"
-msgstr ""
-
-#: Resources/Scripts/Gui/Preferences.as:643
-#: Resources/Scripts/Gui/Preferences.as:643
-msgctxt "Preferences"
-msgid "Blood"
-msgstr "Máu"
-
-#: Resources/Scripts/Gui/Preferences.as:644
-#: Resources/Scripts/Gui/Preferences.as:644
-msgctxt "Preferences"
-msgid "Ejecting Brass"
-msgstr ""
-
-#: Resources/Scripts/Gui/Preferences.as:645
-#: Resources/Scripts/Gui/Preferences.as:645
-msgctxt "Preferences"
-msgid "Ragdoll"
-msgstr ""
-
-#: Resources/Scripts/Gui/Preferences.as:646
-#: Resources/Scripts/Gui/Preferences.as:646
-msgctxt "Preferences"
-msgid "Animations"
-msgstr ""
-
-#: Resources/Scripts/Gui/Preferences.as:647
-#: Resources/Scripts/Gui/Preferences.as:647
-msgctxt "Preferences"
-msgid "Camera Shake"
-msgstr ""
-
-#: Resources/Scripts/Gui/Preferences.as:648
-#: Resources/Scripts/Gui/Preferences.as:648
-msgctxt "Preferences"
-msgid "MORE"
-msgstr "THÊM"
-
-#: Resources/Scripts/Gui/Preferences.as:648
-#: Resources/Scripts/Gui/Preferences.as:651
-#: Resources/Scripts/Gui/Preferences.as:648
-#: Resources/Scripts/Gui/Preferences.as:651
-msgctxt "Preferences"
-msgid "NORMAL"
-msgstr "BÌNH THƯỜNG"
-
-#: Resources/Scripts/Gui/Preferences.as:650
-#: Resources/Scripts/Gui/Preferences.as:650
-msgctxt "Preferences"
-msgid "Particles"
-msgstr ""
-
-#: Resources/Scripts/Gui/Preferences.as:651
-#: Resources/Scripts/Gui/Preferences.as:651
-msgctxt "Preferences"
-msgid "LESS"
-msgstr "ÍT"
-
-#: Resources/Scripts/Gui/Preferences.as:654
-#: Resources/Scripts/Gui/Preferences.as:654
-msgctxt "Preferences"
-msgid "Feedbacks"
-msgstr ""
-
-#: Resources/Scripts/Gui/Preferences.as:655
-#: Resources/Scripts/Gui/Preferences.as:655
-msgctxt "Preferences"
-msgid "Chat Notify Sounds"
-msgstr ""
-
-#: Resources/Scripts/Gui/Preferences.as:656
-#: Resources/Scripts/Gui/Preferences.as:656
-msgctxt "Preferences"
-msgid "Hit Indicator"
-msgstr ""
-
-#: Resources/Scripts/Gui/Preferences.as:657
-#: Resources/Scripts/Gui/Preferences.as:657
-msgctxt "Preferences"
-msgid "Show Alerts"
-msgstr ""
-
-#: Resources/Scripts/Gui/Preferences.as:659
-#: Resources/Scripts/Gui/Preferences.as:659
-msgctxt "Preferences"
-msgid "AoS 0.75/0.76 Compatibility"
-msgstr ""
-
-#: Resources/Scripts/Gui/Preferences.as:660
-#: Resources/Scripts/Gui/Preferences.as:660
-msgctxt "Preferences"
-msgid "Allow Unicode"
-msgstr ""
-
-#: Resources/Scripts/Gui/Preferences.as:661
-#: Resources/Scripts/Gui/Preferences.as:661
-msgctxt "Preferences"
-msgid "Server Alert"
-msgstr ""
-
-#: Resources/Scripts/Gui/Preferences.as:664
-#: Resources/Scripts/Gui/Preferences.as:664
-msgctxt "Preferences"
-msgid "Field of View"
-msgstr ""
-
-#: Resources/Scripts/Gui/Preferences.as:666
-#: Resources/Scripts/Gui/Preferences.as:666
-msgctxt "Preferences"
-msgid "Minimap size"
-msgstr ""
-
-#: Resources/Scripts/Gui/Preferences.as:668
-#: Resources/Scripts/Gui/Preferences.as:668
-msgctxt "Preferences"
-msgid "Show Statistics"
-msgstr ""
-
-#: Resources/Scripts/Gui/Preferences.as:678
-#: Resources/Scripts/Gui/Preferences.as:678
-msgctxt "Preferences"
-msgid "Weapons/Tools"
-msgstr ""
-
-#: Resources/Scripts/Gui/Preferences.as:679
-#: Resources/Scripts/Gui/Preferences.as:679
-msgctxt "Preferences"
-msgid "Attack"
-msgstr "Đánh"
-
-#: Resources/Scripts/Gui/Preferences.as:680
-#: Resources/Scripts/Gui/Preferences.as:680
-msgctxt "Preferences"
-msgid "Alt. Attack"
-msgstr ""
-
-#: Resources/Scripts/Gui/Preferences.as:681
-#: Resources/Scripts/Gui/Preferences.as:681
-msgctxt "Preferences"
-msgid "Hold Aim Down Sight"
-msgstr ""
-
-#: Resources/Scripts/Gui/Preferences.as:682
-#: Resources/Scripts/Gui/Preferences.as:682
-msgctxt "Preferences"
-msgid "Mouse Sensitivity"
-msgstr ""
-
-#: Resources/Scripts/Gui/Preferences.as:684
-#: Resources/Scripts/Gui/Preferences.as:684
-msgctxt "Preferences"
-msgid "ADS Mouse Sens. Scale"
-msgstr ""
-
-#: Resources/Scripts/Gui/Preferences.as:686
-#: Resources/Scripts/Gui/Preferences.as:686
-msgctxt "Preferences"
-msgid "Exponential Power"
-msgstr ""
-
-#: Resources/Scripts/Gui/Preferences.as:688
-#: Resources/Scripts/Gui/Preferences.as:688
-msgctxt "Preferences"
-msgid "Invert Y-axis Mouse Input"
-msgstr ""
-
-#: Resources/Scripts/Gui/Preferences.as:689
-#: Resources/Scripts/Gui/Preferences.as:689
-msgctxt "Preferences"
-msgid "Reload"
-msgstr ""
-
-#: Resources/Scripts/Gui/Preferences.as:690
-#: Resources/Scripts/Gui/Preferences.as:690
-msgctxt "Preferences"
-msgid "Capture Color"
-msgstr ""
-
-#: Resources/Scripts/Gui/Preferences.as:691
-#: Resources/Scripts/Gui/Preferences.as:691
-msgctxt "Preferences"
-msgid "Equip Spade"
-msgstr ""
-
-#: Resources/Scripts/Gui/Preferences.as:692
-#: Resources/Scripts/Gui/Preferences.as:692
-msgctxt "Preferences"
-msgid "Equip Block"
-msgstr ""
-
-#: Resources/Scripts/Gui/Preferences.as:693
-#: Resources/Scripts/Gui/Preferences.as:693
-msgctxt "Preferences"
-msgid "Equip Weapon"
-msgstr ""
-
-#: Resources/Scripts/Gui/Preferences.as:694
-#: Resources/Scripts/Gui/Preferences.as:694
-msgctxt "Preferences"
-msgid "Equip Grenade"
-msgstr ""
-
-#: Resources/Scripts/Gui/Preferences.as:695
-#: Resources/Scripts/Gui/Preferences.as:695
-msgctxt "Preferences"
-msgid "Last Used Tool"
-msgstr ""
-
-#: Resources/Scripts/Gui/Preferences.as:696
-#: Resources/Scripts/Gui/Preferences.as:696
-msgctxt "Preferences"
-msgid "Switch Tools by Wheel"
-msgstr ""
-
-#: Resources/Scripts/Gui/Preferences.as:698
-#: Resources/Scripts/Gui/Preferences.as:698
-msgctxt "Preferences"
-msgid "Movement"
-msgstr ""
-
-#: Resources/Scripts/Gui/Preferences.as:699
-#: Resources/Scripts/Gui/Preferences.as:699
-msgctxt "Preferences"
-msgid "Walk Forward"
-msgstr ""
-
-#: Resources/Scripts/Gui/Preferences.as:700
-#: Resources/Scripts/Gui/Preferences.as:700
-msgctxt "Preferences"
-msgid "Backpedal"
-msgstr ""
-
-#: Resources/Scripts/Gui/Preferences.as:701
-#: Resources/Scripts/Gui/Preferences.as:701
-msgctxt "Preferences"
-msgid "Move Left"
-msgstr ""
-
-#: Resources/Scripts/Gui/Preferences.as:702
-#: Resources/Scripts/Gui/Preferences.as:702
-msgctxt "Preferences"
-msgid "Move Right"
-msgstr ""
-
-#: Resources/Scripts/Gui/Preferences.as:703
-#: Resources/Scripts/Gui/Preferences.as:703
-msgctxt "Preferences"
-msgid "Crouch"
-msgstr "Ngồi xuống"
-
-#: Resources/Scripts/Gui/Preferences.as:704
-#: Resources/Scripts/Gui/Preferences.as:704
-msgctxt "Preferences"
-msgid "Sneak"
-msgstr ""
-
-#: Resources/Scripts/Gui/Preferences.as:705
-#: Resources/Scripts/Gui/Preferences.as:705
-msgctxt "Preferences"
-msgid "Jump"
-msgstr "Nhảy"
-
-#: Resources/Scripts/Gui/Preferences.as:706
-#: Resources/Scripts/Gui/Preferences.as:706
-msgctxt "Preferences"
-msgid "Sprint"
-msgstr "Chạy"
-
-#: Resources/Scripts/Gui/Preferences.as:709
-#: Resources/Scripts/Gui/Preferences.as:709
-msgctxt "Preferences"
-msgid "Minimap Scale"
-msgstr ""
-
-#: Resources/Scripts/Gui/Preferences.as:710
-#: Resources/Scripts/Gui/Preferences.as:710
-msgctxt "Preferences"
-msgid "Toggle Map"
-msgstr ""
-
-#: Resources/Scripts/Gui/Preferences.as:711
-#: Resources/Scripts/Gui/Preferences.as:711
-msgctxt "Preferences"
-msgid "Flashlight"
-msgstr ""
-
-#: Resources/Scripts/Gui/Preferences.as:712
-#: Resources/Scripts/Gui/Preferences.as:712
-msgctxt "Preferences"
-msgid "Global Chat"
-msgstr ""
-
-#: Resources/Scripts/Gui/Preferences.as:713
-#: Resources/Scripts/Gui/Preferences.as:713
-msgctxt "Preferences"
-msgid "Team Chat"
-msgstr ""
-
-#: Resources/Scripts/Gui/Preferences.as:714
-#: Resources/Scripts/Gui/Preferences.as:714
-msgctxt "Preferences"
-msgid "Limbo Menu"
-msgstr ""
-
-#: Resources/Scripts/Gui/Preferences.as:715
-#: Resources/Scripts/Gui/Preferences.as:715
-msgctxt "Preferences"
-msgid "Save Map"
-msgstr ""
-
-#: Resources/Scripts/Gui/Preferences.as:716
-#: Resources/Scripts/Gui/Preferences.as:716
-msgctxt "Preferences"
-msgid "Save Sceneshot"
-msgstr ""
-
-#: Resources/Scripts/Gui/Preferences.as:717
-#: Resources/Scripts/Gui/Preferences.as:717
-msgctxt "Preferences"
-msgid "Save Screenshot"
-msgstr ""
-
-#: Resources/Scripts/Gui/Preferences.as:736
-#: Resources/Scripts/Gui/Preferences.as:736
-msgctxt "Preferences"
-msgid "Enable Startup Window"
-msgstr ""
-
-#: Resources/Scripts/Gui/Preferences.as:757
-#: Resources/Scripts/Gui/Preferences.as:757
-msgctxt "Preferences"
-msgid "Quit and restart OpenSpades to access the startup window."
-msgstr ""
-
-#: Resources/Scripts/Gui/Preferences.as:758
-#: Resources/Scripts/Gui/Preferences.as:758
-msgctxt "Preferences"
-msgid "Some settings only can be changed in the startup window."
-msgstr ""
-
-#: Resources/Scripts/Gui/StartupScreen.as:160
-#: Resources/Scripts/Gui/StartupScreen.as:160
-msgctxt "StartupScreen"
-msgid "Start"
-msgstr "Bắt đầu"
-
-#: Resources/Scripts/Gui/StartupScreen.as:167
-#: Resources/Scripts/Gui/StartupScreen.as:167
-msgctxt "StartupScreen"
-msgid "Skip this screen next time"
-msgstr ""
-
-#: Resources/Scripts/Gui/StartupScreen.as:211
-#: Resources/Scripts/Gui/StartupScreen.as:211
-msgctxt "StartupScreen"
-msgid "Graphics"
-msgstr ""
-
-#: Resources/Scripts/Gui/StartupScreen.as:212
-#: Resources/Scripts/Gui/StartupScreen.as:212
-msgctxt "StartupScreen"
-msgid "Audio"
-msgstr ""
-
-#: Resources/Scripts/Gui/StartupScreen.as:213
-#: Resources/Scripts/Gui/StartupScreen.as:213
-msgctxt "StartupScreen"
-msgid "Generic"
-msgstr ""
-
-#: Resources/Scripts/Gui/StartupScreen.as:214
-#: Resources/Scripts/Gui/StartupScreen.as:214
-msgctxt "StartupScreen"
-msgid "System Info"
-msgstr ""
-
-#: Resources/Scripts/Gui/StartupScreen.as:215
-#: Resources/Scripts/Gui/StartupScreen.as:1679
-#: Resources/Scripts/Gui/StartupScreen.as:215
-#: Resources/Scripts/Gui/StartupScreen.as:1679
-msgctxt "StartupScreen"
-msgid "Advanced"
-msgstr ""
-
-#: Resources/Scripts/Gui/StartupScreen.as:288
-#: Resources/Scripts/Gui/StartupScreen.as:288
-msgctxt "StartupScreen"
-msgid "An unknown error has occurred while opening the update info website."
-msgstr ""
-
-#: Resources/Scripts/Gui/StartupScreen.as:853
-#: Resources/Scripts/Gui/StartupScreen.as:853
-msgctxt "StartupScreen"
-msgid "Custom"
-msgstr "Tùy chỉnh"
-
-#: Resources/Scripts/Gui/StartupScreen.as:979
-#: Resources/Scripts/Gui/StartupScreen.as:979
-msgctxt "StartupScreen"
-msgid "Close"
-msgstr "Đóng"
-
-#: Resources/Scripts/Gui/StartupScreen.as:1085
-#: Resources/Scripts/Gui/StartupScreen.as:1085
-msgctxt "StartupScreen"
-msgid "Graphics Settings"
-msgstr ""
-
-#: Resources/Scripts/Gui/StartupScreen.as:1090
-#: Resources/Scripts/Gui/StartupScreen.as:1090
-msgctxt "StartupScreen"
-msgid "Resolution"
-msgstr ""
-
-#: Resources/Scripts/Gui/StartupScreen.as:1100
-#: Resources/Scripts/Gui/StartupScreen.as:1100
-msgctxt "StartupScreen"
-msgid "Fullscreen Mode"
-msgstr ""
-
-#: Resources/Scripts/Gui/StartupScreen.as:1103
-#: Resources/Scripts/Gui/StartupScreen.as:1103
-msgctxt "StartupScreen"
-msgid "By running in fullscreen mode OpenSpades occupies the screen, making it easier for you to concentrate on playing the game."
-msgstr ""
-
-#: Resources/Scripts/Gui/StartupScreen.as:1110
-#: Resources/Scripts/Gui/StartupScreen.as:1492
-#: Resources/Scripts/Gui/StartupScreen.as:1110
-#: Resources/Scripts/Gui/StartupScreen.as:1492
-msgctxt "StartupScreen"
-msgid "Backend"
-msgstr ""
-
-#: Resources/Scripts/Gui/StartupScreen.as:1113
-#: Resources/Scripts/Gui/StartupScreen.as:1113
-msgctxt "StartupScreen"
-msgid "OpenGL"
-msgstr ""
-
-#: Resources/Scripts/Gui/StartupScreen.as:1117
-#: Resources/Scripts/Gui/StartupScreen.as:1117
-msgctxt "StartupScreen"
-msgid "OpenGL renderer uses your computer's graphics accelerator to generate the game screen."
-msgstr ""
-
-#: Resources/Scripts/Gui/StartupScreen.as:1125
-#: Resources/Scripts/Gui/StartupScreen.as:1125
-msgctxt "StartupScreen"
-msgid "Software"
-msgstr ""
-
-#: Resources/Scripts/Gui/StartupScreen.as:1129
-#: Resources/Scripts/Gui/StartupScreen.as:1129
-msgctxt "StartupScreen"
-msgid "Software renderer uses CPU to generate the game screen. Its quality and performance might be inferior to OpenGL renderer, but it works even with an unsupported GPU."
-msgstr ""
-
-#: Resources/Scripts/Gui/StartupScreen.as:1143
-#: Resources/Scripts/Gui/StartupScreen.as:1143
-msgctxt "StartupScreen"
-msgid "Antialias:Enables a technique to improve the appearance of high-contrast edges.\n\n"
-"MSAA: Performs antialiasing by generating an intermediate high-resolution image. Looks best, but doesn't cope with some settings.\n\n"
-"FXAA: Performs antialiasing by smoothing artifacts out as a post-process.|Off|MSAA 2x|4x|FXAA"
-msgstr ""
-
-#: Resources/Scripts/Gui/StartupScreen.as:1150
-#: Resources/Scripts/Gui/StartupScreen.as:1150
-msgctxt "StartupScreen"
-msgid "Global Illumination"
-msgstr ""
-
-#: Resources/Scripts/Gui/StartupScreen.as:1152
-#: Resources/Scripts/Gui/StartupScreen.as:1152
-msgctxt "StartupScreen"
-msgid "Enables a physically based simulation of light path for more realistic lighting."
-msgstr ""
-
-#: Resources/Scripts/Gui/StartupScreen.as:1155
-#: Resources/Scripts/Gui/StartupScreen.as:1155
-msgctxt "StartupScreen"
-msgid "Linear HDR Rendering"
-msgstr ""
-
-#: Resources/Scripts/Gui/StartupScreen.as:1157
-#: Resources/Scripts/Gui/StartupScreen.as:1157
-msgctxt "StartupScreen"
-msgid "Uses a number representation which allows wider dynamic range during rendering process. Additionally, this allows color calculation whose value is in linear correspondence with actual energy, that is, physically accurate blending can be achieved."
-msgstr ""
-
-#: Resources/Scripts/Gui/StartupScreen.as:1164
-#: Resources/Scripts/Gui/StartupScreen.as:1164
-msgctxt "StartupScreen"
-msgid "Camera Blur"
-msgstr ""
-
-#: Resources/Scripts/Gui/StartupScreen.as:1165
-#: Resources/Scripts/Gui/StartupScreen.as:1165
-msgctxt "StartupScreen"
-msgid "Blurs the screen when you turn quickly."
-msgstr ""
-
-#: Resources/Scripts/Gui/StartupScreen.as:1167
-#: Resources/Scripts/Gui/StartupScreen.as:1167
-msgctxt "StartupScreen"
-msgid "Lens Effect"
-msgstr ""
-
-#: Resources/Scripts/Gui/StartupScreen.as:1168
-#: Resources/Scripts/Gui/StartupScreen.as:1168
-msgctxt "StartupScreen"
-msgid "Simulates distortion caused by a real camera lens."
-msgstr ""
-
-#: Resources/Scripts/Gui/StartupScreen.as:1170
-#: Resources/Scripts/Gui/StartupScreen.as:1170
-msgctxt "StartupScreen"
-msgid "Lens Scattering Filter"
-msgstr ""
-
-#: Resources/Scripts/Gui/StartupScreen.as:1171
-#: Resources/Scripts/Gui/StartupScreen.as:1171
-msgctxt "StartupScreen"
-msgid "Simulates light being scattered by dust on the camera lens."
-msgstr ""
-
-#: Resources/Scripts/Gui/StartupScreen.as:1174
-#: Resources/Scripts/Gui/StartupScreen.as:1174
-msgctxt "StartupScreen"
-msgid "Lens Flare"
-msgstr ""
-
-#: Resources/Scripts/Gui/StartupScreen.as:1175
-#: Resources/Scripts/Gui/StartupScreen.as:1175
-msgctxt "StartupScreen"
-msgid "The Sun causes lens flare."
-msgstr ""
-
-#: Resources/Scripts/Gui/StartupScreen.as:1177
-#: Resources/Scripts/Gui/StartupScreen.as:1177
-msgctxt "StartupScreen"
-msgid "Flares for Dynamic Lights"
-msgstr ""
-
-#: Resources/Scripts/Gui/StartupScreen.as:1178
-#: Resources/Scripts/Gui/StartupScreen.as:1178
-msgctxt "StartupScreen"
-msgid "Enables lens flare for light sources other than the Sun."
-msgstr ""
-
-#: Resources/Scripts/Gui/StartupScreen.as:1180
-#: Resources/Scripts/Gui/StartupScreen.as:1180
-msgctxt "StartupScreen"
-msgid "Color Correction"
-msgstr "Chỉnh sửa màu"
-
-#: Resources/Scripts/Gui/StartupScreen.as:1181
-#: Resources/Scripts/Gui/StartupScreen.as:1181
-msgctxt "StartupScreen"
-msgid "Applies cinematic color correction to make the image look better."
-msgstr ""
-
-#: Resources/Scripts/Gui/StartupScreen.as:1183
-#: Resources/Scripts/Gui/StartupScreen.as:1183
-msgctxt "StartupScreen"
-msgid "Depth of Field"
-msgstr ""
-
-#: Resources/Scripts/Gui/StartupScreen.as:1184
-#: Resources/Scripts/Gui/StartupScreen.as:1184
-msgctxt "StartupScreen"
-msgid "Blurs out-of-focus objects."
-msgstr ""
-
-#: Resources/Scripts/Gui/StartupScreen.as:1186
-#: Resources/Scripts/Gui/StartupScreen.as:1186
-msgctxt "StartupScreen"
-msgid "Screen Space Ambient Occlusion"
-msgstr ""
-
-#: Resources/Scripts/Gui/StartupScreen.as:1187
-#: Resources/Scripts/Gui/StartupScreen.as:1187
-msgctxt "StartupScreen"
-msgid "Simulates soft shadows that occur between nearby objects."
-msgstr ""
-
-#: Resources/Scripts/Gui/StartupScreen.as:1189
-#: Resources/Scripts/Gui/StartupScreen.as:1228
-#: Resources/Scripts/Gui/StartupScreen.as:1250
-#: Resources/Scripts/Gui/StartupScreen.as:1189
-#: Resources/Scripts/Gui/StartupScreen.as:1228
-#: Resources/Scripts/Gui/StartupScreen.as:1250
-msgctxt "StartupScreen"
-msgid "Low"
-msgstr "Thấp"
-
-#: Resources/Scripts/Gui/StartupScreen.as:1190
-#: Resources/Scripts/Gui/StartupScreen.as:1229
-#: Resources/Scripts/Gui/StartupScreen.as:1190
-#: Resources/Scripts/Gui/StartupScreen.as:1229
-msgctxt "StartupScreen"
-msgid "Medium"
-msgstr "Vừa"
-
-#: Resources/Scripts/Gui/StartupScreen.as:1191
-#: Resources/Scripts/Gui/StartupScreen.as:1230
-#: Resources/Scripts/Gui/StartupScreen.as:1252
-#: Resources/Scripts/Gui/StartupScreen.as:1191
-#: Resources/Scripts/Gui/StartupScreen.as:1230
-#: Resources/Scripts/Gui/StartupScreen.as:1252
-msgctxt "StartupScreen"
-msgid "High"
-msgstr "Cao"
-
-#: Resources/Scripts/Gui/StartupScreen.as:1192
-#: Resources/Scripts/Gui/StartupScreen.as:1253
-#: Resources/Scripts/Gui/StartupScreen.as:1192
-#: Resources/Scripts/Gui/StartupScreen.as:1253
-msgctxt "StartupScreen"
-msgid "Ultra"
-msgstr ""
-
-#: Resources/Scripts/Gui/StartupScreen.as:1195
-#: Resources/Scripts/Gui/StartupScreen.as:1195
-msgctxt "StartupScreen"
-msgid "Post-process"
-msgstr ""
-
-#: Resources/Scripts/Gui/StartupScreen.as:1196
-#: Resources/Scripts/Gui/StartupScreen.as:1196
-msgctxt "StartupScreen"
-msgid "Post-process modifies the image to make it look better and more realistic."
-msgstr ""
-
-#: Resources/Scripts/Gui/StartupScreen.as:1203
-#: Resources/Scripts/Gui/StartupScreen.as:1203
-msgctxt "StartupScreen"
-msgid "Particles|Low:Artifact occurs when a particle intersects other objects.|Medium:Particle intersects objects smoothly.|High:Particle intersects objects smoothly, and some objects casts their shadow to particles."
-msgstr ""
-
-#: Resources/Scripts/Gui/StartupScreen.as:1213
-#: Resources/Scripts/Gui/StartupScreen.as:1213
-msgctxt "StartupScreen"
-msgid "Dynamic Lights"
-msgstr ""
-
-#: Resources/Scripts/Gui/StartupScreen.as:1215
-#: Resources/Scripts/Gui/StartupScreen.as:1215
-msgctxt "StartupScreen"
-msgid "Gives some objects an ability to emit light to give them an energy-emitting impression."
-msgstr ""
-
-#: Resources/Scripts/Gui/StartupScreen.as:1218
-#: Resources/Scripts/Gui/StartupScreen.as:1218
-msgctxt "StartupScreen"
-msgid "Shadows"
-msgstr ""
-
-#: Resources/Scripts/Gui/StartupScreen.as:1219
-#: Resources/Scripts/Gui/StartupScreen.as:1219
-msgctxt "StartupScreen"
-msgid "Non-static object casts a shadow."
-msgstr ""
-
-#: Resources/Scripts/Gui/StartupScreen.as:1221
-#: Resources/Scripts/Gui/StartupScreen.as:1221
-msgctxt "StartupScreen"
-msgid "Volumetric Fog"
-msgstr ""
-
-#: Resources/Scripts/Gui/StartupScreen.as:1222
-#: Resources/Scripts/Gui/StartupScreen.as:1222
-msgctxt "StartupScreen"
-msgid "Simulates shadow being casted to the fog particles using a super highly computationally demanding algorithm. "
-msgstr ""
-
-#: Resources/Scripts/Gui/StartupScreen.as:1225
-#: Resources/Scripts/Gui/StartupScreen.as:1225
-msgctxt "StartupScreen"
-msgid "Physically Based Lighting"
-msgstr ""
-
-#: Resources/Scripts/Gui/StartupScreen.as:1226
-#: Resources/Scripts/Gui/StartupScreen.as:1226
-msgctxt "StartupScreen"
-msgid "Uses more accurate approximation techniques to decide the brightness of objects."
-msgstr ""
-
-#: Resources/Scripts/Gui/StartupScreen.as:1233
-#: Resources/Scripts/Gui/StartupScreen.as:1233
-msgctxt "StartupScreen"
-msgid "Direct Lights"
-msgstr ""
-
-#: Resources/Scripts/Gui/StartupScreen.as:1234
-#: Resources/Scripts/Gui/StartupScreen.as:1234
-msgctxt "StartupScreen"
-msgid "Controls how light encounting a material and atmosphere directly affects its appearance."
-msgstr ""
-
-#: Resources/Scripts/Gui/StartupScreen.as:1244
-#: Resources/Scripts/Gui/StartupScreen.as:1244
-msgctxt "StartupScreen"
-msgid "Water Shader|None:Water is rendered in the same way that normal blocks are done.|Level 1:Refraction and the reflected Sun are simulated.|Level 2:Waving water is simulated as well as reflection and refraction.|Level 3:Reflections and refractions are rendered at the highest quality using screen-space techniques."
-msgstr ""
-
-#: Resources/Scripts/Gui/StartupScreen.as:1251
-#: Resources/Scripts/Gui/StartupScreen.as:1251
-msgctxt "StartupScreen"
-msgid "Med"
-msgstr ""
-
-#: Resources/Scripts/Gui/StartupScreen.as:1256
-#: Resources/Scripts/Gui/StartupScreen.as:1256
-msgctxt "StartupScreen"
-msgid "Shader Effects"
-msgstr ""
-
-#: Resources/Scripts/Gui/StartupScreen.as:1256
-#: Resources/Scripts/Gui/StartupScreen.as:1256
-msgctxt "StartupScreen"
-msgid "Special effects."
-msgstr ""
-
-#: Resources/Scripts/Gui/StartupScreen.as:1273
-#: Resources/Scripts/Gui/StartupScreen.as:1273
-msgctxt "StartupScreen"
-msgid "Fast Mode:Reduces the image resolution to make the rendering faster.|Off|2x|4x"
-msgstr ""
-
-#: Resources/Scripts/Gui/StartupScreen.as:1486
-#: Resources/Scripts/Gui/StartupScreen.as:1486
-msgctxt "StartupScreen"
-msgid "Audio Settings"
-msgstr ""
-
-#: Resources/Scripts/Gui/StartupScreen.as:1495
-#: Resources/Scripts/Gui/StartupScreen.as:1495
-msgctxt "StartupScreen"
-msgid "OpenAL"
-msgstr ""
-
-#: Resources/Scripts/Gui/StartupScreen.as:1499
-#: Resources/Scripts/Gui/StartupScreen.as:1499
-msgctxt "StartupScreen"
-msgid "Uses an OpenAL-capable sound card to process sound. In most cases where there isn't such a sound card, software emulation is used."
-msgstr ""
-
-#. ! The name of audio driver that outputs no audio.
-#: Resources/Scripts/Gui/StartupScreen.as:1523
-#: Resources/Scripts/Gui/StartupScreen.as:1523
-msgctxt "StartupScreen"
-msgid "Null"
-msgstr ""
-
-#: Resources/Scripts/Gui/StartupScreen.as:1527
-#: Resources/Scripts/Gui/StartupScreen.as:1527
-msgctxt "StartupScreen"
-msgid "Disables audio output."
-msgstr ""
-
-#: Resources/Scripts/Gui/StartupScreen.as:1538
-#: Resources/Scripts/Gui/StartupScreen.as:1562
-#: Resources/Scripts/Gui/StartupScreen.as:1538
-#: Resources/Scripts/Gui/StartupScreen.as:1562
-msgctxt "StartupScreen"
-msgid "Polyphonics"
-msgstr ""
-
-#: Resources/Scripts/Gui/StartupScreen.as:1539
-#: Resources/Scripts/Gui/StartupScreen.as:1539
-msgctxt "StartupScreen"
-msgid "Specifies how many sounds can be played simultaneously. Higher value needs more processing power, so setting this too high might cause an overload (especially with a software emulation)."
-msgstr ""
-
-#: Resources/Scripts/Gui/StartupScreen.as:1546
-#: Resources/Scripts/Gui/StartupScreen.as:1546
-msgctxt "StartupScreen"
-msgid "EAX"
-msgstr ""
-
-#: Resources/Scripts/Gui/StartupScreen.as:1547
-#: Resources/Scripts/Gui/StartupScreen.as:1547
-msgctxt "StartupScreen"
-msgid "Enables extended features provided by the OpenAL driver to create more ambience."
-msgstr ""
-
-#: Resources/Scripts/Gui/StartupScreen.as:1623
-#: Resources/Scripts/Gui/StartupScreen.as:1623
-msgctxt "StartupScreen"
-msgid "Language"
-msgstr ""
-
-#: Resources/Scripts/Gui/StartupScreen.as:1635
-#: Resources/Scripts/Gui/StartupScreen.as:1635
-msgctxt "StartupScreen"
-msgid "Tools"
-msgstr ""
-
-#: Resources/Scripts/Gui/StartupScreen.as:1638
-#: Resources/Scripts/Gui/StartupScreen.as:1638
-msgctxt "StartupScreen"
-msgid "Reset All Settings"
-msgstr ""
-
-#: Resources/Scripts/Gui/StartupScreen.as:1647
-#: Resources/Scripts/Gui/StartupScreen.as:1647
-msgctxt "StartupScreen"
-msgid "Open Config Folder in Explorer"
-msgstr ""
-
-#: Resources/Scripts/Gui/StartupScreen.as:1649
-#: Resources/Scripts/Gui/StartupScreen.as:1649
-msgctxt "StartupScreen"
-msgid "Reveal Config Folder in Finder"
-msgstr ""
-
-#: Resources/Scripts/Gui/StartupScreen.as:1651
-#: Resources/Scripts/Gui/StartupScreen.as:1651
-msgctxt "StartupScreen"
-msgid "Browse Config Folder"
-msgstr ""
-
-#: Resources/Scripts/Gui/StartupScreen.as:1668
-#: Resources/Scripts/Gui/StartupScreen.as:1668
-msgctxt "StartupScreen"
-msgid "An unknown error has occurred while opening the config directory."
-msgstr ""
-
-#: Resources/Scripts/Gui/StartupScreen.as:1674
-#: Resources/Scripts/Gui/StartupScreen.as:1674
-msgctxt "StartupScreen"
-msgid "Are you sure to reset all settings? They include (but are not limited to):"
-msgstr ""
-
-#: Resources/Scripts/Gui/StartupScreen.as:1675
-#: Resources/Scripts/Gui/StartupScreen.as:1675
-msgctxt "StartupScreen"
-msgid "All graphics/audio settings"
-msgstr ""
-
-#: Resources/Scripts/Gui/StartupScreen.as:1676
-#: Resources/Scripts/Gui/StartupScreen.as:1676
-msgctxt "StartupScreen"
-msgid "All key bindings"
-msgstr ""
-
-#: Resources/Scripts/Gui/StartupScreen.as:1677
-#: Resources/Scripts/Gui/StartupScreen.as:1677
-msgctxt "StartupScreen"
-msgid "Your player name"
-msgstr ""
-
-#: Resources/Scripts/Gui/StartupScreen.as:1678
-#: Resources/Scripts/Gui/StartupScreen.as:1678
-msgctxt "StartupScreen"
-msgid "Other advanced settings only accessible through '{0}' tab and in-game commands"
-msgstr ""
-
-#: Resources/Scripts/Gui/StartupScreen.as:1748
-#: Resources/Scripts/Gui/StartupScreen.as:1748
-msgctxt "StartupScreen"
-msgid "Unknown ({0})"
-msgstr ""
-
-#: Resources/Scripts/Gui/StartupScreen.as:1750
-#: Resources/Scripts/Gui/StartupScreen.as:1764
-#: Resources/Scripts/Gui/StartupScreen.as:1750
-#: Resources/Scripts/Gui/StartupScreen.as:1764
-msgctxt "StartupScreen"
-msgid "System default"
-msgstr ""
-
-#: Resources/Scripts/Gui/StartupScreen.as:1813
-#: Resources/Scripts/Gui/StartupScreen.as:1813
-msgctxt "StartupScreen"
-msgid "Copy to Clipboard"
-msgstr ""
-
-#: Resources/Scripts/Gui/StartupScreen.as:1849
-#: Resources/Scripts/Gui/StartupScreen.as:1849
-msgctxt "StartupScreen"
-msgid "Advanced Settings"
-msgstr ""
-
-#: Resources/Scripts/Gui/StartupScreen.as:1858
-#: Resources/Scripts/Gui/StartupScreen.as:1858
-msgctxt "StartupScreen"
-msgid "Filter"
-msgstr "Lọc"
-
-#: Resources/Scripts/Gui/UpdateCheckView.as:40
-#: Resources/Scripts/Gui/UpdateCheckView.as:40
-msgctxt "UpdateCheck"
-msgid "Enable"
-msgstr "Cho phép"
-
-#: Resources/Scripts/Gui/UpdateCheckView.as:47
-#: Resources/Scripts/Gui/UpdateCheckView.as:47
-msgctxt "UpdateCheck"
-msgid "Show details..."
-msgstr ""
-
-#: Resources/Scripts/Gui/UpdateCheckView.as:102
-#: Resources/Scripts/Gui/UpdateCheckView.as:102
-msgctxt "UpdateCheck"
-msgid "Version {0} is available! (You currently have {1})"
-msgstr ""
-
-#: Resources/Scripts/Gui/UpdateCheckView.as:105
-#: Resources/Scripts/Gui/UpdateCheckView.as:105
-msgctxt "UpdateCheck"
-msgid "You're using the latest version of OpenSpades. ({0})"
-msgstr ""
-
-#: Resources/Scripts/Gui/UpdateCheckView.as:110
-#: Resources/Scripts/Gui/UpdateCheckView.as:110
-msgctxt "UpdateCheck"
-msgid "Checking for updates..."
-msgstr "Kiểm tra cập nhật..."
-
-#: Resources/Scripts/Gui/UpdateCheckView.as:113
-#: Resources/Scripts/Gui/UpdateCheckView.as:113
-msgctxt "UpdateCheck"
-msgid "Failed to check for updates."
-msgstr ""
-
-#: Resources/Scripts/Gui/UpdateCheckView.as:116
-#: Resources/Scripts/Gui/UpdateCheckView.as:116
-msgctxt "UpdateCheck"
-msgid "Automatic update check is not enabled."
-msgstr ""
-
-#: Resources/Scripts/Gui/UpdateCheckView.as:119
-#: Resources/Scripts/Gui/UpdateCheckView.as:119
-msgctxt "UpdateCheck"
-msgid "Automatic update check is not available."
-msgstr ""
-
-#: Sources/Client/Client_NetHandler.cpp:258
-#: Sources/Client/Client_NetHandler.cpp:271
+#: Sources/Client/Client.cpp:1068 Sources/Client/Client_NetHandler.cpp:405
+#: Sources/Client/LimboView.cpp:67
 msgctxt "Client"
 msgid "Spectator"
 msgstr "Khán giả"
 
-#: Sources/Client/Client_Draw.cpp:99
+#: Sources/Client/Client.cpp:1075
+msgctxt "Client"
+msgid "(DEAD)"
+msgstr "(CHẾT)"
+
+#: Sources/Client/Client.cpp:1077
+msgctxt "Client"
+msgid "(SPEC)"
+msgstr "(KHÁN GIẢ)"
+
+#: Sources/Client/Client.cpp:1085 Sources/Client/Client.cpp:1112
+msgctxt "Client"
+msgid "[Global]"
+msgstr "[Toàn cục]"
+
+#: Sources/Client/Client.cpp:1177
+msgctxt "Client"
+msgid "[PM] "
+msgstr "[PM] "
+
+#: Sources/Client/Client_Draw.cpp:144
 msgctxt "Client"
 msgid "Unbound"
-msgstr ""
+msgstr "Chưa gán"
 
-#: Sources/Client/Client_Draw.cpp:655
+#: Sources/Client/Client_Draw.cpp:193
+msgctxt "Client"
+msgid "Sceneshot saved: {0}"
+msgstr "Đã lưu sceneshot: {0}"
+
+#: Sources/Client/Client_Draw.cpp:194
+msgctxt "Client"
+msgid "Screenshot saved: {0}"
+msgstr "Đã lưu ảnh chụp màn hình: {0}"
+
+#: Sources/Client/Client_Draw.cpp:199 Sources/Client/Client_Draw.cpp:204
+msgctxt "Client"
+msgid "Screenshot failed: "
+msgstr "Chụp màn hình thất bại: "
+
+#: Sources/Client/Client_Draw.cpp:269
+msgctxt "Client"
+msgid "NOW LOADING"
+msgstr "ĐANG TẢI"
+
+#: Sources/Client/Client_Draw.cpp:1061
+msgctxt "Client"
+msgid "[{0}] Grab color"
+msgstr "[{0}] Lấy màu"
+
+#: Sources/Client/Client_Draw.cpp:1062
+msgctxt "Client"
+msgid "[{0}/{1}] Navigate up/down"
+msgstr "[{0}/{1}] Di chuyển lên/xuống"
+
+#: Sources/Client/Client_Draw.cpp:1064
+msgctxt "Client"
+msgid "[{0}/{1}] Navigate left/right"
+msgstr "[{0}/{1}] Di chuyển trái/phải"
+
+#: Sources/Client/Client_Draw.cpp:1066
+msgctxt "Client"
+msgid "[{0}] Toggle extended palette"
+msgstr "[{0}] Bật/tắt bảng màu mở rộng"
+
+#: Sources/Client/Client_Draw.cpp:1074
+msgctxt "Client"
+msgid "#{0} / RGB({1}, {2}, {3})"
+msgstr "#{0} / RGB({1}, {2}, {3})"
+
+#: Sources/Client/Client_Draw.cpp:1125
+msgctxt "Client"
+msgid "Accuracy: {0}%"
+msgstr "Độ chính xác: {0}%"
+
+#: Sources/Client/Client_Draw.cpp:1129
+msgctxt "Client"
+msgid "Kill/Death Ratio: {0}"
+msgstr "Tỷ lệ Giết/Chết: {0}"
+
+#: Sources/Client/Client_Draw.cpp:1130
+msgctxt "Client"
+msgid "Kill Streak: {0}, Best: {1}"
+msgstr "Chuỗi giết: {0}, Tốt nhất: {1}"
+
+#: Sources/Client/Client_Draw.cpp:1131
+msgctxt "Client"
+msgid "Melee Kills: {0}"
+msgstr "Giết cận chiến: {0}"
+
+#: Sources/Client/Client_Draw.cpp:1132
+msgctxt "Client"
+msgid "Grenade Kills: {0}"
+msgstr "Giết bằng lựu đạn: {0}"
+
+#: Sources/Client/Client_Draw.cpp:1135
+msgctxt "Client"
+msgid "Blocks Placed: {0}"
+msgstr "Khối đã đặt: {0}"
+
+#: Sources/Client/Client_Draw.cpp:1469
+msgctxt "Client"
+msgid "Reloading"
+msgstr "Đang nạp đạn"
+
+#: Sources/Client/Client_Draw.cpp:1471
+msgctxt "Client"
+msgid "Press [{0}] to Reload"
+msgstr "Nhấn [{0}] để nạp đạn"
+
+#: Sources/Client/Client_Draw.cpp:1619
+msgctxt "Client"
+msgid "You will respawn in: {0}"
+msgstr "Bạn sẽ hồi sinh sau: {0}"
+
+#: Sources/Client/Client_Draw.cpp:1620
+msgctxt "Client"
+msgid "Waiting for respawn"
+msgstr "Đang chờ hồi sinh"
+
+#: Sources/Client/Client_Draw.cpp:1698
+msgctxt "Client"
+msgid "Following {0} [#{1}]"
+msgstr "Đang theo dõi {0} [#{1}]"
+
+#: Sources/Client/Client_Draw.cpp:1703
+msgctxt "Client"
+msgid "Respawning in: {0}"
+msgstr "Hồi sinh sau: {0}"
+
+#: Sources/Client/Client_Draw.cpp:1708
 msgctxt "Client"
 msgid "[{0}] Cycle camera mode"
-msgstr ""
+msgstr "[{0}] Đổi chế độ camera"
 
-#: Sources/Client/Client_Draw.cpp:657
+#: Sources/Client/Client_Draw.cpp:1709
 msgctxt "Client"
-msgid "[{0}/{1}] Next/previous player"
-msgstr ""
+msgid "[{0}/{1}] Next/Prev player"
+msgstr "[{0}/{1}] Người chơi tiếp/trước"
 
-#: Sources/Client/Client_Draw.cpp:661
+#: Sources/Client/Client_Draw.cpp:1712
 msgctxt "Client"
 msgid "[{0}] Unfollow"
-msgstr ""
+msgstr "[{0}] Ngừng theo dõi"
 
-#: Sources/Client/Client_Draw.cpp:664
+#: Sources/Client/Client_Draw.cpp:1715
 msgctxt "Client"
 msgid "[{0}/{1}] Follow a player"
-msgstr ""
+msgstr "[{0}/{1}] Theo dõi người chơi"
 
-#: Sources/Client/Client_Draw.cpp:669
+#: Sources/Client/Client_Draw.cpp:1720
 msgctxt "Client"
 msgid "[{0}/{1}] Go up/down"
+msgstr "[{0}/{1}] Lên/Xuống"
+
+#: Sources/Client/Client_Draw.cpp:1722
+msgctxt "Client"
+msgid "[{0}] Hold to Zoom"
+msgstr "[{0}] Giữ để phóng to"
+
+#: Sources/Client/Client_Draw.cpp:1726
+msgctxt "Client"
+msgid "[{0}] Toggle player names"
+msgstr "[{0}] Bật/tắt tên người chơi"
+
+#: Sources/Client/Client_Draw.cpp:1729
+msgctxt "Client"
+msgid "[{0}] Toggle ESP"
+msgstr "[{0}] Bật/tắt ESP"
+
+#: Sources/Client/Client_Draw.cpp:1737
+msgctxt "Client"
+msgid "[{0}] Resume"
+msgstr "[{0}] Tiếp tục"
+
+#: Sources/Client/Client_Draw.cpp:1738
+msgctxt "Client"
+msgid "[{0}] Pause"
+msgstr "[{0}] Tạm dừng"
+
+#: Sources/Client/Client_Draw.cpp:1739
+msgctxt "Client"
+msgid "[{0}/{1}] Seek +/-5s"
+msgstr "[{0}/{1}] Tua +/-5 giây"
+
+#: Sources/Client/Client_Draw.cpp:1744
+msgctxt "Client"
+msgid "[{0}/{1}] Speed: {2}x"
+msgstr "[{0}/{1}] Tốc độ: {2}x"
+
+#: Sources/Client/Client_Draw.cpp:1746
+msgctxt "Client"
+msgid "[{0}] Toggle Demo HUD"
+msgstr "[{0}] Bật/tắt HUD demo"
+
+#: Sources/Client/Client_Draw.cpp:1748
+msgctxt "Client"
+msgid "[{0}] Select Team/Weapon"
+msgstr "[{0}] Chọn Đội/Vũ khí"
+
+#: Sources/Client/Client_Input.cpp:398
+msgctxt "Client"
+msgid "Volume: {0}%"
+msgstr "Âm lượng: {0}%"
+
+#: Sources/Client/Client_Input.cpp:647 Sources/Client/Client_Input.cpp:979
+msgctxt "Client"
+msgid "Press [{0}] to enable HUD"
+msgstr "Nhấn [{0}] để bật HUD"
+
+#: Sources/Client/Client_Input.cpp:789
+msgctxt "Client"
+msgid "Recording stopped"
+msgstr "Đã dừng ghi"
+
+#: Sources/Client/Client_Input.cpp:800
+#: Sources/Client/Client_NetHandler.cpp:160
+msgctxt "Client"
+msgid "Recording demo: {0}"
+msgstr "Đang ghi demo: {0}"
+
+#: Sources/Client/Client_Input.cpp:802
+msgctxt "Client"
+msgid "Failed to start demo recording"
+msgstr "Không thể bắt đầu ghi demo"
+
+#: Sources/Client/Client_Input.cpp:904
+msgctxt "Client"
+msgid "Out of Blocks"
+msgstr "Hết khối"
+
+#: Sources/Client/Client_Input.cpp:911
+msgctxt "Client"
+msgid "Out of Ammo"
+msgstr "Hết đạn"
+
+#: Sources/Client/Client_Input.cpp:918
+msgctxt "Client"
+msgid "Out of Grenades"
+msgstr "Hết lựu đạn"
+
+#: Sources/Client/Client_Input.cpp:1017
+msgctxt "Client"
+msgid "zerovl {0}"
+msgstr "zerovl {0}"
+
+#: Sources/Client/Client_NetHandler.cpp:142
+msgctxt "Client"
+msgid "Welcome to the server, {0}!"
+msgstr "Chào mừng đến máy chủ, {0}!"
+
+#: Sources/Client/Client_NetHandler.cpp:152
+msgctxt "Client"
+msgid "You are connected with {0} ({2}) on {1}"
+msgstr "Bạn đã kết nối với {0} ({2}) trên {1}"
+
+#: Sources/Client/Client_NetHandler.cpp:180
+msgctxt "Client"
+msgid "{0} captured a Neutral Territory"
+msgstr "{0} đã chiếm Lãnh thổ Trung lập"
+
+#: Sources/Client/Client_NetHandler.cpp:182
+msgctxt "Client"
+msgid "{0} captured {1}'s Territory"
+msgstr "{0} đã chiếm Lãnh thổ của {1}"
+
+#: Sources/Client/Client_NetHandler.cpp:191
+msgctxt "Client"
+msgid "{0} captured a neutral territory"
+msgstr "{0} đã chiếm lãnh thổ trung lập"
+
+#: Sources/Client/Client_NetHandler.cpp:194
+msgctxt "Client"
+msgid "{0} captured {1}'s territory"
+msgstr "{0} đã chiếm lãnh thổ của {1}"
+
+#: Sources/Client/Client_NetHandler.cpp:216
+msgctxt "Client"
+msgid "{0} captured {1}'s Intel"
+msgstr "{0} đã chiếm Intel của {1}"
+
+#: Sources/Client/Client_NetHandler.cpp:220
+msgctxt "Client"
+msgid "You captured {0}'s Intel"
+msgstr "Bạn đã chiếm Intel của {0}"
+
+#: Sources/Client/Client_NetHandler.cpp:225
+msgctxt "Client"
+msgid "{0} captured {1}'s intel"
+msgstr "{0} đã chiếm intel của {1}"
+
+#: Sources/Client/Client_NetHandler.cpp:248
+msgctxt "Client"
+msgid "{0} picked up {1}'s Intel"
+msgstr "{0} đã nhặt Intel của {1}"
+
+#: Sources/Client/Client_NetHandler.cpp:252
+msgctxt "Client"
+msgid "You picked up {0}'s Intel"
+msgstr "Bạn đã nhặt Intel của {0}"
+
+#: Sources/Client/Client_NetHandler.cpp:257
+msgctxt "Client"
+msgid "{0} picked up {1}'s intel"
+msgstr "{0} đã nhặt intel của {1}"
+
+#: Sources/Client/Client_NetHandler.cpp:278
+msgctxt "Client"
+msgid "{0} dropped {1}'s Intel"
+msgstr "{0} đã thả Intel của {1}"
+
+#: Sources/Client/Client_NetHandler.cpp:282
+msgctxt "Client"
+msgid "You dropped {0}'s Intel"
+msgstr "Bạn đã thả Intel của {0}"
+
+#: Sources/Client/Client_NetHandler.cpp:287
+msgctxt "Client"
+msgid "{0} dropped {1}'s intel"
+msgstr "{0} đã thả intel của {1}"
+
+#: Sources/Client/Client_NetHandler.cpp:375
+#: Sources/Client/Client_NetHandler.cpp:383
+msgctxt "Client"
+msgid "Player {0} has left"
+msgstr "Người chơi {0} đã rời"
+
+#: Sources/Client/Client_NetHandler.cpp:377
+#: Sources/Client/Client_NetHandler.cpp:385
+msgctxt "Client"
+msgid " (ragequit)"
+msgstr " (thoát giận)"
+
+#: Sources/Client/Client_NetHandler.cpp:409
+msgctxt "Client"
+msgid "You are now a spectator"
+msgstr "Bạn hiện là khán giả"
+
+#: Sources/Client/Client_NetHandler.cpp:410
+msgctxt "Client"
+msgid "You joined {0} team"
+msgstr "Bạn đã tham gia đội {0}"
+
+#: Sources/Client/Client_NetHandler.cpp:416
+#: Sources/Client/Client_NetHandler.cpp:422
+msgctxt "Client"
+msgid "{0} joined {1} team"
+msgstr "{0} đã tham gia đội {1}"
+
+#: Sources/Client/Client_NetHandler.cpp:443
+msgctxt "Client"
+msgid "{0} Wins!"
+msgstr "{0} Thắng!"
+
+#: Sources/Client/Client_NetHandler.cpp:450
+msgctxt "Client"
+msgid "{0} wins!"
+msgstr "{0} thắng!"
+
+#: Sources/Client/Client_Update.cpp:716
+msgctxt "Client"
+msgid "{0} block"
+msgid_plural "{0} blocks"
+msgstr[0] "{0} khối"
+msgstr[1] "{0} khối"
+
+#: Sources/Client/Client_Update.cpp:721
+msgctxt "Client"
+msgid "-- blocks"
+msgstr "-- khối"
+
+#: Sources/Client/Client_Update.cpp:1225 Sources/Client/LimboView.cpp:73
+msgctxt "Client"
+msgid "Rifle"
+msgstr "Súng trường"
+
+#: Sources/Client/Client_Update.cpp:1226 Sources/Client/LimboView.cpp:76
+msgctxt "Client"
+msgid "SMG"
+msgstr "SMG"
+
+#: Sources/Client/Client_Update.cpp:1227 Sources/Client/LimboView.cpp:79
+msgctxt "Client"
+msgid "Shotgun"
+msgstr "Súng săn"
+
+#: Sources/Client/Client_Update.cpp:1231
+msgctxt "Client"
+msgid "Fall"
+msgstr "Ngã"
+
+#: Sources/Client/Client_Update.cpp:1232
+msgctxt "Client"
+msgid "Melee"
+msgstr "Cận chiến"
+
+#: Sources/Client/Client_Update.cpp:1233
+msgctxt "Client"
+msgid "Grenade"
+msgstr "Lựu đạn"
+
+#: Sources/Client/Client_Update.cpp:1234
+msgctxt "Client"
+msgid "Headshot"
+msgstr "Bắn đầu"
+
+#: Sources/Client/Client_Update.cpp:1235
+msgctxt "Client"
+msgid "Team Change"
+msgstr "Đổi đội"
+
+#: Sources/Client/Client_Update.cpp:1236
+msgctxt "Client"
+msgid "Weapon Change"
+msgstr "Đổi vũ khí"
+
+#: Sources/Client/Client_Update.cpp:1286
+msgctxt "Client"
+msgid "Revenge!"
+msgstr "Báo thù!"
+
+#: Sources/Client/Client_Update.cpp:1294
+msgctxt "Client"
+msgid "Dominating!"
+msgstr "Thống trị!"
+
+#: Sources/Client/Client_Update.cpp:1320
+msgctxt "Client"
+msgid "You were killed by {0}"
+msgstr "Bạn bị {0} giết"
+
+#: Sources/Client/Client_Update.cpp:1322
+msgctxt "Client"
+msgid "You have killed {0}"
+msgstr "Bạn đã giết {0}"
+
+#: Sources/Client/Client_Update.cpp:1534
+msgctxt "Client"
+msgid "You hit {0} from: {1} blocks "
+msgstr "Bạn bắn trúng {0} từ: {1} khối "
+
+#: Sources/Client/Client_Update.cpp:1554
+msgctxt "Client"
+msgid "TORSO"
+msgstr "THÂN"
+
+#: Sources/Client/Client_Update.cpp:1555
+msgctxt "Client"
+msgid "ARMS"
+msgstr "TAY"
+
+#: Sources/Client/Client_Update.cpp:1556
+msgctxt "Client"
+msgid "LEGS"
+msgstr "CHÂN"
+
+#: Sources/Client/Client_Update.cpp:1557
+msgctxt "Client"
+msgid "MELEE"
+msgstr "CẬN"
+
+#: Sources/Client/Client_Update.cpp:1558
+msgctxt "Client"
+msgid "HEAD"
+msgstr "ĐẦU"
+
+#: Sources/Client/Client_Update.cpp:1889
+msgctxt "Client"
+msgid "You are taking damage. Find solid ground!"
+msgstr "Bạn đang nhận sát thương. Tìm mặt đất vững chắc!"
+
+#: Sources/Client/Client_Update.cpp:1907
+msgctxt "Client"
+msgid "Insufficient blocks."
+msgstr "Không đủ khối."
+
+#: Sources/Client/Client_Update.cpp:1910
+msgctxt "Client"
+msgid "You cannot place a block there."
+msgstr "Bạn không thể đặt khối ở đó."
+
+#: Sources/Client/DemoNetClient.cpp:102 Sources/Client/NetClient.cpp:276
+msgctxt "NetClient"
+msgid "Not connected"
+msgstr "Chưa kết nối"
+
+#: Sources/Client/DemoNetClient.cpp:116
+msgctxt "NetClient"
+msgid "Failed to open demo file"
+msgstr "Không thể mở tệp demo"
+
+#: Sources/Client/DemoNetClient.cpp:129
+msgctxt "NetClient"
+msgid "Loading demo"
+msgstr "Đang tải demo"
+
+#: Sources/Client/DemoNetClient.cpp:149
+msgctxt "NetClient"
+msgid "Demo finished - press [{0}] to replay"
+msgstr "Demo kết thúc - nhấn [{0}] để phát lại"
+
+#: Sources/Client/DemoNetClient.cpp:173
+msgctxt "NetClient"
+msgid "Loading map from demo"
+msgstr "Đang tải bản đồ từ demo"
+
+#: Sources/Client/DemoNetClient.cpp:186 Sources/Client/DemoNetClient.cpp:985
+#: Sources/Client/DemoNetClient.cpp:1005
+msgctxt "NetClient"
+msgid "Playing demo"
+msgstr "Đang phát demo"
+
+#: Sources/Client/DemoNetClient.cpp:193
+msgctxt "NetClient"
+msgid "Error loading map"
+msgstr "Lỗi tải bản đồ"
+
+#: Sources/Client/DemoNetClient.cpp:905
+msgctxt "NetClient"
+msgid "Loading map from demo ({0}%)"
+msgstr "Đang tải bản đồ từ demo ({0}%)"
+
+#: Sources/Client/LimboView.cpp:84
+msgctxt "Client"
+msgid "Spawn"
+msgstr "Hồi sinh"
+
+#: Sources/Client/LimboView.cpp:204
+msgctxt "Client"
+msgid "Select Team:"
+msgstr "Chọn Đội:"
+
+#: Sources/Client/LimboView.cpp:210
+msgctxt "Client"
+msgid "Select Weapon:"
+msgstr "Chọn Vũ khí:"
+
+#: Sources/Client/LimboView.cpp:260
+#: Resources/Scripts/Gui/Client/ChatLogWindow.as:85
+#: Resources/Scripts/Gui/Client/ChatSayWindow.as:193
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:603
+#: Resources/Scripts/Gui/Preferences.as:116
+msgctxt "Client"
+msgid "[Esc]"
+msgstr "[Esc]"
+
+#: Sources/Client/LimboView.cpp:272
+msgctxt "Client"
+msgid "[1, 2, 3]"
+msgstr "[1, 2, 3]"
+
+#: Sources/Client/NetClient.cpp:265
+msgctxt "NetClient"
+msgid "Connecting to the server"
+msgstr "Đang kết nối đến máy chủ"
+
+#: Sources/Client/NetClient.cpp:398
+msgctxt "NetClient"
+msgid "Awaiting for state"
+msgstr "Đang chờ trạng thái máy chủ"
+
+#: Sources/Client/NetClient.cpp:414 Sources/Client/NetClient.cpp:1122
+msgctxt "NetClient"
+msgid "Loading snapshot"
+msgstr "Đang tải bản đồ"
+
+#: Sources/Client/NetClient.cpp:460
+msgctxt "NetClient"
+msgid "Connected"
+msgstr "Đã kết nối"
+
+#: Sources/Client/NetClient.cpp:469 Sources/Client/NetClient.cpp:474
+msgctxt "NetClient"
+msgid "Error"
+msgstr "Lỗi"
+
+#: Sources/Client/NetClient.cpp:554
+msgctxt "NetClient"
+msgid "You are banned from this server."
+msgstr "Bạn đã bị cấm khỏi máy chủ này."
+
+#: Sources/Client/NetClient.cpp:555
+msgctxt "NetClient"
+msgid "Your network's public address has too many connections to this server."
+msgstr "Địa chỉ công cộng của mạng bạn có quá nhiều kết nối đến máy chủ này."
+
+#: Sources/Client/NetClient.cpp:556
+msgctxt "NetClient"
+msgid "Incompatible client protocol version."
+msgstr "Phiên bản giao thức client không tương thích."
+
+#: Sources/Client/NetClient.cpp:557
+msgctxt "NetClient"
+msgid "Server full"
+msgstr "Máy chủ đầy"
+
+#: Sources/Client/NetClient.cpp:558
+msgctxt "NetClient"
+msgid "Server shutdown"
+msgstr "Máy chủ đã tắt"
+
+#: Sources/Client/NetClient.cpp:559
+msgctxt "NetClient"
+msgid "You were kicked from this server."
+msgstr "Bạn đã bị đuổi khỏi máy chủ này."
+
+#: Sources/Client/NetClient.cpp:560
+msgctxt "NetClient"
+msgid "Invalid name"
+msgstr "Tên không hợp lệ"
+
+#: Sources/Client/NetClient.cpp:561
+msgctxt "NetClient"
+msgid "Unknown Reason"
+msgstr "Lý do không rõ"
+
+#: Sources/Client/NetClient.cpp:1785
+msgctxt "NetClient"
+msgid "{0} second remaining"
+msgid_plural "{0} seconds remaining"
+msgstr[0] "Còn {0} giây"
+msgstr[1] "Còn {0} giây"
+
+#: Sources/Client/NetClient.cpp:1788
+msgctxt "NetClient"
+msgid "{0} minute remaining"
+msgid_plural "{0} minutes remaining"
+msgstr[0] "Còn {0} phút"
+msgstr[1] "Còn {0} phút"
+
+#: Sources/Client/PieMenuView.cpp:194 Sources/Client/PieMenuView.cpp:202
+msgctxt "Client"
+msgid "Affirmative"
+msgstr "Đồng ý"
+
+#: Sources/Client/PieMenuView.cpp:195
+msgctxt "Client"
+msgid "Behind Us!"
+msgstr "Phía sau chúng ta!"
+
+#: Sources/Client/PieMenuView.cpp:196
+msgctxt "Client"
+msgid "Spawnkiller!"
+msgstr "Spawnkiller!"
+
+#: Sources/Client/PieMenuView.cpp:197 Sources/Client/PieMenuView.cpp:205
+msgctxt "Client"
+msgid "Negative"
+msgstr "Phủ định"
+
+#: Sources/Client/PieMenuView.cpp:198
+msgctxt "Client"
+msgid "Help Me Build"
+msgstr "Giúp tôi xây"
+
+#: Sources/Client/PieMenuView.cpp:199
+msgctxt "Client"
+msgid "Tear It Down!"
+msgstr "Phá hủy nó!"
+
+#: Sources/Client/PieMenuView.cpp:203
+msgctxt "Client"
+msgid "Behind You"
+msgstr "Phía sau bạn"
+
+#: Sources/Client/PieMenuView.cpp:204
+msgctxt "Client"
+msgid "Cover Me"
+msgstr "Yểm trợ tôi"
+
+#: Sources/Client/PieMenuView.cpp:206
+msgctxt "Client"
+msgid "Help Me"
+msgstr "Giúp tôi"
+
+#: Sources/Client/PieMenuView.cpp:207
+msgctxt "Client"
+msgid "Thank You"
+msgstr "Cảm ơn"
+
+#: Sources/Client/ScoreboardView.cpp:61 Sources/Client/ScoreboardView.cpp:418
+msgctxt "Client"
+msgid "Spectator{1}"
+msgid_plural "Spectators{1}"
+msgstr[0] "Khán giả{1}"
+msgstr[1] "Khán giả{1}"
+
+#: Sources/Client/TCProgressView.cpp:159
+msgctxt "Client"
+msgid "Neutral Territory"
+msgstr "Lãnh thổ Trung lập"
+
+#: Sources/Client/TCProgressView.cpp:162
+msgctxt "Client"
+msgid "{0}'s Territory"
+msgstr "Lãnh thổ của {0}"
+
+#: Sources/Gui/Main.cpp:960
+msgctxt "Main"
+msgid "Localization System Loaded"
+msgstr "Hệ thống bản địa hóa đã tải"
+
+#: Sources/Gui/Main.cpp:1038 Sources/Gui/Runner.cpp:56
+msgctxt "Main"
+msgid ""
+"A serious error caused ZeroSpades to stop working:\n"
+"\n"
+"{0}\n"
+"\n"
+"See SystemMessages.log for more details."
 msgstr ""
+"Một lỗi nghiêm trọng khiến ZeroSpades ngừng hoạt động:\n"
+"\n"
+"{0}\n"
+"\n"
+"Xem SystemMessages.log để biết thêm chi tiết."
+
+#: Sources/Gui/Main.cpp:1046 Sources/Gui/Runner.cpp:62
+msgctxt "Main"
+msgid "ZeroSpades Fatal Error"
+msgstr "Lỗi nghiêm trọng ZeroSpades"
+
+#: Sources/Gui/MainScreen.cpp:229
+msgctxt "MainScreen"
+msgid "NOW LOADING"
+msgstr "ĐANG TẢI"
+
+#: Sources/Gui/ModsScreenHelper.cpp:304
+msgctxt "ModsScreenHelper"
+msgid "Download '{0}': {1}"
+msgstr "Tải '{0}': {1}"
+
+#: Sources/Gui/ModsScreenHelper.cpp:308
+msgctxt "ModsScreenHelper"
+msgid "Rename '{0}' failed"
+msgstr "Đổi tên '{0}' thất bại"
+
+#: Sources/Gui/ModsScreenHelper.cpp:329 Sources/Gui/ModsScreenHelper.cpp:359
+msgctxt "ModsScreenHelper"
+msgid "List '{0}': {1}"
+msgstr "Danh sách '{0}': {1}"
+
+#: Sources/Gui/ModsScreenHelper.cpp:335
+msgctxt "ModsScreenHelper"
+msgid "Index parse failed (expected JSON array)"
+msgstr "Phân tích chỉ mục thất bại (mong đợi mảng JSON)"
+
+#: Resources/Scripts/Gui/Client/ChatLogWindow.as:84
+msgctxt "Client"
+msgid "Close"
+msgstr "Đóng"
+
+#: Resources/Scripts/Gui/Client/ChatLogWindow.as:93
+msgctxt "Client"
+msgid "Say Global"
+msgstr "Nói toàn cục"
+
+#: Resources/Scripts/Gui/Client/ChatLogWindow.as:102
+msgctxt "Client"
+msgid "Say Team"
+msgstr "Nói đội"
+
+#: Resources/Scripts/Gui/Client/ChatSayWindow.as:183
+msgctxt "Client"
+msgid "Send"
+msgstr "Gửi"
+
+#: Resources/Scripts/Gui/Client/ChatSayWindow.as:184
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:274
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:444
+#: Resources/Scripts/Gui/StartupScreen/MainMenu.as:58
+msgctxt "Client"
+msgid "[Enter]"
+msgstr "[Enter]"
+
+#: Resources/Scripts/Gui/Client/ChatSayWindow.as:192
+msgctxt "Client"
+msgid "Cancel"
+msgstr "Hủy"
+
+#: Resources/Scripts/Gui/Client/ChatSayWindow.as:201
+msgctxt "Client"
+msgid "Chat Text"
+msgstr "Văn bản chat"
+
+#: Resources/Scripts/Gui/Client/Menu.as:52
+msgctxt "Client"
+msgid "Back to Game"
+msgstr "Quay lại trò chơi"
+
+#: Resources/Scripts/Gui/Client/Menu.as:59
+msgctxt "Client"
+msgid "Chat Log"
+msgstr "Nhật ký chat"
+
+#: Resources/Scripts/Gui/Client/Menu.as:66
+msgctxt "Client"
+msgid "Setup"
+msgstr "Cài đặt"
+
+#: Resources/Scripts/Gui/Client/Menu.as:74
+msgctxt "Client"
+msgid "Exit Demo"
+msgstr "Thoát demo"
+
+#: Resources/Scripts/Gui/Client/Menu.as:75
+msgctxt "Client"
+msgid "Disconnect"
+msgstr "Ngắt kết nối"
+
+#: Resources/Scripts/Gui/Console/ConsoleWindow.as:59
+msgctxt "Console"
+msgid "Command"
+msgstr "Lệnh"
+
+#: Resources/Scripts/Gui/MainScreen/CreateProfileScreen.as:53
+msgctxt "CreateProfileScreen"
+msgid "OK"
+msgstr "OK"
+
+#: Resources/Scripts/Gui/MainScreen/CreateProfileScreen.as:63
+msgctxt "CreateProfileScreen"
+msgid "Decide later"
+msgstr "Quyết định sau"
+
+#: Resources/Scripts/Gui/MainScreen/CreateProfileScreen.as:70
+msgctxt "CreateProfileScreen"
+msgid "Welcome to ZeroSpades"
+msgstr "Chào mừng đến ZeroSpades"
+
+#: Resources/Scripts/Gui/MainScreen/CreateProfileScreen.as:78
+msgctxt "CreateProfileScreen"
+msgid "Choose a player name:"
+msgstr "Chọn tên người chơi:"
+
+#: Resources/Scripts/Gui/MainScreen/CreateProfileScreen.as:86
+msgctxt "CreateProfileScreen"
+msgid "Player name"
+msgstr "Tên người chơi"
+
+#: Resources/Scripts/Gui/MainScreen/CreateProfileScreen.as:95
+msgctxt "CreateProfileScreen"
+msgid "You can change it later in the Setup dialog."
+msgstr "Bạn có thể đổi sau trong hộp thoại Cài đặt."
+
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:92
+msgctxt "MainScreen"
+msgid "Rename Demo"
+msgstr "Đổi tên demo"
+
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:106
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:436
+msgctxt "MainScreen"
+msgid "Rename"
+msgstr "Đổi tên"
+
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:113
+msgctxt "MainScreen"
+msgid "Cancel"
+msgstr "Hủy"
+
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:273
+msgctxt "MainScreen"
+msgid "Connect"
+msgstr "Kết nối"
+
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:282
+msgctxt "MainScreen"
+msgid "Quick Connect"
+msgstr "Kết nối nhanh"
+
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:296
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:386
+msgctxt "MainScreen"
+msgid "0.75"
+msgstr "0.75"
+
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:305
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:394
+msgctxt "MainScreen"
+msgid "0.76"
+msgstr "0.76"
+
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:319
+msgctxt "MainScreen"
+msgid "Server Name"
+msgstr "Tên máy chủ"
+
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:326
+msgctxt "MainScreen"
+msgid "Slots"
+msgstr "Chỗ"
+
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:334
+msgctxt "MainScreen"
+msgid "Map Name"
+msgstr "Tên bản đồ"
+
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:341
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:472
+msgctxt "MainScreen"
+msgid "Game Mode"
+msgstr "Chế độ chơi"
+
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:349
+msgctxt "MainScreen"
+msgid "Ver."
+msgstr "Phiên bản"
+
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:357
+msgctxt "MainScreen"
+msgid "Ping"
+msgstr "Ping"
+
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:378
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:412
+msgctxt "MainScreen"
+msgid "Filter"
+msgstr "Bộ lọc"
+
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:403
+msgctxt "MainScreen"
+msgid "Not Full"
+msgstr "Chưa đầy"
+
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:422
+msgctxt "MainScreen"
+msgid "Select a demo"
+msgstr "Chọn demo"
+
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:429
+msgctxt "MainScreen"
+msgid "Delete"
+msgstr "Xóa"
+
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:443
+msgctxt "MainScreen"
+msgid "Play"
+msgstr "Phát"
+
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:458
+msgctxt "MainScreen"
+msgid "Server"
+msgstr "Máy chủ"
+
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:465
+msgctxt "MainScreen"
+msgid "Map"
+msgstr "Bản đồ"
+
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:479
+msgctxt "MainScreen"
+msgid "Timestamp"
+msgstr "Thời gian"
+
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:486
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:563
+msgctxt "MainScreen"
+msgid "Size"
+msgstr "Kích thước"
+
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:499
+msgctxt "MainScreen"
+msgid "Download official mods..."
+msgstr "Tải mod chính thức..."
+
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:506
+msgctxt "MainScreen"
+msgid "Disable all"
+msgstr "Tắt tất cả"
+
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:513
+msgctxt "MainScreen"
+msgid "Apply changes"
+msgstr "Áp dụng thay đổi"
+
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:535
+msgctxt "MainScreen"
+msgid "Status"
+msgstr "Trạng thái"
+
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:542
+msgctxt "MainScreen"
+msgid "Apply Order"
+msgstr "Thứ tự"
+
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:549
+msgctxt "MainScreen"
+msgid "Mod"
+msgstr "Mod"
+
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:556
+msgctxt "MainScreen"
+msgid "Paks"
+msgstr "Pak"
+
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:582
+msgctxt "MainScreen"
+msgid "Servers"
+msgstr "Máy chủ"
+
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:583
+msgctxt "MainScreen"
+msgid "Demos"
+msgstr "Demo"
+
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:587
+msgctxt "MainScreen"
+msgid "Mods"
+msgstr "Mod"
+
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:602
+msgctxt "MainScreen"
+msgid "Quit"
+msgstr "Thoát"
+
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:610
+msgctxt "MainScreen"
+msgid "Credits"
+msgstr "Tín dụng"
+
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:617
+msgctxt "MainScreen"
+msgid "Setup"
+msgstr "Cài đặt"
+
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:727
+msgctxt "MainScreen"
+msgid "Fetching mod list..."
+msgstr "Đang lấy danh sách mod..."
+
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:746
+msgctxt "MainScreen"
+msgid "Press 'Apply changes' to restart and apply your mods."
+msgstr "Nhấn 'Áp dụng thay đổi' để khởi động lại và áp dụng mod."
+
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:756
+msgctxt "MainScreen"
+msgid "Download the official ZeroSpades mod pack?"
+msgstr "Tải gói mod chính thức ZeroSpades?"
+
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:757
+msgctxt "MainScreen"
+msgid "These are mods reviewed and hosted by the ZeroSpades team."
+msgstr "Đây là các mod được đội ZeroSpades xem xét và lưu trữ."
+
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:758
+msgctxt "MainScreen"
+msgid "Source: "
+msgstr "Nguồn: "
+
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:759
+msgctxt "MainScreen"
+msgid ""
+"Files will be saved into your Mods/ folder, overwriting any existing copies."
+msgstr "Tệp sẽ được lưu vào thư mục Mods/, ghi đè các bản sao hiện có."
+
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:785
+msgctxt "MainScreen"
+msgid "Disable all mods? This takes effect after a restart."
+msgstr "Tắt tất cả mod? Có hiệu lực sau khi khởi động lại."
+
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:856
+msgctxt "MainScreen"
+msgid ""
+"Are you sure you want to delete '{0}'?\n"
+"This action cannot be undone."
+msgstr ""
+"Bạn có chắc muốn xóa '{0}'?\n"
+"Hành động này không thể hoàn tác."
+
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:891
+msgctxt "MainScreen"
+msgid "Failed to rename demo."
+msgstr "Đổi tên demo thất bại."
+
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:1121
+msgctxt "MainScreen"
+msgid ""
+"You were disconnected from the server because of the following reason:\n"
+"\n"
+"{0}"
+msgstr ""
+"Bạn đã bị ngắt kết nối khỏi máy chủ vì lý do sau:\n"
+"\n"
+"{0}"
+
+#: Resources/Scripts/Gui/MainScreen/ServerList.as:223
+msgctxt "MainScreen"
+msgid "Fetching server list..."
+msgstr "Đang lấy danh sách máy chủ..."
+
+#: Resources/Scripts/Gui/MainScreen/ServerList.as:239
+msgctxt "MainScreen"
+msgid "Failed to fetch the server list."
+msgstr "Không lấy được danh sách máy chủ."
+
+#: Resources/Scripts/Gui/MessageBox.as:120
+#: Resources/Scripts/Gui/MessageBox.as:134
+msgctxt "MessageBox"
+msgid "OK"
+msgstr "OK"
+
+#: Resources/Scripts/Gui/MessageBox.as:134
+msgctxt "MessageBox"
+msgid "Cancel"
+msgstr "Hủy"
+
+#: Resources/Scripts/Gui/Preferences.as:103
+msgctxt "Preferences"
+msgid "Game Options"
+msgstr "Tùy chọn trò chơi"
+
+#: Resources/Scripts/Gui/Preferences.as:106
+msgctxt "Preferences"
+msgid "Interface"
+msgstr "Giao diện"
+
+#: Resources/Scripts/Gui/Preferences.as:107
+msgctxt "Preferences"
+msgid "Graphics"
+msgstr "Đồ họa"
+
+#: Resources/Scripts/Gui/Preferences.as:108
+msgctxt "Preferences"
+msgid "Controls"
+msgstr "Điều khiển"
+
+#: Resources/Scripts/Gui/Preferences.as:109
+#: Resources/Scripts/Gui/Preferences.as:1664
+#: Resources/Scripts/Gui/Preferences.as:1951
+msgctxt "Preferences"
+msgid "Misc"
+msgstr "Khác"
+
+#: Resources/Scripts/Gui/Preferences.as:115
+msgctxt "Preferences"
+msgid "Back"
+msgstr "Quay lại"
+
+#: Resources/Scripts/Gui/Preferences.as:373
+msgctxt "Preferences"
+msgid "Horizontal Alignment"
+msgstr "Căn ngang"
+
+#: Resources/Scripts/Gui/Preferences.as:385
+msgctxt "Preferences"
+msgid "Vertical Alignment"
+msgstr "Căn dọc"
+
+#: Resources/Scripts/Gui/Preferences.as:397
+msgctxt "Preferences"
+msgid "OK"
+msgstr "OK"
+
+#: Resources/Scripts/Gui/Preferences.as:519
+msgctxt "Preferences"
+msgid "Left"
+msgstr "Trái"
+
+#: Resources/Scripts/Gui/Preferences.as:521
+msgctxt "Preferences"
+msgid "Center"
+msgstr "Giữa"
+
+#: Resources/Scripts/Gui/Preferences.as:523
+msgctxt "Preferences"
+msgid "Right"
+msgstr "Phải"
+
+#: Resources/Scripts/Gui/Preferences.as:536
+#: Resources/Scripts/Gui/Preferences.as:591
+#: Resources/Scripts/Gui/Preferences.as:1648
+#: Resources/Scripts/Gui/Preferences.as:1771
+msgctxt "Preferences"
+msgid "Default"
+msgstr "Mặc định"
+
+#: Resources/Scripts/Gui/Preferences.as:538
+msgctxt "Preferences"
+msgid "Quake Pro"
+msgstr "Quake Pro"
+
+#: Resources/Scripts/Gui/Preferences.as:551
+msgctxt "Preferences"
+msgid "Bicubic"
+msgstr "Bicubic"
+
+#: Resources/Scripts/Gui/Preferences.as:553
+msgctxt "Preferences"
+msgid "Bilinear"
+msgstr "Bilinear"
+
+#: Resources/Scripts/Gui/Preferences.as:555
+msgctxt "Preferences"
+msgid "Nearest Neighbour"
+msgstr "Lân cận gần nhất"
+
+#: Resources/Scripts/Gui/Preferences.as:568
+msgctxt "Preferences"
+msgid "Unlimited"
+msgstr "Không giới hạn"
+
+#: Resources/Scripts/Gui/Preferences.as:602
+msgctxt "Preferences"
+msgid "Team Color"
+msgstr "Màu đội"
+
+#: Resources/Scripts/Gui/Preferences.as:604
+msgctxt "Preferences"
+msgid "Light Blue"
+msgstr "Xanh nhạt"
+
+#: Resources/Scripts/Gui/Preferences.as:606
+#: Resources/Scripts/Gui/Preferences.as:637
+msgctxt "Preferences"
+msgid "Blue"
+msgstr "Xanh dương"
+
+#: Resources/Scripts/Gui/Preferences.as:608
+msgctxt "Preferences"
+msgid "Purple"
+msgstr "Tím"
+
+#: Resources/Scripts/Gui/Preferences.as:610
+#: Resources/Scripts/Gui/Preferences.as:633
+msgctxt "Preferences"
+msgid "Red"
+msgstr "Đỏ"
+
+#: Resources/Scripts/Gui/Preferences.as:612
+msgctxt "Preferences"
+msgid "Orange"
+msgstr "Cam"
+
+#: Resources/Scripts/Gui/Preferences.as:614
+#: Resources/Scripts/Gui/Preferences.as:639
+msgctxt "Preferences"
+msgid "Yellow"
+msgstr "Vàng"
+
+#: Resources/Scripts/Gui/Preferences.as:616
+#: Resources/Scripts/Gui/Preferences.as:635
+msgctxt "Preferences"
+msgid "Green"
+msgstr "Xanh lá"
+
+#: Resources/Scripts/Gui/Preferences.as:618
+msgctxt "Preferences"
+msgid "Aqua"
+msgstr "Xanh ngọc"
+
+#: Resources/Scripts/Gui/Preferences.as:620
+#: Resources/Scripts/Gui/Preferences.as:643
+msgctxt "Preferences"
+msgid "Pink"
+msgstr "Hồng"
+
+#: Resources/Scripts/Gui/Preferences.as:622
+#: Resources/Scripts/Gui/Preferences.as:645
+#: Resources/Scripts/Gui/Preferences.as:660
+#: Resources/Scripts/Gui/Preferences.as:1772
+msgctxt "Preferences"
+msgid "Custom"
+msgstr "Tùy chỉnh"
+
+#: Resources/Scripts/Gui/Preferences.as:641
+msgctxt "Preferences"
+msgid "Cyan"
+msgstr "Xanh lơ"
+
+#: Resources/Scripts/Gui/Preferences.as:656
+msgctxt "Preferences"
+msgid "Classic"
+msgstr "Cổ điển"
+
+#: Resources/Scripts/Gui/Preferences.as:658
+msgctxt "Preferences"
+msgid "Dot Sight"
+msgstr "Tầm ngắm chấm"
+
+#: Resources/Scripts/Gui/Preferences.as:662
+msgctxt "Preferences"
+msgid "Iron Sight"
+msgstr "Tầm ngắm sắt"
+
+#: Resources/Scripts/Gui/Preferences.as:801
+msgctxt "Preferences"
+msgid "Press Key to Bind or [Escape] to Cancel..."
+msgstr "Nhấn phím để gán hoặc [Escape] để hủy..."
+
+#: Resources/Scripts/Gui/Preferences.as:812
+msgctxt "Preferences"
+msgid "Unbound"
+msgstr "Chưa gán"
+
+#: Resources/Scripts/Gui/Preferences.as:815
+msgctxt "Preferences"
+msgid "Left Mouse Button"
+msgstr "Chuột trái"
+
+#: Resources/Scripts/Gui/Preferences.as:817
+msgctxt "Preferences"
+msgid "Right Mouse Button"
+msgstr "Chuột phải"
+
+#: Resources/Scripts/Gui/Preferences.as:819
+msgctxt "Preferences"
+msgid "Middle Mouse Button"
+msgstr "Chuột giữa"
+
+#: Resources/Scripts/Gui/Preferences.as:821
+msgctxt "Preferences"
+msgid "Mouse Button 4"
+msgstr "Nút chuột 4"
+
+#: Resources/Scripts/Gui/Preferences.as:823
+msgctxt "Preferences"
+msgid "Mouse Button 5"
+msgstr "Nút chuột 5"
+
+#: Resources/Scripts/Gui/Preferences.as:825
+msgctxt "Preferences"
+msgid "Escape"
+msgstr "Escape"
+
+#: Resources/Scripts/Gui/Preferences.as:827
+msgctxt "Preferences"
+msgid "Tab"
+msgstr "Tab"
+
+#: Resources/Scripts/Gui/Preferences.as:829
+msgctxt "Preferences"
+msgid "Backspace"
+msgstr "Backspace"
+
+#: Resources/Scripts/Gui/Preferences.as:831
+msgctxt "Preferences"
+msgid "Delete"
+msgstr "Delete"
+
+#: Resources/Scripts/Gui/Preferences.as:833
+msgctxt "Preferences"
+msgid "Enter"
+msgstr "Enter"
+
+#: Resources/Scripts/Gui/Preferences.as:835
+msgctxt "Preferences"
+msgid "Space"
+msgstr "Space"
+
+#: Resources/Scripts/Gui/Preferences.as:837
+msgctxt "Preferences"
+msgid "Control"
+msgstr "Control"
+
+#: Resources/Scripts/Gui/Preferences.as:839
+msgctxt "Preferences"
+msgid "Left Control"
+msgstr "Control trái"
+
+#: Resources/Scripts/Gui/Preferences.as:841
+msgctxt "Preferences"
+msgid "Right Control"
+msgstr "Control phải"
+
+#: Resources/Scripts/Gui/Preferences.as:843
+msgctxt "Preferences"
+msgid "Shift"
+msgstr "Shift"
+
+#: Resources/Scripts/Gui/Preferences.as:845
+msgctxt "Preferences"
+msgid "Left Shift"
+msgstr "Shift trái"
+
+#: Resources/Scripts/Gui/Preferences.as:847
+msgctxt "Preferences"
+msgid "Right Shift"
+msgstr "Shift phải"
+
+#: Resources/Scripts/Gui/Preferences.as:849
+msgctxt "Preferences"
+msgid "Left Alt"
+msgstr "Alt trái"
+
+#: Resources/Scripts/Gui/Preferences.as:851
+msgctxt "Preferences"
+msgid "Right Alt"
+msgstr "Alt phải"
+
+#: Resources/Scripts/Gui/Preferences.as:853
+msgctxt "Preferences"
+msgid "Up Arrow"
+msgstr "Mũi tên lên"
+
+#: Resources/Scripts/Gui/Preferences.as:855
+msgctxt "Preferences"
+msgid "Down Arrow"
+msgstr "Mũi tên xuống"
+
+#: Resources/Scripts/Gui/Preferences.as:857
+msgctxt "Preferences"
+msgid "Left Arrow"
+msgstr "Mũi tên trái"
+
+#: Resources/Scripts/Gui/Preferences.as:859
+msgctxt "Preferences"
+msgid "Right Arrow"
+msgstr "Mũi tên phải"
+
+#: Resources/Scripts/Gui/Preferences.as:861
+msgctxt "Preferences"
+msgid "Page Up"
+msgstr "Page Up"
+
+#: Resources/Scripts/Gui/Preferences.as:863
+msgctxt "Preferences"
+msgid "Page Down"
+msgstr "Page Down"
+
+#: Resources/Scripts/Gui/Preferences.as:1114
+#: Resources/Scripts/Gui/Preferences.as:1278
+msgctxt "Preferences"
+msgid "No Preview Available."
+msgstr "Không có bản xem trước."
+
+#: Resources/Scripts/Gui/Preferences.as:1486
+#: Resources/Scripts/Gui/Preferences.as:1493
+#: Resources/Scripts/Gui/Preferences.as:1595
+#: Resources/Scripts/Gui/Preferences.as:1600
+#: Resources/Scripts/Gui/Preferences.as:1704
+msgctxt "Preferences"
+msgid "ON"
+msgstr "BẬT"
+
+#: Resources/Scripts/Gui/Preferences.as:1487
+#: Resources/Scripts/Gui/Preferences.as:1495
+#: Resources/Scripts/Gui/Preferences.as:1579
+#: Resources/Scripts/Gui/Preferences.as:1590
+#: Resources/Scripts/Gui/Preferences.as:1597
+#: Resources/Scripts/Gui/Preferences.as:1602
+#: Resources/Scripts/Gui/Preferences.as:1610
+#: Resources/Scripts/Gui/Preferences.as:1615
+#: Resources/Scripts/Gui/Preferences.as:1703
+#: Resources/Scripts/Gui/Preferences.as:1723
+#: Resources/Scripts/Gui/Preferences.as:1728
+#: Resources/Scripts/Gui/Preferences.as:1758
+#: Resources/Scripts/Gui/Preferences.as:1770
+#: Resources/Scripts/Gui/Preferences.as:1812
+msgctxt "Preferences"
+msgid "OFF"
+msgstr "TẮT"
+
+#: Resources/Scripts/Gui/Preferences.as:1494
+msgctxt "Preferences"
+msgid "REVERSED"
+msgstr "ĐẢO NGƯỢC"
+
+#: Resources/Scripts/Gui/Preferences.as:1519
+msgctxt "Preferences"
+msgid "Reset"
+msgstr "Đặt lại"
+
+#: Resources/Scripts/Gui/Preferences.as:1525
+msgctxt "Preferences"
+msgid "Randomize"
+msgstr "Ngẫu nhiên"
+
+#: Resources/Scripts/Gui/Preferences.as:1568
+msgctxt "Preferences"
+msgid "Player Information"
+msgstr "Thông tin người chơi"
+
+#: Resources/Scripts/Gui/Preferences.as:1569
+msgctxt "Preferences"
+msgid "Player Name"
+msgstr "Tên người chơi"
+
+#: Resources/Scripts/Gui/Preferences.as:1575
+msgctxt "Preferences"
+msgid "Gameplay"
+msgstr "Lối chơi"
+
+#: Resources/Scripts/Gui/Preferences.as:1576
+msgctxt "Preferences"
+msgid "Aiming Animation"
+msgstr "Hoạt ảnh ngắm"
+
+#: Resources/Scripts/Gui/Preferences.as:1577
+msgctxt "Preferences"
+msgid "FAST"
+msgstr "NHANH"
+
+#: Resources/Scripts/Gui/Preferences.as:1578
+#: Resources/Scripts/Gui/Preferences.as:1589
+#: Resources/Scripts/Gui/Preferences.as:1609
+#: Resources/Scripts/Gui/Preferences.as:1614
+#: Resources/Scripts/Gui/Preferences.as:1621
+#: Resources/Scripts/Gui/Preferences.as:1625
+#: Resources/Scripts/Gui/Preferences.as:1719
+msgctxt "Preferences"
+msgid "NORMAL"
+msgstr "BÌNH THƯỜNG"
+
+#: Resources/Scripts/Gui/Preferences.as:1581
+msgctxt "Preferences"
+msgid "Full Aim Down Sight"
+msgstr "Ngắm đầy đủ"
+
+#: Resources/Scripts/Gui/Preferences.as:1582
+msgctxt "Preferences"
+msgid "Classic Weapon Recoil"
+msgstr "Giật súng cổ điển"
+
+#: Resources/Scripts/Gui/Preferences.as:1583
+msgctxt "Preferences"
+msgid "Classic Sprinting"
+msgstr "Chạy cổ điển"
+
+#: Resources/Scripts/Gui/Preferences.as:1584
+msgctxt "Preferences"
+msgid "Classic Zoom"
+msgstr "Zoom cổ điển"
+
+#: Resources/Scripts/Gui/Preferences.as:1586
+msgctxt "Preferences"
+msgid "Effects"
+msgstr "Hiệu ứng"
+
+#: Resources/Scripts/Gui/Preferences.as:1587
+msgctxt "Preferences"
+msgid "Blood"
+msgstr "Máu"
+
+#: Resources/Scripts/Gui/Preferences.as:1588
+msgctxt "Preferences"
+msgid "MARKS"
+msgstr "VẾT"
+
+#: Resources/Scripts/Gui/Preferences.as:1592
+msgctxt "Preferences"
+msgid "Ragdoll Corpses"
+msgstr "Xác ragdoll"
+
+#: Resources/Scripts/Gui/Preferences.as:1593
+msgctxt "Preferences"
+msgid "Enhanced Ragdoll Physics"
+msgstr "Vật lý ragdoll nâng cao"
+
+#: Resources/Scripts/Gui/Preferences.as:1594
+msgctxt "Preferences"
+msgid "Bullet Tracers"
+msgstr "Vệt đạn"
+
+#: Resources/Scripts/Gui/Preferences.as:1596
+#: Resources/Scripts/Gui/Preferences.as:1601
+msgctxt "Preferences"
+msgid "3rd Person"
+msgstr "Góc nhìn thứ 3"
+
+#: Resources/Scripts/Gui/Preferences.as:1599
+msgctxt "Preferences"
+msgid "Muzzle Flashes"
+msgstr "Lửa họng súng"
+
+#: Resources/Scripts/Gui/Preferences.as:1604
+msgctxt "Preferences"
+msgid "Eject Bullet Casings"
+msgstr "Bắn vỏ đạn"
+
+#: Resources/Scripts/Gui/Preferences.as:1605
+msgctxt "Preferences"
+msgid "Hurt Screen Effects"
+msgstr "Hiệu ứng màn hình bị thương"
+
+#: Resources/Scripts/Gui/Preferences.as:1606
+msgctxt "Preferences"
+msgid "Heal Screen Effects"
+msgstr "Hiệu ứng màn hình hồi máu"
+
+#: Resources/Scripts/Gui/Preferences.as:1607
+msgctxt "Preferences"
+msgid "Camera Shake"
+msgstr "Rung camera"
+
+#: Resources/Scripts/Gui/Preferences.as:1608
+#: Resources/Scripts/Gui/Preferences.as:1613
+msgctxt "Preferences"
+msgid "MORE"
+msgstr "NHIỀU HƠN"
+
+#: Resources/Scripts/Gui/Preferences.as:1612
+msgctxt "Preferences"
+msgid "Particles"
+msgstr "Hạt"
+
+#: Resources/Scripts/Gui/Preferences.as:1617
+msgctxt "Preferences"
+msgid "Water Splash"
+msgstr "Bắn nước"
+
+#: Resources/Scripts/Gui/Preferences.as:1619
+msgctxt "Preferences"
+msgid "Feedbacks"
+msgstr "Phản hồi"
+
+#: Resources/Scripts/Gui/Preferences.as:1620
+msgctxt "Preferences"
+msgid "Center Messages"
+msgstr "Tin nhắn giữa"
+
+#: Resources/Scripts/Gui/Preferences.as:1622
+msgctxt "Preferences"
+msgid "LESS"
+msgstr "ÍT HƠN"
+
+#: Resources/Scripts/Gui/Preferences.as:1624
+msgctxt "Preferences"
+msgid "Center Messages Size"
+msgstr "Kích thước tin nhắn giữa"
+
+#: Resources/Scripts/Gui/Preferences.as:1626
+msgctxt "Preferences"
+msgid "SMALL"
+msgstr "NHỎ"
+
+#: Resources/Scripts/Gui/Preferences.as:1628
+msgctxt "Preferences"
+msgid "Ignore Chat Messages"
+msgstr "Bỏ qua tin nhắn chat"
+
+#: Resources/Scripts/Gui/Preferences.as:1629
+msgctxt "Preferences"
+msgid "Ignore Private Messages"
+msgstr "Bỏ qua tin nhắn riêng"
+
+#: Resources/Scripts/Gui/Preferences.as:1630
+msgctxt "Preferences"
+msgid "Master Volume"
+msgstr "Âm lượng chính"
+
+#: Resources/Scripts/Gui/Preferences.as:1632
+msgctxt "Preferences"
+msgid "Death Camera Volume"
+msgstr "Âm lượng camera chết"
+
+#: Resources/Scripts/Gui/Preferences.as:1633
+msgctxt "Preferences"
+msgid "Respawn Beep Volume"
+msgstr "Âm lượng tiếng bíp hồi sinh"
+
+#: Resources/Scripts/Gui/Preferences.as:1634
+msgctxt "Preferences"
+msgid "Hit Feedback Volume"
+msgstr "Âm lượng phản hồi trúng"
+
+#: Resources/Scripts/Gui/Preferences.as:1635
+msgctxt "Preferences"
+msgid "Headshot Feedback Volume"
+msgstr "Âm lượng phản hồi bắn đầu"
+
+#: Resources/Scripts/Gui/Preferences.as:1636
+msgctxt "Preferences"
+msgid "Chat Notify Sounds"
+msgstr "Âm thanh thông báo chat"
+
+#: Resources/Scripts/Gui/Preferences.as:1637
+msgctxt "Preferences"
+msgid "Show Alerts"
+msgstr "Hiện cảnh báo"
+
+#: Resources/Scripts/Gui/Preferences.as:1638
+msgctxt "Preferences"
+msgid "Show Server Alerts"
+msgstr "Hiện cảnh báo máy chủ"
+
+#: Resources/Scripts/Gui/Preferences.as:1639
+msgctxt "Preferences"
+msgid "Alert Sounds"
+msgstr "Âm thanh cảnh báo"
+
+#: Resources/Scripts/Gui/Preferences.as:1640
+msgctxt "Preferences"
+msgid "Hit Log"
+msgstr "Nhật ký trúng"
+
+#: Resources/Scripts/Gui/Preferences.as:1641
+msgctxt "Preferences"
+msgid "Hit Indicator"
+msgstr "Chỉ báo trúng"
+
+#: Resources/Scripts/Gui/Preferences.as:1643
+msgctxt "Preferences"
+msgid "Viewmodel"
+msgstr "Viewmodel"
+
+#: Resources/Scripts/Gui/Preferences.as:1644
+msgctxt "Preferences"
+msgid "Weapon Keychains"
+msgstr "Móc khóa vũ khí"
+
+#: Resources/Scripts/Gui/Preferences.as:1646
+msgctxt "Preferences"
+msgid "Viewmodel Position"
+msgstr "Vị trí vũ khí"
+
+#: Resources/Scripts/Gui/Preferences.as:1649
+msgctxt "Preferences"
+msgid "Balanced"
+msgstr "Cân bằng"
+
+#: Resources/Scripts/Gui/Preferences.as:1650
+msgctxt "Preferences"
+msgid "Minimal"
+msgstr "Tối giản"
+
+#: Resources/Scripts/Gui/Preferences.as:1656
+msgctxt "Preferences"
+msgid "Viewmodel Alignment"
+msgstr "Căn chỉnh vũ khí"
+
+#: Resources/Scripts/Gui/Preferences.as:1658
+msgctxt "Preferences"
+msgid "Switch Viewmodel Handedness"
+msgstr "Đổi tay cầm vũ khí"
+
+#: Resources/Scripts/Gui/Preferences.as:1659
+msgctxt "Preferences"
+msgid "Hide Player Arms"
+msgstr "Ẩn tay người chơi"
+
+#: Resources/Scripts/Gui/Preferences.as:1660
+msgctxt "Preferences"
+msgid "Hide Player Body"
+msgstr "Ẩn thân người chơi"
+
+#: Resources/Scripts/Gui/Preferences.as:1661
+msgctxt "Preferences"
+msgid "Classic Player Model"
+msgstr "Mô hình người chơi cổ điển"
+
+#: Resources/Scripts/Gui/Preferences.as:1662
+msgctxt "Preferences"
+msgid "Classic Viewmodel"
+msgstr "Viewmodel cổ điển"
+
+#: Resources/Scripts/Gui/Preferences.as:1665
+msgctxt "Preferences"
+msgid "Field of View"
+msgstr "Góc nhìn"
+
+#: Resources/Scripts/Gui/Preferences.as:1667
+msgctxt "Preferences"
+msgid "Horizontal FOV"
+msgstr "FOV ngang"
+
+#: Resources/Scripts/Gui/Preferences.as:1668
+msgctxt "Preferences"
+msgid "Environmental Audio"
+msgstr "Âm thanh môi trường"
+
+#: Resources/Scripts/Gui/Preferences.as:1669
+msgctxt "Preferences"
+msgid "Skip dead players (death cam)"
+msgstr "Bỏ qua người chết (camera chết)"
+
+#: Resources/Scripts/Gui/Preferences.as:1670
+msgctxt "Preferences"
+msgid "Save Final Score Screenshot"
+msgstr "Lưu ảnh chụp điểm cuối"
+
+#: Resources/Scripts/Gui/Preferences.as:1671
+msgctxt "Preferences"
+msgid "Debug Hit Detection"
+msgstr "Gỡ lỗi phát hiện trúng"
+
+#: Resources/Scripts/Gui/Preferences.as:1672
+msgctxt "Preferences"
+msgid "Hit Debugger Size"
+msgstr "Kích thước gỡ lỗi trúng"
+
+#: Resources/Scripts/Gui/Preferences.as:1674
+msgctxt "Preferences"
+msgid "Toggle Hit Debugger Zoom"
+msgstr "Zoom gỡ lỗi trúng"
+
+#: Resources/Scripts/Gui/Preferences.as:1675
+msgctxt "Preferences"
+msgid "Hit Debugger Fade Time"
+msgstr "Thời gian mờ gỡ lỗi trúng"
+
+#: Resources/Scripts/Gui/Preferences.as:1677
+msgctxt "Preferences"
+msgid "Debug Weapon Spread"
+msgstr "Gỡ lỗi độ phân tán súng"
+
+#: Resources/Scripts/Gui/Preferences.as:1678
+msgctxt "Preferences"
+msgid "Debug Block Cursor"
+msgstr "Gỡ lỗi con trỏ khối"
+
+#: Resources/Scripts/Gui/Preferences.as:1679
+msgctxt "Preferences"
+msgid "Debug Players Hitbox"
+msgstr "Gỡ lỗi hitbox người chơi"
+
+#: Resources/Scripts/Gui/Preferences.as:1680
+msgctxt "Preferences"
+msgid "Debug Weapon Anchor Points"
+msgstr "Gỡ lỗi điểm neo vũ khí"
+
+#: Resources/Scripts/Gui/Preferences.as:1701
+msgctxt "Preferences"
+msgid "World Markers"
+msgstr "Dấu thế giới"
+
+#: Resources/Scripts/Gui/Preferences.as:1702
+msgctxt "Preferences"
+msgid "Damage Indicators"
+msgstr "Chỉ báo sát thương"
+
+#: Resources/Scripts/Gui/Preferences.as:1705
+msgctxt "Preferences"
+msgid "Grenades"
+msgstr "Lựu đạn"
+
+#: Resources/Scripts/Gui/Preferences.as:1707
+msgctxt "Preferences"
+msgid "Show Hover Player Names"
+msgstr "Hiện tên khi di chuột"
+
+#: Resources/Scripts/Gui/Preferences.as:1708
+msgctxt "Preferences"
+msgid "Show Dead Player Names"
+msgstr "Hiện tên người chơi chết"
+
+#: Resources/Scripts/Gui/Preferences.as:1710
+msgctxt "Preferences"
+msgid "Heads-Up Display"
+msgstr "HUD"
+
+#: Resources/Scripts/Gui/Preferences.as:1711
+msgctxt "Preferences"
+msgid "Hide HUD"
+msgstr "Ẩn HUD"
+
+#: Resources/Scripts/Gui/Preferences.as:1712
+msgctxt "Preferences"
+msgid "HUD Color"
+msgstr "Màu HUD"
+
+#: Resources/Scripts/Gui/Preferences.as:1714
+#: Resources/Scripts/Gui/Preferences.as:1777
+msgctxt "Preferences"
+msgid "Custom Color"
+msgstr "Màu tùy chỉnh"
+
+#: Resources/Scripts/Gui/Preferences.as:1716
+msgctxt "Preferences"
+msgid "HUD Edge Positions"
+msgstr "Vị trí cạnh HUD"
+
+#: Resources/Scripts/Gui/Preferences.as:1717
+msgctxt "Preferences"
+msgid "Edit"
+msgstr "Sửa"
+
+#: Resources/Scripts/Gui/Preferences.as:1718
+msgctxt "Preferences"
+msgid "HUD Ammo Style"
+msgstr "Kiểu đạn HUD"
+
+#: Resources/Scripts/Gui/Preferences.as:1720
+msgctxt "Preferences"
+msgid "SIMPLE"
+msgstr "ĐƠN GIẢN"
+
+#: Resources/Scripts/Gui/Preferences.as:1722
+msgctxt "Preferences"
+msgid "Show Alive Player Count"
+msgstr "Hiện số người chơi sống"
+
+#: Resources/Scripts/Gui/Preferences.as:1724
+#: Resources/Scripts/Gui/Preferences.as:1729
+msgctxt "Preferences"
+msgid "Top"
+msgstr "Trên"
+
+#: Resources/Scripts/Gui/Preferences.as:1725
+#: Resources/Scripts/Gui/Preferences.as:1730
+#: Resources/Scripts/Gui/Preferences.as:1759
+msgctxt "Preferences"
+msgid "Bottom"
+msgstr "Dưới"
+
+#: Resources/Scripts/Gui/Preferences.as:1727
+msgctxt "Preferences"
+msgid "Show Client Statistics"
+msgstr "Hiện thống kê client"
+
+#: Resources/Scripts/Gui/Preferences.as:1732
+msgctxt "Preferences"
+msgid "Small Stats Font"
+msgstr "Font thống kê nhỏ"
+
+#: Resources/Scripts/Gui/Preferences.as:1733
+msgctxt "Preferences"
+msgid "Show Player Statistics"
+msgstr "Hiện thống kê người chơi"
+
+#: Resources/Scripts/Gui/Preferences.as:1734
+msgctxt "Preferences"
+msgid "Show Placed Blocks"
+msgstr "Hiện khối đã đặt"
+
+#: Resources/Scripts/Gui/Preferences.as:1735
+msgctxt "Preferences"
+msgid "Player Statistics Height"
+msgstr "Chiều cao thống kê người chơi"
+
+#: Resources/Scripts/Gui/Preferences.as:1737
+msgctxt "Preferences"
+msgid "Chat Height"
+msgstr "Chiều cao chat"
+
+#: Resources/Scripts/Gui/Preferences.as:1739
+msgctxt "Preferences"
+msgid "Chat Fade Time"
+msgstr "Thời gian mờ chat"
+
+#: Resources/Scripts/Gui/Preferences.as:1741
+msgctxt "Preferences"
+msgid "Killfeed Height"
+msgstr "Chiều cao killfeed"
+
+#: Resources/Scripts/Gui/Preferences.as:1743
+msgctxt "Preferences"
+msgid "Killfeed Fade Time"
+msgstr "Thời gian mờ killfeed"
+
+#: Resources/Scripts/Gui/Preferences.as:1745
+msgctxt "Preferences"
+msgid "Killfeed Icons"
+msgstr "Biểu tượng killfeed"
+
+#: Resources/Scripts/Gui/Preferences.as:1746
+msgctxt "Preferences"
+msgid "Show Dominations"
+msgstr "Hiện thống trị"
+
+#: Resources/Scripts/Gui/Preferences.as:1748
+msgctxt "Preferences"
+msgid "Minimap"
+msgstr "Bản đồ nhỏ"
+
+#: Resources/Scripts/Gui/Preferences.as:1749
+msgctxt "Preferences"
+msgid "Minimap Size"
+msgstr "Kích thước bản đồ nhỏ"
+
+#: Resources/Scripts/Gui/Preferences.as:1751
+msgctxt "Preferences"
+msgid "Minimap Scale Mode"
+msgstr "Chế độ tỷ lệ bản đồ nhỏ"
+
+#: Resources/Scripts/Gui/Preferences.as:1753
+msgctxt "Preferences"
+msgid "Minimap Opacity"
+msgstr "Độ mờ bản đồ nhỏ"
+
+#: Resources/Scripts/Gui/Preferences.as:1755
+msgctxt "Preferences"
+msgid "Use Weapon Icons"
+msgstr "Dùng biểu tượng vũ khí"
+
+#: Resources/Scripts/Gui/Preferences.as:1756
+msgctxt "Preferences"
+msgid "Use Random Colors"
+msgstr "Dùng màu ngẫu nhiên"
+
+#: Resources/Scripts/Gui/Preferences.as:1757
+msgctxt "Preferences"
+msgid "Show Map Location"
+msgstr "Hiện vị trí trên bản đồ"
+
+#: Resources/Scripts/Gui/Preferences.as:1760
+msgctxt "Preferences"
+msgid "Side"
+msgstr "Bên"
+
+#: Resources/Scripts/Gui/Preferences.as:1762
+msgctxt "Preferences"
+msgid "Show Player Names"
+msgstr "Hiện tên người chơi"
+
+#: Resources/Scripts/Gui/Preferences.as:1763
+msgctxt "Preferences"
+msgid "Circular Minimap"
+msgstr "Bản đồ nhỏ tròn"
+
+#: Resources/Scripts/Gui/Preferences.as:1764
+msgctxt "Preferences"
+msgid "Rotating Minimap"
+msgstr "Bản đồ nhỏ xoay"
+
+#: Resources/Scripts/Gui/Preferences.as:1766
+msgctxt "Preferences"
+msgid "Target"
+msgstr "Tầm ngắm"
+
+#: Resources/Scripts/Gui/Preferences.as:1769
+msgctxt "Preferences"
+msgid "Target Type"
+msgstr "Loại tầm ngắm"
+
+#: Resources/Scripts/Gui/Preferences.as:1774
+#: Resources/Scripts/Gui/Preferences.as:1818
+msgctxt "Preferences"
+msgid "Lines"
+msgstr "Đường"
+
+#: Resources/Scripts/Gui/Preferences.as:1775
+#: Resources/Scripts/Gui/Preferences.as:1819
+msgctxt "Preferences"
+msgid "Color"
+msgstr "Màu"
+
+#: Resources/Scripts/Gui/Preferences.as:1779
+#: Resources/Scripts/Gui/Preferences.as:1821
+msgctxt "Preferences"
+msgid "Opacity"
+msgstr "Độ mờ"
+
+#: Resources/Scripts/Gui/Preferences.as:1781
+#: Resources/Scripts/Gui/Preferences.as:1823
+msgctxt "Preferences"
+msgid "Length"
+msgstr "Chiều dài"
+
+#: Resources/Scripts/Gui/Preferences.as:1784
+#: Resources/Scripts/Gui/Preferences.as:1826
+msgctxt "Preferences"
+msgid "Thickness"
+msgstr "Độ dày"
+
+#: Resources/Scripts/Gui/Preferences.as:1786
+#: Resources/Scripts/Gui/Preferences.as:1828
+msgctxt "Preferences"
+msgid "Gap"
+msgstr "Khoảng trống"
+
+#: Resources/Scripts/Gui/Preferences.as:1788
+#: Resources/Scripts/Gui/Preferences.as:1830
+msgctxt "Preferences"
+msgid "Dynamic"
+msgstr "Động"
+
+#: Resources/Scripts/Gui/Preferences.as:1789
+#: Resources/Scripts/Gui/Preferences.as:1831
+msgctxt "Preferences"
+msgid "Dynamic Split Dist"
+msgstr "Khoảng tách động"
+
+#: Resources/Scripts/Gui/Preferences.as:1791
+#: Resources/Scripts/Gui/Preferences.as:1833
+msgctxt "Preferences"
+msgid "Outline"
+msgstr "Viền"
+
+#: Resources/Scripts/Gui/Preferences.as:1792
+#: Resources/Scripts/Gui/Preferences.as:1834
+msgctxt "Preferences"
+msgid "Outline Color"
+msgstr "Màu viền"
+
+#: Resources/Scripts/Gui/Preferences.as:1794
+#: Resources/Scripts/Gui/Preferences.as:1836
+msgctxt "Preferences"
+msgid "Outline Opacity"
+msgstr "Độ mờ viền"
+
+#: Resources/Scripts/Gui/Preferences.as:1796
+#: Resources/Scripts/Gui/Preferences.as:1838
+msgctxt "Preferences"
+msgid "Outline Thickness"
+msgstr "Độ dày viền"
+
+#: Resources/Scripts/Gui/Preferences.as:1798
+#: Resources/Scripts/Gui/Preferences.as:1840
+msgctxt "Preferences"
+msgid "Rounded Corners Style"
+msgstr "Kiểu góc bo tròn"
+
+#: Resources/Scripts/Gui/Preferences.as:1799
+#: Resources/Scripts/Gui/Preferences.as:1841
+msgctxt "Preferences"
+msgid "Center Dot"
+msgstr "Chấm giữa"
+
+#: Resources/Scripts/Gui/Preferences.as:1800
+#: Resources/Scripts/Gui/Preferences.as:1842
+msgctxt "Preferences"
+msgid "Center Dot Color"
+msgstr "Màu chấm giữa"
+
+#: Resources/Scripts/Gui/Preferences.as:1802
+#: Resources/Scripts/Gui/Preferences.as:1844
+msgctxt "Preferences"
+msgid "Center Dot Opacity"
+msgstr "Độ mờ chấm giữa"
+
+#: Resources/Scripts/Gui/Preferences.as:1804
+#: Resources/Scripts/Gui/Preferences.as:1846
+msgctxt "Preferences"
+msgid "Center Dot Thickness"
+msgstr "Độ dày chấm giữa"
+
+#: Resources/Scripts/Gui/Preferences.as:1806
+#: Resources/Scripts/Gui/Preferences.as:1848
+msgctxt "Preferences"
+msgid "T Style"
+msgstr "Kiểu T"
+
+#: Resources/Scripts/Gui/Preferences.as:1808
+msgctxt "Preferences"
+msgid "Scope"
+msgstr "Ống ngắm"
+
+#: Resources/Scripts/Gui/Preferences.as:1811
+msgctxt "Preferences"
+msgid "Reflex Sight"
+msgstr "Tầm ngắm phản xạ"
+
+#: Resources/Scripts/Gui/Preferences.as:1813
+msgctxt "Preferences"
+msgid "Dot"
+msgstr "Chấm"
+
+#: Resources/Scripts/Gui/Preferences.as:1814
+msgctxt "Preferences"
+msgid "Cross"
+msgstr "Chữ thập"
+
+#: Resources/Scripts/Gui/Preferences.as:1816
+msgctxt "Preferences"
+msgid "Scope Type"
+msgstr "Loại ống ngắm"
+
+#: Resources/Scripts/Gui/Preferences.as:1863
+#: Resources/Scripts/Gui/Preferences.as:1984
+msgctxt "Preferences"
+msgid "General"
+msgstr "Chung"
+
+#: Resources/Scripts/Gui/Preferences.as:1864
+msgctxt "Preferences"
+msgid "Render Scale"
+msgstr "Tỷ lệ render"
+
+#: Resources/Scripts/Gui/Preferences.as:1866
+msgctxt "Preferences"
+msgid "Render Scaling Filter"
+msgstr "Bộ lọc tỷ lệ render"
+
+#: Resources/Scripts/Gui/Preferences.as:1868
+msgctxt "Preferences"
+msgid "Rendering Statistics"
+msgstr "Thống kê render"
+
+#: Resources/Scripts/Gui/Preferences.as:1869
+msgctxt "Preferences"
+msgid "Allow CPU Rendering"
+msgstr "Cho phép render CPU"
+
+#: Resources/Scripts/Gui/Preferences.as:1871
+msgctxt "Preferences"
+msgid "World"
+msgstr "Thế giới"
+
+#: Resources/Scripts/Gui/Preferences.as:1872
+msgctxt "Preferences"
+msgid "Dynamic Lights"
+msgstr "Ánh sáng động"
+
+#: Resources/Scripts/Gui/Preferences.as:1873
+msgctxt "Preferences"
+msgid "Tracers Lights"
+msgstr "Ánh sáng vệt"
+
+#: Resources/Scripts/Gui/Preferences.as:1874
+msgctxt "Preferences"
+msgid "Depth Prepass"
+msgstr "Prepass độ sâu"
+
+#: Resources/Scripts/Gui/Preferences.as:1875
+msgctxt "Preferences"
+msgid "Occlusion Querying"
+msgstr "Truy vấn che khuất"
+
+#: Resources/Scripts/Gui/Preferences.as:1876
+msgctxt "Preferences"
+msgid "Object Outlines"
+msgstr "Viền đối tượng"
+
+#: Resources/Scripts/Gui/Preferences.as:1878
+msgctxt "Preferences"
+msgid "Post-processing"
+msgstr "Hậu xử lý"
+
+#: Resources/Scripts/Gui/Preferences.as:1879
+msgctxt "Preferences"
+msgid "Depth Of Field"
+msgstr "Độ sâu trường ảnh"
+
+#: Resources/Scripts/Gui/Preferences.as:1880
+msgctxt "Preferences"
+msgid "Camera Blur"
+msgstr "Làm mờ camera"
+
+#: Resources/Scripts/Gui/Preferences.as:1881
+msgctxt "Preferences"
+msgid "FXAA Anti-Aliasing"
+msgstr "Khử răng cưa FXAA"
+
+#: Resources/Scripts/Gui/Preferences.as:1882
+msgctxt "Preferences"
+msgid "Lens Flares"
+msgstr "Tia sáng ống kính"
+
+#: Resources/Scripts/Gui/Preferences.as:1883
+msgctxt "Preferences"
+msgid "Flares Lights"
+msgstr "Ánh sáng tia"
+
+#: Resources/Scripts/Gui/Preferences.as:1884
+msgctxt "Preferences"
+msgid "Color Correction"
+msgstr "Hiệu chỉnh màu"
+
+#: Resources/Scripts/Gui/Preferences.as:1885
+msgctxt "Preferences"
+msgid "Sharpening"
+msgstr "Làm sắc nét"
+
+#: Resources/Scripts/Gui/Preferences.as:1887
+msgctxt "Preferences"
+msgid "Saturation"
+msgstr "Độ bão hòa"
+
+#: Resources/Scripts/Gui/Preferences.as:1889
+msgctxt "Preferences"
+msgid "Exposure"
+msgstr "Phơi sáng"
+
+#: Resources/Scripts/Gui/Preferences.as:1892
+msgctxt "Preferences"
+msgid "Software Renderer"
+msgstr "Renderer phần mềm"
+
+#: Resources/Scripts/Gui/Preferences.as:1893
+msgctxt "Preferences"
+msgid "Thread Count"
+msgstr "Số luồng"
+
+#: Resources/Scripts/Gui/Preferences.as:1894
+msgctxt "Preferences"
+msgid " Threads"
+msgstr " luồng"
+
+#: Resources/Scripts/Gui/Preferences.as:1895
+msgctxt "Preferences"
+msgid "Undersampling"
+msgstr "Lấy mẫu dưới"
+
+#: Resources/Scripts/Gui/Preferences.as:1911
+msgctxt "Preferences"
+msgid "Weapons/Tools"
+msgstr "Vũ khí/Công cụ"
+
+#: Resources/Scripts/Gui/Preferences.as:1912
+msgctxt "Preferences"
+msgid "Attack"
+msgstr "Tấn công"
+
+#: Resources/Scripts/Gui/Preferences.as:1913
+msgctxt "Preferences"
+msgid "Alt. Attack"
+msgstr "Tấn công phụ"
+
+#: Resources/Scripts/Gui/Preferences.as:1914
+msgctxt "Preferences"
+msgid "Hold Aim Down Sight"
+msgstr "Giữ ngắm"
+
+#: Resources/Scripts/Gui/Preferences.as:1915
+msgctxt "Preferences"
+msgid "Mouse Sensitivity Type"
+msgstr "Loại độ nhạy chuột"
+
+#: Resources/Scripts/Gui/Preferences.as:1917
+msgctxt "Preferences"
+msgid "Mouse Sensitivity"
+msgstr "Độ nhạy chuột"
+
+#: Resources/Scripts/Gui/Preferences.as:1919
+msgctxt "Preferences"
+msgid "ADS Mouse Sens. Scale"
+msgstr "Tỷ lệ độ nhạy khi ngắm"
+
+#: Resources/Scripts/Gui/Preferences.as:1921
+msgctxt "Preferences"
+msgid "Mouse Acceleration"
+msgstr "Gia tốc chuột"
+
+#: Resources/Scripts/Gui/Preferences.as:1922
+msgctxt "Preferences"
+msgid "Exponential Power"
+msgstr "Công suất mũ"
+
+#: Resources/Scripts/Gui/Preferences.as:1924
+msgctxt "Preferences"
+msgid "Invert Y-axis Mouse Input"
+msgstr "Đảo trục Y chuột"
+
+#: Resources/Scripts/Gui/Preferences.as:1925
+msgctxt "Preferences"
+msgid "Reload"
+msgstr "Nạp đạn"
+
+#: Resources/Scripts/Gui/Preferences.as:1926
+msgctxt "Preferences"
+msgid "Equip Spade"
+msgstr "Trang bị xẻng"
+
+#: Resources/Scripts/Gui/Preferences.as:1927
+msgctxt "Preferences"
+msgid "Equip Block"
+msgstr "Trang bị khối"
+
+#: Resources/Scripts/Gui/Preferences.as:1928
+msgctxt "Preferences"
+msgid "Equip Weapon"
+msgstr "Trang bị vũ khí"
+
+#: Resources/Scripts/Gui/Preferences.as:1929
+msgctxt "Preferences"
+msgid "Equip Grenade"
+msgstr "Trang bị lựu đạn"
+
+#: Resources/Scripts/Gui/Preferences.as:1930
+msgctxt "Preferences"
+msgid "Last Used Tool"
+msgstr "Công cụ dùng gần nhất"
+
+#: Resources/Scripts/Gui/Preferences.as:1931
+msgctxt "Preferences"
+msgid "Switch Tools by Wheel"
+msgstr "Đổi công cụ bằng bánh xe"
+
+#: Resources/Scripts/Gui/Preferences.as:1933
+msgctxt "Preferences"
+msgid "Movement"
+msgstr "Di chuyển"
+
+#: Resources/Scripts/Gui/Preferences.as:1934
+msgctxt "Preferences"
+msgid "Move Forward"
+msgstr "Tiến"
+
+#: Resources/Scripts/Gui/Preferences.as:1935
+msgctxt "Preferences"
+msgid "Move Backward"
+msgstr "Lùi"
+
+#: Resources/Scripts/Gui/Preferences.as:1936
+msgctxt "Preferences"
+msgid "Move Left"
+msgstr "Sang trái"
+
+#: Resources/Scripts/Gui/Preferences.as:1937
+msgctxt "Preferences"
+msgid "Move Right"
+msgstr "Sang phải"
+
+#: Resources/Scripts/Gui/Preferences.as:1938
+msgctxt "Preferences"
+msgid "Crouch"
+msgstr "Ngồi"
+
+#: Resources/Scripts/Gui/Preferences.as:1939
+msgctxt "Preferences"
+msgid "Sneak"
+msgstr "Rón rén"
+
+#: Resources/Scripts/Gui/Preferences.as:1940
+msgctxt "Preferences"
+msgid "Jump"
+msgstr "Nhảy"
+
+#: Resources/Scripts/Gui/Preferences.as:1941
+msgctxt "Preferences"
+msgid "Sprint"
+msgstr "Chạy"
+
+#: Resources/Scripts/Gui/Preferences.as:1943
+msgctxt "Preferences"
+msgid "Color Palette"
+msgstr "Bảng màu"
+
+#: Resources/Scripts/Gui/Preferences.as:1944
+msgctxt "Preferences"
+msgid "Capture Color"
+msgstr "Lấy màu"
+
+#: Resources/Scripts/Gui/Preferences.as:1945
+msgctxt "Preferences"
+msgid "Navigate up"
+msgstr "Di chuyển lên"
+
+#: Resources/Scripts/Gui/Preferences.as:1946
+msgctxt "Preferences"
+msgid "Navigate down"
+msgstr "Di chuyển xuống"
+
+#: Resources/Scripts/Gui/Preferences.as:1947
+msgctxt "Preferences"
+msgid "Navigate left"
+msgstr "Di chuyển trái"
+
+#: Resources/Scripts/Gui/Preferences.as:1948
+msgctxt "Preferences"
+msgid "Navigate right"
+msgstr "Di chuyển phải"
+
+#: Resources/Scripts/Gui/Preferences.as:1949
+msgctxt "Preferences"
+msgid "Toggle extended palette"
+msgstr "Bật/tắt bảng màu mở rộng"
+
+#: Resources/Scripts/Gui/Preferences.as:1952
+msgctxt "Preferences"
+msgid "Scoreboard"
+msgstr "Bảng điểm"
+
+#: Resources/Scripts/Gui/Preferences.as:1953
+msgctxt "Preferences"
+msgid "Hold Large Map"
+msgstr "Giữ bản đồ lớn"
+
+#: Resources/Scripts/Gui/Preferences.as:1954
+msgctxt "Preferences"
+msgid "Minimap Scale"
+msgstr "Tỷ lệ bản đồ nhỏ"
+
+#: Resources/Scripts/Gui/Preferences.as:1955
+msgctxt "Preferences"
+msgid "Toggle Map"
+msgstr "Bật/tắt bản đồ"
+
+#: Resources/Scripts/Gui/Preferences.as:1956
+msgctxt "Preferences"
+msgid "Flashlight"
+msgstr "Đèn pin"
+
+#: Resources/Scripts/Gui/Preferences.as:1957
+msgctxt "Preferences"
+msgid "Global Chat"
+msgstr "Chat toàn cục"
+
+#: Resources/Scripts/Gui/Preferences.as:1958
+msgctxt "Preferences"
+msgid "Team Chat"
+msgstr "Chat đội"
+
+#: Resources/Scripts/Gui/Preferences.as:1959
+msgctxt "Preferences"
+msgid "Chat Log"
+msgstr "Nhật ký chat"
+
+#: Resources/Scripts/Gui/Preferences.as:1960
+msgctxt "Preferences"
+msgid "Chat Zoom"
+msgstr "Zoom chat"
+
+#: Resources/Scripts/Gui/Preferences.as:1961
+msgctxt "Preferences"
+msgid "Pie Menu"
+msgstr "Menu hình quạt"
+
+#: Resources/Scripts/Gui/Preferences.as:1962
+msgctxt "Preferences"
+msgid "Limbo Menu"
+msgstr "Menu limbo"
+
+#: Resources/Scripts/Gui/Preferences.as:1963
+msgctxt "Preferences"
+msgid "Save Map"
+msgstr "Lưu bản đồ"
+
+#: Resources/Scripts/Gui/Preferences.as:1964
+msgctxt "Preferences"
+msgid "Save Sceneshot"
+msgstr "Lưu sceneshot"
+
+#: Resources/Scripts/Gui/Preferences.as:1965
+msgctxt "Preferences"
+msgid "Save Screenshot"
+msgstr "Lưu ảnh chụp màn hình"
+
+#: Resources/Scripts/Gui/Preferences.as:1966
+msgctxt "Preferences"
+msgid "Master Volume Up"
+msgstr "Tăng âm lượng chính"
+
+#: Resources/Scripts/Gui/Preferences.as:1967
+msgctxt "Preferences"
+msgid "Master Volume Down"
+msgstr "Giảm âm lượng chính"
+
+#: Resources/Scripts/Gui/Preferences.as:1968
+msgctxt "Preferences"
+msgid "Network Graph"
+msgstr "Biểu đồ mạng"
+
+#: Resources/Scripts/Gui/Preferences.as:1969
+msgctxt "Preferences"
+msgid "Force Spectator Mode"
+msgstr "Buộc chế độ khán giả"
+
+#: Resources/Scripts/Gui/Preferences.as:1985
+msgctxt "Preferences"
+msgid "FPS Limit"
+msgstr "Giới hạn FPS"
+
+#: Resources/Scripts/Gui/Preferences.as:1988
+msgctxt "Preferences"
+msgid "Console Scrollback Lines"
+msgstr "Số dòng lịch sử console"
+
+#: Resources/Scripts/Gui/Preferences.as:1990
+msgctxt "Preferences"
+msgid "Server List URL"
+msgstr "URL danh sách máy chủ"
+
+#: Resources/Scripts/Gui/Preferences.as:1991
+msgctxt "Preferences"
+msgid "Server List Alt. URL"
+msgstr "URL phụ danh sách máy chủ"
+
+#: Resources/Scripts/Gui/Preferences.as:1992
+msgctxt "Preferences"
+msgid "Mod List URL"
+msgstr "URL danh sách mod"
+
+#: Resources/Scripts/Gui/Preferences.as:1993
+msgctxt "Preferences"
+msgid "Allow Unicode"
+msgstr "Cho phép Unicode"
+
+#: Resources/Scripts/Gui/Preferences.as:1994
+msgctxt "Preferences"
+msgid "Screenshot Format"
+msgstr "Định dạng ảnh chụp"
+
+#: Resources/Scripts/Gui/Preferences.as:1997
+msgctxt "Preferences"
+msgid "JPEG Quality"
+msgstr "Chất lượng JPEG"
+
+#: Resources/Scripts/Gui/Preferences.as:1999
+msgctxt "Preferences"
+msgid "Enable Startup Window"
+msgstr "Bật cửa sổ khởi động"
+
+#: Resources/Scripts/Gui/Preferences.as:2001
+msgctxt "Preferences"
+msgid "Demo Recording"
+msgstr "Ghi demo"
+
+#: Resources/Scripts/Gui/Preferences.as:2002
+msgctxt "Preferences"
+msgid "Start/Stop Recording"
+msgstr "Bắt đầu/Dừng ghi"
+
+#: Resources/Scripts/Gui/Preferences.as:2003
+msgctxt "Preferences"
+msgid "Auto Record"
+msgstr "Tự động ghi"
+
+#: Resources/Scripts/Gui/Preferences.as:2004
+msgctxt "Preferences"
+msgid "Auto Delete Old Demos"
+msgstr "Tự xóa demo cũ"
+
+#: Resources/Scripts/Gui/Preferences.as:2005
+msgctxt "Preferences"
+msgid "Max Stored Demos"
+msgstr "Số demo lưu tối đa"
+
+#: Resources/Scripts/Gui/Preferences.as:2008
+msgctxt "Preferences"
+msgid "Demo Playback"
+msgstr "Phát demo"
+
+#: Resources/Scripts/Gui/Preferences.as:2009
+msgctxt "Preferences"
+msgid "Pause/Resume"
+msgstr "Tạm dừng/Tiếp tục"
+
+#: Resources/Scripts/Gui/Preferences.as:2010
+msgctxt "Preferences"
+msgid "Speed Up"
+msgstr "Tăng tốc"
+
+#: Resources/Scripts/Gui/Preferences.as:2011
+msgctxt "Preferences"
+msgid "Slow Down"
+msgstr "Giảm tốc"
+
+#: Resources/Scripts/Gui/Preferences.as:2012
+msgctxt "Preferences"
+msgid "Seek Forward"
+msgstr "Tua tới"
+
+#: Resources/Scripts/Gui/Preferences.as:2013
+msgctxt "Preferences"
+msgid "Seek Backward"
+msgstr "Tua lùi"
+
+#: Resources/Scripts/Gui/Preferences.as:2014
+msgctxt "Preferences"
+msgid "Toggle Demo HUD"
+msgstr "Bật/tắt HUD demo"
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewFramework.as:499
+msgctxt "StartupScreen"
+msgid "Custom"
+msgstr "Tùy chỉnh"
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewFramework.as:608
+msgctxt "StartupScreen"
+msgid "Close"
+msgstr "Đóng"
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:55
+msgctxt "StartupScreen"
+msgid "Graphics Settings"
+msgstr "Cài đặt đồ họa"
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:60
+msgctxt "StartupScreen"
+msgid "Resolution"
+msgstr "Độ phân giải"
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:70
+msgctxt "StartupScreen"
+msgid "Fullscreen Mode"
+msgstr "Chế độ toàn màn hình"
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:76
+msgctxt "StartupScreen"
+msgid ""
+"By running in fullscreen mode OpenSpades occupies the screen, making it "
+"easier for you to concentrate on playing the game."
+msgstr ""
+"Chạy ở chế độ toàn màn hình, OpenSpades chiếm toàn bộ màn hình, giúp bạn dễ "
+"tập trung chơi hơn."
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:84
+msgctxt "StartupScreen"
+msgid "Renderer"
+msgstr "Renderer"
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:87
+msgctxt "StartupScreen"
+msgid "OpenGL"
+msgstr "OpenGL"
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:93
+msgctxt "StartupScreen"
+msgid ""
+"OpenGL renderer uses your computer's graphics accelerator to generate the "
+"game screen."
+msgstr ""
+"Renderer OpenGL dùng bộ tăng tốc đồ họa máy tính để tạo màn hình trò chơi."
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:102
+msgctxt "StartupScreen"
+msgid "Software"
+msgstr "Phần mềm"
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:108
+msgctxt "StartupScreen"
+msgid ""
+"Software renderer uses CPU to generate the game screen. Its quality and "
+"performance might be inferior to OpenGL renderer, but it works even with an "
+"unsupported GPU."
+msgstr ""
+"Renderer phần mềm dùng CPU để tạo màn hình trò chơi. Chất lượng và hiệu năng"
+" có thể kém hơn OpenGL, nhưng vẫn hoạt động với GPU không được hỗ trợ."
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:124
+msgctxt "StartupScreen"
+msgid ""
+"Antialiasing:Enables a technique to improve the appearance of high-contrast edges.\n"
+"\n"
+"MSAA: Performs antialiasing by generating an intermediate high-resolution image. Looks best, but doesn't cope with some settings.\n"
+"\n"
+"FXAA: Performs antialiasing by smoothing artifacts out as a post-process.|Off|MSAA 2x|4x|FXAA"
+msgstr ""
+"Khử răng cưa:Bật kỹ thuật cải thiện vẻ ngoài của cạnh độ tương phản cao.\n"
+"\n"
+"MSAA: Khử răng cưa bằng cách tạo ảnh trung gian độ phân giải cao. Trông đẹp nhất nhưng không tương thích một số cài đặt.\n"
+"\n"
+"FXAA: Khử răng cưa bằng cách làm mịn artifact như hậu xử lý.|Tắt|MSAA 2x|4x|FXAA"
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:132
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:206
+msgctxt "StartupScreen"
+msgid "Global Illumination"
+msgstr "Chiếu sáng toàn cục"
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:134
+msgctxt "StartupScreen"
+msgid ""
+"Enables a physically based simulation of light path for more realistic "
+"lighting."
+msgstr ""
+"Bật mô phỏng đường đi ánh sáng dựa trên vật lý để chiếu sáng thực tế hơn."
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:138
+msgctxt "StartupScreen"
+msgid "Linear HDR Rendering"
+msgstr "Render HDR tuyến tính"
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:139
+msgctxt "StartupScreen"
+msgid ""
+"Uses a number representation which allows wider dynamic range during "
+"rendering process. Additionally, this allows color calculation whose value "
+"is in linear correspondence with actual energy, that is, physically accurate"
+" blending can be achieved."
+msgstr ""
+"Dùng biểu diễn số cho phép dải động rộng hơn trong quá trình render. Ngoài "
+"ra cho phép tính màu có giá trị tương ứng tuyến tính với năng lượng thực, "
+"tức có thể đạt được hòa trộn chính xác về mặt vật lý."
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:146
+msgctxt "StartupScreen"
+msgid ""
+"Vertical Sync:Synchronizes screen updates to a monitor's refresh "
+"rate.|Off|On|Adaptive"
+msgstr ""
+"Đồng bộ dọc:Đồng bộ cập nhật màn hình với tần số làm mới màn "
+"hình.|Tắt|Bật|Thích ứng"
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:152
+msgctxt "StartupScreen"
+msgid "Camera Blur"
+msgstr "Làm mờ camera"
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:153
+msgctxt "StartupScreen"
+msgid "Blurs the screen when you turn quickly."
+msgstr "Làm mờ màn hình khi bạn quay nhanh."
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:156
+msgctxt "StartupScreen"
+msgid "Lens Scattering Filter"
+msgstr "Bộ lọc tán xạ ống kính"
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:157
+msgctxt "StartupScreen"
+msgid "Simulates light being scattered by dust on the camera lens."
+msgstr "Mô phỏng ánh sáng bị tán xạ bởi bụi trên ống kính camera."
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:160
+msgctxt "StartupScreen"
+msgid "Lens Flare"
+msgstr "Tia sáng ống kính"
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:161
+msgctxt "StartupScreen"
+msgid "The Sun causes lens flare."
+msgstr "Mặt trời gây tia sáng ống kính."
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:164
+msgctxt "StartupScreen"
+msgid "Flares for Dynamic Lights."
+msgstr "Tia sáng cho ánh sáng động."
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:165
+msgctxt "StartupScreen"
+msgid "Enables lens flare for light sources other than the Sun."
+msgstr "Bật tia sáng ống kính cho nguồn sáng khác ngoài Mặt trời."
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:168
+msgctxt "StartupScreen"
+msgid "Color Correction"
+msgstr "Hiệu chỉnh màu"
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:169
+msgctxt "StartupScreen"
+msgid "Applies cinematic color correction to make the image look better."
+msgstr "Áp dụng hiệu chỉnh màu điện ảnh để hình ảnh đẹp hơn."
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:172
+msgctxt "StartupScreen"
+msgid "Depth of Field"
+msgstr "Độ sâu trường ảnh"
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:173
+msgctxt "StartupScreen"
+msgid "Blurs out-of-focus objects."
+msgstr "Làm mờ các đối tượng ngoài tiêu điểm."
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:176
+msgctxt "StartupScreen"
+msgid "Screen Space Ambient Occlusion"
+msgstr "Che khuất môi trường không gian màn hình"
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:177
+msgctxt "StartupScreen"
+msgid "Simulates soft shadows that occur between nearby objects."
+msgstr "Mô phỏng bóng mềm giữa các đối tượng gần nhau."
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:179
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:224
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:241
+msgctxt "StartupScreen"
+msgid "Low"
+msgstr "Thấp"
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:180
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:225
+msgctxt "StartupScreen"
+msgid "Medium"
+msgstr "Trung bình"
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:181
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:226
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:243
+msgctxt "StartupScreen"
+msgid "High"
+msgstr "Cao"
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:182
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:244
+msgctxt "StartupScreen"
+msgid "Ultra"
+msgstr "Siêu"
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:185
+msgctxt "StartupScreen"
+msgid "Post-process"
+msgstr "Hậu xử lý"
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:186
+msgctxt "StartupScreen"
+msgid ""
+"Post-process modifies the image to make it look better and more realistic."
+msgstr "Hậu xử lý chỉnh sửa hình ảnh để đẹp và thực tế hơn."
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:192
+msgctxt "StartupScreen"
+msgid ""
+"Particle Quality|Low:Artifact occurs when a particle intersects other "
+"objects.|Medium:Particle intersects objects smoothly.|High:Particle "
+"intersects objects smoothly, and some objects casts their shadow to "
+"particles."
+msgstr ""
+"Chất lượng hạt|Thấp:Artifact xảy ra khi hạt cắt các đối tượng khác.|Trung "
+"bình:Hạt cắt đối tượng mượt mà.|Cao:Hạt cắt đối tượng mượt mà, và một số đối"
+" tượng đổ bóng lên hạt."
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:199
+msgctxt "StartupScreen"
+msgid "Volumetric Fog"
+msgstr "Sương mù thể tích"
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:200
+msgctxt "StartupScreen"
+msgid "None"
+msgstr "Không"
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:201
+msgctxt "StartupScreen"
+msgid "Disables the volumetric fog effect."
+msgstr "Tắt hiệu ứng sương mù thể tích."
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:202
+msgctxt "StartupScreen"
+msgid "Level 1"
+msgstr "Cấp 1"
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:203
+msgctxt "StartupScreen"
+msgid "Applies local illumination to the fog."
+msgstr "Áp dụng chiếu sáng cục bộ cho sương mù."
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:204
+msgctxt "StartupScreen"
+msgid "Level 2"
+msgstr "Cấp 2"
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:205
+msgctxt "StartupScreen"
+msgid "Applies both local illumination and global illumination to the fog."
+msgstr "Áp dụng cả chiếu sáng cục bộ và toàn cục cho sương mù."
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:206
+msgctxt "StartupScreen"
+msgid "Warning: '{0}' must be enabled."
+msgstr "Cảnh báo: '{0}' phải được bật."
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:213
+msgctxt "StartupScreen"
+msgid "Dynamic Lights"
+msgstr "Ánh sáng động"
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:214
+msgctxt "StartupScreen"
+msgid ""
+"Gives some objects an ability to emit light to give them an energy-emitting "
+"impression."
+msgstr ""
+"Cho một số đối tượng khả năng phát sáng để tạo ấn tượng phát năng lượng."
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:217
+msgctxt "StartupScreen"
+msgid "Shadows"
+msgstr "Bóng"
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:218
+msgctxt "StartupScreen"
+msgid "Non-static object casts a shadow."
+msgstr "Đối tượng không tĩnh đổ bóng."
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:221
+msgctxt "StartupScreen"
+msgid "Physically Based Lighting"
+msgstr "Chiếu sáng dựa trên vật lý"
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:222
+msgctxt "StartupScreen"
+msgid ""
+"Uses more accurate approximation techniques to decide the brightness of "
+"objects."
+msgstr ""
+"Dùng kỹ thuật xấp xỉ chính xác hơn để quyết định độ sáng của đối tượng."
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:229
+msgctxt "StartupScreen"
+msgid "Direct Lights"
+msgstr "Ánh sáng trực tiếp"
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:230
+msgctxt "StartupScreen"
+msgid ""
+"Controls how light encounting a material and atmosphere directly affects its"
+" appearance."
+msgstr ""
+"Điều khiển cách ánh sáng gặp vật liệu và khí quyển ảnh hưởng trực tiếp đến "
+"vẻ ngoài."
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:239
+msgctxt "StartupScreen"
+msgid ""
+"Water Shader|None:Water is rendered in the same way that normal blocks are "
+"done.|Level 1:Refraction and the reflected Sun are simulated.|Level 2:Waving"
+" water is simulated as well as reflection and refraction.|Level "
+"3:Reflections and refractions are rendered at the highest quality using "
+"screen-space techniques."
+msgstr ""
+"Shader nước|Không:Nước được render giống khối thường.|Cấp 1:Khúc xạ và Mặt "
+"trời phản chiếu được mô phỏng.|Cấp 2:Nước gợn sóng được mô phỏng cùng phản "
+"chiếu và khúc xạ.|Cấp 3:Phản chiếu và khúc xạ được render chất lượng cao "
+"nhất bằng kỹ thuật không gian màn hình."
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:242
+msgctxt "StartupScreen"
+msgid "Med"
+msgstr "TB"
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:247
+msgctxt "StartupScreen"
+msgid "Shader Effects"
+msgstr "Hiệu ứng shader"
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:248
+msgctxt "StartupScreen"
+msgid "Special effects."
+msgstr "Hiệu ứng đặc biệt."
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:263
+msgctxt "StartupScreen"
+msgid ""
+"Fast Mode:Reduces the image resolution to make the rendering "
+"faster.|Off|2x|4x"
+msgstr ""
+"Chế độ nhanh:Giảm độ phân giải hình ảnh để render nhanh hơn.|Tắt|2x|4x"
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:473
+msgctxt "StartupScreen"
+msgid "Audio Settings"
+msgstr "Cài đặt âm thanh"
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:478
+msgctxt "StartupScreen"
+msgid "Backend"
+msgstr "Backend"
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:481
+msgctxt "StartupScreen"
+msgid "OpenAL"
+msgstr "OpenAL"
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:487
+msgctxt "StartupScreen"
+msgid ""
+"Uses an OpenAL-capable sound card to process sound. In most cases where "
+"there isn't such a sound card, software emulation is used."
+msgstr ""
+"Dùng card âm thanh hỗ trợ OpenAL để xử lý âm thanh. Hầu hết trường hợp không"
+" có card như vậy thì dùng mô phỏng phần mềm."
+
+#. ! The name of audio driver that outputs no audio.
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:498
+msgctxt "StartupScreen"
+msgid "Null"
+msgstr "Null"
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:501
+msgctxt "StartupScreen"
+msgid "Disables audio output."
+msgstr "Tắt đầu ra âm thanh."
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:511
+msgctxt "StartupScreen"
+msgid "Volume"
+msgstr "Âm lượng"
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:516
+msgctxt "StartupScreen"
+msgid "Polyphonics"
+msgstr "Đa âm"
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:518
+msgctxt "StartupScreen"
+msgid ""
+"Specifies how many sounds can be played simultaneously. Higher value needs "
+"more processing power, so setting this too high might cause an overload "
+"(especially with a software emulation)."
+msgstr ""
+"Chỉ định số âm thanh có thể phát đồng thời. Giá trị cao hơn cần nhiều sức xử"
+" lý hơn, nên đặt quá cao có thể gây quá tải (đặc biệt với mô phỏng phần "
+"mềm)."
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:524
+msgctxt "StartupScreen"
+msgid "EAX"
+msgstr "EAX"
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:526
+msgctxt "StartupScreen"
+msgid ""
+"Enables extended features provided by the OpenAL driver to create more "
+"ambience."
+msgstr "Bật tính năng mở rộng của driver OpenAL để tạo không khí hơn."
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:536
+msgctxt "StartupScreen"
+msgid "Output Device"
+msgstr "Thiết bị đầu ra"
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:596
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:598
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:610
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:857
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:871
+msgctxt "StartupScreen"
+msgid "System default"
+msgstr "Mặc định hệ thống"
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:652
+msgctxt "StartupScreen"
+msgid "Language"
+msgstr "Ngôn ngữ"
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:664
+msgctxt "StartupScreen"
+msgid "Tools"
+msgstr "Công cụ"
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:667
+msgctxt "StartupScreen"
+msgid "Reset All Settings"
+msgstr "Đặt lại tất cả cài đặt"
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:676
+msgctxt "StartupScreen"
+msgid "Open Config Folder in Explorer"
+msgstr "Mở thư mục cấu hình trong Explorer"
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:678
+msgctxt "StartupScreen"
+msgid "Reveal Config Folder in Finder"
+msgstr "Hiện thư mục cấu hình trong Finder"
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:680
+msgctxt "StartupScreen"
+msgid "Browse Config Folder"
+msgstr "Duyệt thư mục cấu hình"
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:687
+msgctxt "StartupScreen"
+msgid "Demo Recording"
+msgstr "Ghi demo"
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:690
+msgctxt "StartupScreen"
+msgid "Automatically record every game"
+msgstr "Tự động ghi mọi trận"
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:698
+msgctxt "StartupScreen"
+msgid "Delete oldest demos when limit is reached"
+msgstr "Xóa demo cũ nhất khi đạt giới hạn"
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:705
+msgctxt "StartupScreen"
+msgid "Max stored demos"
+msgstr "Số demo lưu tối đa"
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:718
+msgctxt "StartupScreen"
+msgid "Demos Folder"
+msgstr "Thư mục demo"
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:723
+msgctxt "StartupScreen"
+msgid "Open Demos Folder in Explorer"
+msgstr "Mở thư mục demo trong Explorer"
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:725
+msgctxt "StartupScreen"
+msgid "Reveal Demos Folder in Finder"
+msgstr "Hiện thư mục demo trong Finder"
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:727
+msgctxt "StartupScreen"
+msgid "Browse Demos Folder"
+msgstr "Duyệt thư mục demo"
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:761
+msgctxt "StartupScreen"
+msgid "An unknown error has occurred while opening the demos directory."
+msgstr "Đã xảy ra lỗi không xác định khi mở thư mục demo."
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:771
+msgctxt "StartupScreen"
+msgid "An unknown error has occurred while opening the config directory."
+msgstr "Đã xảy ra lỗi không xác định khi mở thư mục cấu hình."
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:779
+msgctxt "StartupScreen"
+msgid ""
+"Are you sure to reset all settings? They include (but are not limited to):"
+msgstr ""
+"Bạn có chắc muốn đặt lại tất cả cài đặt? Bao gồm (nhưng không giới hạn):"
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:781
+msgctxt "StartupScreen"
+msgid "All graphics/audio settings"
+msgstr "Tất cả cài đặt đồ họa/âm thanh"
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:782
+msgctxt "StartupScreen"
+msgid "All key bindings"
+msgstr "Tất cả gán phím"
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:783
+msgctxt "StartupScreen"
+msgid "Your player name"
+msgstr "Tên người chơi của bạn"
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:787
+#: Resources/Scripts/Gui/StartupScreen/MainMenu.as:126
+msgctxt "StartupScreen"
+msgid "Advanced"
+msgstr "Nâng cao"
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:786
+msgctxt "StartupScreen"
+msgid ""
+"Other advanced settings only accessible through '{0}' tab and in-game "
+"commands."
+msgstr ""
+"Các cài đặt nâng cao khác chỉ truy cập được qua tab '{0}' và lệnh trong "
+"game."
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:855
+msgctxt "StartupScreen"
+msgid "Unknown ({0})"
+msgstr "Không rõ ({0})"
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:920
+msgctxt "StartupScreen"
+msgid "Copy to Clipboard"
+msgstr "Sao chép vào clipboard"
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:948
+msgctxt "StartupScreen"
+msgid "Advanced Settings"
+msgstr "Cài đặt nâng cao"
+
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:956
+msgctxt "StartupScreen"
+msgid "Filter"
+msgstr "Bộ lọc"
+
+#: Resources/Scripts/Gui/StartupScreen/MainMenu.as:57
+msgctxt "StartupScreen"
+msgid "Start"
+msgstr "Bắt đầu"
+
+#: Resources/Scripts/Gui/StartupScreen/MainMenu.as:65
+msgctxt "StartupScreen"
+msgid "GitHub Repository"
+msgstr "Kho GitHub"
+
+#: Resources/Scripts/Gui/StartupScreen/MainMenu.as:74
+msgctxt "StartupScreen"
+msgid "Compatible Mods"
+msgstr "Mod tương thích"
+
+#: Resources/Scripts/Gui/StartupScreen/MainMenu.as:83
+msgctxt "StartupScreen"
+msgid "Skip this screen next time"
+msgstr "Bỏ qua màn hình này lần sau"
+
+#: Resources/Scripts/Gui/StartupScreen/MainMenu.as:122
+msgctxt "StartupScreen"
+msgid "Graphics"
+msgstr "Đồ họa"
+
+#: Resources/Scripts/Gui/StartupScreen/MainMenu.as:123
+msgctxt "StartupScreen"
+msgid "Audio"
+msgstr "Âm thanh"
+
+#: Resources/Scripts/Gui/StartupScreen/MainMenu.as:124
+msgctxt "StartupScreen"
+msgid "Generic"
+msgstr "Chung"
+
+#: Resources/Scripts/Gui/StartupScreen/MainMenu.as:125
+msgctxt "StartupScreen"
+msgid "System Info"
+msgstr "Thông tin hệ thống"
+
+#: Resources/Scripts/Gui/StartupScreen/MainMenu.as:138
+#: Resources/Scripts/Gui/StartupScreen/MainMenu.as:148
+msgctxt "StartupScreen"
+msgid "An unknown error has occurred while opening this url."
+msgstr "Đã xảy ra lỗi không xác định khi mở URL này."
