@@ -140,10 +140,10 @@ namespace spades {
 						"Additionally, this allows color calculation whose value is in linear correspondence with actual energy, "
 						"that is, physically accurate blending can be achieved.")));
 
-                cfg.AddRow(StartupScreenConfigSelectItemEditor(
-                    ui, StartupScreenConfig(ui, "r_vsync"), "0|1|-1",
-                    _Tr("StartupScreen",
-                        "Vertical Sync:Synchronizes screen updates to a monitor's refresh rate.|" "Off|" "On|" "Adaptive")));
+				cfg.AddRow(StartupScreenConfigSelectItemEditor(
+					ui, StartupScreenConfig(ui, "r_vsync"), "0|1|-1",
+					_Tr("StartupScreen",
+						"Vertical Sync:Synchronizes screen updates to a monitor's refresh rate.|" "Off|" "On|" "Adaptive")));
 
 				{
 					StartupScreenComplexConfig cplx;
@@ -457,7 +457,6 @@ namespace spades {
 
 		private ConfigItem s_audioDriver("s_audioDriver");
 		private ConfigItem s_eax("s_eax");
-		private ConfigItem s_openalDevice("s_openalDevice");
 
 		StartupScreenAudioTab(StartupScreenUI@ ui, Vector2 size) {
 			super(ui.manager);
@@ -525,7 +524,7 @@ namespace spades {
 					_Tr("StartupScreen",
 						"Enables extended features provided by the OpenAL driver to create "
 						"more ambience.")));
-						
+
 				cfg.Finalize();
 				cfg.SetHelpTextHandler(HelpTextHandler(this.HandleHelpText));
 				cfg.Bounds = AABB2(0.0F, 30.0F, mainWidth, size.y - 30.0F);
@@ -565,15 +564,13 @@ namespace spades {
 			driverNull.Enable = ui.helper.CheckConfigCapability("s_audioDriver", "null").length == 0;
 			configViewOpenAL.LoadConfig();
 			editOpenAL.LoadConfig();
-
-			s_openalDevice.StringValue = editOpenAL.openal.StringValue;
 		}
 	}
 
 	class StartupScreenAudioOpenALEditor : spades::ui::UIElement, LabelAddable {
 		StartupScreenUI@ ui;
 		StartupScreenHelper@ helper;
-		ConfigItem openal("openal");
+		ConfigItem s_openalDevice("s_openalDevice");
 
 		spades::ui::Button@ dropdownButton;
 
@@ -581,7 +578,7 @@ namespace spades {
 			super(ui.manager);
 			@this.ui = ui;
 			@helper = ui.helper;
-			
+
 			{
 				StartupScreenDropdownListDropdownButton e(Manager);
 				AddChild(e);
@@ -592,7 +589,7 @@ namespace spades {
 		}
 
 		void LoadConfig() {
-			string drivername = openal.StringValue;
+			string drivername = s_openalDevice.StringValue;
 			string name = _Tr("StartupScreen", "System default", drivername);
 			if (drivername == "")
 				name = _Tr("StartupScreen", "System default");
@@ -620,9 +617,9 @@ namespace spades {
 		private void DropdownHandler(int index) {
 			if (index >= 0) {
 				if (index == 0)
-					openal = "default";
+					s_openalDevice.StringValue = "default";
 				else
-					openal = helper.GetAudioOpenALDevice(index - 1);
+					s_openalDevice.StringValue = helper.GetAudioOpenALDevice(index - 1);
 
 				// Reload the startup screen so the language config takes effect
 				ui.Reload();
@@ -646,7 +643,7 @@ namespace spades {
 			super(ui.manager);
 			@this.ui = ui;
 			@helper = ui.helper;
-			
+
 			float mainWidth = size.x - 240.0F;
 
 			string label = _Tr("StartupScreen", "Language");
@@ -840,7 +837,7 @@ namespace spades {
 			super(ui.manager);
 			@this.ui = ui;
 			@helper = ui.helper;
-			
+
 			{
 				StartupScreenDropdownListDropdownButton e(Manager);
 				AddChild(e);
