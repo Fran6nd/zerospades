@@ -49,14 +49,46 @@
 #include <ScriptBindings/ScriptManager.h>
 #include <ZeroSpades.h>
 
-DEFINE_SPADES_SETTING(cl_modsIndexUrl,
-					  "https://api.github.com/repos/zerospades/zerospades-paks/contents/");
+// Escape hatch only: when empty (the default), the canonical repo below is
+// used. Older builds persisted the repo URL directly into this setting, which
+// then permanently shadowed any change to the code default — see
+// ResolveModsIndexUrl for the migration that heals those stale values.
+DEFINE_SPADES_SETTING(cl_modsIndexUrl, "");
 
 namespace spades {
 	namespace gui {
 
 		namespace {
 			constexpr const char* kModsDir = "Mods";
+			// The one true source of the official pak listing. Kept as a
+			// compile-time constant, never through a persisted setting, so a
+			// new build's URL always reaches every user.
+			constexpr const char* kCanonicalIndexUrl =
+			  "https://api.github.com/repos/zerospades/zerospades-paks/contents/";
+
+			// Resolve the index URL to actually fetch, healing stale persisted
+			// values along the way:
+			//   - empty                       -> canonical (the normal case)
+			//   - stale pointer at our repo   -> rewritten to canonical, and the
+			//                                    healed value is persisted back
+			//   - genuinely custom (some other repo) -> respected as-is
+			// This is what lets users who upgraded from an older build — whose
+			// SPConfig.cfg still holds a now-stale zerospades-paks URL — recover
+			// without hand-editing their config.
+			std::string ResolveModsIndexUrl() {
+				std::string url = cl_modsIndexUrl.CString();
+				if (url.empty())
+					return kCanonicalIndexUrl;
+				// A value that still targets our own repo but differs from the
+				// canonical form (trailing slash, http/https, path drift) is a
+				// stale auto-persisted default, not a deliberate override: heal it.
+				if (url != kCanonicalIndexUrl &&
+					url.find("zerospades-paks") != std::string::npos) {
+					cl_modsIndexUrl = std::string();
+					return kCanonicalIndexUrl;
+				}
+				return url;
+			}
 			// The enabled set lives here, at the resource root: one mod name per
 			// line, in apply order (bottom wins conflicts). No build stamp — mods
 			// are mounted as a startup overlay, never merged onto disk, so the
@@ -262,6 +294,7 @@ namespace spades {
 
 		class ModsScreenHelper::RefreshQuery final : public Thread {
 			Handle<ModsScreenHelper> owner;
+			std::string indexUrl; // resolved on the main thread before Start()
 
 			void Done(const std::string& msg) {
 				owner->resultCell.store(std::make_unique<std::string>(msg));
@@ -313,7 +346,8 @@ namespace spades {
 			}
 
 		public:
-			explicit RefreshQuery(ModsScreenHelper* o) : owner{o} {}
+			RefreshQuery(ModsScreenHelper* o, const std::string& indexUrl)
+				: owner{o}, indexUrl{indexUrl} {}
 
 			void Run() override {
 				try {
@@ -324,9 +358,9 @@ namespace spades {
 
 					// Fetch and parse the root listing.
 					std::string body;
-					std::string err = HttpGetText(cl_modsIndexUrl.CString(), body);
+					std::string err = HttpGetText(indexUrl, body);
 					if (!err.empty()) {
-						Done(_Tr("ModsScreenHelper", "List '{0}': {1}", std::string(cl_modsIndexUrl.CString()), err));
+						Done(_Tr("ModsScreenHelper", "List '{0}': {1}", indexUrl, err));
 						return;
 					}
 					Json::Reader reader;
@@ -417,7 +451,9 @@ namespace spades {
 			if (query)
 				return; // already running
 			lastMessage.clear();
-			query = new RefreshQuery(this);
+			// Resolve (and heal any stale persisted value) on the main thread so
+			// the worker never touches the settings store.
+			query = new RefreshQuery(this, ResolveModsIndexUrl());
 			query->Start();
 		}
 
