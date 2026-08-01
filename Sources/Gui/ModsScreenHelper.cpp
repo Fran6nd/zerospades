@@ -21,10 +21,12 @@
 #include "ModsScreenHelper.h"
 
 #include <algorithm>
+#include <chrono>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <sys/stat.h>
+#include <thread>
 
 #ifdef _WIN32
 #include <direct.h>
@@ -241,60 +243,128 @@ namespace spades {
 				return itemsWritten * size;
 			}
 
+			// Number of attempts (initial + retries) for a single HTTP request.
+			constexpr long kMaxHttpAttempts = 3;
+
+			// Transient curl failures worth a retry — a connection dropped, a DNS
+			// hiccup, a timeout. A hard failure (bad URL, SSL cert) is not retried.
+			bool IsTransientCurl(CURLcode rc) {
+				switch (rc) {
+					case CURLE_COULDNT_CONNECT:
+					case CURLE_COULDNT_RESOLVE_HOST:
+					case CURLE_OPERATION_TIMEDOUT:
+					case CURLE_GOT_NOTHING:
+					case CURLE_RECV_ERROR:
+					case CURLE_SEND_ERROR:
+					case CURLE_PARTIAL_FILE: return true;
+					default: return false;
+				}
+			}
+
+			void BackoffSleep(long attempt) {
+				std::this_thread::sleep_for(std::chrono::seconds(attempt));
+			}
+
+			// Map an HTTP response code to an error string, or "" if it is a
+			// success. GitHub answers a throttled client with 403 (or 429), so
+			// call those out specifically — the user just needs to wait, not
+			// debug a URL.
+			std::string HttpCodeError(long code) {
+				if (code < 400)
+					return std::string{};
+				if (code == 403 || code == 429)
+					return Format("GitHub rate limit reached (HTTP {0}). Try again later.", code);
+				return Format("HTTP {0}", code);
+			}
+
 			// HTTP GET into a string. Returns "" on success, otherwise an error
-			// description. User-Agent is required by the GitHub API.
+			// description. User-Agent and Accept are required/expected by the
+			// GitHub API. Transient failures and 5xx are retried with backoff.
 			std::string HttpGetText(const std::string& url, std::string& out) {
-				std::unique_ptr<CURL, CURLDeleter> h{curl_easy_init()};
-				if (!h)
-					return "curl_easy_init failed";
-				curl_easy_setopt(h.get(), CURLOPT_URL, url.c_str());
-				curl_easy_setopt(h.get(), CURLOPT_USERAGENT, PACKAGE_STRING);
-				curl_easy_setopt(h.get(), CURLOPT_FOLLOWLOCATION, 1L);
-				curl_easy_setopt(h.get(), CURLOPT_WRITEFUNCTION, CurlWriteToString);
-				curl_easy_setopt(h.get(), CURLOPT_WRITEDATA, &out);
-				curl_easy_setopt(h.get(), CURLOPT_CONNECTTIMEOUT, 30L);
-				curl_easy_setopt(h.get(), CURLOPT_LOW_SPEED_TIME, 30L);
-				curl_easy_setopt(h.get(), CURLOPT_LOW_SPEED_LIMIT, 15L);
-				CURLcode rc = curl_easy_perform(h.get());
-				if (rc != CURLE_OK)
-					return curl_easy_strerror(rc);
-				long code = 0;
-				curl_easy_getinfo(h.get(), CURLINFO_RESPONSE_CODE, &code);
-				if (code >= 400)
-					return Format("HTTP {0}", code);
-				return std::string{};
+				std::string lastErr;
+				for (long attempt = 1; attempt <= kMaxHttpAttempts; ++attempt) {
+					out.clear();
+					std::unique_ptr<CURL, CURLDeleter> h{curl_easy_init()};
+					if (!h)
+						return "curl_easy_init failed";
+					struct curl_slist* headers = nullptr;
+					headers = curl_slist_append(headers, "Accept: application/vnd.github+json");
+					curl_easy_setopt(h.get(), CURLOPT_HTTPHEADER, headers);
+					curl_easy_setopt(h.get(), CURLOPT_URL, url.c_str());
+					curl_easy_setopt(h.get(), CURLOPT_USERAGENT, PACKAGE_STRING);
+					curl_easy_setopt(h.get(), CURLOPT_FOLLOWLOCATION, 1L);
+					curl_easy_setopt(h.get(), CURLOPT_WRITEFUNCTION, CurlWriteToString);
+					curl_easy_setopt(h.get(), CURLOPT_WRITEDATA, &out);
+					curl_easy_setopt(h.get(), CURLOPT_CONNECTTIMEOUT, 30L);
+					curl_easy_setopt(h.get(), CURLOPT_LOW_SPEED_TIME, 30L);
+					curl_easy_setopt(h.get(), CURLOPT_LOW_SPEED_LIMIT, 15L);
+					CURLcode rc = curl_easy_perform(h.get());
+					long code = 0;
+					curl_easy_getinfo(h.get(), CURLINFO_RESPONSE_CODE, &code);
+					curl_slist_free_all(headers);
+					if (rc != CURLE_OK) {
+						lastErr = curl_easy_strerror(rc);
+						if (IsTransientCurl(rc) && attempt < kMaxHttpAttempts) {
+							BackoffSleep(attempt);
+							continue;
+						}
+						return lastErr;
+					}
+					lastErr = HttpCodeError(code);
+					if (lastErr.empty())
+						return std::string{};
+					// Retry only on server-side 5xx; 4xx (incl. rate limit) won't
+					// clear within a few seconds.
+					if (code >= 500 && attempt < kMaxHttpAttempts) {
+						BackoffSleep(attempt);
+						continue;
+					}
+					return lastErr;
+				}
+				return lastErr;
 			}
 
 			std::string HttpDownloadToFile(const std::string& url,
 										   const std::string& destAbs) {
-				std::FILE* f = std::fopen(destAbs.c_str(), "wb");
-				if (!f)
-					return Format("Cannot create '{0}'", destAbs);
-				std::unique_ptr<CURL, CURLDeleter> h{curl_easy_init()};
-				if (!h) {
+				std::string lastErr;
+				for (long attempt = 1; attempt <= kMaxHttpAttempts; ++attempt) {
+					std::FILE* f = std::fopen(destAbs.c_str(), "wb");
+					if (!f)
+						return Format("Cannot create '{0}'", destAbs);
+					std::unique_ptr<CURL, CURLDeleter> h{curl_easy_init()};
+					if (!h) {
+						std::fclose(f);
+						std::remove(destAbs.c_str());
+						return "curl_easy_init failed";
+					}
+					curl_easy_setopt(h.get(), CURLOPT_URL, url.c_str());
+					curl_easy_setopt(h.get(), CURLOPT_USERAGENT, PACKAGE_STRING);
+					curl_easy_setopt(h.get(), CURLOPT_FOLLOWLOCATION, 1L);
+					curl_easy_setopt(h.get(), CURLOPT_WRITEFUNCTION, CurlWriteToFile);
+					curl_easy_setopt(h.get(), CURLOPT_WRITEDATA, f);
+					curl_easy_setopt(h.get(), CURLOPT_CONNECTTIMEOUT, 30L);
+					CURLcode rc = curl_easy_perform(h.get());
+					long code = 0;
+					curl_easy_getinfo(h.get(), CURLINFO_RESPONSE_CODE, &code);
 					std::fclose(f);
+					if (rc == CURLE_OK) {
+						lastErr = HttpCodeError(code);
+						if (lastErr.empty())
+							return std::string{};
+					} else {
+						lastErr = curl_easy_strerror(rc);
+					}
+					// The partial file is never a usable pak; drop it before retry
+					// or bail.
 					std::remove(destAbs.c_str());
-					return "curl_easy_init failed";
+					bool retriable = (rc != CURLE_OK) ? IsTransientCurl(rc) : (code >= 500);
+					if (retriable && attempt < kMaxHttpAttempts) {
+						BackoffSleep(attempt);
+						continue;
+					}
+					return lastErr;
 				}
-				curl_easy_setopt(h.get(), CURLOPT_URL, url.c_str());
-				curl_easy_setopt(h.get(), CURLOPT_USERAGENT, PACKAGE_STRING);
-				curl_easy_setopt(h.get(), CURLOPT_FOLLOWLOCATION, 1L);
-				curl_easy_setopt(h.get(), CURLOPT_WRITEFUNCTION, CurlWriteToFile);
-				curl_easy_setopt(h.get(), CURLOPT_WRITEDATA, f);
-				curl_easy_setopt(h.get(), CURLOPT_CONNECTTIMEOUT, 30L);
-				CURLcode rc = curl_easy_perform(h.get());
-				long code = 0;
-				curl_easy_getinfo(h.get(), CURLINFO_RESPONSE_CODE, &code);
-				std::fclose(f);
-				if (rc != CURLE_OK) {
-					std::remove(destAbs.c_str());
-					return curl_easy_strerror(rc);
-				}
-				if (code >= 400) {
-					std::remove(destAbs.c_str());
-					return Format("HTTP {0}", code);
-				}
-				return std::string{};
+				return lastErr;
 			}
 		} // namespace
 
