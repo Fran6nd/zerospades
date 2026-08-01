@@ -47,6 +47,10 @@ namespace spades {
 			bool PollRefreshState();
 			std::string GetRefreshMessage();
 
+			// The resolved index URL (canonical unless the user set a genuine
+			// override). Pure — safe to call for display.
+			std::string GetIndexUrl();
+
 			// Live progress while a refresh is running.
 			int GetRefreshTotal();
 			int GetRefreshDone();

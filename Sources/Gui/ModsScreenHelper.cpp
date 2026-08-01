@@ -66,28 +66,34 @@ namespace spades {
 			constexpr const char* kCanonicalIndexUrl =
 			  "https://api.github.com/repos/zerospades/zerospades-paks/contents/";
 
-			// Resolve the index URL to actually fetch, healing stale persisted
-			// values along the way:
-			//   - empty                       -> canonical (the normal case)
-			//   - stale pointer at our repo   -> rewritten to canonical, and the
-			//                                    healed value is persisted back
-			//   - genuinely custom (some other repo) -> respected as-is
-			// This is what lets users who upgraded from an older build — whose
-			// SPConfig.cfg still holds a now-stale zerospades-paks URL — recover
-			// without hand-editing their config.
+			// True when a persisted value is a stale auto-saved default: it still
+			// targets our own repo but differs from the canonical form (trailing
+			// slash, http/https, path drift). Such a value is not a deliberate
+			// override and should be treated as canonical.
+			bool IsStaleOwnRepoUrl(const std::string& url) {
+				return !url.empty() && url != kCanonicalIndexUrl &&
+					   url.find("zerospades-paks") != std::string::npos;
+			}
+
+			// The index URL to actually fetch. Pure — no side effects, so it is
+			// safe to call from anywhere (including for display):
+			//   - empty              -> canonical (the normal case)
+			//   - stale pointer      -> canonical
+			//   - genuinely custom   -> respected as-is
 			std::string ResolveModsIndexUrl() {
 				std::string url = cl_modsIndexUrl.CString();
-				if (url.empty())
+				if (url.empty() || IsStaleOwnRepoUrl(url))
 					return kCanonicalIndexUrl;
-				// A value that still targets our own repo but differs from the
-				// canonical form (trailing slash, http/https, path drift) is a
-				// stale auto-persisted default, not a deliberate override: heal it.
-				if (url != kCanonicalIndexUrl &&
-					url.find("zerospades-paks") != std::string::npos) {
-					cl_modsIndexUrl = std::string();
-					return kCanonicalIndexUrl;
-				}
 				return url;
+			}
+
+			// Rewrite a stale persisted value back to empty so the config stops
+			// shadowing the canonical URL. Call on the main thread only (writes
+			// the settings store). This is what lets users who upgraded from an
+			// older build recover without hand-editing SPConfig.cfg.
+			void HealPersistedModsIndexUrl() {
+				if (IsStaleOwnRepoUrl(cl_modsIndexUrl.CString()))
+					cl_modsIndexUrl = std::string();
 			}
 			// The enabled set lives here, at the resource root: one mod name per
 			// line, in apply order (bottom wins conflicts). No build stamp — mods
@@ -297,6 +303,11 @@ namespace spades {
 			std::string indexUrl; // resolved on the main thread before Start()
 
 			void Done(const std::string& msg) {
+				// A non-empty message is always a failure; log it so a broken
+				// download leaves a diagnosable trail even if the user misses the
+				// on-screen alert.
+				if (!msg.empty())
+					SPLog("Mods refresh failed: %s", msg.c_str());
 				owner->resultCell.store(std::make_unique<std::string>(msg));
 				owner = nullptr;
 			}
@@ -433,6 +444,8 @@ namespace spades {
 			SPADES_MARK_FUNCTION();
 		}
 
+		std::string ModsScreenHelper::GetIndexUrl() { return ResolveModsIndexUrl(); }
+
 		int ModsScreenHelper::GetRefreshTotal() { return progressTotal.load(); }
 		int ModsScreenHelper::GetRefreshDone() { return progressDone.load(); }
 		std::string ModsScreenHelper::GetRefreshCurrentItem() {
@@ -451,8 +464,9 @@ namespace spades {
 			if (query)
 				return; // already running
 			lastMessage.clear();
-			// Resolve (and heal any stale persisted value) on the main thread so
-			// the worker never touches the settings store.
+			// Heal any stale persisted value on the main thread (the worker never
+			// touches the settings store), then hand the resolved URL to it.
+			HealPersistedModsIndexUrl();
 			query = new RefreshQuery(this, ResolveModsIndexUrl());
 			query->Start();
 		}
