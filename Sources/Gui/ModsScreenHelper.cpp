@@ -447,7 +447,14 @@ namespace spades {
 				}
 			}
 
-			std::string FetchOneLevel(const Json::Value& root, const std::string& dirAbs) {
+			// Download every pak in this listing level into dirAbs. A per-file
+			// failure is recorded in `failures` and does NOT abort the batch, so
+			// one pak that can't be written — e.g. an enabled mod whose file is
+			// held open by the running game — can't stop the others from
+			// downloading. Every pak entry advances the progress counter exactly
+			// once, so the bar still completes.
+			void FetchOneLevel(const Json::Value& root, const std::string& dirAbs,
+							   std::vector<std::string>& failures) {
 				EnsureDir(dirAbs);
 				for (const auto& entry : root) {
 					std::string type = entry.get("type", "").asString();
@@ -455,22 +462,28 @@ namespace spades {
 					if (type != "file" || !EndsWithPak(name))
 						continue;
 					std::string dl = entry.get("download_url", "").asString();
-					if (dl.empty())
+					if (dl.empty()) {
+						failures.push_back(_Tr("ModsScreenHelper", "{0}: no download URL", name));
+						++owner->progressDone;
 						continue;
+					}
 					SetCurrent(name);
 					std::string partial = dirAbs + "/" + name + ".partial";
 					std::string finalPath = dirAbs + "/" + name;
 					std::string e = HttpDownloadToFile(dl, partial);
-					if (!e.empty())
-						return _Tr("ModsScreenHelper", "Download '{0}': {1}", name, e);
+					if (!e.empty()) {
+						failures.push_back(_Tr("ModsScreenHelper", "{0}: {1}", name, e));
+						++owner->progressDone;
+						continue;
+					}
 					std::remove(finalPath.c_str());
 					if (std::rename(partial.c_str(), finalPath.c_str()) != 0) {
 						std::remove(partial.c_str());
-						return _Tr("ModsScreenHelper", "Rename '{0}' failed", name);
+						failures.push_back(
+						  _Tr("ModsScreenHelper", "{0}: cannot replace (file in use?)", name));
 					}
 					++owner->progressDone;
 				}
-				return std::string{};
 			}
 
 		public:
@@ -533,19 +546,22 @@ namespace spades {
 					owner->progressTotal.store(total);
 
 					// Now actually download. Loose paks land at Mods/<name>;
-					// folder mods land at Mods/<folder>/<name>.
-					std::string e = FetchOneLevel(root, ModsRootAbs());
-					if (!e.empty()) {
-						Done(e);
-						return;
-					}
+					// folder mods land at Mods/<folder>/<name>. Per-file failures
+					// are collected rather than aborting, so a single stuck pak
+					// never blocks the rest of the set.
+					std::vector<std::string> failures;
+					FetchOneLevel(root, ModsRootAbs(), failures);
 					for (const auto& s : subs) {
 						std::string sub = ModsRootAbs() + "/" + s.name;
-						e = FetchOneLevel(s.items, sub);
-						if (!e.empty()) {
-							Done(e);
-							return;
-						}
+						FetchOneLevel(s.items, sub, failures);
+					}
+					if (!failures.empty()) {
+						std::string msg = _Tr("ModsScreenHelper", "{0} pak(s) failed to download:",
+											  static_cast<int>(failures.size()));
+						for (const std::string& f : failures)
+							msg += "\n" + f;
+						Done(msg);
+						return;
 					}
 					Done(std::string{});
 				} catch (const std::exception& ex) {
