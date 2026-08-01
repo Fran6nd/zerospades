@@ -118,6 +118,52 @@ namespace spades {
 					|| EqualsIgnoringCase(ext, ".zip");
 			}
 
+			// A mod name parsed against the official CATEGORY-NAME-AUTHOR.pak
+			// convention. `structured` is true only when the base name splits on
+			// '-' into exactly three non-empty fields; otherwise the name is left
+			// whole in `name` (category/author empty) so the UI falls back to the
+			// raw filename, exactly as before this convention existed.
+			struct ParsedModName {
+				bool structured = false;
+				std::string category; // e.g. SEMI, SMG, SHOTGUN, SPADE, FONT, SFX, VFX
+				std::string name;     // display name, or the full raw name if unstructured
+				std::string author;
+			};
+
+			ParsedModName ParseModName(const std::string& modName) {
+				ParsedModName p;
+				// Drop a trailing .pak/.zip (folder mods have no extension).
+				std::string base = modName;
+				if (EndsWithPak(base))
+					base = base.substr(0, base.size() - 4);
+
+				// Split on '-'.
+				std::vector<std::string> parts;
+				std::size_t start = 0;
+				while (true) {
+					std::size_t dash = base.find('-', start);
+					if (dash == std::string::npos) {
+						parts.push_back(base.substr(start));
+						break;
+					}
+					parts.push_back(base.substr(start, dash - start));
+					start = dash + 1;
+				}
+
+				// Exactly CATEGORY-NAME-AUTHOR, all present.
+				if (parts.size() == 3 && !parts[0].empty() && !parts[1].empty() &&
+					!parts[2].empty()) {
+					p.structured = true;
+					p.category = parts[0];
+					p.name = parts[1];
+					p.author = parts[2];
+				} else {
+					// Fallback: keep the whole filename as the name.
+					p.name = modName;
+				}
+				return p;
+			}
+
 			void MakeDir(const std::string& path) {
 #ifdef _WIN32
 				_mkdir(path.c_str());
@@ -515,6 +561,19 @@ namespace spades {
 		}
 
 		std::string ModsScreenHelper::GetIndexUrl() { return ResolveModsIndexUrl(); }
+
+		// CATEGORY-NAME-AUTHOR parsing for the list UI. Category and author are
+		// empty for a name that doesn't follow the convention; the display name
+		// then falls back to the full filename.
+		std::string ModsScreenHelper::GetModCategory(std::string modName) {
+			return ParseModName(modName).category;
+		}
+		std::string ModsScreenHelper::GetModDisplayName(std::string modName) {
+			return ParseModName(modName).name;
+		}
+		std::string ModsScreenHelper::GetModAuthor(std::string modName) {
+			return ParseModName(modName).author;
+		}
 
 		int ModsScreenHelper::GetRefreshTotal() { return progressTotal.load(); }
 		int ModsScreenHelper::GetRefreshDone() { return progressDone.load(); }
