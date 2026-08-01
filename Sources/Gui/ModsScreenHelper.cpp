@@ -119,10 +119,12 @@ namespace spades {
 			}
 
 			// A mod name parsed against the official CATEGORY-NAME-AUTHOR.pak
-			// convention. `structured` is true only when the base name splits on
-			// '-' into exactly three non-empty fields; otherwise the name is left
-			// whole in `name` (category/author empty) so the UI falls back to the
-			// raw filename, exactly as before this convention existed.
+			// convention. `structured` is true whenever the base name splits on
+			// '-' into exactly three fields (two separators) — any single field
+			// may be blank, e.g. SMG--Author (no name) or SMG-Name- (no author),
+			// so those still show their tag and whichever fields are present.
+			// Anything else (no separators, or too many) is left whole in `name`
+			// so the UI falls back to the raw filename.
 			struct ParsedModName {
 				bool structured = false;
 				std::string category; // e.g. SEMI, SMG, SHOTGUN, SPADE, FONT, SFX, VFX
@@ -150,9 +152,8 @@ namespace spades {
 					start = dash + 1;
 				}
 
-				// Exactly CATEGORY-NAME-AUTHOR, all present.
-				if (parts.size() == 3 && !parts[0].empty() && !parts[1].empty() &&
-					!parts[2].empty()) {
+				// Exactly CATEGORY-NAME-AUTHOR; individual fields may be empty.
+				if (parts.size() == 3) {
 					p.structured = true;
 					p.category = parts[0];
 					p.name = parts[1];
