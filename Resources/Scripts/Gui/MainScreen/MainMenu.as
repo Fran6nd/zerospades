@@ -752,10 +752,9 @@ namespace spades {
 		private void OnDownloadModsPressed(spades::ui::UIElement@ sender) {
 			if (modsDownloading)
 				return;
-			ConfigItem indexUrl("cl_modsIndexUrl", "");
 			string body = _Tr("MainScreen", "Download the official ZeroSpades mod pack?") + "\n\n";
 			body += _Tr("MainScreen", "These are mods reviewed and hosted by the ZeroSpades team.") + "\n\n";
-			body += _Tr("MainScreen", "Source: ") + indexUrl.StringValue + "\n";
+			body += _Tr("MainScreen", "Source: ") + modsHelper.GetIndexUrl() + "\n";
 			body += _Tr("MainScreen", "Files will be saved into your Mods/ folder, overwriting any existing copies.");
 			ConfirmScreen cs(this, body, Min(500.0F, Manager.ScreenHeight - 100.0F));
 			@cs.Closed = spades::ui::EventHandler(this.OnDownloadConfirmed);
@@ -819,6 +818,14 @@ namespace spades {
 			if (modsHelper.PollRefreshState()) {
 				modsDownloading = false;
 				LoadModList();
+				// A non-empty refresh message means the download failed. The
+				// status label keeps it (sticky), but also raise a loud alert so
+				// a failure can never be mistaken for "nothing happened".
+				string err = modsHelper.GetRefreshMessage();
+				if (err.length > 0) {
+					AlertScreen al(this, _Tr("MainScreen", "Mod download failed:") + "\n\n" + err);
+					al.Run();
+				}
 				return;
 			}
 			UpdateModsStatus();
