@@ -21,34 +21,80 @@
 namespace spades {
 	funcdef void ModListItemEventHandler(string modName);
 
+	// Maps an official CATEGORY tag to a weapon icon in the game resources.
+	// Returns "" for categories with no weapon icon (FONT, SFX, VFX, ...), which
+	// are shown as a text pill instead. Matching is against the uppercase tags
+	// used by the official repo.
+	string ModCategoryIcon(string category) {
+		if (category == "SEMI")    return "Gfx/Hotbar/Rifle.png";
+		if (category == "SMG")     return "Gfx/Hotbar/SMG.png";
+		if (category == "SHOTGUN") return "Gfx/Hotbar/Shotgun.png";
+		if (category == "SPADE")   return "Gfx/Hotbar/Spade.png";
+		if (category == "GRENADE") return "Gfx/Hotbar/Grenade.png";
+		return "";
+	}
+
 	class ModListItem : spades::ui::ButtonBase {
 		string modName;
-		int pakCount;
+		string category;    // e.g. SEMI/SMG/...; empty when the name is unstructured
+		string displayName; // parsed name, or the full filename when unstructured
+		string author;      // empty when unstructured
 		int64 totalSize;
 		bool enabled;   // present in the apply history
 		bool exists;    // mod still present on disk
 		int orderNum;   // 1-based apply position, 0 when disabled
 		float checkColWidth;
 		float orderColWidth;
+		float tagColWidth;
 		float nameColWidth;
-		float countColWidth;
+		float authorColWidth;
 		float sizeColWidth;
 
-		ModListItem(spades::ui::UIManager@ manager, string modName, int pakCount, int64 totalSize,
-		            bool enabled, bool exists, int orderNum, float checkColWidth,
-		            float orderColWidth, float nameColWidth, float countColWidth, float sizeColWidth) {
+		ModListItem(spades::ui::UIManager@ manager, string modName, string category,
+		            string displayName, string author, int64 totalSize, bool enabled, bool exists,
+		            int orderNum, float checkColWidth, float orderColWidth, float tagColWidth,
+		            float nameColWidth, float authorColWidth, float sizeColWidth) {
 			super(manager);
 			this.modName = modName;
-			this.pakCount = pakCount;
+			this.category = category;
+			this.displayName = displayName;
+			this.author = author;
 			this.totalSize = totalSize;
 			this.enabled = enabled;
 			this.exists = exists;
 			this.orderNum = orderNum;
 			this.checkColWidth = checkColWidth;
 			this.orderColWidth = orderColWidth;
+			this.tagColWidth = tagColWidth;
 			this.nameColWidth = nameColWidth;
-			this.countColWidth = countColWidth;
+			this.authorColWidth = authorColWidth;
 			this.sizeColWidth = sizeColWidth;
+		}
+
+		// Draw the tag cell: a weapon icon for weapon categories, a small text
+		// pill for other structured categories (FONT/SFX/VFX/...), nothing for an
+		// unstructured filename.
+		private void RenderTag(Renderer@ r, float cellX, float cellY, float cellH, Vector4 fgcolor) {
+			if (category.length == 0)
+				return;
+			string iconPath = ModCategoryIcon(category);
+			if (iconPath.length > 0) {
+				Image@ icon = r.RegisterImage(iconPath);
+				// Fit within the cell height, preserving aspect ratio.
+				float h = cellH - 8.0F;
+				float w = h * (float(icon.Width) / float(icon.Height));
+				if (w > tagColWidth - 6.0F) {
+					w = tagColWidth - 6.0F;
+					h = w * (float(icon.Height) / float(icon.Width));
+				}
+				float ix = cellX + (tagColWidth - w) * 0.5F;
+				float iy = cellY + (cellH - h) * 0.5F;
+				r.ColorNP = fgcolor;
+				r.DrawImage(icon, AABB2(ix, iy, w, h));
+			} else {
+				// Non-weapon category: draw the tag text, clipped to the cell.
+				Font.Draw(category, Vector2(cellX + 2.0F, cellY + 2.0F), 1.0F, fgcolor);
+			}
 		}
 
 		void Render() {
@@ -89,11 +135,22 @@ namespace spades {
 			if (enabled and orderNum > 0)
 				Font.Draw("" + orderNum, Vector2(x + 2.0F, pos.y + 2.0F), 1.0F, fgcolor);
 
-			x = pos.x + checkColWidth + orderColWidth + 2.0F;
-			Font.Draw(modName, Vector2(x, pos.y + 2.0F), 1.0F, fgcolor);
-			x = pos.x + checkColWidth + orderColWidth + nameColWidth + 2.0F;
-			Font.Draw(exists ? ("" + pakCount) : "-", Vector2(x, pos.y + 2.0F), 1.0F, fgcolor);
-			x += countColWidth;
+			// Tag column (weapon icon or category pill).
+			x = pos.x + checkColWidth + orderColWidth;
+			RenderTag(r, x, pos.y, size.y, fgcolor);
+
+			// Mod name. For an unstructured name this holds the full filename and
+			// runs into the author column, matching the previous behaviour.
+			x = pos.x + checkColWidth + orderColWidth + tagColWidth + 2.0F;
+			Font.Draw(displayName, Vector2(x, pos.y + 2.0F), 1.0F, fgcolor);
+
+			// Author.
+			x += nameColWidth;
+			if (author.length > 0)
+				Font.Draw(author, Vector2(x, pos.y + 2.0F), 1.0F, fgcolor);
+
+			// Size.
+			x += authorColWidth;
 			Font.Draw(exists ? FormatFileSize(totalSize) : "-", Vector2(x, pos.y + 2.0F), 1.0F, fgcolor);
 		}
 	}
@@ -106,8 +163,9 @@ namespace spades {
 		bool[] exists;    // parallel to list: mod still present on disk
 		float checkColWidth;
 		float orderColWidth;
+		float tagColWidth;
 		float nameColWidth;
-		float countColWidth;
+		float authorColWidth;
 		float sizeColWidth;
 		ModListItem@[] itemElements;
 
@@ -115,7 +173,7 @@ namespace spades {
 
 		ModListModel(spades::ui::UIManager@ manager, ModsScreenHelper@ helper, string[]@ list,
 		             int[]@ orders, bool[]@ exists, float checkColWidth, float orderColWidth,
-		             float nameColWidth, float countColWidth, float sizeColWidth) {
+		             float tagColWidth, float nameColWidth, float authorColWidth, float sizeColWidth) {
 			@this.manager = manager;
 			@this.helper = helper;
 			this.list = list;
@@ -123,8 +181,9 @@ namespace spades {
 			this.exists = exists;
 			this.checkColWidth = checkColWidth;
 			this.orderColWidth = orderColWidth;
+			this.tagColWidth = tagColWidth;
 			this.nameColWidth = nameColWidth;
-			this.countColWidth = countColWidth;
+			this.authorColWidth = authorColWidth;
 			this.sizeColWidth = sizeColWidth;
 
 			itemElements.resize(list.length);
@@ -142,10 +201,13 @@ namespace spades {
 			if (itemElements[row] is null) {
 				string name = list[row];
 				bool ex = exists[row];
-				int count = ex ? helper.GetModPakCount(name) : 0;
 				int64 size = ex ? helper.GetModTotalSize(name) : 0;
-				ModListItem item(manager, name, count, size, orders[row] > 0, ex, orders[row],
-				                 checkColWidth, orderColWidth, nameColWidth, countColWidth, sizeColWidth);
+				string category = helper.GetModCategory(name);
+				string displayName = helper.GetModDisplayName(name);
+				string author = helper.GetModAuthor(name);
+				ModListItem item(manager, name, category, displayName, author, size, orders[row] > 0,
+				                 ex, orders[row], checkColWidth, orderColWidth, tagColWidth,
+				                 nameColWidth, authorColWidth, sizeColWidth);
 				@item.Activated = spades::ui::EventHandler(this.OnItemClicked);
 				@itemElements[row] = item;
 			}
