@@ -204,8 +204,9 @@ namespace spades {
 		bool modsDirty = false; // enabled set changed this session; restart to apply
 		private float modsCheckColWidth;
 		private float modsOrderColWidth;
+		private float modsTagColWidth;
 		private float modsNameColWidth;
-		private float modsCountColWidth;
+		private float modsAuthorColWidth;
 		private float modsSizeColWidth;
 
 		private ConfigItem cg_protocolVersion("cg_protocolVersion", "3");
@@ -223,11 +224,12 @@ namespace spades {
 			demoMapColWidth	 = 185.0F;
 			demoSizeColWidth = 70.0F;
 
-			modsCheckColWidth = 60.0F;
-			modsOrderColWidth = 90.0F;
-			modsNameColWidth  = 320.0F;
-			modsCountColWidth = 80.0F;
-			modsSizeColWidth  = 100.0F;
+			modsCheckColWidth  = 60.0F;
+			modsOrderColWidth  = 90.0F;
+			modsTagColWidth    = 56.0F;
+			modsNameColWidth   = 200.0F;
+			modsAuthorColWidth = 150.0F;
+			modsSizeColWidth   = 100.0F;
 			@modsHelper = ModsScreenHelper();
 
 			float sw = Manager.ScreenWidth;
@@ -545,6 +547,13 @@ namespace spades {
 					}
 					{
 						ModListHeader header(Manager);
+						header.Bounds = AABB2(x, headerPos, modsTagColWidth, headerHeight);
+						header.Text = _Tr("MainScreen", "Type");
+						modsPanel.AddChild(header);
+						x += modsTagColWidth;
+					}
+					{
+						ModListHeader header(Manager);
 						header.Bounds = AABB2(x, headerPos, modsNameColWidth, headerHeight);
 						header.Text = _Tr("MainScreen", "Mod");
 						modsPanel.AddChild(header);
@@ -552,10 +561,10 @@ namespace spades {
 					}
 					{
 						ModListHeader header(Manager);
-						header.Bounds = AABB2(x, headerPos, modsCountColWidth, headerHeight);
-						header.Text = _Tr("MainScreen", "Paks");
+						header.Bounds = AABB2(x, headerPos, modsAuthorColWidth, headerHeight);
+						header.Text = _Tr("MainScreen", "Author");
 						modsPanel.AddChild(header);
-						x += modsCountColWidth;
+						x += modsAuthorColWidth;
 					}
 					{
 						ModListHeader header(Manager);
@@ -699,7 +708,8 @@ namespace spades {
 			}
 
 			ModListModel model(Manager, modsHelper, list, orders, exists, modsCheckColWidth,
-							   modsOrderColWidth, modsNameColWidth, modsCountColWidth, modsSizeColWidth);
+							   modsOrderColWidth, modsTagColWidth, modsNameColWidth,
+							   modsAuthorColWidth, modsSizeColWidth);
 			@modsList.Model = model;
 			@model.ItemActivated = ModListItemEventHandler(this.OnModToggle);
 			UpdateModsStatus();
