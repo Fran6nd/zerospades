@@ -93,7 +93,9 @@ namespace spades {
 				r.DrawImage(icon, AABB2(ix, iy, w, h));
 			} else {
 				// Non-weapon category: draw the tag text, clipped to the cell.
-				Font.Draw(category, Vector2(cellX + 2.0F, cellY + 2.0F), 1.0F, fgcolor);
+				float textW = Font.Measure(category).x;
+				float tx = cellX + (tagColWidth - textW) * 0.5F;
+				Font.Draw(category, Vector2(tx, cellY + 2.0F), 1.0F, fgcolor);
 			}
 		}
 
