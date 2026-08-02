@@ -45,6 +45,7 @@
 #include <Core/CpuID.h>
 #include <Core/Debug.h>
 #include <Core/DirectoryFileSystem.h>
+#include <Core/DynamicMemoryStream.h>
 #include <Core/FileManager.h>
 #include <Core/ServerAddress.h>
 #include <Core/Settings.h>
@@ -922,10 +923,25 @@ int main(int argc, char** argv) {
 			  spades::gui::ModsScreenHelper::GetEnabledModPakPaths();
 			for (const std::string& path : modPaks) {
 				try {
-					auto stream = spades::FileManager::OpenForReading(path.c_str());
-					spades::FileManager::PrependFileSystem(
-					  new spades::ZipFileSystem(stream.release()));
-					SPLog("Mod pak mounted: %s", path.c_str());
+					// Read the whole pak into memory and mount from there, so the
+					// file on disk is never held open for the session. That lets
+					// the mod manager overwrite or delete an enabled pak (for
+					// example re-downloading it) while the game is running — a
+					// mounted stream reading straight from the file would lock it.
+					std::string bytes;
+					{
+						auto file = spades::FileManager::OpenForReading(path.c_str());
+						bytes = file->ReadAllBytes();
+					} // file handle closed here
+					std::unique_ptr<spades::DynamicMemoryStream> mem(
+					  new spades::DynamicMemoryStream());
+					if (!bytes.empty())
+						mem->Write(bytes.data(), bytes.size());
+					mem->SetPosition(0);
+					auto* zfs = new spades::ZipFileSystem(mem.get());
+					mem.release(); // ownership transferred to the ZipFileSystem
+					spades::FileManager::PrependFileSystem(zfs);
+					SPLog("Mod pak mounted (in memory): %s", path.c_str());
 				} catch (const std::exception& ex) {
 					SPLog("Mod pak failed to mount: %s: %s", path.c_str(), ex.what());
 				}

@@ -47,6 +47,17 @@ namespace spades {
 			bool PollRefreshState();
 			std::string GetRefreshMessage();
 
+			// The resolved index URL (canonical unless the user set a genuine
+			// override). Pure — safe to call for display.
+			std::string GetIndexUrl();
+
+			// CATEGORY-NAME-AUTHOR parsing for the list UI. Category and author
+			// are empty when the name doesn't follow the convention, in which
+			// case GetModDisplayName returns the full filename unchanged.
+			std::string GetModCategory(std::string modName);
+			std::string GetModDisplayName(std::string modName);
+			std::string GetModAuthor(std::string modName);
+
 			// Live progress while a refresh is running.
 			int GetRefreshTotal();
 			int GetRefreshDone();
