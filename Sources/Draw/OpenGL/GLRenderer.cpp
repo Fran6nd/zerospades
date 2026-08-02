@@ -677,7 +677,10 @@ namespace spades {
 				device->Enable(IGLDevice::CullFace, true);
 				device->CullFaceMode(IGLDevice::Front);
 				device->Enable(IGLDevice::PolygonOffsetLine, true);
-				device->PolygonMode(IGLDevice::Back, IGLDevice::Line);
+				// Front faces are culled above, so only back faces rasterize; use
+				// FRONT_AND_BACK (the only value accepted by a core profile — GL_BACK
+				// raises GL_INVALID_ENUM every frame on macOS) for the same result.
+				device->PolygonMode(IGLDevice::FrontAndBack, IGLDevice::Line);
 				device->PolygonOffset(1.0F, 1.0F);
 				device->LineWidth(2.0F);
 
@@ -686,8 +689,12 @@ namespace spades {
 				modelRenderer->RenderOutlinePass();
 
 				device->CullFaceMode(IGLDevice::Back);
+				// Restore CullFace to the renderer's resting (disabled) state — the
+				// pass enabled it above but previously never restored the enable,
+				// leaking cull state into whatever ran next.
+				device->Enable(IGLDevice::CullFace, false);
 				device->Enable(IGLDevice::PolygonOffsetLine, false);
-				device->PolygonMode(IGLDevice::Back, IGLDevice::Fill);
+				device->PolygonMode(IGLDevice::FrontAndBack, IGLDevice::Fill);
 				device->PolygonOffset(0.0F, 0.0F);
 				device->LineWidth(1.0F);
 			}
