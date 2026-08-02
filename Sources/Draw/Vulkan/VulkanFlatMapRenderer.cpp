@@ -121,5 +121,12 @@ namespace spades {
 
 			renderer.DrawImage(*image, dest, src);
 		}
+
+		void VulkanFlatMapRenderer::Draw(const Vector2& destTopLeft, const Vector2& destTopRight,
+		                                 const Vector2& destBottomLeft, const AABB2& src) {
+			SPADES_MARK_FUNCTION();
+
+			renderer.DrawImage(*image, destTopLeft, destTopRight, destBottomLeft, src);
+		}
 	} // namespace draw
 } // namespace spades

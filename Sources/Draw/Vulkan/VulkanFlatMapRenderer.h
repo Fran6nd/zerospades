@@ -50,6 +50,8 @@ namespace spades {
 			VulkanFlatMapRenderer(VulkanRenderer& renderer, client::GameMap& map);
 			~VulkanFlatMapRenderer();
 			void Draw(const AABB2& dest, const AABB2& src);
+			void Draw(const Vector2& destTopLeft, const Vector2& destTopRight,
+			          const Vector2& destBottomLeft, const AABB2& src);
 			void UpdateChunks();
 			void GameMapChanged(int x, int y, int z, client::GameMap&);
 		};

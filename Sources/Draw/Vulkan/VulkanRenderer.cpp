@@ -1291,6 +1291,14 @@ namespace spades {
 				flatMapRenderer->Draw(outRect, inRect);
 		}
 
+		void VulkanRenderer::DrawFlatGameMap(const Vector2& outTopLeft, const Vector2& outTopRight,
+		                                     const Vector2& outBottomLeft, const AABB2& inRect) {
+			SPADES_MARK_FUNCTION();
+			EnsureSceneNotStarted();
+			if (flatMapRenderer)
+				flatMapRenderer->Draw(outTopLeft, outTopRight, outBottomLeft, inRect);
+		}
+
 		void VulkanRenderer::FrameDone() {
 			SPADES_MARK_FUNCTION();
 
