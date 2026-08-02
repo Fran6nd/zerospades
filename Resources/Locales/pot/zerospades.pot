@@ -565,9 +565,8 @@ msgstr ""
 #: Sources/Client/LimboView.cpp:260
 #: Resources/Scripts/Gui/Client/ChatLogWindow.as:85
 #: Resources/Scripts/Gui/Client/ChatSayWindow.as:193
-#: Resources/Scripts/Gui/MainScreen/MainMenu.as:603
-#: Resources/Scripts/Gui/Preferences.as:116
 #: Resources/Scripts/Gui/MainScreen/MainMenu.as:612
+#: Resources/Scripts/Gui/Preferences.as:116
 msgctxt "Client"
 msgid "[Esc]"
 msgstr ""
@@ -723,12 +722,12 @@ msgctxt "Client"
 msgid "{0}'s Territory"
 msgstr ""
 
-#: Sources/Gui/Main.cpp:960
+#: Sources/Gui/Main.cpp:976
 msgctxt "Main"
 msgid "Localization System Loaded"
 msgstr ""
 
-#: Sources/Gui/Main.cpp:1038 Sources/Gui/Runner.cpp:56
+#: Sources/Gui/Main.cpp:1054 Sources/Gui/Runner.cpp:56
 msgctxt "Main"
 msgid ""
 "A serious error caused ZeroSpades to stop working:\n"
@@ -738,7 +737,7 @@ msgid ""
 "See SystemMessages.log for more details."
 msgstr ""
 
-#: Sources/Gui/Main.cpp:1046 Sources/Gui/Runner.cpp:62
+#: Sources/Gui/Main.cpp:1062 Sources/Gui/Runner.cpp:62
 msgctxt "Main"
 msgid "ZeroSpades Fatal Error"
 msgstr ""
@@ -748,26 +747,34 @@ msgctxt "MainScreen"
 msgid "NOW LOADING"
 msgstr ""
 
-#: Sources/Gui/ModsScreenHelper.cpp:304
+#: Sources/Gui/ModsScreenHelper.cpp:466
 msgctxt "ModsScreenHelper"
-msgid "Download '{0}': {1}"
+msgid "{0}: no download URL"
 msgstr ""
 
-#: Sources/Gui/ModsScreenHelper.cpp:308
+#: Sources/Gui/ModsScreenHelper.cpp:475
 msgctxt "ModsScreenHelper"
-msgid "Rename '{0}' failed"
+msgid "{0}: {1}"
 msgstr ""
 
-#: Sources/Gui/ModsScreenHelper.cpp:329 Sources/Gui/ModsScreenHelper.cpp:359
+#: Sources/Gui/ModsScreenHelper.cpp:483
+msgctxt "ModsScreenHelper"
+msgid "{0}: cannot replace (file in use?)"
+msgstr ""
+
 #: Sources/Gui/ModsScreenHelper.cpp:504 Sources/Gui/ModsScreenHelper.cpp:534
-#, c++-format
 msgctxt "ModsScreenHelper"
 msgid "List '{0}': {1}"
 msgstr ""
 
-#: Sources/Gui/ModsScreenHelper.cpp:335 Sources/Gui/ModsScreenHelper.cpp:510
+#: Sources/Gui/ModsScreenHelper.cpp:510
 msgctxt "ModsScreenHelper"
 msgid "Index parse failed (expected JSON array)"
+msgstr ""
+
+#: Sources/Gui/ModsScreenHelper.cpp:559
+msgctxt "ModsScreenHelper"
+msgid "{0} pak(s) failed to download:"
 msgstr ""
 
 #: Resources/Scripts/Gui/Client/ChatLogWindow.as:84
@@ -791,11 +798,9 @@ msgid "Send"
 msgstr ""
 
 #: Resources/Scripts/Gui/Client/ChatSayWindow.as:184
-#: Resources/Scripts/Gui/MainScreen/MainMenu.as:274
-#: Resources/Scripts/Gui/MainScreen/MainMenu.as:444
-#: Resources/Scripts/Gui/StartupScreen/MainMenu.as:58
 #: Resources/Scripts/Gui/MainScreen/MainMenu.as:276
 #: Resources/Scripts/Gui/MainScreen/MainMenu.as:446
+#: Resources/Scripts/Gui/StartupScreen/MainMenu.as:58
 msgctxt "Client"
 msgid "[Enter]"
 msgstr ""
@@ -876,7 +881,6 @@ msgid "Rename Demo"
 msgstr ""
 
 #: Resources/Scripts/Gui/MainScreen/MainMenu.as:106
-#: Resources/Scripts/Gui/MainScreen/MainMenu.as:436
 #: Resources/Scripts/Gui/MainScreen/MainMenu.as:438
 msgctxt "MainScreen"
 msgid "Rename"
@@ -887,268 +891,230 @@ msgctxt "MainScreen"
 msgid "Cancel"
 msgstr ""
 
-#: Resources/Scripts/Gui/MainScreen/MainMenu.as:273
 #: Resources/Scripts/Gui/MainScreen/MainMenu.as:275
 msgctxt "MainScreen"
 msgid "Connect"
 msgstr ""
 
-#: Resources/Scripts/Gui/MainScreen/MainMenu.as:282
 #: Resources/Scripts/Gui/MainScreen/MainMenu.as:284
 msgctxt "MainScreen"
 msgid "Quick Connect"
 msgstr ""
 
-#: Resources/Scripts/Gui/MainScreen/MainMenu.as:296
-#: Resources/Scripts/Gui/MainScreen/MainMenu.as:386
 #: Resources/Scripts/Gui/MainScreen/MainMenu.as:298
 #: Resources/Scripts/Gui/MainScreen/MainMenu.as:388
 msgctxt "MainScreen"
 msgid "0.75"
 msgstr ""
 
-#: Resources/Scripts/Gui/MainScreen/MainMenu.as:305
-#: Resources/Scripts/Gui/MainScreen/MainMenu.as:394
 #: Resources/Scripts/Gui/MainScreen/MainMenu.as:307
 #: Resources/Scripts/Gui/MainScreen/MainMenu.as:396
 msgctxt "MainScreen"
 msgid "0.76"
 msgstr ""
 
-#: Resources/Scripts/Gui/MainScreen/MainMenu.as:319
 #: Resources/Scripts/Gui/MainScreen/MainMenu.as:321
 msgctxt "MainScreen"
 msgid "Server Name"
 msgstr ""
 
-#: Resources/Scripts/Gui/MainScreen/MainMenu.as:326
 #: Resources/Scripts/Gui/MainScreen/MainMenu.as:328
 msgctxt "MainScreen"
 msgid "Slots"
 msgstr ""
 
-#: Resources/Scripts/Gui/MainScreen/MainMenu.as:334
 #: Resources/Scripts/Gui/MainScreen/MainMenu.as:336
 msgctxt "MainScreen"
 msgid "Map Name"
 msgstr ""
 
-#: Resources/Scripts/Gui/MainScreen/MainMenu.as:341
-#: Resources/Scripts/Gui/MainScreen/MainMenu.as:472
 #: Resources/Scripts/Gui/MainScreen/MainMenu.as:343
 #: Resources/Scripts/Gui/MainScreen/MainMenu.as:474
 msgctxt "MainScreen"
 msgid "Game Mode"
 msgstr ""
 
-#: Resources/Scripts/Gui/MainScreen/MainMenu.as:349
 #: Resources/Scripts/Gui/MainScreen/MainMenu.as:351
 msgctxt "MainScreen"
 msgid "Ver."
 msgstr ""
 
-#: Resources/Scripts/Gui/MainScreen/MainMenu.as:357
 #: Resources/Scripts/Gui/MainScreen/MainMenu.as:359
 msgctxt "MainScreen"
 msgid "Ping"
 msgstr ""
 
-#: Resources/Scripts/Gui/MainScreen/MainMenu.as:378
-#: Resources/Scripts/Gui/MainScreen/MainMenu.as:412
 #: Resources/Scripts/Gui/MainScreen/MainMenu.as:380
 #: Resources/Scripts/Gui/MainScreen/MainMenu.as:414
 msgctxt "MainScreen"
 msgid "Filter"
 msgstr ""
 
-#: Resources/Scripts/Gui/MainScreen/MainMenu.as:403
 #: Resources/Scripts/Gui/MainScreen/MainMenu.as:405
 msgctxt "MainScreen"
 msgid "Not Full"
 msgstr ""
 
-#: Resources/Scripts/Gui/MainScreen/MainMenu.as:422
 #: Resources/Scripts/Gui/MainScreen/MainMenu.as:424
 msgctxt "MainScreen"
 msgid "Select a demo"
 msgstr ""
 
-#: Resources/Scripts/Gui/MainScreen/MainMenu.as:429
 #: Resources/Scripts/Gui/MainScreen/MainMenu.as:431
 msgctxt "MainScreen"
 msgid "Delete"
 msgstr ""
 
-#: Resources/Scripts/Gui/MainScreen/MainMenu.as:443
 #: Resources/Scripts/Gui/MainScreen/MainMenu.as:445
 msgctxt "MainScreen"
 msgid "Play"
 msgstr ""
 
-#: Resources/Scripts/Gui/MainScreen/MainMenu.as:458
 #: Resources/Scripts/Gui/MainScreen/MainMenu.as:460
 msgctxt "MainScreen"
 msgid "Server"
 msgstr ""
 
-#: Resources/Scripts/Gui/MainScreen/MainMenu.as:465
 #: Resources/Scripts/Gui/MainScreen/MainMenu.as:467
 msgctxt "MainScreen"
 msgid "Map"
 msgstr ""
 
-#: Resources/Scripts/Gui/MainScreen/MainMenu.as:479
 #: Resources/Scripts/Gui/MainScreen/MainMenu.as:481
 msgctxt "MainScreen"
 msgid "Timestamp"
 msgstr ""
 
-#: Resources/Scripts/Gui/MainScreen/MainMenu.as:486
-#: Resources/Scripts/Gui/MainScreen/MainMenu.as:563
 #: Resources/Scripts/Gui/MainScreen/MainMenu.as:488
 #: Resources/Scripts/Gui/MainScreen/MainMenu.as:572
 msgctxt "MainScreen"
 msgid "Size"
 msgstr ""
 
-#: Resources/Scripts/Gui/MainScreen/MainMenu.as:499
 #: Resources/Scripts/Gui/MainScreen/MainMenu.as:501
 msgctxt "MainScreen"
 msgid "Download official mods..."
 msgstr ""
 
-#: Resources/Scripts/Gui/MainScreen/MainMenu.as:506
 #: Resources/Scripts/Gui/MainScreen/MainMenu.as:508
 msgctxt "MainScreen"
 msgid "Disable all"
 msgstr ""
 
-#: Resources/Scripts/Gui/MainScreen/MainMenu.as:513
 #: Resources/Scripts/Gui/MainScreen/MainMenu.as:515
 msgctxt "MainScreen"
 msgid "Apply changes"
 msgstr ""
 
-#: Resources/Scripts/Gui/MainScreen/MainMenu.as:535
 #: Resources/Scripts/Gui/MainScreen/MainMenu.as:537
 msgctxt "MainScreen"
 msgid "Status"
 msgstr ""
 
-#: Resources/Scripts/Gui/MainScreen/MainMenu.as:542
 #: Resources/Scripts/Gui/MainScreen/MainMenu.as:544
 msgctxt "MainScreen"
 msgid "Apply Order"
 msgstr ""
 
-#: Resources/Scripts/Gui/MainScreen/MainMenu.as:549
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:551
+msgctxt "MainScreen"
+msgid "Type"
+msgstr ""
+
 #: Resources/Scripts/Gui/MainScreen/MainMenu.as:558
 msgctxt "MainScreen"
 msgid "Mod"
 msgstr ""
 
-#: Resources/Scripts/Gui/MainScreen/MainMenu.as:556
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:565
 msgctxt "MainScreen"
-msgid "Paks"
+msgid "Author"
 msgstr ""
 
-#: Resources/Scripts/Gui/MainScreen/MainMenu.as:582
 #: Resources/Scripts/Gui/MainScreen/MainMenu.as:591
 msgctxt "MainScreen"
 msgid "Servers"
 msgstr ""
 
-#: Resources/Scripts/Gui/MainScreen/MainMenu.as:583
 #: Resources/Scripts/Gui/MainScreen/MainMenu.as:592
 msgctxt "MainScreen"
 msgid "Demos"
 msgstr ""
 
-#: Resources/Scripts/Gui/MainScreen/MainMenu.as:587
 #: Resources/Scripts/Gui/MainScreen/MainMenu.as:596
 msgctxt "MainScreen"
 msgid "Mods"
 msgstr ""
 
-#: Resources/Scripts/Gui/MainScreen/MainMenu.as:602
 #: Resources/Scripts/Gui/MainScreen/MainMenu.as:611
 msgctxt "MainScreen"
 msgid "Quit"
 msgstr ""
 
-#: Resources/Scripts/Gui/MainScreen/MainMenu.as:610
 #: Resources/Scripts/Gui/MainScreen/MainMenu.as:619
 msgctxt "MainScreen"
 msgid "Credits"
 msgstr ""
 
-#: Resources/Scripts/Gui/MainScreen/MainMenu.as:617
 #: Resources/Scripts/Gui/MainScreen/MainMenu.as:626
 msgctxt "MainScreen"
 msgid "Setup"
 msgstr ""
 
-#: Resources/Scripts/Gui/MainScreen/MainMenu.as:727
 #: Resources/Scripts/Gui/MainScreen/MainMenu.as:737
 msgctxt "MainScreen"
 msgid "Fetching mod list..."
 msgstr ""
 
-#: Resources/Scripts/Gui/MainScreen/MainMenu.as:746
 #: Resources/Scripts/Gui/MainScreen/MainMenu.as:756
 msgctxt "MainScreen"
 msgid "Press 'Apply changes' to restart and apply your mods."
 msgstr ""
 
-#: Resources/Scripts/Gui/MainScreen/MainMenu.as:756
 #: Resources/Scripts/Gui/MainScreen/MainMenu.as:765
 msgctxt "MainScreen"
 msgid "Download the official ZeroSpades mod pack?"
 msgstr ""
 
-#: Resources/Scripts/Gui/MainScreen/MainMenu.as:757
 #: Resources/Scripts/Gui/MainScreen/MainMenu.as:766
 msgctxt "MainScreen"
 msgid "These are mods reviewed and hosted by the ZeroSpades team."
 msgstr ""
 
-#: Resources/Scripts/Gui/MainScreen/MainMenu.as:758
 #: Resources/Scripts/Gui/MainScreen/MainMenu.as:767
 msgctxt "MainScreen"
 msgid "Source: "
 msgstr ""
 
-#: Resources/Scripts/Gui/MainScreen/MainMenu.as:759
 #: Resources/Scripts/Gui/MainScreen/MainMenu.as:768
 msgctxt "MainScreen"
 msgid ""
 "Files will be saved into your Mods/ folder, overwriting any existing copies."
 msgstr ""
 
-#: Resources/Scripts/Gui/MainScreen/MainMenu.as:785
 #: Resources/Scripts/Gui/MainScreen/MainMenu.as:794
 msgctxt "MainScreen"
 msgid "Disable all mods? This takes effect after a restart."
 msgstr ""
 
-#: Resources/Scripts/Gui/MainScreen/MainMenu.as:856
+#: Resources/Scripts/Gui/MainScreen/MainMenu.as:836
+msgctxt "MainScreen"
+msgid "Mod download failed:"
+msgstr ""
+
 #: Resources/Scripts/Gui/MainScreen/MainMenu.as:873
-#, c++-format
 msgctxt "MainScreen"
 msgid ""
 "Are you sure you want to delete '{0}'?\n"
 "This action cannot be undone."
 msgstr ""
 
-#: Resources/Scripts/Gui/MainScreen/MainMenu.as:891
 #: Resources/Scripts/Gui/MainScreen/MainMenu.as:908
 msgctxt "MainScreen"
 msgid "Failed to rename demo."
 msgstr ""
 
-#: Resources/Scripts/Gui/MainScreen/MainMenu.as:1121
 #: Resources/Scripts/Gui/MainScreen/MainMenu.as:1138
-#, c++-format
 msgctxt "MainScreen"
 msgid ""
 "You were disconnected from the server because of the following reason:\n"
@@ -3047,22 +3013,22 @@ msgid ""
 "4x"
 msgstr ""
 
-#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:473
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:472
 msgctxt "StartupScreen"
 msgid "Audio Settings"
 msgstr ""
 
-#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:478
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:477
 msgctxt "StartupScreen"
 msgid "Backend"
 msgstr ""
 
-#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:481
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:480
 msgctxt "StartupScreen"
 msgid "OpenAL"
 msgstr ""
 
-#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:487
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:486
 msgctxt "StartupScreen"
 msgid ""
 "Uses an OpenAL-capable sound card to process sound. In most cases where "
@@ -3070,27 +3036,27 @@ msgid ""
 msgstr ""
 
 #. ! The name of audio driver that outputs no audio.
-#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:498
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:497
 msgctxt "StartupScreen"
 msgid "Null"
 msgstr ""
 
-#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:501
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:500
 msgctxt "StartupScreen"
 msgid "Disables audio output."
 msgstr ""
 
-#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:511
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:510
 msgctxt "StartupScreen"
 msgid "Volume"
 msgstr ""
 
-#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:516
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:515
 msgctxt "StartupScreen"
 msgid "Polyphonics"
 msgstr ""
 
-#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:518
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:517
 msgctxt "StartupScreen"
 msgid ""
 "Specifies how many sounds can be played simultaneously. Higher value needs "
@@ -3098,162 +3064,162 @@ msgid ""
 "(especially with a software emulation)."
 msgstr ""
 
-#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:524
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:523
 msgctxt "StartupScreen"
 msgid "EAX"
 msgstr ""
 
-#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:526
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:525
 msgctxt "StartupScreen"
 msgid ""
 "Enables extended features provided by the OpenAL driver to create more "
 "ambience."
 msgstr ""
 
-#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:536
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:535
 msgctxt "StartupScreen"
 msgid "Output Device"
 msgstr ""
 
-#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:596
-#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:598
-#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:610
-#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:857
-#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:871
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:593
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:595
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:607
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:854
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:868
 msgctxt "StartupScreen"
 msgid "System default"
 msgstr ""
 
-#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:652
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:649
 msgctxt "StartupScreen"
 msgid "Language"
 msgstr ""
 
-#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:664
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:661
 msgctxt "StartupScreen"
 msgid "Tools"
 msgstr ""
 
-#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:667
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:664
 msgctxt "StartupScreen"
 msgid "Reset All Settings"
 msgstr ""
 
-#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:676
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:673
 msgctxt "StartupScreen"
 msgid "Open Config Folder in Explorer"
 msgstr ""
 
-#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:678
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:675
 msgctxt "StartupScreen"
 msgid "Reveal Config Folder in Finder"
 msgstr ""
 
-#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:680
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:677
 msgctxt "StartupScreen"
 msgid "Browse Config Folder"
 msgstr ""
 
-#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:687
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:684
 msgctxt "StartupScreen"
 msgid "Demo Recording"
 msgstr ""
 
-#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:690
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:687
 msgctxt "StartupScreen"
 msgid "Automatically record every game"
 msgstr ""
 
-#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:698
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:695
 msgctxt "StartupScreen"
 msgid "Delete oldest demos when limit is reached"
 msgstr ""
 
-#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:705
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:702
 msgctxt "StartupScreen"
 msgid "Max stored demos"
 msgstr ""
 
-#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:718
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:715
 msgctxt "StartupScreen"
 msgid "Demos Folder"
 msgstr ""
 
-#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:723
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:720
 msgctxt "StartupScreen"
 msgid "Open Demos Folder in Explorer"
 msgstr ""
 
-#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:725
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:722
 msgctxt "StartupScreen"
 msgid "Reveal Demos Folder in Finder"
 msgstr ""
 
-#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:727
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:724
 msgctxt "StartupScreen"
 msgid "Browse Demos Folder"
 msgstr ""
 
-#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:761
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:758
 msgctxt "StartupScreen"
 msgid "An unknown error has occurred while opening the demos directory."
 msgstr ""
 
-#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:771
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:768
 msgctxt "StartupScreen"
 msgid "An unknown error has occurred while opening the config directory."
 msgstr ""
 
-#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:779
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:776
 msgctxt "StartupScreen"
 msgid ""
 "Are you sure to reset all settings? They include (but are not limited to):"
 msgstr ""
 
-#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:781
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:778
 msgctxt "StartupScreen"
 msgid "All graphics/audio settings"
 msgstr ""
 
-#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:782
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:779
 msgctxt "StartupScreen"
 msgid "All key bindings"
 msgstr ""
 
-#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:783
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:780
 msgctxt "StartupScreen"
 msgid "Your player name"
 msgstr ""
 
-#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:787
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:784
 #: Resources/Scripts/Gui/StartupScreen/MainMenu.as:126
 msgctxt "StartupScreen"
 msgid "Advanced"
 msgstr ""
 
-#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:786
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:783
 msgctxt "StartupScreen"
 msgid ""
 "Other advanced settings only accessible through '{0}' tab and in-game "
 "commands."
 msgstr ""
 
-#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:855
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:852
 msgctxt "StartupScreen"
 msgid "Unknown ({0})"
 msgstr ""
 
-#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:920
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:917
 msgctxt "StartupScreen"
 msgid "Copy to Clipboard"
 msgstr ""
 
-#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:948
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:945
 msgctxt "StartupScreen"
 msgid "Advanced Settings"
 msgstr ""
 
-#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:956
+#: Resources/Scripts/Gui/StartupScreen/ConfigViewTabs.as:953
 msgctxt "StartupScreen"
 msgid "Filter"
 msgstr ""
@@ -3302,43 +3268,4 @@ msgstr ""
 #: Resources/Scripts/Gui/StartupScreen/MainMenu.as:148
 msgctxt "StartupScreen"
 msgid "An unknown error has occurred while opening this url."
-msgstr ""
-
-#: Sources/Gui/ModsScreenHelper.cpp:466
-#, c++-format
-msgctxt "ModsScreenHelper"
-msgid "{0}: no download URL"
-msgstr ""
-
-#: Sources/Gui/ModsScreenHelper.cpp:475
-#, c++-format
-msgctxt "ModsScreenHelper"
-msgid "{0}: {1}"
-msgstr ""
-
-#: Sources/Gui/ModsScreenHelper.cpp:483
-#, c++-format
-msgctxt "ModsScreenHelper"
-msgid "{0}: cannot replace (file in use?)"
-msgstr ""
-
-#: Sources/Gui/ModsScreenHelper.cpp:559
-#, c++-format
-msgctxt "ModsScreenHelper"
-msgid "{0} pak(s) failed to download:"
-msgstr ""
-
-#: Resources/Scripts/Gui/MainScreen/MainMenu.as:551
-msgctxt "MainScreen"
-msgid "Type"
-msgstr ""
-
-#: Resources/Scripts/Gui/MainScreen/MainMenu.as:565
-msgctxt "MainScreen"
-msgid "Author"
-msgstr ""
-
-#: Resources/Scripts/Gui/MainScreen/MainMenu.as:836
-msgctxt "MainScreen"
-msgid "Mod download failed:"
 msgstr ""
