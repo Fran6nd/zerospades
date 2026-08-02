@@ -22,6 +22,15 @@
 
 layout(binding = 0) uniform sampler2D mainTexture;
 
+// Must match BasicImage.vert exactly: one range covers both stages.
+layout(push_constant) uniform PushConstants {
+	vec2 invScreenSizeFactored;
+	vec2 invTextureSize;
+	vec2 clipCircleCenter; // screen pixels
+	float clipCircleRadius; // <= 0 disables the circular clip
+	float _pad;
+} pushConstants;
+
 layout(location = 0) in vec4 color;
 layout(location = 1) in vec2 texCoord;
 
@@ -43,6 +52,16 @@ vec3 srgbToLinear(vec3 c) {
 }
 
 void main() {
+	// Circular clip. gl_FragCoord is in framebuffer pixels with a top-left
+	// origin, which is exactly the screen coordinate space the client passes
+	// in, so the centre needs no conversion.
+	if (pushConstants.clipCircleRadius > 0.0) {
+		float r = pushConstants.clipCircleRadius;
+		if (dot(gl_FragCoord.xy - pushConstants.clipCircleCenter,
+		        gl_FragCoord.xy - pushConstants.clipCircleCenter) > r * r)
+			discard;
+	}
+
 	vec2 flippedTexCoord = vec2(texCoord.x, 1.0 - texCoord.y);
 	vec4 col = texture(mainTexture, flippedTexCoord);
 	col.xyz *= col.w;

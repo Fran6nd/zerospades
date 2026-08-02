@@ -20,9 +20,13 @@
 
 #version 450
 
+// Must match BasicImage.frag exactly: one range covers both stages.
 layout(push_constant) uniform PushConstants {
 	vec2 invScreenSizeFactored;
 	vec2 invTextureSize;
+	vec2 clipCircleCenter; // screen pixels
+	float clipCircleRadius; // <= 0 disables the circular clip
+	float _pad;
 } pushConstants;
 
 layout(location = 0) in vec2 positionAttribute;

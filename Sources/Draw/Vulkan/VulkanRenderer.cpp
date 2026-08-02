@@ -1299,6 +1299,39 @@ namespace spades {
 				flatMapRenderer->Draw(outTopLeft, outTopRight, outBottomLeft, inRect);
 		}
 
+		// 2D clipping. Unlike GL, which stamps a stencil mask, this pass has no
+		// depth/stencil attachment by design (see CreateRenderPass), so the
+		// circle is a fragment-shader reject and the rect is a dynamic scissor.
+		// Both are core Vulkan 1.0 with no optional features, and both travel
+		// with the batch, since the image renderer records its draws later.
+		void VulkanRenderer::BeginClippingCircle(const Vector2& center, float radius) {
+			SPADES_MARK_FUNCTION();
+			EnsureSceneNotStarted();
+			if (imageRenderer)
+				imageRenderer->SetClipCircle(center, radius);
+		}
+
+		void VulkanRenderer::EndClippingCircle() {
+			SPADES_MARK_FUNCTION();
+			EnsureSceneNotStarted();
+			if (imageRenderer)
+				imageRenderer->ClearClipCircle();
+		}
+
+		void VulkanRenderer::BeginClippingRect(const AABB2& outRect) {
+			SPADES_MARK_FUNCTION();
+			EnsureSceneNotStarted();
+			if (imageRenderer)
+				imageRenderer->SetClipRect(outRect);
+		}
+
+		void VulkanRenderer::EndClippingRect() {
+			SPADES_MARK_FUNCTION();
+			EnsureSceneNotStarted();
+			if (imageRenderer)
+				imageRenderer->ClearClipRect();
+		}
+
 		void VulkanRenderer::FrameDone() {
 			SPADES_MARK_FUNCTION();
 

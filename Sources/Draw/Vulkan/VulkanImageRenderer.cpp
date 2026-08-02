@@ -29,8 +29,9 @@
 #include <Core/Exception.h>
 #include <Core/FileManager.h>
 #include <Core/IStream.h>
-#include <fstream>
+#include <cmath>
 #include <cstring>
+#include <fstream>
 
 namespace spades {
 	namespace draw {
@@ -214,11 +215,13 @@ namespace spades {
 				SPRaise("Failed to create descriptor set layout (error code: %d)", result);
 			}
 
-			// Push constant range for screen size and texture size
+			// Push constant range for screen size, texture size and the circular
+			// clip. Sized from the same struct the push uses, so the two can
+			// never drift apart.
 			VkPushConstantRange pushConstantRange{};
-			pushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+			pushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
 			pushConstantRange.offset = 0;
-			pushConstantRange.size = sizeof(float) * 4; // vec2 invScreenSizeFactored + vec2 invTextureSize
+			pushConstantRange.size = sizeof(PushConstants);
 
 			VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
 			pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
@@ -281,29 +284,87 @@ namespace spades {
 			SPLog("Created %zu descriptor pools (one per swapchain image)", perFrameDescriptorPools.size());
 		}
 
+		VkRect2D VulkanImageRenderer::FullScissor() const {
+			VkRect2D r{};
+			r.offset = {0, 0};
+			r.extent = device->GetSwapchainExtent();
+			return r;
+		}
+
+		void VulkanImageRenderer::FinishCurrentBatch() {
+			if (!image || vertices.empty())
+				return;
+
+			Batch batch;
+			batch.image = image;
+			batch.vertices = std::move(vertices);
+			batch.indices = std::move(indices);
+			batch.clip = currentClip;
+			batches.push_back(std::move(batch));
+
+			// The batch takes over the reference 'image' was holding, so no
+			// AddRef/Release here.
+			vertices.clear();
+			indices.clear();
+			image = nullptr;
+		}
+
+		void VulkanImageRenderer::SetClipCircle(const Vector2& center, float radius) {
+			SPADES_MARK_FUNCTION();
+
+			// Everything queued so far keeps the previous clip.
+			FinishCurrentBatch();
+			currentClip.circleCenter = center;
+			currentClip.circleRadius = radius;
+		}
+
+		void VulkanImageRenderer::ClearClipCircle() {
+			SPADES_MARK_FUNCTION();
+
+			FinishCurrentBatch();
+			currentClip.circleRadius = 0.0f;
+		}
+
+		void VulkanImageRenderer::SetClipRect(const AABB2& rect) {
+			SPADES_MARK_FUNCTION();
+
+			FinishCurrentBatch();
+
+			// Screen coordinates map 1:1 onto framebuffer pixels here: the
+			// vertex shader divides by the swapchain extent and the viewport is
+			// Y-flipped, so screen (0, 0) is the top-left pixel, same as the
+			// scissor's origin. Clamp to the surface, as Vulkan rejects a
+			// scissor reaching outside the framebuffer.
+			const VkRect2D full = FullScissor();
+			const float maxX = static_cast<float>(full.extent.width);
+			const float maxY = static_cast<float>(full.extent.height);
+
+			float x0 = Clamp(floorf(rect.GetMinX()), 0.0f, maxX);
+			float y0 = Clamp(floorf(rect.GetMinY()), 0.0f, maxY);
+			float x1 = Clamp(ceilf(rect.GetMaxX()), x0, maxX);
+			float y1 = Clamp(ceilf(rect.GetMaxY()), y0, maxY);
+
+			VkRect2D scissor{};
+			scissor.offset = {static_cast<int32_t>(x0), static_cast<int32_t>(y0)};
+			scissor.extent = {static_cast<uint32_t>(x1 - x0), static_cast<uint32_t>(y1 - y0)};
+			currentClip.scissor = scissor;
+			currentClip.hasScissor = true;
+		}
+
+		void VulkanImageRenderer::ClearClipRect() {
+			SPADES_MARK_FUNCTION();
+
+			FinishCurrentBatch();
+			currentClip.hasScissor = false;
+		}
+
 		void VulkanImageRenderer::SetImage(VulkanImage* img) {
 			if (img == image)
 				return;
 
 			// When image changes, save the current batch before switching
 			// This mimics the GL renderer which calls Flush() immediately here
-			if (image && !vertices.empty()) {
-				// Save the batch for deferred rendering
-				Batch batch;
-				batch.image = image;
-				batch.vertices = std::move(vertices);
-				batch.indices = std::move(indices);
-				batches.push_back(std::move(batch));
-
-				// Batch holds the reference that 'image' currently has
-				// We transfer ownership to the batch, so don't AddRef or Release here
-
-				vertices.clear();
-				indices.clear();
-
-				// Clear image so we don't Release it below
-				image = nullptr;
-			}
+			FinishCurrentBatch();
 
 			if (image) {
 				image->Release();
@@ -364,15 +425,13 @@ namespace spades {
 		SPADES_MARK_FUNCTION();
 
 		// Add current vertices as final batch if not empty
-		if (!vertices.empty() && image) {
-			Batch batch;
-			batch.image = image;
-			batch.vertices = std::move(vertices);
-			batch.indices = std::move(indices);
-			batches.push_back(std::move(batch));
-			// Batch takes ownership of the reference that 'image' currently holds
-			image = nullptr;
-		}
+		FinishCurrentBatch();
+
+		// Every batch carries its own clip now, so the pending state can be
+		// dropped. Doing it here rather than at the end covers the early
+		// returns below: an unbalanced Begin...() must never leak into the next
+		// frame and blank out the whole UI.
+		currentClip = BatchClip{};
 
 		if (batches.empty()) {
 			vertices.clear();
@@ -429,6 +488,7 @@ namespace spades {
 			uint32_t indexOffset;
 			uint32_t indexCount;
 			uint32_t vertexOffset;
+			BatchClip clip;
 		};
 		std::vector<BatchDrawInfo> drawInfos;
 		drawInfos.reserve(batches.size());
@@ -442,6 +502,7 @@ namespace spades {
 			info.indexOffset = currentIndexOffset;
 			info.indexCount = static_cast<uint32_t>(batch.indices.size());
 			info.vertexOffset = currentVertexOffset;
+			info.clip = batch.clip;
 
 			// Copy vertices
 			allVertices.insert(allVertices.end(), batch.vertices.begin(), batch.vertices.end());
@@ -494,10 +555,10 @@ namespace spades {
 		viewport.maxDepth = 1.0f;
 		vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
 
-		VkRect2D scissor{};
-		scissor.offset = {0, 0};
-		scissor.extent = uiExtent;
-		vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
+		VkRect2D fullScissor{};
+		fullScissor.offset = {0, 0};
+		fullScissor.extent = uiExtent;
+		vkCmdSetScissor(commandBuffer, 0, 1, &fullScissor);
 
 		// Bind the consolidated buffers once
 		VkBuffer vertexBuffers[] = {consolidatedVertexBuffer->GetBuffer()};
@@ -565,15 +626,24 @@ namespace spades {
 
 			vkUpdateDescriptorSets(vkDevice, 1, &descriptorWrite, 0, nullptr);
 
-			// Push constants for screen size and texture size
-			float pushConstants[4];
-			pushConstants[0] = invUIWidth;
-			pushConstants[1] = invUIHeight;
-			pushConstants[2] = 1.0f / static_cast<float>(info.image->GetWidth());
-			pushConstants[3] = 1.0f / static_cast<float>(info.image->GetHeight());
+			// Rectangular clip. Scissor is dynamic state, so this costs nothing
+			// but a command and cannot invalidate the pipeline.
+			const VkRect2D& batchScissor = info.clip.hasScissor ? info.clip.scissor : fullScissor;
+			vkCmdSetScissor(commandBuffer, 0, 1, &batchScissor);
 
-			vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT,
-				0, sizeof(pushConstants), pushConstants);
+			// Push constants for screen size, texture size and circular clip
+			PushConstants pushConstants{};
+			pushConstants.invScreenSizeFactored[0] = invUIWidth;
+			pushConstants.invScreenSizeFactored[1] = invUIHeight;
+			pushConstants.invTextureSize[0] = 1.0f / static_cast<float>(info.image->GetWidth());
+			pushConstants.invTextureSize[1] = 1.0f / static_cast<float>(info.image->GetHeight());
+			pushConstants.clipCircleCenter[0] = info.clip.circleCenter.x;
+			pushConstants.clipCircleCenter[1] = info.clip.circleCenter.y;
+			pushConstants.clipCircleRadius = info.clip.circleRadius;
+
+			vkCmdPushConstants(commandBuffer, pipelineLayout,
+				VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+				0, sizeof(pushConstants), &pushConstants);
 
 			// Bind descriptor set
 			vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout,
