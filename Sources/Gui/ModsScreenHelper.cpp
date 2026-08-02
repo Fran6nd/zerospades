@@ -21,10 +21,12 @@
 #include "ModsScreenHelper.h"
 
 #include <algorithm>
+#include <chrono>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <sys/stat.h>
+#include <thread>
 
 #ifdef _WIN32
 #include <direct.h>
@@ -49,14 +51,52 @@
 #include <ScriptBindings/ScriptManager.h>
 #include <ZeroSpades.h>
 
-DEFINE_SPADES_SETTING(cl_modsIndexUrl,
-					  "https://api.github.com/repos/zerospades/zerospades-paks/contents/");
+// Escape hatch only: when empty (the default), the canonical repo below is
+// used. Older builds persisted the repo URL directly into this setting, which
+// then permanently shadowed any change to the code default — see
+// ResolveModsIndexUrl for the migration that heals those stale values.
+DEFINE_SPADES_SETTING(cl_modsIndexUrl, "");
 
 namespace spades {
 	namespace gui {
 
 		namespace {
 			constexpr const char* kModsDir = "Mods";
+			// The one true source of the official pak listing. Kept as a
+			// compile-time constant, never through a persisted setting, so a
+			// new build's URL always reaches every user.
+			constexpr const char* kCanonicalIndexUrl =
+			  "https://api.github.com/repos/zerospades/zerospades-paks/contents/";
+
+			// True when a persisted value is a stale auto-saved default: it still
+			// targets our own repo but differs from the canonical form (trailing
+			// slash, http/https, path drift). Such a value is not a deliberate
+			// override and should be treated as canonical.
+			bool IsStaleOwnRepoUrl(const std::string& url) {
+				return !url.empty() && url != kCanonicalIndexUrl &&
+					   url.find("zerospades-paks") != std::string::npos;
+			}
+
+			// The index URL to actually fetch. Pure — no side effects, so it is
+			// safe to call from anywhere (including for display):
+			//   - empty              -> canonical (the normal case)
+			//   - stale pointer      -> canonical
+			//   - genuinely custom   -> respected as-is
+			std::string ResolveModsIndexUrl() {
+				std::string url = cl_modsIndexUrl.CString();
+				if (url.empty() || IsStaleOwnRepoUrl(url))
+					return kCanonicalIndexUrl;
+				return url;
+			}
+
+			// Rewrite a stale persisted value back to empty so the config stops
+			// shadowing the canonical URL. Call on the main thread only (writes
+			// the settings store). This is what lets users who upgraded from an
+			// older build recover without hand-editing SPConfig.cfg.
+			void HealPersistedModsIndexUrl() {
+				if (IsStaleOwnRepoUrl(cl_modsIndexUrl.CString()))
+					cl_modsIndexUrl = std::string();
+			}
 			// The enabled set lives here, at the resource root: one mod name per
 			// line, in apply order (bottom wins conflicts). No build stamp — mods
 			// are mounted as a startup overlay, never merged onto disk, so the
@@ -76,6 +116,53 @@ namespace spades {
 				std::string ext = s.substr(s.size() - 4);
 				return EqualsIgnoringCase(ext, ".pak")
 					|| EqualsIgnoringCase(ext, ".zip");
+			}
+
+			// A mod name parsed against the official CATEGORY-NAME-AUTHOR.pak
+			// convention. `structured` is true whenever the base name splits on
+			// '-' into exactly three fields (two separators) — any single field
+			// may be blank, e.g. SMG--Author (no name) or SMG-Name- (no author),
+			// so those still show their tag and whichever fields are present.
+			// Anything else (no separators, or too many) is left whole in `name`
+			// so the UI falls back to the raw filename.
+			struct ParsedModName {
+				bool structured = false;
+				std::string category; // e.g. SEMI, SMG, SHOTGUN, SPADE, FONT, SFX, VFX
+				std::string name;     // display name, or the full raw name if unstructured
+				std::string author;
+			};
+
+			ParsedModName ParseModName(const std::string& modName) {
+				ParsedModName p;
+				// Drop a trailing .pak/.zip (folder mods have no extension).
+				std::string base = modName;
+				if (EndsWithPak(base))
+					base = base.substr(0, base.size() - 4);
+
+				// Split on '-'.
+				std::vector<std::string> parts;
+				std::size_t start = 0;
+				while (true) {
+					std::size_t dash = base.find('-', start);
+					if (dash == std::string::npos) {
+						parts.push_back(base.substr(start));
+						break;
+					}
+					parts.push_back(base.substr(start, dash - start));
+					start = dash + 1;
+				}
+
+				// Exactly CATEGORY-NAME-AUTHOR; individual fields may be empty.
+				if (parts.size() == 3) {
+					p.structured = true;
+					p.category = parts[0];
+					p.name = parts[1];
+					p.author = parts[2];
+				} else {
+					// Fallback: keep the whole filename as the name.
+					p.name = modName;
+				}
+				return p;
 			}
 
 			void MakeDir(const std::string& path) {
@@ -203,67 +290,141 @@ namespace spades {
 				return itemsWritten * size;
 			}
 
+			// Number of attempts (initial + retries) for a single HTTP request.
+			constexpr long kMaxHttpAttempts = 3;
+
+			// Transient curl failures worth a retry — a connection dropped, a DNS
+			// hiccup, a timeout. A hard failure (bad URL, SSL cert) is not retried.
+			bool IsTransientCurl(CURLcode rc) {
+				switch (rc) {
+					case CURLE_COULDNT_CONNECT:
+					case CURLE_COULDNT_RESOLVE_HOST:
+					case CURLE_OPERATION_TIMEDOUT:
+					case CURLE_GOT_NOTHING:
+					case CURLE_RECV_ERROR:
+					case CURLE_SEND_ERROR:
+					case CURLE_PARTIAL_FILE: return true;
+					default: return false;
+				}
+			}
+
+			void BackoffSleep(long attempt) {
+				std::this_thread::sleep_for(std::chrono::seconds(attempt));
+			}
+
+			// Map an HTTP response code to an error string, or "" if it is a
+			// success. GitHub answers a throttled client with 403 (or 429), so
+			// call those out specifically — the user just needs to wait, not
+			// debug a URL.
+			std::string HttpCodeError(long code) {
+				if (code < 400)
+					return std::string{};
+				if (code == 403 || code == 429)
+					return Format("GitHub rate limit reached (HTTP {0}). Try again later.", code);
+				return Format("HTTP {0}", code);
+			}
+
 			// HTTP GET into a string. Returns "" on success, otherwise an error
-			// description. User-Agent is required by the GitHub API.
+			// description. User-Agent and Accept are required/expected by the
+			// GitHub API. Transient failures and 5xx are retried with backoff.
 			std::string HttpGetText(const std::string& url, std::string& out) {
-				std::unique_ptr<CURL, CURLDeleter> h{curl_easy_init()};
-				if (!h)
-					return "curl_easy_init failed";
-				curl_easy_setopt(h.get(), CURLOPT_URL, url.c_str());
-				curl_easy_setopt(h.get(), CURLOPT_USERAGENT, PACKAGE_STRING);
-				curl_easy_setopt(h.get(), CURLOPT_FOLLOWLOCATION, 1L);
-				curl_easy_setopt(h.get(), CURLOPT_WRITEFUNCTION, CurlWriteToString);
-				curl_easy_setopt(h.get(), CURLOPT_WRITEDATA, &out);
-				curl_easy_setopt(h.get(), CURLOPT_CONNECTTIMEOUT, 30L);
-				curl_easy_setopt(h.get(), CURLOPT_LOW_SPEED_TIME, 30L);
-				curl_easy_setopt(h.get(), CURLOPT_LOW_SPEED_LIMIT, 15L);
-				CURLcode rc = curl_easy_perform(h.get());
-				if (rc != CURLE_OK)
-					return curl_easy_strerror(rc);
-				long code = 0;
-				curl_easy_getinfo(h.get(), CURLINFO_RESPONSE_CODE, &code);
-				if (code >= 400)
-					return Format("HTTP {0}", code);
-				return std::string{};
+				std::string lastErr;
+				for (long attempt = 1; attempt <= kMaxHttpAttempts; ++attempt) {
+					out.clear();
+					std::unique_ptr<CURL, CURLDeleter> h{curl_easy_init()};
+					if (!h)
+						return "curl_easy_init failed";
+					struct curl_slist* headers = nullptr;
+					headers = curl_slist_append(headers, "Accept: application/vnd.github+json");
+					curl_easy_setopt(h.get(), CURLOPT_HTTPHEADER, headers);
+					curl_easy_setopt(h.get(), CURLOPT_URL, url.c_str());
+					curl_easy_setopt(h.get(), CURLOPT_USERAGENT, PACKAGE_STRING);
+					curl_easy_setopt(h.get(), CURLOPT_FOLLOWLOCATION, 1L);
+					curl_easy_setopt(h.get(), CURLOPT_WRITEFUNCTION, CurlWriteToString);
+					curl_easy_setopt(h.get(), CURLOPT_WRITEDATA, &out);
+					curl_easy_setopt(h.get(), CURLOPT_CONNECTTIMEOUT, 30L);
+					curl_easy_setopt(h.get(), CURLOPT_LOW_SPEED_TIME, 30L);
+					curl_easy_setopt(h.get(), CURLOPT_LOW_SPEED_LIMIT, 15L);
+					CURLcode rc = curl_easy_perform(h.get());
+					long code = 0;
+					curl_easy_getinfo(h.get(), CURLINFO_RESPONSE_CODE, &code);
+					curl_slist_free_all(headers);
+					if (rc != CURLE_OK) {
+						lastErr = curl_easy_strerror(rc);
+						if (IsTransientCurl(rc) && attempt < kMaxHttpAttempts) {
+							BackoffSleep(attempt);
+							continue;
+						}
+						return lastErr;
+					}
+					lastErr = HttpCodeError(code);
+					if (lastErr.empty())
+						return std::string{};
+					// Retry only on server-side 5xx; 4xx (incl. rate limit) won't
+					// clear within a few seconds.
+					if (code >= 500 && attempt < kMaxHttpAttempts) {
+						BackoffSleep(attempt);
+						continue;
+					}
+					return lastErr;
+				}
+				return lastErr;
 			}
 
 			std::string HttpDownloadToFile(const std::string& url,
 										   const std::string& destAbs) {
-				std::FILE* f = std::fopen(destAbs.c_str(), "wb");
-				if (!f)
-					return Format("Cannot create '{0}'", destAbs);
-				std::unique_ptr<CURL, CURLDeleter> h{curl_easy_init()};
-				if (!h) {
+				std::string lastErr;
+				for (long attempt = 1; attempt <= kMaxHttpAttempts; ++attempt) {
+					std::FILE* f = std::fopen(destAbs.c_str(), "wb");
+					if (!f)
+						return Format("Cannot create '{0}'", destAbs);
+					std::unique_ptr<CURL, CURLDeleter> h{curl_easy_init()};
+					if (!h) {
+						std::fclose(f);
+						std::remove(destAbs.c_str());
+						return "curl_easy_init failed";
+					}
+					curl_easy_setopt(h.get(), CURLOPT_URL, url.c_str());
+					curl_easy_setopt(h.get(), CURLOPT_USERAGENT, PACKAGE_STRING);
+					curl_easy_setopt(h.get(), CURLOPT_FOLLOWLOCATION, 1L);
+					curl_easy_setopt(h.get(), CURLOPT_WRITEFUNCTION, CurlWriteToFile);
+					curl_easy_setopt(h.get(), CURLOPT_WRITEDATA, f);
+					curl_easy_setopt(h.get(), CURLOPT_CONNECTTIMEOUT, 30L);
+					CURLcode rc = curl_easy_perform(h.get());
+					long code = 0;
+					curl_easy_getinfo(h.get(), CURLINFO_RESPONSE_CODE, &code);
 					std::fclose(f);
+					if (rc == CURLE_OK) {
+						lastErr = HttpCodeError(code);
+						if (lastErr.empty())
+							return std::string{};
+					} else {
+						lastErr = curl_easy_strerror(rc);
+					}
+					// The partial file is never a usable pak; drop it before retry
+					// or bail.
 					std::remove(destAbs.c_str());
-					return "curl_easy_init failed";
+					bool retriable = (rc != CURLE_OK) ? IsTransientCurl(rc) : (code >= 500);
+					if (retriable && attempt < kMaxHttpAttempts) {
+						BackoffSleep(attempt);
+						continue;
+					}
+					return lastErr;
 				}
-				curl_easy_setopt(h.get(), CURLOPT_URL, url.c_str());
-				curl_easy_setopt(h.get(), CURLOPT_USERAGENT, PACKAGE_STRING);
-				curl_easy_setopt(h.get(), CURLOPT_FOLLOWLOCATION, 1L);
-				curl_easy_setopt(h.get(), CURLOPT_WRITEFUNCTION, CurlWriteToFile);
-				curl_easy_setopt(h.get(), CURLOPT_WRITEDATA, f);
-				curl_easy_setopt(h.get(), CURLOPT_CONNECTTIMEOUT, 30L);
-				CURLcode rc = curl_easy_perform(h.get());
-				long code = 0;
-				curl_easy_getinfo(h.get(), CURLINFO_RESPONSE_CODE, &code);
-				std::fclose(f);
-				if (rc != CURLE_OK) {
-					std::remove(destAbs.c_str());
-					return curl_easy_strerror(rc);
-				}
-				if (code >= 400) {
-					std::remove(destAbs.c_str());
-					return Format("HTTP {0}", code);
-				}
-				return std::string{};
+				return lastErr;
 			}
 		} // namespace
 
 		class ModsScreenHelper::RefreshQuery final : public Thread {
 			Handle<ModsScreenHelper> owner;
+			std::string indexUrl; // resolved on the main thread before Start()
 
 			void Done(const std::string& msg) {
+				// A non-empty message is always a failure; log it so a broken
+				// download leaves a diagnosable trail even if the user misses the
+				// on-screen alert.
+				if (!msg.empty())
+					SPLog("Mods refresh failed: %s", msg.c_str());
 				owner->resultCell.store(std::make_unique<std::string>(msg));
 				owner = nullptr;
 			}
@@ -286,7 +447,14 @@ namespace spades {
 				}
 			}
 
-			std::string FetchOneLevel(const Json::Value& root, const std::string& dirAbs) {
+			// Download every pak in this listing level into dirAbs. A per-file
+			// failure is recorded in `failures` and does NOT abort the batch, so
+			// one pak that can't be written — e.g. an enabled mod whose file is
+			// held open by the running game — can't stop the others from
+			// downloading. Every pak entry advances the progress counter exactly
+			// once, so the bar still completes.
+			void FetchOneLevel(const Json::Value& root, const std::string& dirAbs,
+							   std::vector<std::string>& failures) {
 				EnsureDir(dirAbs);
 				for (const auto& entry : root) {
 					std::string type = entry.get("type", "").asString();
@@ -294,26 +462,33 @@ namespace spades {
 					if (type != "file" || !EndsWithPak(name))
 						continue;
 					std::string dl = entry.get("download_url", "").asString();
-					if (dl.empty())
+					if (dl.empty()) {
+						failures.push_back(_Tr("ModsScreenHelper", "{0}: no download URL", name));
+						++owner->progressDone;
 						continue;
+					}
 					SetCurrent(name);
 					std::string partial = dirAbs + "/" + name + ".partial";
 					std::string finalPath = dirAbs + "/" + name;
 					std::string e = HttpDownloadToFile(dl, partial);
-					if (!e.empty())
-						return _Tr("ModsScreenHelper", "Download '{0}': {1}", name, e);
+					if (!e.empty()) {
+						failures.push_back(_Tr("ModsScreenHelper", "{0}: {1}", name, e));
+						++owner->progressDone;
+						continue;
+					}
 					std::remove(finalPath.c_str());
 					if (std::rename(partial.c_str(), finalPath.c_str()) != 0) {
 						std::remove(partial.c_str());
-						return _Tr("ModsScreenHelper", "Rename '{0}' failed", name);
+						failures.push_back(
+						  _Tr("ModsScreenHelper", "{0}: cannot replace (file in use?)", name));
 					}
 					++owner->progressDone;
 				}
-				return std::string{};
 			}
 
 		public:
-			explicit RefreshQuery(ModsScreenHelper* o) : owner{o} {}
+			RefreshQuery(ModsScreenHelper* o, const std::string& indexUrl)
+				: owner{o}, indexUrl{indexUrl} {}
 
 			void Run() override {
 				try {
@@ -324,9 +499,9 @@ namespace spades {
 
 					// Fetch and parse the root listing.
 					std::string body;
-					std::string err = HttpGetText(cl_modsIndexUrl.CString(), body);
+					std::string err = HttpGetText(indexUrl, body);
 					if (!err.empty()) {
-						Done(_Tr("ModsScreenHelper", "List '{0}': {1}", std::string(cl_modsIndexUrl.CString()), err));
+						Done(_Tr("ModsScreenHelper", "List '{0}': {1}", indexUrl, err));
 						return;
 					}
 					Json::Reader reader;
@@ -371,19 +546,22 @@ namespace spades {
 					owner->progressTotal.store(total);
 
 					// Now actually download. Loose paks land at Mods/<name>;
-					// folder mods land at Mods/<folder>/<name>.
-					std::string e = FetchOneLevel(root, ModsRootAbs());
-					if (!e.empty()) {
-						Done(e);
-						return;
-					}
+					// folder mods land at Mods/<folder>/<name>. Per-file failures
+					// are collected rather than aborting, so a single stuck pak
+					// never blocks the rest of the set.
+					std::vector<std::string> failures;
+					FetchOneLevel(root, ModsRootAbs(), failures);
 					for (const auto& s : subs) {
 						std::string sub = ModsRootAbs() + "/" + s.name;
-						e = FetchOneLevel(s.items, sub);
-						if (!e.empty()) {
-							Done(e);
-							return;
-						}
+						FetchOneLevel(s.items, sub, failures);
+					}
+					if (!failures.empty()) {
+						std::string msg = _Tr("ModsScreenHelper", "{0} pak(s) failed to download:",
+											  static_cast<int>(failures.size()));
+						for (const std::string& f : failures)
+							msg += "\n" + f;
+						Done(msg);
+						return;
 					}
 					Done(std::string{});
 				} catch (const std::exception& ex) {
@@ -397,6 +575,21 @@ namespace spades {
 		ModsScreenHelper::ModsScreenHelper()
 			: query(nullptr), modsCached(false), progressTotal(0), progressDone(0) {
 			SPADES_MARK_FUNCTION();
+		}
+
+		std::string ModsScreenHelper::GetIndexUrl() { return ResolveModsIndexUrl(); }
+
+		// CATEGORY-NAME-AUTHOR parsing for the list UI. Category and author are
+		// empty for a name that doesn't follow the convention; the display name
+		// then falls back to the full filename.
+		std::string ModsScreenHelper::GetModCategory(std::string modName) {
+			return ParseModName(modName).category;
+		}
+		std::string ModsScreenHelper::GetModDisplayName(std::string modName) {
+			return ParseModName(modName).name;
+		}
+		std::string ModsScreenHelper::GetModAuthor(std::string modName) {
+			return ParseModName(modName).author;
 		}
 
 		int ModsScreenHelper::GetRefreshTotal() { return progressTotal.load(); }
@@ -417,7 +610,10 @@ namespace spades {
 			if (query)
 				return; // already running
 			lastMessage.clear();
-			query = new RefreshQuery(this);
+			// Heal any stale persisted value on the main thread (the worker never
+			// touches the settings store), then hand the resolved URL to it.
+			HealPersistedModsIndexUrl();
+			query = new RefreshQuery(this, ResolveModsIndexUrl());
 			query->Start();
 		}
 
