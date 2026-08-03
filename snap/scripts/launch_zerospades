@@ -15,7 +15,7 @@ then
 	mkdir -p $SNAP_USER_DATA/.local/share/zerospades/Resources
 	cp $SNAP/share/games/zerospades/Resources/* $SNAP_USER_DATA/.local/share/zerospades/Resources
 	echo cl_checkForUpdates: 1 > $SNAP_USER_DATA/.local/share/zerospades/Resources/SPConfig.cfg
-	echo s_eax: 1 >> $SNAP_USER_DATA/.local/share/zerospades/Resources/SPConfig.cfg
+	echo s_zsEax: 1 >> $SNAP_USER_DATA/.local/share/zerospades/Resources/SPConfig.cfg
 fi
 
 

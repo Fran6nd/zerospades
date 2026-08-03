@@ -30,13 +30,38 @@
 #include <climits>
 #endif
 
+// Why the OpenAL settings are named s_zs* instead of the upstream s_* names
+//
+// ZeroSpades deliberately shares its data directory, and therefore SPConfig.cfg,
+// with OpenSpades so that settings a player tunes in one are picked up by the
+// other. That sharing is only safe for settings whose meaning is independent of
+// the audio backend, and the OpenAL ones are not: ZeroSpades ships its own
+// OpenAL Soft inside the app bundle, while OpenSpades uses whatever the platform
+// provides - on macOS that is Apple's deprecated OpenAL.framework, which exports
+// no EFX entry points at all.
+//
+// Settings::Save() rewrites the whole file from the settings the running binary
+// registered. Under shared names each fork therefore overwrites the other's
+// values with ones the other's backend cannot honour: a device name, driver path
+// or polyphony count that is fine under OpenAL Soft need not be valid under the
+// system OpenAL. Since s_alErrorFatal defaults to 1, the OpenAL error that
+// eventually results is raised as a fatal error and takes the other fork down
+// mid-game rather than degrading gracefully.
+//
+// Distinct names fix this in both directions. Settings::Load() creates an entry
+// for every key it finds and Save() writes them all back, so settings a fork
+// does not register survive the round-trip untouched instead of being clobbered,
+// and each fork keeps its own backend-appropriate values in the shared file.
+//
+// Do not rename these back to the upstream names.
+
 #if defined(__APPLE__)
 // Use embedded OpenAL Soft from the app bundle
-DEFINE_SPADES_SETTING(s_alDriver, "@executable_path/../Frameworks/libopenal.1.dylib;/System/Library/Frameworks/OpenAL.framework/OpenAL");
+DEFINE_SPADES_SETTING(s_zsAlDriver, "@executable_path/../Frameworks/libopenal.1.dylib;/System/Library/Frameworks/OpenAL.framework/OpenAL");
 #elif defined(WIN32)
-DEFINE_SPADES_SETTING(s_alDriver, "OpenAL32.dll");
+DEFINE_SPADES_SETTING(s_zsAlDriver, "OpenAL32.dll");
 #else
-DEFINE_SPADES_SETTING(s_alDriver, "libopenal.so.1;libopenal.so.0;libopenal.so");
+DEFINE_SPADES_SETTING(s_zsAlDriver, "libopenal.so.1;libopenal.so.0;libopenal.so");
 #endif
 
 DEFINE_SPADES_SETTING(s_alErrorFatal, "1");
@@ -178,7 +203,7 @@ namespace al {
 
 	static void *GPA(const char *str) {
 		if (!alLibrary) {
-			auto paths = spades::Split(s_alDriver, ";");
+			auto paths = spades::Split(s_zsAlDriver, ";");
 			std::string errors;
 			for (const std::string &path : paths) {
 				auto trimmedPath = spades::TrimSpaces(path);

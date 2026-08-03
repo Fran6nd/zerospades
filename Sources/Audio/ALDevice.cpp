@@ -36,10 +36,13 @@
 #include <Core/Settings.h>
 
 DEFINE_SPADES_SETTING(s_volume, "100");
-DEFINE_SPADES_SETTING(s_maxPolyphonics, "96");
-DEFINE_SPADES_SETTING(s_eax, "1");
+// s_zs* rather than the upstream s_* names: these depend on which OpenAL
+// implementation is in use, and SPConfig.cfg is shared with OpenSpades.
+// See the comment in ALFuncs.cpp.
+DEFINE_SPADES_SETTING(s_zsMaxPolyphonics, "96");
+DEFINE_SPADES_SETTING(s_zsEax, "1");
 DEFINE_SPADES_SETTING(s_alPreciseErrorCheck, "1");
-DEFINE_SPADES_SETTING(s_openalDevice, "");
+DEFINE_SPADES_SETTING(s_zsOpenalDevice, "");
 
 // keep track of the "previous" volume so the dB isn't recomputed when unnecessary
 int s_volumePrevious = 100;
@@ -441,7 +444,7 @@ namespace spades {
 				SPADES_MARK_FUNCTION();
 				const char *alExt, *alcExt, *dev;
 
-				dev = s_openalDevice.CString();
+				dev = s_zsOpenalDevice.CString();
 				if (!strcmp(dev, "default") || !strcmp(dev, ""))
 					dev = NULL;
 				SPLog("OpenAL opening device: %s", dev ? dev : "default");
@@ -493,18 +496,18 @@ namespace spades {
 				map = NULL;
 				roomHistoryPos = 0;
 
-				if (s_eax) {
+				if (s_zsEax) {
 					try {
 						al::InitEAX();
 						useEAX = true;
 						SPLog("EAX enabled");
 					} catch (const std::exception& ex) {
 						useEAX = false;
-						s_eax = 0;
+						s_zsEax = 0;
 						SPLog("Failed to initialize EAX: \n%s", ex.what());
 					}
 				} else {
-					SPLog("EAX is disabled by configuration (s_eax)");
+					SPLog("EAX is disabled by configuration (s_zsEax)");
 					useEAX = false;
 				}
 
@@ -515,10 +518,10 @@ namespace spades {
 
 				ALCheckError();
 
-				for (int i = 0; i < (int)s_maxPolyphonics; i++)
+				for (int i = 0; i < (int)s_zsMaxPolyphonics; i++)
 					srcs.push_back(new ALSrc(this));
 
-				SPLog("%d source(s) initialized", (int)s_maxPolyphonics);
+				SPLog("%d source(s) initialized", (int)s_zsMaxPolyphonics);
 
 				al::qalDistanceModel(AL_INVERSE_DISTANCE_CLAMPED);
 				ALCheckErrorPrecise();

@@ -456,7 +456,7 @@ namespace spades {
 		StartupScreenAudioOpenALEditor@ editOpenAL;
 
 		private ConfigItem s_audioDriver("s_audioDriver");
-		private ConfigItem s_eax("s_eax");
+		private ConfigItem s_zsEax("s_zsEax");
 
 		StartupScreenAudioTab(StartupScreenUI@ ui, Vector2 size) {
 			super(ui.manager);
@@ -511,7 +511,7 @@ namespace spades {
 					ConfigNumberFormatter(0, "%")));
 
 				cfg.AddRow(StartupScreenConfigSliderItemEditor(
-					ui, StartupScreenConfig(ui, "s_maxPolyphonics"), 16.0, 256.0, 8.0,
+					ui, StartupScreenConfig(ui, "s_zsMaxPolyphonics"), 16.0, 256.0, 8.0,
 					_Tr("StartupScreen", "Polyphonics"),
 					_Tr("StartupScreen",
 						"Specifies how many sounds can be played simultaneously. "
@@ -520,7 +520,7 @@ namespace spades {
 					ConfigNumberFormatter(0, " poly")));
 
 				cfg.AddRow(StartupScreenConfigCheckItemEditor(
-					ui, StartupScreenConfig(ui, "s_eax"), "0", "1", _Tr("StartupScreen", "EAX"),
+					ui, StartupScreenConfig(ui, "s_zsEax"), "0", "1", _Tr("StartupScreen", "EAX"),
 					_Tr("StartupScreen",
 						"Enables extended features provided by the OpenAL driver to create "
 						"more ambience.")));
@@ -570,7 +570,7 @@ namespace spades {
 	class StartupScreenAudioOpenALEditor : spades::ui::UIElement, LabelAddable {
 		StartupScreenUI@ ui;
 		StartupScreenHelper@ helper;
-		ConfigItem s_openalDevice("s_openalDevice");
+		ConfigItem s_zsOpenalDevice("s_zsOpenalDevice");
 
 		spades::ui::Button@ dropdownButton;
 
@@ -589,7 +589,7 @@ namespace spades {
 		}
 
 		void LoadConfig() {
-			string drivername = s_openalDevice.StringValue;
+			string drivername = s_zsOpenalDevice.StringValue;
 			string name = _Tr("StartupScreen", "System default", drivername);
 			if (drivername == "")
 				name = _Tr("StartupScreen", "System default");
@@ -617,9 +617,9 @@ namespace spades {
 		private void DropdownHandler(int index) {
 			if (index >= 0) {
 				if (index == 0)
-					s_openalDevice.StringValue = "default";
+					s_zsOpenalDevice.StringValue = "default";
 				else
-					s_openalDevice.StringValue = helper.GetAudioOpenALDevice(index - 1);
+					s_zsOpenalDevice.StringValue = helper.GetAudioOpenALDevice(index - 1);
 
 				// Reload the startup screen so the language config takes effect
 				ui.Reload();
