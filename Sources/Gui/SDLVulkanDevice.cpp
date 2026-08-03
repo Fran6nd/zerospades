@@ -718,7 +718,22 @@ namespace spades {
 			createInfo.imageColorSpace = surfaceFormat.colorSpace;
 			createInfo.imageExtent = swapchainExtent;
 			createInfo.imageArrayLayers = 1;
-			createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+			// TRANSFER_DST is required because the renderer presents by blitting
+			// the final post-process image into the swapchain image
+			// (vkCmdBlitImage in VulkanRenderer::Flip), not by rendering into it
+			// directly. Without this bit that blit is undefined behaviour, which
+			// validation reports as "dstImage ... requires
+			// VK_IMAGE_USAGE_TRANSFER_DST_BIT".
+			createInfo.imageUsage =
+				VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+
+			// Not every surface allows the extra usage; fall back rather than
+			// fail swapchain creation outright.
+			if ((capabilities.supportedUsageFlags & VK_IMAGE_USAGE_TRANSFER_DST_BIT) == 0) {
+				SPLog("Warning: surface does not support TRANSFER_DST swapchain usage; "
+				      "the present blit will be invalid on this driver");
+				createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+			}
 
 			uint32_t queueFamilyIndices[] = {graphicsQueueFamily, presentQueueFamily};
 			if (graphicsQueueFamily != presentQueueFamily) {
