@@ -62,10 +62,45 @@ namespace spades {
 			renderPassInfo.subpassCount = 1;
 			renderPassInfo.pSubpasses = &subpass;
 
+			// Post-process filters ping-pong between just two images, so the
+			// image this pass writes is, at every filter boundary, the image the
+			// *previous* pass was sampling. Callers declare the read-after-write
+			// half of that ("the last pass wrote it, I read it"), but the
+			// write-after-read half is equally real and was missing: nothing
+			// stopped this pass's colour writes from starting before the
+			// previous pass's fragment reads had finished, so a filter could
+			// sample an image that was already being overwritten. The result is
+			// intermittent, non-deterministic, full-screen corruption that
+			// changes character whenever the number of active filters changes.
+			//
+			// An absent dependency does NOT mean "no constraint": the implicit
+			// external dependency Vulkan supplies uses TOP_OF_PIPE with an empty
+			// access mask and therefore guarantees nothing at all.
+			VkSubpassDependency deps[2] = {};
+
+			// [0] read-after-write: the caller's, or a sensible default.
 			if (pDependency) {
-				renderPassInfo.dependencyCount = 1;
-				renderPassInfo.pDependencies = pDependency;
+				deps[0] = *pDependency;
+			} else {
+				deps[0].srcSubpass    = VK_SUBPASS_EXTERNAL;
+				deps[0].dstSubpass    = 0;
+				deps[0].srcStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+				deps[0].dstStageMask  = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+				deps[0].srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+				deps[0].dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
 			}
+
+			// [1] write-after-read: this pass must not begin writing the
+			// attachment until earlier fragment-shader reads of it are done.
+			deps[1].srcSubpass    = VK_SUBPASS_EXTERNAL;
+			deps[1].dstSubpass    = 0;
+			deps[1].srcStageMask  = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+			deps[1].dstStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+			deps[1].srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
+			deps[1].dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+
+			renderPassInfo.dependencyCount = 2;
+			renderPassInfo.pDependencies = deps;
 
 			VkRenderPass renderPass;
 			if (vkCreateRenderPass(device, &renderPassInfo, nullptr, &renderPass) != VK_SUCCESS) {
