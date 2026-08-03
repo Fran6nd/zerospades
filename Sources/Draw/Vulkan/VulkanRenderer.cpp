@@ -1865,8 +1865,13 @@ namespace spades {
 			viewMatrix = reflectedView;
 			projectionViewMatrix = projectionMatrix * viewMatrix;
 
-			// Get fog color for background
+			// Get fog color for background. With r_hdr the scene target is
+			// R16G16B16A16_SFLOAT and therefore linear, so the fog colour has to
+			// be linearized before it is cleared into it -- exactly what GL does
+			// for its own mirror clear.
 			Vector3 bgColor = GetFogColorForSolidPass();
+			if ((int)r_hdr)
+				bgColor *= bgColor; // linearize
 
 			// Clear mirror framebuffer
 			framebufferManager->ClearMirrorImage(commandBuffer, bgColor);
@@ -1976,8 +1981,12 @@ namespace spades {
 
 		// If we're rendering a 3D scene, render it to the offscreen framebuffer first
 		if (sceneUsedInThisFrame && framebufferManager) {
-			// Use fog color for solid pass (which may be black if fog shadow is enabled)
+			// Use fog color for solid pass (which may be black if fog shadow is
+			// enabled). Linearized under r_hdr for the same reason as the mirror
+			// clear above: the offscreen target is a linear float buffer.
 			Vector3 bgColor = GetFogColorForSolidPass();
+			if ((int)r_hdr)
+				bgColor *= bgColor; // linearize
 
 			// Begin offscreen render pass (to framebuffer manager's render target)
 			VkRenderPassBeginInfo offscreenRenderPassInfo{};
