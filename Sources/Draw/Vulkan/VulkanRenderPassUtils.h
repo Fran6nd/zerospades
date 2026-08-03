@@ -90,14 +90,25 @@ namespace spades {
 				deps[0].dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
 			}
 
-			// [1] write-after-read: this pass must not begin writing the
-			// attachment until earlier fragment-shader reads of it are done.
+			// [1] write-after-read AND write-after-write: this pass must not
+			// begin writing the attachment (including the loadOp and the layout
+			// transition, both of which count as writes) until earlier reads of
+			// it are done AND earlier writes to it are available. The previous
+			// owner of a ping-pong image wrote it with storeOp and a later pass
+			// sampled it, so both directions apply. Transfer is included because
+			// blits and copies move these images around too.
 			deps[1].srcSubpass    = VK_SUBPASS_EXTERNAL;
 			deps[1].dstSubpass    = 0;
-			deps[1].srcStageMask  = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+			deps[1].srcStageMask  = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT |
+			                        VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT |
+			                        VK_PIPELINE_STAGE_TRANSFER_BIT;
 			deps[1].dstStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-			deps[1].srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
-			deps[1].dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+			deps[1].srcAccessMask = VK_ACCESS_SHADER_READ_BIT |
+			                        VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT |
+			                        VK_ACCESS_TRANSFER_READ_BIT |
+			                        VK_ACCESS_TRANSFER_WRITE_BIT;
+			deps[1].dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT |
+			                        VK_ACCESS_COLOR_ATTACHMENT_READ_BIT;
 
 			renderPassInfo.dependencyCount = 2;
 			renderPassInfo.pDependencies = deps;

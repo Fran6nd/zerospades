@@ -146,19 +146,41 @@ namespace spades {
 
 			// gainFirstRenderPass: first frame only — CLEAR (value supplied at begin),
 			// UNDEFINED → SHADER_READ_ONLY.
+			//
+			// computeGainPipeline is created against this pass but also used with
+			// gainRenderPass, so the two must stay compatible: same attachment
+			// description and the SAME dependencies. Giving only one of them a
+			// widened dependency makes every draw with that pipeline invalid.
+			VkSubpassDependency gainDep = dep;
+			gainDep.srcStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT |
+			                        VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+			gainDep.dstStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+			gainDep.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT |
+			                        VK_ACCESS_SHADER_READ_BIT;
+			gainDep.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT |
+			                        VK_ACCESS_COLOR_ATTACHMENT_READ_BIT;
+
 			gainFirstRenderPass = CreateSimpleColorRenderPass(
 			    dev, colorFormat,
 			    VK_ATTACHMENT_LOAD_OP_CLEAR,
 			    VK_IMAGE_LAYOUT_UNDEFINED,
 			    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-			    &dep);
+			    &gainDep);
 
 			// gainRenderPass: subsequent frames — LOAD, COLOR_ATTACHMENT → SHADER_READ_ONLY.
 			// Two dependencies: one incoming (wait for prior writes), one outgoing
 			// (signal fragment-shader readers before the apply pass).
 			{
 				VkSubpassDependency deps[2];
-				deps[0] = dep;
+				// Incoming: this pass LOADs the accumulator, which is a
+				// COLOR_ATTACHMENT_READ at COLOR_ATTACHMENT_OUTPUT -- not the
+				// FRAGMENT_SHADER/SHADER_READ the shared dependency describes.
+				// The preceding barrier moves the image SHADER_READ_ONLY ->
+				// COLOR_ATTACHMENT_OPTIMAL, a colour-attachment write, so both
+				// sides have to be named here or the loadOp races that
+				// transition.
+				deps[0] = gainDep;
+
 				deps[1].srcSubpass      = 0;
 				deps[1].dstSubpass      = VK_SUBPASS_EXTERNAL;
 				deps[1].srcStageMask    = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
