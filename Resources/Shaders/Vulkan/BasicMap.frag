@@ -54,30 +54,56 @@ layout(location = 8) in vec2 ambientOcclusionCoord; // 2D coords into AO atlas
 layout(location = 9) in vec3 modelShadowCoord0;     // light-clip coords per cascade
 layout(location = 10) in vec3 modelShadowCoord1;
 layout(location = 11) in vec3 modelShadowCoord2;
+layout(location = 12) in float shadowViewDepth;     // camera-axis depth, for cascade choice
 
 layout(location = 0) out vec4 fragColor;
 
-// Sample one cascade. Returns 1 lit, 0 shadowed, or -1 if the fragment is
-// outside this cascade's box (caller falls through to the next, coarser one).
+// Sample one cascade with a 2x2 filtered depth compare, the manual equivalent
+// of the sampler2DShadow GL uses (Shadow/Model.fs). Filtering the comparison
+// results rather than taking one hard compare keeps the term continuous, so it
+// cannot flip wholesale between frames.
 float SampleModelCascade(sampler2D tex, vec3 c) {
 	vec2 uv = c.xy * 0.5 + 0.5; // clip [-1,1] -> texcoord [0,1]
 	if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0 || c.z < 0.0 || c.z > 1.0)
-		return -1.0;
-	float stored = texture(tex, uv).r;
+		return 1.0; // outside this cascade: treat as lit, as GL's clamped map does
+
+	vec2 texSize = vec2(textureSize(tex, 0));
+	vec2 texel = 1.0 / texSize;
+	vec2 coord = uv * texSize - 0.5;
+	vec2 frac = fract(coord);
+	vec2 base = (floor(coord) + 0.5) * texel;
+
 	// Local Z 0 = sun side; an occluder with smaller stored depth is nearer the
 	// sun, so this fragment is shadowed. Bias avoids self-shadow acne.
-	return (stored < c.z - 0.0015) ? 0.0 : 1.0;
+	float ref = c.z - 0.0015;
+	float s00 = step(ref, texture(tex, base).r);
+	float s10 = step(ref, texture(tex, base + vec2(texel.x, 0.0)).r);
+	float s01 = step(ref, texture(tex, base + vec2(0.0, texel.y)).r);
+	float s11 = step(ref, texture(tex, base + texel).r);
+
+	return mix(mix(s00, s10, frac.x), mix(s01, s11, frac.x), frac.y);
 }
 
 // Dynamic (player/grenade) shadow term, combined multiplicatively with the
-// map shadow. Finest cascade first; outside all cascades = lit.
+// map shadow.
+//
+// The cascade is picked by camera-axis depth against the same split distances
+// the cascade boxes were fitted to, exactly as GL does. The previous approach
+// -- try cascade 0, fall through to 1 then 2 when the coordinate lands outside
+// the box -- decoupled selection from the fit: the boxes are refitted from the
+// camera frustum every frame, so a fragment near a boundary was reassigned to a
+// different cascade from one frame to the next and the shadow term flipped with
+// it. That is worst when the view axis lines up with the sun, which is when the
+// boxes are most elongated and their boundaries sweep fastest.
 float EvaluteModelShadow() {
 	if (shadowSampling.enabled == 0)
 		return 1.0;
-	float v = SampleModelCascade(modelShadowMap0, modelShadowCoord0);
-	if (v < 0.0) v = SampleModelCascade(modelShadowMap1, modelShadowCoord1);
-	if (v < 0.0) v = SampleModelCascade(modelShadowMap2, modelShadowCoord2);
-	return (v < 0.0) ? 1.0 : v;
+	if (shadowViewDepth < 12.0)
+		return SampleModelCascade(modelShadowMap0, modelShadowCoord0);
+	else if (shadowViewDepth < 40.0)
+		return SampleModelCascade(modelShadowMap1, modelShadowCoord1);
+	else
+		return SampleModelCascade(modelShadowMap2, modelShadowCoord2);
 }
 
 // Linear (RGB10A2) decode of radiosity values. Mirrors GL MapRadiosity.fs

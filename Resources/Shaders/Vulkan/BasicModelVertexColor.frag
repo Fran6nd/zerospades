@@ -55,27 +55,43 @@ layout(location = 10) in float waterClip;      // <0 = below the reflection plan
 layout(location = 11) in vec3 modelShadowCoord0;    // light-clip coords per cascade
 layout(location = 12) in vec3 modelShadowCoord1;
 layout(location = 13) in vec3 modelShadowCoord2;
+layout(location = 14) in float shadowViewDepth;     // camera-axis depth, for cascade choice
 
 layout(location = 0) out vec4 fragColor;
 
-// Same cascade sampling as BasicMap.frag. Local Z 0 = sun side; a smaller
-// stored depth means an occluder nearer the sun. Bias avoids self-shadow acne
-// (models render into these cascades themselves).
+// Same cascade sampling as BasicMap.frag -- see the rationale there for both
+// the 2x2 filtered compare and the depth-based cascade choice. Local Z 0 = sun
+// side; a smaller stored depth means an occluder nearer the sun. Bias avoids
+// self-shadow acne (models render into these cascades themselves).
 float SampleModelCascade(sampler2D tex, vec3 c) {
 	vec2 uv = c.xy * 0.5 + 0.5;
 	if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0 || c.z < 0.0 || c.z > 1.0)
-		return -1.0;
-	float stored = texture(tex, uv).r;
-	return (stored < c.z - 0.0015) ? 0.0 : 1.0;
+		return 1.0;
+
+	vec2 texSize = vec2(textureSize(tex, 0));
+	vec2 texel = 1.0 / texSize;
+	vec2 coord = uv * texSize - 0.5;
+	vec2 frac = fract(coord);
+	vec2 base = (floor(coord) + 0.5) * texel;
+
+	float ref = c.z - 0.0015;
+	float s00 = step(ref, texture(tex, base).r);
+	float s10 = step(ref, texture(tex, base + vec2(texel.x, 0.0)).r);
+	float s01 = step(ref, texture(tex, base + vec2(0.0, texel.y)).r);
+	float s11 = step(ref, texture(tex, base + texel).r);
+
+	return mix(mix(s00, s10, frac.x), mix(s01, s11, frac.x), frac.y);
 }
 
 float EvaluteModelShadow() {
 	if (shadowSampling.enabled == 0)
 		return 1.0;
-	float v = SampleModelCascade(modelShadowMap0, modelShadowCoord0);
-	if (v < 0.0) v = SampleModelCascade(modelShadowMap1, modelShadowCoord1);
-	if (v < 0.0) v = SampleModelCascade(modelShadowMap2, modelShadowCoord2);
-	return (v < 0.0) ? 1.0 : v;
+	if (shadowViewDepth < 12.0)
+		return SampleModelCascade(modelShadowMap0, modelShadowCoord0);
+	else if (shadowViewDepth < 40.0)
+		return SampleModelCascade(modelShadowMap1, modelShadowCoord1);
+	else
+		return SampleModelCascade(modelShadowMap2, modelShadowCoord2);
 }
 
 vec3 DecodeRadiosityValue(vec3 val) {

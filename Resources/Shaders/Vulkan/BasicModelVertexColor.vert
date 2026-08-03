@@ -57,6 +57,8 @@ layout(location = 10) out float waterClip;     // >=0 keep, <0 clip below the re
 layout(location = 11) out vec3 modelShadowCoord0;   // light-clip coords per cascade
 layout(location = 12) out vec3 modelShadowCoord1;
 layout(location = 13) out vec3 modelShadowCoord2;
+// Camera-axis depth for cascade selection; see BasicMap.vert.
+layout(location = 14) out float shadowViewDepth;
 
 // Keep gl_Position bit-identical with ModelDynamicLit.vert so the additive
 // dynamic-light pass (depth test EQUAL) matches this opaque pass's depth and
@@ -118,6 +120,7 @@ void main() {
 	modelShadowCoord0 = (shadowSampling.cascadeMatrix[0] * worldPos4).xyz;
 	modelShadowCoord1 = (shadowSampling.cascadeMatrix[1] * worldPos4).xyz;
 	modelShadowCoord2 = (shadowSampling.cascadeMatrix[2] * worldPos4).xyz;
+	shadowViewDepth = gl_Position.w;
 
 	// Reflection-pass water clip: negative for fragments below the water plane.
 	// In the normal scene mirrorClipZ is +inf, so this stays positive (no clip).

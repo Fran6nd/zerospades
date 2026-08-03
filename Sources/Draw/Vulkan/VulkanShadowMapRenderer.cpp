@@ -663,7 +663,7 @@ namespace spades {
 			}
 		} // namespace
 
-		void VulkanShadowMapRenderer::BuildMatrix(float near, float far) {
+		bool VulkanShadowMapRenderer::BuildMatrix(float near, float far) {
 			SPADES_MARK_FUNCTION();
 
 			// Sun-aligned cascaded ortho. We orient the box along the SUN direction
@@ -728,9 +728,22 @@ namespace spades {
 			Vector3 axis2 = up * (maxY - minY);
 			Vector3 axis3 = lightDir * (seg.high - seg.low);
 
+			// Bail out if the fitted box is degenerate, as GL does. A zero-length
+			// axis makes 2/len infinite and InversedFast() non-finite, and a
+			// non-finite matrix does not fail loudly: NaN compares false, so it
+			// slips through both frustum culling here and the cascade bounds test
+			// in the lit shaders, which then sample the shadow map at NaN
+			// coordinates. The visible result is the whole frame flickering while
+			// the camera looks along the sun axis.
+			const float len1 = axis1.GetLength();
+			const float len2 = axis2.GetLength();
+			const float len3 = axis3.GetLength();
+			if (!(len1 > 1.0E-6F && len2 > 1.0E-6F && len3 > 1.0E-6F))
+				return false;
+
 			obb = OBB3(Matrix4::FromAxis(axis1, axis2, axis3, origin));
-			vpWidth = 2.0f / axis1.GetLength();
-			vpHeight = 2.0f / axis2.GetLength();
+			vpWidth = 2.0f / len1;
+			vpHeight = 2.0f / len2;
 
 			// world -> OBB-local [0,1]^3.
 			matrix = obb.m.InversedFast();
@@ -743,19 +756,40 @@ namespace spades {
 			matrix = Matrix4::Translate(-1.0f, -1.0f, 1.0f) * matrix;
 			// Shrink XY slightly for edge padding; leave Z exact.
 			matrix = Matrix4::Scale(0.98f, 0.98f, 1.0f) * matrix;
+			return true;
 		}
 
 		void VulkanShadowMapRenderer::Render(VkCommandBuffer commandBuffer) {
 			SPADES_MARK_FUNCTION();
 
-			// Build shadow matrices for cascaded shadow maps
-			float cascadeDistances[] = { 20.0f, 60.0f, 200.0f };
+			// Skip until the camera is initialized; a zero FOV degenerates the
+			// frustum the cascades are fitted to (GLBasicShadowMapRenderer::Render
+			// has the same guard).
+			const client::SceneDefinition& sceneDef = renderer.GetSceneDef();
+			if (sceneDef.fovX <= 0.0F || sceneDef.fovY <= 0.0F) {
+				SetSamplingDisabled();
+				return;
+			}
+
+			// Cascade split distances. These MUST match the thresholds the lit
+			// shaders use to pick a cascade (BasicMap.frag / BasicModelVertexColor.frag
+			// EvaluteModelShadow), otherwise a fragment can be shaded against a
+			// cascade whose box it does not lie in. Same splits as
+			// GLBasicShadowMapRenderer::Render.
+			float cascadeDistances[] = { 12.0f, 40.0f, 150.0f };
 
 			for (int i = 0; i < NumSlices; i++) {
 				float near = (i == 0) ? 0.0f : cascadeDistances[i - 1];
 				float far = cascadeDistances[i];
 
-				BuildMatrix(near, far);
+				// A degenerate cascade cannot be rendered or sampled. GL returns
+				// out of its whole Render() here; do the same, and additionally
+				// disable sampling so the lit shaders don't read this frame's
+				// half-built cascade set.
+				if (!BuildMatrix(near, far)) {
+					SetSamplingDisabled();
+					return;
+				}
 				matrices[i] = matrix;
 
 				// Update uniform buffer with light space matrix

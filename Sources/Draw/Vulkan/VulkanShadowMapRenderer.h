@@ -68,7 +68,10 @@ namespace spades {
 			Handle<VulkanBuffer> samplingUniformBuffer;
 			VkSampler samplingSampler;
 
-			void BuildMatrix(float near, float far);
+			// Returns false when the cascade fit is degenerate; `matrix` is then
+			// left untouched and must not be used. Mirrors
+			// GLBasicShadowMapRenderer::BuildMatrix.
+			bool BuildMatrix(float near, float far);
 			void CreateRenderPass();
 			void CreateFramebuffers();
 			void CreatePipeline();

@@ -55,6 +55,11 @@ layout(location = 8) out vec2 ambientOcclusionCoord; // 2D coords into Gfx/Ambie
 layout(location = 9) out vec3 modelShadowCoord0;     // light-clip coords per cascade
 layout(location = 10) out vec3 modelShadowCoord1;
 layout(location = 11) out vec3 modelShadowCoord2;
+// Distance from the camera along the view axis, used to pick the cascade the
+// same way GL does (Shadow/Model.vs passes it as shadowMapCoord1.w). For a
+// standard perspective projection gl_Position.w is exactly that depth, so no
+// view matrix is needed here.
+layout(location = 12) out float shadowViewDepth;
 
 void main() {
 	// Convert uint8 position to float
@@ -124,4 +129,5 @@ void main() {
 	modelShadowCoord0 = (shadowSampling.cascadeMatrix[0] * worldPos).xyz;
 	modelShadowCoord1 = (shadowSampling.cascadeMatrix[1] * worldPos).xyz;
 	modelShadowCoord2 = (shadowSampling.cascadeMatrix[2] * worldPos).xyz;
+	shadowViewDepth = gl_Position.w;
 }
