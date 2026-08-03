@@ -44,9 +44,36 @@ layout(location = 1) in vec2 circlePos;
 
 layout(location = 0) out vec4 outColor;
 
+// Bilinearly-filtered depth compare, i.e. what GL gets for free from a
+// CompareRefToTexture sampler set to Linear (hardware 2x2 PCF).
+//
+// Comparing a single nearest tap instead makes visibility binary per texel:
+// when the flare sits on a depth discontinuity, sub-pixel camera movement
+// flips whole texels between 0 and 1, the visibility buffer jumps, and the
+// sun's halo pops to full brightness for a frame -- a full-screen white
+// blink while looking near an occluded sun. Filtering the *comparison
+// results* (not the depths, which must never be averaged across a
+// discontinuity) restores GL's smooth fractional visibility.
+float CompareFiltered(vec2 uv, float ref) {
+    vec2 texSize = vec2(textureSize(depthTexture, 0));
+    vec2 texel = 1.0 / texSize;
+
+    // Snap to the 2x2 texel neighbourhood the hardware would blend.
+    vec2 coord = uv * texSize - 0.5;
+    vec2 frac = fract(coord);
+    vec2 base = (floor(coord) + 0.5) * texel;
+
+    float d00 = texture(depthTexture, base).x;
+    float d10 = texture(depthTexture, base + vec2(texel.x, 0.0)).x;
+    float d01 = texture(depthTexture, base + vec2(0.0, texel.y)).x;
+    float d11 = texture(depthTexture, base + texel).x;
+
+    return mix(mix(step(ref, d00), step(ref, d10), frac.x),
+               mix(step(ref, d01), step(ref, d11), frac.x), frac.y);
+}
+
 void main() {
-    float depth = texture(depthTexture, scanPos.xy).x;
-    float val = step(scanPos.z, depth);
+    float val = CompareFiltered(scanPos.xy, scanPos.z);
 
     // Circle trim — matches the GL Scanner.fs `radius = 32` parameter.
     float rad = length(circlePos) * 32.0;
