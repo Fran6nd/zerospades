@@ -118,9 +118,21 @@ void main() {
 		radiosity += nrm.z * DecodeRadiosityValue(texture(radiosityTextureZ, radiosityTextureCoord).xyz);
 		radiosity = max(radiosity, 0.0) * 1.5;
 
+		// Blend the coarse 3D ambient-shadow AO with the per-vertex detail AO
+		// from the 2D atlas, exactly as GL MapRadiosity.fs EvaluateRadiosity
+		// does. Leaving the detail term out (as this port previously did) is
+		// not merely "less detail": the sqrt() lifts every value below 1, so
+		// the coarse term alone is markedly darker than GL wherever a surface
+		// is shadowed but not itself creased -- e.g. the flat underside of an
+		// overhang, which is the worst-matching region against GL.
+		// The v flip matches the no-radiosity branch below; see the note there.
+		vec2 aoAtlasUV = vec2(ambientOcclusionCoord.x, 1.0 - ambientOcclusionCoord.y);
+		float detailAO = texture(ambientOcclusionAtlas, aoAtlasUV).x;
+		float amb = mix(sqrt(aoFactor * detailAO), min(aoFactor, detailAO), 0.5);
+
 		// Ambient color matches GL GLShadowShader: fog * 0.5 with a min-luminance
 		// floor of 0.35 (keeps things visible when the sky is near-black).
-		float aoTerm = aoFactor * (0.8 - nrm.z * 0.2);
+		float aoTerm = amb * (0.8 - nrm.z * 0.2);
 		vec3 ambientColor = inFogColor * 0.5;
 		float ambL = (ambientColor.x + ambientColor.y + ambientColor.z) / 3.0;
 		ambientColor += ((ambientColor + 0.003) / (ambL + 0.003)) * max(0.35 - ambL, 0.0);

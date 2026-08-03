@@ -122,7 +122,15 @@ void main() {
 		radiosity += nrm.z * DecodeRadiosityValue(texture(radiosityTextureZ, radiosityTextureCoord).xyz);
 		radiosity = max(radiosity, 0.0) * 1.5;
 
-		float aoTerm = aoFactor * (0.8 - nrm.z * 0.2);
+		// Blend in the per-vertex detail AO from the 2D atlas, as GL does via
+		// EvaluateAmbientLight(ao) -> EvaluateRadiosity. Without it the sqrt()
+		// lift is missing and ambient-lit faces come out darker than GL.
+		// See the no-radiosity branch below for the v-flip rationale.
+		vec2 aoAtlasUV = vec2(ambientOcclusionCoord.x, 1.0 - ambientOcclusionCoord.y);
+		float detailAO = texture(ambientOcclusionAtlas, aoAtlasUV).x;
+		float amb = mix(sqrt(aoFactor * detailAO), min(aoFactor, detailAO), 0.5);
+
+		float aoTerm = amb * (0.8 - nrm.z * 0.2);
 		vec3 ambientColor = inFogColor * 0.5;
 		float ambL = (ambientColor.x + ambientColor.y + ambientColor.z) / 3.0;
 		ambientColor += ((ambientColor + 0.003) / (ambL + 0.003)) * max(0.35 - ambL, 0.0);
