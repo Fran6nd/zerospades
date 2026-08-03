@@ -19,24 +19,38 @@
  */
 
 // Multiplies the scene colour by the exposure gain stored in the
-// persistent 1×1 accumulator and writes the result LINEARLY. Unlike
-// GL's GLNonlinearizeFilter, we do NOT apply pow(c, 1/gamma) here —
-// the Vulkan swapchain is VK_FORMAT_B8G8R8A8_SRGB and the
-// vkCmdBlitImage that hands the post-process output to the swapchain
-// performs linear → sRGB encoding for us. Applying pow here would
-// double-encode and blow out the midtones (see shot0003 regression).
+// persistent 1×1 accumulator, then applies GL's output transfer curve.
 //
-// The push-constant `invGamma` is left in place but unused; it
-// becomes available again if a real tonemap operator (Reinhard / ACES)
-// is added later to compress HDR overshoot.
+// The swapchain is VK_FORMAT_B8G8R8A8_SRGB, so the vkCmdBlitImage that
+// hands this output to the swapchain always applies the sRGB encode. But
+// GL does not use the sRGB curve: GLNonlinearizeFilter applies a plain
+// pow(c, 1/r_hdrGamma) power curve. The two agree in the midtones and
+// highlights and diverge sharply in the deep shadows, where sRGB's linear
+// toe crushes what the power curve lifts — at linear 0.001 the power curve
+// gives 0.047 against sRGB's 0.013. That is why Vulkan matched GL at p95
+// and p99 while sitting ~14 levels low at p1/p5, and why the deficit was
+// worst in whichever channel was darkest.
+//
+// Writing the result linearly and letting the blit encode it is therefore
+// NOT equivalent to GL. Instead apply GL's power curve here and then
+// DECODE to linear, so the blit's mandatory sRGB encode restores exactly
+// the bytes GL would have written. This is the same round-trip the 2D UI
+// path uses in BasicImage.frag, for the same reason.
 
 #version 450
 
 layout(binding = 0) uniform sampler2D sceneTexture;
 layout(binding = 1) uniform sampler2D gainTexture;
 
+vec3 srgbToLinear(vec3 c) {
+	bvec3 lo = lessThanEqual(c, vec3(0.04045));
+	vec3 linLo = c / 12.92;
+	vec3 linHi = pow((c + 0.055) / 1.055, vec3(2.4));
+	return mix(linHi, linLo, vec3(lo));
+}
+
 layout(push_constant) uniform Params {
-	float invGamma; // reserved
+	float invGamma; // 1.0 / r_hdrGamma, matching GLNonlinearizeFilter
 } pc;
 
 layout(location = 0) in  vec2 texCoord;
@@ -45,5 +59,9 @@ layout(location = 0) out vec4 outColor;
 void main() {
 	vec3 color = texture(sceneTexture, texCoord).rgb;
 	float gain = texture(gainTexture, vec2(0.5, 0.5)).r;
-	outColor = vec4(max(color * gain, 0.0), 1.0);
+	color = max(color * gain, 0.0);
+
+	// GL's output curve, then undo the sRGB encode the blit will re-apply.
+	color = pow(color, vec3(pc.invGamma));
+	outColor = vec4(srgbToLinear(color), 1.0);
 }
