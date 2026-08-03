@@ -47,19 +47,42 @@ namespace spades {
 			auto it = pools.find(spec);
 			if (it != pools.end()) {
 				for (auto& pooled : it->second) {
-					if (!pooled.inUse) {
-						pooled.inUse = true;
-						currentInUse++;
-						totalReuses++;
-						return pooled.image;
-					}
+					if (pooled.inUse)
+						continue;
+
+					// Never hand the same image to two consumers in one frame.
+					// A consumer releases its image when the owning Handle dies,
+					// which happens when the filter *returns* -- long before the
+					// GPU has executed any of the commands that use it. Handing
+					// it straight to the next filter lets that filter's writes
+					// land in an image earlier draws are still sampling, with no
+					// barrier between them. The result is non-deterministic
+					// corruption of a full-screen pass.
+					//
+					// Images released this frame become available again on the
+					// next one, once the frame that used them has been retired
+					// by ReleaseAll().
+					if (pooled.lastAcquiredFrame == frameCounter)
+						continue;
+
+					pooled.lastAcquiredFrame = frameCounter;
+					pooled.inUse = true;
+					currentInUse++;
+					totalReuses++;
+					return pooled.image;
 				}
 			}
 
 			Handle<VulkanImage> newImage = new VulkanImage(
 				device, width, height, format,
 				VK_IMAGE_TILING_OPTIMAL,
-				VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+				// TRANSFER_SRC/DST are needed because these images are not only
+				// rendered into and sampled: the last post-process result is
+				// blitted to the swapchain and copied into the resolved scene
+				// image for screenshots, and a temporary is often what holds it.
+				// Without these bits those transfers are undefined behaviour.
+				VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT |
+				    VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
 				VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
 			);
 			newImage->CreateSampler(VK_FILTER_LINEAR, VK_FILTER_LINEAR,
@@ -68,6 +91,7 @@ namespace spades {
 			PooledImage pooled;
 			pooled.image = newImage;
 			pooled.inUse = true;
+			pooled.lastAcquiredFrame = frameCounter;
 
 			pools[spec].push_back(pooled);
 			totalAllocations++;
@@ -97,6 +121,8 @@ namespace spades {
 
 		void VulkanTemporaryImagePool::ReleaseAll() {
 			SPADES_MARK_FUNCTION();
+
+			frameCounter++;
 
 			for (auto& pair : pools) {
 				for (auto& pooled : pair.second) {

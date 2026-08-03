@@ -22,6 +22,7 @@
 
 #include <vulkan/vulkan.h>
 #include <Core/RefCountedObject.h>
+#include <cstdint>
 #include <vector>
 #include <unordered_map>
 
@@ -64,6 +65,11 @@ namespace spades {
 			struct PooledImage {
 				Handle<VulkanImage> image;
 				bool inUse;
+				// Frame this image was last handed out on. Acquire() refuses to
+				// hand it out twice in the same frame, so a consumer can never
+				// write into an image whose previous owner's commands have not
+				// executed yet.
+				std::uint64_t lastAcquiredFrame = ~std::uint64_t{0};
 			};
 
 			Handle<gui::SDLVulkanDevice> device;
@@ -72,6 +78,10 @@ namespace spades {
 			size_t totalAllocations;
 			size_t totalReuses;
 			size_t currentInUse;
+
+			// Bumped by ReleaseAll(), which runs once per frame. Used to keep
+			// an image from being reused before its frame has been retired.
+			std::uint64_t frameCounter = 0;
 
 		protected:
 			~VulkanTemporaryImagePool();
