@@ -407,16 +407,33 @@ namespace spades {
 			subpass.pColorAttachments = &colorAttachmentRef;
 			subpass.pDepthStencilAttachment = &depthAttachmentRef;
 
+			// This pass's attachments are reused every frame: the previous frame
+			// wrote them via storeOp, post-process passes sampled them, and
+			// barriers/blits moved them between layouts. The dependency has to
+			// make all of those available, not just order execution against
+			// them. A srcAccessMask of 0 orders the stages but leaves the prior
+			// writes unavailable, which validation reports as WRITE_AFTER_WRITE
+			// against this pass's own layout transition.
 			VkSubpassDependency dependency = {};
 			dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
 			dependency.dstSubpass = 0;
 			dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT |
-			                          VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-			dependency.srcAccessMask = 0;
+			                          VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT |
+			                          VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT |
+			                          VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT |
+			                          VK_PIPELINE_STAGE_TRANSFER_BIT;
+			dependency.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT |
+			                           VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT |
+			                           VK_ACCESS_SHADER_READ_BIT |
+			                           VK_ACCESS_TRANSFER_READ_BIT |
+			                           VK_ACCESS_TRANSFER_WRITE_BIT;
 			dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT |
-			                          VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+			                          VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT |
+			                          VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
 			dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT |
-			                           VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+			                           VK_ACCESS_COLOR_ATTACHMENT_READ_BIT |
+			                           VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT |
+			                           VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
 
 			VkAttachmentDescription attachments[] = {colorAttachment, depthAttachment};
 
