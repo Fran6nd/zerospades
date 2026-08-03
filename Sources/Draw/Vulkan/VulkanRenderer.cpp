@@ -2441,16 +2441,43 @@ namespace spades {
 			// After each filter: swap(currentInput, currentOutput); no explicit barrier needed
 			//   between filters because the render pass finalLayout handles SHADER_READ_ONLY for
 			//   the new currentInput, and initialLayout=UNDEFINED accepts any layout for currentOutput.
+			// The chain ping-pongs between two scratch images. It deliberately
+			// never renders INTO offscreenColor: that image is the resolved
+			// scene, i.e. the chain's own first input, the target the final
+			// result is mirrored into for screenshots, and the destination
+			// ResolveScene() writes each frame. Using it as an intermediate
+			// render target made the result depend on the PARITY of the number
+			// of active filters -- with an even count the chain ended in it,
+			// and the frame intermittently came out corrupt; removing any one
+			// filter (bloom, DoF, lens flare, or auto-exposure via r_hdr)
+			// flipped the parity and hid the problem, while disabling camera
+			// blur did not, because with a still camera that filter never runs.
 			VulkanImage* currentInput = offscreenColor.GetPointerOrNull();
-			Handle<VulkanImage> ppTempImage;
+			Handle<VulkanImage> ppTempImage, ppTempImage2;
 			if (temporaryImagePool && framebufferManager) {
 				ppTempImage = temporaryImagePool->Acquire(
 					static_cast<uint32_t>(renderWidth),
 					static_cast<uint32_t>(renderHeight),
 					framebufferManager->GetMainColorFormat()
 				);
+				ppTempImage2 = temporaryImagePool->Acquire(
+					static_cast<uint32_t>(renderWidth),
+					static_cast<uint32_t>(renderHeight),
+					framebufferManager->GetMainColorFormat()
+				);
 			}
 			VulkanImage* currentOutput = ppTempImage.GetPointerOrNull();
+
+			// Advance the ping-pong after a filter has run. The just-written
+			// image becomes the next input; the next output is whichever
+			// scratch image is not now the input, so offscreenColor is only
+			// ever read.
+			VulkanImage* const ppA = ppTempImage.GetPointerOrNull();
+			VulkanImage* const ppB = ppTempImage2.GetPointerOrNull();
+			auto advanceChain = [&]() {
+				currentInput = currentOutput;
+				currentOutput = (currentInput == ppA) ? ppB : ppA;
+			};
 
 			// Order matches GL (GLRenderer.cpp:922-1037):
 			//   Fog2 → DoF → Bloom → FXAA → LensFlare → AutoExposure(+tonemap)
@@ -2463,7 +2490,7 @@ namespace spades {
 			// Fog shadow / atmospheric in-scatter
 			if ((int)r_fogShadow && fogFilter && mapShadowRenderer && currentInput && currentOutput) {
 				fogFilter->Filter(commandBuffer, currentInput, currentOutput);
-				std::swap(currentInput, currentOutput);
+				advanceChain();
 			}
 
 			// Depth of Field
@@ -2471,7 +2498,7 @@ namespace spades {
 				const client::SceneDefinition& def = GetSceneDef();
 				if (def.depthOfFieldFocalLength > 0.0f || def.blurVignette > 0.0f) {
 					depthOfFieldFilter->Filter(commandBuffer, currentInput, currentOutput);
-					std::swap(currentInput, currentOutput);
+					advanceChain();
 				}
 			}
 
@@ -2485,20 +2512,20 @@ namespace spades {
 					float intensity = std::min((float)r_cameraBlur * 0.2f, 1.0f);
 					if (cameraBlurFilter->Apply(commandBuffer, currentInput, currentOutput,
 					                            intensity, def.radialBlur))
-						std::swap(currentInput, currentOutput);
+						advanceChain();
 				}
 			}
 
 			// Bloom
 			if ((int)r_bloom && bloomFilter && currentInput && currentOutput) {
 				bloomFilter->Filter(commandBuffer, currentInput, currentOutput);
-				std::swap(currentInput, currentOutput);
+				advanceChain();
 			}
 
 			// FXAA
 			if ((int)r_fxaa && fxaaFilter && currentInput && currentOutput) {
 				fxaaFilter->Filter(commandBuffer, currentInput, currentOutput);
-				std::swap(currentInput, currentOutput);
+				advanceChain();
 			}
 
 			// Sun lens flare. Runs after FXAA (so the flare quads aren't
@@ -2506,14 +2533,14 @@ namespace spades {
 			// bright sun contributes to the histogram, mirroring GL).
 			if ((int)r_lensFlare && lensFlareFilter && currentInput && currentOutput) {
 				lensFlareFilter->Filter(commandBuffer, currentInput, currentOutput);
-				std::swap(currentInput, currentOutput);
+				advanceChain();
 			}
 
 			// Auto-exposure + tonemap (HDR only) — runs LAST, sampling the
 			// fully composed scene to compute its gain.
 			if ((int)r_hdr && autoExposureFilter && currentInput && currentOutput) {
 				autoExposureFilter->Filter(commandBuffer, currentInput, currentOutput, lastDt);
-				std::swap(currentInput, currentOutput);
+				advanceChain();
 			}
 
 			// Colour correction: white-balance tint, saturation desat,
@@ -2523,7 +2550,7 @@ namespace spades {
 			// and a saturated fog-tinted cast.
 			if ((int)r_colorCorrection && colorCorrectionFilter && currentInput && currentOutput) {
 				colorCorrectionFilter->Filter(commandBuffer, currentInput, currentOutput);
-				std::swap(currentInput, currentOutput);
+				advanceChain();
 			}
 
 			// Screen-space cavity / silhouette outline. Runs last so the
@@ -2534,7 +2561,7 @@ namespace spades {
 			// the fog filter is enabled / correct.
 			if ((int)r_outlines && cavityOutlineFilter && currentInput && currentOutput) {
 				cavityOutlineFilter->Filter(commandBuffer, currentInput, currentOutput);
-				std::swap(currentInput, currentOutput);
+				advanceChain();
 			}
 
 			lights.clear();
