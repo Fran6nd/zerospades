@@ -336,14 +336,22 @@ namespace spades {
 			subpass.colorAttachmentCount = 1;
 			subpass.pColorAttachments = &colorAttachmentRef;
 
+			// The UI pass LOADs the swapchain image, which the scene blit wrote at
+			// the TRANSFER stage moments earlier. Without TRANSFER in the source
+			// masks that write is neither ordered nor made available before the
+			// loadOp reads it -- reported as a READ_AFTER_WRITE hazard against
+			// the barrier that performed the layout transition.
 			VkSubpassDependency dependency{};
 			dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
 			dependency.dstSubpass = 0;
-			dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+			dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT |
+			                          VK_PIPELINE_STAGE_TRANSFER_BIT;
 			// Include source access for presentation to properly synchronize with previous frame
-			dependency.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+			dependency.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT |
+			                           VK_ACCESS_TRANSFER_WRITE_BIT;
 			dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-			dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+			dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT |
+			                           VK_ACCESS_COLOR_ATTACHMENT_READ_BIT;
 
 			VkAttachmentDescription attachments[] = {colorAttachment};
 			VkRenderPassCreateInfo renderPassInfo{};
@@ -1147,7 +1155,14 @@ namespace spades {
 			submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 
 			VkSemaphore waitSemaphores[] = {imageAvailableSemaphore};
-			VkPipelineStageFlags waitStages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
+			// The acquired swapchain image is first written by a barrier + blit at
+			// TRANSFER, which is EARLIER in the pipeline than
+			// COLOR_ATTACHMENT_OUTPUT. Waiting only at the later stage lets that
+			// write run before the acquire semaphore is signalled, which
+			// validation reports as a WRITE_AFTER_READ hazard against
+			// vkAcquireNextImageKHR. Wait at the transfer stage too.
+			VkPipelineStageFlags waitStages[] = {VK_PIPELINE_STAGE_TRANSFER_BIT |
+			                                     VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
 			submitInfo.waitSemaphoreCount = 1;
 			submitInfo.pWaitSemaphores = waitSemaphores;
 			submitInfo.pWaitDstStageMask = waitStages;
@@ -1408,7 +1423,14 @@ namespace spades {
 				submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 
 				VkSemaphore waitSemaphores[] = {imageAvailableSemaphore};
-				VkPipelineStageFlags waitStages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
+				// The acquired swapchain image is first written by a barrier + blit at
+			// TRANSFER, which is EARLIER in the pipeline than
+			// COLOR_ATTACHMENT_OUTPUT. Waiting only at the later stage lets that
+			// write run before the acquire semaphore is signalled, which
+			// validation reports as a WRITE_AFTER_READ hazard against
+			// vkAcquireNextImageKHR. Wait at the transfer stage too.
+			VkPipelineStageFlags waitStages[] = {VK_PIPELINE_STAGE_TRANSFER_BIT |
+			                                     VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
 				submitInfo.waitSemaphoreCount = 1;
 				submitInfo.pWaitSemaphores = waitSemaphores;
 				submitInfo.pWaitDstStageMask = waitStages;
@@ -2632,8 +2654,13 @@ namespace spades {
 			barrier2.srcAccessMask = 0;
 			barrier2.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
 
+			// TOP_OF_PIPE as the source scope would mean "wait for nothing", so
+			// this layout transition could run before the acquire semaphore has
+			// been waited on -- a write to an image the presentation engine may
+			// still be reading. Scoping it to TRANSFER puts it after the wait,
+			// which the submit performs at TRANSFER | COLOR_ATTACHMENT_OUTPUT.
 			vkCmdPipelineBarrier(commandBuffer,
-				VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+				VK_PIPELINE_STAGE_TRANSFER_BIT,
 				VK_PIPELINE_STAGE_TRANSFER_BIT,
 				0, 0, nullptr, 0, nullptr, 1, &barrier2);
 
