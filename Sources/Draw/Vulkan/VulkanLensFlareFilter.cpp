@@ -40,6 +40,7 @@
 
 SPADES_SETTING(r_lensFlareDynamic);
 
+
 namespace spades {
 	namespace draw {
 
@@ -622,12 +623,38 @@ namespace spades {
 				    Vector3::Dot(dir, def.viewAxis[1]),
 				    Vector3::Dot(dir, def.viewAxis[2]),
 				};
-				if (view.z <= 0.0F)
+				// Reject degenerate projections before they can become vertex
+				// data. `view.z` is the distance along the view axis, so as the
+				// direction approaches 90 degrees from where the camera looks it
+				// tends to zero and the perspective divide below tends to
+				// infinity. LensFlareDraw.vk.vs uses the resulting rectangle
+				// *directly* as clip-space positions, and feeding the rasterizer
+				// non-finite or astronomically large clip coordinates is
+				// undefined behaviour -- in practice the primitive can end up
+				// covering the whole screen, which is seen as a full-screen
+				// additive white flash while the view sweeps past the sun.
+				//
+				// Written so that a NaN component fails the test rather than
+				// passing it.
+				if (!(view.z > 0.0F))
+					return;
+
+				const float glX = view.x / (view.z * fovTanX);
+				const float glY = view.y / (view.z * fovTanY);
+
+				// Beyond this the flare and every ghost it spawns are entirely
+				// off screen: the ghost placed nearest the centre scales the
+				// position by 0.3, so 8 leaves even that one far outside clip
+				// space. Culling here also skips the scanner, three blur passes
+				// and thirteen draws for a flare that could not contribute.
+				constexpr float kMaxFlareNDC = 8.0F;
+				if (!std::isfinite(glX) || !std::isfinite(glY) ||
+				    std::fabs(glX) > kMaxFlareNDC || std::fabs(glY) > kMaxFlareNDC)
 					return;
 
 				FlareRequest rq{};
-				rq.glX = view.x / (view.z * fovTanX);
-				rq.glY = view.y / (view.z * fovTanY);
+				rq.glX = glX;
+				rq.glY = glY;
 
 				const float sunRadiusTan = std::tan(0.53F * 0.5F * M_PI_F / 180.0F);
 				// vk texcoords: row 0 on top, so flip the +Y-up GL NDC
