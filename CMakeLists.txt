@@ -38,6 +38,10 @@ endif()
 # Rendering backend options
 option(USE_OPENGL "Enable OpenGL renderer" ON)
 option(USE_VULKAN "Enable Vulkan renderer" ON)
+# macOS Debug builds only: link the Vulkan loader instead of MoltenVK so
+# validation layers can be injected. Produces a bundle that is not
+# self-contained, so it is rejected outside Debug builds.
+option(ZS_VULKAN_USE_LOADER "macOS Debug only: link the Vulkan loader instead of MoltenVK (enables validation layers)" OFF)
 
 if(USE_VCPKG)
 	find_package(Ogg CONFIG REQUIRED)
@@ -140,7 +144,41 @@ if(USE_VULKAN)
 			HINTS "${_VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/tools/glslang"
 			NO_DEFAULT_PATH)
 	else()
-		if(APPLE)
+		if(APPLE AND ZS_VULKAN_USE_LOADER)
+			# Debugging configuration: go through the Vulkan loader rather than
+			# MoltenVK. Validation layers are injected BY the loader, so they can
+			# never load when MoltenVK is linked directly, no matter which
+			# environment variables are set. The loader dispatches to MoltenVK
+			# through its ICD manifest (/opt/local/share/vulkan/icd.d).
+			#
+			# Restricted to Debug builds so a release bundle can never end up
+			# depending on a loader and ICD installed on the developer's machine
+			# instead of being self-contained.
+			if(NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
+				message(FATAL_ERROR
+					"ZS_VULKAN_USE_LOADER is a debugging aid and requires -DCMAKE_BUILD_TYPE=Debug "
+					"(current: '${CMAKE_BUILD_TYPE}'). It links the Vulkan loader instead of "
+					"MoltenVK, which makes the bundle non-portable.")
+			endif()
+			find_library(VULKAN_LOADER_LIBRARY NAMES vulkan vulkan.1
+				HINTS /opt/local/lib /opt/homebrew/lib /usr/local/lib
+				      ENV VULKAN_SDK
+				PATH_SUFFIXES lib)
+			if(NOT VULKAN_LOADER_LIBRARY)
+				message(FATAL_ERROR "Vulkan loader not found. Install via: sudo port install vulkan-loader")
+			endif()
+			set(MOLTENVK_LIBRARY "${VULKAN_LOADER_LIBRARY}")
+			message(STATUS "Using Vulkan loader (validation-capable): ${MOLTENVK_LIBRARY}")
+
+			find_path(Vulkan_INCLUDE_DIRS NAMES vulkan/vulkan.h
+				HINTS /opt/local/include /opt/homebrew/include /usr/local/include
+				      ENV VULKAN_SDK
+				PATH_SUFFIXES include)
+			if(NOT Vulkan_INCLUDE_DIRS)
+				message(FATAL_ERROR "Vulkan headers not found. Install via: port install vulkan-headers")
+			endif()
+			message(STATUS "Vulkan headers: ${Vulkan_INCLUDE_DIRS}")
+		elseif(APPLE)
 			# On macOS, link directly to MoltenVK instead of the Vulkan loader.
 			# MoltenVK exports all Vulkan entry points, so the loader is unnecessary
 			# and this makes the .app bundle self-contained.

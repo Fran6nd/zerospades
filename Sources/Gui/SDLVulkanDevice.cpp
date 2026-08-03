@@ -28,6 +28,7 @@
 #include <Core/Settings.h>
 #include <algorithm>
 #include <set>
+#include <cstdlib>
 #include <cstring>
 #include <vector>
 #include <SDL2/SDL_vulkan.h>
@@ -47,11 +48,21 @@ namespace spades {
 
 		static const int MAX_FRAMES_IN_FLIGHT = 2;
 
+		// Validation layers are on by default in debug builds, and can be turned
+		// on in any build by setting ZS_VULKAN_VALIDATION=1. Note that the layers
+		// are injected by the Vulkan *loader*: they cannot load when MoltenVK is
+		// linked directly, so this also needs a build configured with
+		// -DZS_VULKAN_USE_LOADER=ON.
+		static bool DetermineValidationLayersEnabled() {
 #ifndef NDEBUG
-		static const bool enableValidationLayers = true;
+			return true;
 #else
-		static const bool enableValidationLayers = false;
+			const char* env = std::getenv("ZS_VULKAN_VALIDATION");
+			return env && env[0] && env[0] != '0';
 #endif
+		}
+
+		static const bool enableValidationLayers = DetermineValidationLayersEnabled();
 
 		static const std::vector<const char*> validationLayers = {
 			"VK_LAYER_KHRONOS_validation"
@@ -258,8 +269,35 @@ namespace spades {
 				}
 			}
 
+			// MoltenVK is a "portability" implementation rather than a fully
+			// conformant one. When the application talks to it directly this is
+			// invisible, but behind the Vulkan loader (loader 1.3.216 and newer)
+			// portability drivers are hidden unless the application opts in, and
+			// vkCreateInstance fails with VK_ERROR_INCOMPATIBLE_DRIVER. Opt in
+			// when the loader advertises the extension; a direct MoltenVK link
+			// does not advertise it, so this is a no-op there.
+			VkInstanceCreateFlags instanceFlags = 0;
+			{
+				uint32_t extCount = 0;
+				vkEnumerateInstanceExtensionProperties(nullptr, &extCount, nullptr);
+				std::vector<VkExtensionProperties> available(extCount);
+				if (extCount > 0)
+					vkEnumerateInstanceExtensionProperties(nullptr, &extCount, available.data());
+
+				for (const auto& ext : available) {
+					if (strcmp(ext.extensionName, "VK_KHR_portability_enumeration") == 0) {
+						extensions.push_back("VK_KHR_portability_enumeration");
+						// VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR
+						instanceFlags |= 0x00000001;
+						SPLog("Enabling portability enumeration (running behind the Vulkan loader)");
+						break;
+					}
+				}
+			}
+
 			VkInstanceCreateInfo createInfo{};
 			createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
+			createInfo.flags = instanceFlags;
 			createInfo.pApplicationInfo = &appInfo;
 			createInfo.enabledExtensionCount = static_cast<uint32_t>(extensions.size());
 			createInfo.ppEnabledExtensionNames = extensions.data();
