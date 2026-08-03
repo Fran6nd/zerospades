@@ -64,6 +64,7 @@ namespace spades {
 			velocity = MakeVector3(0, 0, 0);
 			orientation = MakeVector3((tId == 1) ? -1.0F : 1.0F, 0, 0);
 			orientationSmoothed = orientation;
+			hasNetworkOrientation = false;
 			moveDistance = 0.0F;
 			moveSteps = 0;
 
@@ -337,6 +338,15 @@ namespace spades {
 			SPADES_MARK_FUNCTION();
 
 			orientation = v;
+
+			// Players are constructed facing their team's default direction, which
+			// is unrelated to where they actually spawn looking. Adopt the first
+			// reported orientation outright so that arbitrary heading is never
+			// smoothed through on screen.
+			if (!hasNetworkOrientation) {
+				orientationSmoothed = v;
+				hasNetworkOrientation = true;
+			}
 		}
 
 		void Player::Turn(float longitude, float latitude) {
