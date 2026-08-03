@@ -173,6 +173,35 @@ namespace spades {
 		}
 
 		void VulkanImage::CreateImageView(VkImageAspectFlags aspectFlags) {
+			// Depth formats must never be viewed with a COLOR aspect -- that is
+			// invalid per spec and MoltenVK's behaviour for it is unspecified.
+			// The constructor cannot know the intent, so derive the aspect from
+			// the format whenever the caller left the default in place.
+			if (aspectFlags == VK_IMAGE_ASPECT_COLOR_BIT) {
+				switch (format) {
+					case VK_FORMAT_D16_UNORM:
+					case VK_FORMAT_D32_SFLOAT:
+					case VK_FORMAT_X8_D24_UNORM_PACK32:
+						aspectFlags = VK_IMAGE_ASPECT_DEPTH_BIT;
+						break;
+					case VK_FORMAT_D16_UNORM_S8_UINT:
+					case VK_FORMAT_D24_UNORM_S8_UINT:
+					case VK_FORMAT_D32_SFLOAT_S8_UINT:
+						aspectFlags = VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
+						break;
+					default:
+						break;
+				}
+			}
+
+			// Replacing a view without destroying the old one leaked one view per
+			// image; depth images hit this every time, because the constructor
+			// makes a view and the caller immediately makes another.
+			if (imageView != VK_NULL_HANDLE) {
+				vkDestroyImageView(device->GetDevice(), imageView, nullptr);
+				imageView = VK_NULL_HANDLE;
+			}
+
 			VkImageViewCreateInfo viewInfo{};
 			viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
 			viewInfo.image = image;
