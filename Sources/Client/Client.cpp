@@ -58,6 +58,8 @@
 
 #include "NetClient.h"
 
+#include <ScriptBindings/ScriptManager.h>
+
 DEFINE_SPADES_SETTING(cg_chatBeep, "1");
 DEFINE_SPADES_SETTING(cg_alerts, "1");
 DEFINE_SPADES_SETTING(cg_alertSounds, "1");
@@ -136,6 +138,12 @@ namespace spades {
 			  spectatorPlayerNames(true) {
 			SPADES_MARK_FUNCTION();
 			SPLog("Initializing...");
+
+			// Build the script engine up front rather than leaving it to the
+			// first ClientPlayer. Only the skins use scripts, but compiling them
+			// here means a script a mod broke fails the connect with a clear
+			// error instead of throwing once a player walks into view.
+			ScriptManager::GetInstance();
 
 			renderer->SetFogColor(MakeVector3(0, 0, 0));
 			renderer->SetFogDistance(128.0F);

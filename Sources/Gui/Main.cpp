@@ -61,8 +61,6 @@
 #include <Core/VoxelModel.h>
 #include <Draw/OpenGL/GLOptimizedVoxelModel.h>
 
-#include <ScriptBindings/ScriptManager.h>
-
 #include <Core/Bitmap.h>
 #include <Core/MemoryStream.h>
 
@@ -978,10 +976,11 @@ int main(int argc, char** argv) {
 
 		// parse args
 
-		// initialize AngelScript
-		SPLog("Initializing script engine");
-		spades::ScriptManager::GetInstance();
-		pumpEvents();
+		// The script engine is deliberately not built here. Scripts only drive
+		// the in-game weapon and tool skins, so they are compiled when a game
+		// starts and released when it ends - that way the resources they are
+		// compiled from are whatever is mounted at that moment, and a changed
+		// mod set applies to the next game without restarting the process.
 
 		ThreadQuantumSetter quantumSetter;
 		(void)quantumSetter; // suppress "unused variable" warning
