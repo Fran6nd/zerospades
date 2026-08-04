@@ -118,6 +118,11 @@ namespace spades {
 			bool ShouldOpenModsTab();
 			bool IsTryingMod();
 			void RelaunchForMods();
+
+			// Applies the enabled mod set in place, without restarting. Returns
+			// false when that isn't possible right now, in which case the caller
+			// should fall back to RelaunchForMods.
+			bool ApplyModsLive();
 		};
 	}
 }

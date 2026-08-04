@@ -786,8 +786,14 @@ namespace spades {
 				return;
 			}
 			if (modsDirty) {
+				// Say up front whether applying will cost a restart, so the
+				// button never surprises anyone.
+				std::string blockerName, blockerReason;
+				FindRestartBlocker(blockerName, blockerReason);
 				modsStatusLabel->text =
-				    _Tr("MainScreen", "Press 'Apply changes' to restart and apply your mods.");
+				  blockerName.empty()
+				    ? _Tr("MainScreen", "Press 'Apply changes' to apply your mods.")
+				    : _Tr("MainScreen", "Press 'Apply changes' to restart and apply your mods.");
 				return;
 			}
 			modsStatusLabel->text = "";
@@ -821,10 +827,76 @@ namespace spades {
 			UpdateModsStatus();
 		}
 
-		// Apply = restart now so the enabled set is mounted. Toggles are already
-		// saved, so this just relaunches straight back into the Mods tab.
+		std::vector<std::string> MainScreenMainMenu::GetPendingModChanges() {
+			std::vector<std::string> enabled = modsHelper->GetEnabledMods();
+			std::vector<std::string> mounted = ModsScreenHelper::GetMountedMods();
+
+			std::vector<std::string> changed;
+			for (const std::string& name : enabled) {
+				if (EnabledIndex(mounted, name) < 0)
+					changed.push_back(name); // newly enabled
+			}
+			for (const std::string& name : mounted) {
+				if (EnabledIndex(enabled, name) < 0)
+					changed.push_back(name); // newly disabled
+			}
+			return changed;
+		}
+
+		void MainScreenMainMenu::FindRestartBlocker(std::string& outModName,
+		                                            std::string& outReason) {
+			outModName.clear();
+			outReason.clear();
+
+			// Only what changed matters. A font mod that was already applied and
+			// stays applied doesn't force anything.
+			for (const std::string& name : GetPendingModChanges()) {
+				std::string reason = modsHelper->GetRestartRequiredReason(name);
+				if (!reason.empty()) {
+					outModName = name;
+					outReason = reason;
+					return;
+				}
+			}
+		}
+
+		// Apply = remount the enabled set in place. Toggles are already saved, so
+		// this only has to swap the overlay and drop what the old one loaded.
+		// Mods carrying assets that are loaded once per process still need a
+		// restart, so those fall back to relaunching.
 		void MainScreenMainMenu::OnApplyModsPressed(UIElement&) {
 			if (modsDownloading)
+				return;
+
+			std::string blockerName, blockerReason;
+			FindRestartBlocker(blockerName, blockerReason);
+			if (!blockerName.empty()) {
+				std::string body = _Tr("MainScreen", "{0} {1}, so it can only be applied by "
+				                                     "restarting.",
+				                       modsHelper->GetModDisplayName(blockerName), blockerReason);
+				body += "\n\n" + _Tr("MainScreen", "Restart now and apply all changes?");
+				Handle<ConfirmScreen> cs = Handle<ConfirmScreen>::New(this, body);
+				cs->closed = [this](UIElement& s) { OnRestartForModsConfirmed(s); };
+				cs->Run();
+				return;
+			}
+
+			if (!helper->ApplyModsLive()) {
+				// Couldn't swap in place after all; the restart path always works.
+				helper->RelaunchForMods();
+				return;
+			}
+
+			modsDirty = false;
+			LoadModList();
+			// LoadModList clears the status line, so say it worked afterwards -
+			// an in-place apply is otherwise invisible.
+			modsStatusLabel->text = _Tr("MainScreen", "Mods applied.");
+		}
+
+		void MainScreenMainMenu::OnRestartForModsConfirmed(UIElement& sender) {
+			ConfirmScreen* cs = dynamic_cast<ConfirmScreen*>(&sender);
+			if (cs == nullptr || !cs->GetResult())
 				return;
 			helper->RelaunchForMods();
 		}

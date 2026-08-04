@@ -149,9 +149,19 @@ namespace spades {
 			void OnTabChanged(ui::UIElement& sender);
 			int EnabledIndex(const std::vector<std::string>& enabled, const std::string& name);
 			void UpdateModsStatus();
+
+			// Mods enabled or disabled since the mounted set was put in place.
+			// A reordering is a pending change too, but changes no mod's own
+			// state, so it never appears here.
+			std::vector<std::string> GetPendingModChanges();
+
+			// The first pending change that can't be applied without a restart,
+			// with the reason; empty name when the whole set can be applied live.
+			void FindRestartBlocker(std::string& outModName, std::string& outReason);
 			void OnDownloadModsPressed(ui::UIElement& sender);
 			void OnDownloadConfirmed(ui::UIElement& sender);
 			void OnApplyModsPressed(ui::UIElement& sender);
+			void OnRestartForModsConfirmed(ui::UIElement& sender);
 			void OnResetModsPressed(ui::UIElement& sender);
 			void OnResetConfirmed(ui::UIElement& sender);
 			void OnModToggle(const std::string& modName);

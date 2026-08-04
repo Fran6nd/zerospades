@@ -27,6 +27,7 @@
 #include <Core/Exception.h>
 #include <Core/Settings.h>
 #include <Core/Strings.h>
+#include <Gui/ModsScreenHelper.h>
 #include <Gui/UI/MainScreen/MainScreenUI.h>
 #include <ScriptBindings/ScriptManager.h>
 
@@ -295,6 +296,33 @@ namespace spades {
 				return subview->AutocompleteCommandName(name);
 			}
 			return View::AutocompleteCommandName(name);
+		}
+
+		bool MainScreen::ReloadMods() {
+			SPADES_MARK_FUNCTION();
+
+			// A running game is holding script objects and assets that came from
+			// the current mount; swapping it underneath them would leave the
+			// session referring to files that no longer exist.
+			if (subview) {
+				SPLog("Refusing to reload mods while a game is running");
+				return false;
+			}
+
+			SPLog("Reloading the mod overlay");
+			ModsScreenHelper::UnmountMods();
+			ModsScreenHelper::MountEnabledMods();
+
+			// Everything below was loaded from the previous mount. The script
+			// engine is already unloaded between games, but shut it down anyway
+			// so this stays correct regardless of how we got here.
+			ScriptManager::Shutdown();
+			renderer->ClearCache();
+			audioDevice->ClearCache();
+			ClearLocalizationCache();
+
+			SPLog("Mod overlay reloaded");
+			return true;
 		}
 
 		std::string MainScreen::Connect(const ServerAddress& host) {

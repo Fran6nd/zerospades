@@ -61,6 +61,12 @@ namespace spades {
 			// loads its models, images and sounds from the current resources.
 			void PrepareForGame();
 
+			// Remounts the enabled mod set and drops everything cached from the
+			// previous one, so the change applies without restarting. Only
+			// valid while no game is running - a running game holds script
+			// objects and assets loaded from the old mount.
+			bool ReloadMods();
+
 			std::string Connect(const ServerAddress &host);
 		std::string PlayDemo(const std::string &demoPath);
 
