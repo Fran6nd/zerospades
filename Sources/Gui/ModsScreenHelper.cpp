@@ -21,6 +21,7 @@
 #include "ModsScreenHelper.h"
 
 #include <algorithm>
+#include <cctype>
 #include <chrono>
 #include <cstdio>
 #include <cstdlib>
@@ -761,10 +762,19 @@ namespace spades {
 			// be swapped while running: font faces are handed to FreeType and
 			// cached globally, shader programs are compiled into the renderer at
 			// its creation. A mod touching either needs a restart.
+			//
+			// Compared case-insensitively. ZipFileSystem happens to lower-case
+			// its index, but a caller passing a path in its original casing must
+			// get the same answer.
 			bool IsRestartRequiredPath(const std::string& path) {
-				static const char* const kPrefixes[] = {"Gfx/Fonts/", "Fonts/", "Shaders/"};
+				static const char* const kPrefixes[] = {"gfx/fonts/", "fonts/", "shaders/"};
+
+				std::string lower = path;
+				std::transform(lower.begin(), lower.end(), lower.begin(),
+				               [](unsigned char c) { return std::tolower(c); });
+
 				for (const char* prefix : kPrefixes) {
-					if (path.compare(0, std::strlen(prefix), prefix) == 0)
+					if (lower.compare(0, std::strlen(prefix), prefix) == 0)
 						return true;
 				}
 				return false;
