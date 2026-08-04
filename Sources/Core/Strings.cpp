@@ -1168,6 +1168,16 @@ namespace spades {
 		currentLocale = locale;
 	}
 
+	void ClearLocalizationCache() {
+		SPADES_MARK_FUNCTION();
+
+		// Both levels cache parsed catalogs keyed by name, with no reference to
+		// where the file came from, so both have to go when the mounted
+		// resources change.
+		langCatalogCache.clear();
+		domains.clear();
+	}
+
 	std::string GetCurrentLocaleAndRegion() {
 		LoadCurrentLocale();
 		if (currentLocaleRegion.empty())
