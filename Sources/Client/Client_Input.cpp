@@ -165,10 +165,11 @@ namespace spades {
 				return;
 			}
 
-			if (pieMenuView && pieMenuView->IsOpen()) {
+			// The menu tracks the same motion the camera does rather than consuming
+			// it, so the crosshair keeps aiming while a ring is up. Whatever is under
+			// it decides the ring set until the cursor leaves the dead zone.
+			if (pieMenuView && pieMenuView->IsOpen())
 				pieMenuView->HandleMouseDelta(x, y);
-				return;
-			}
 
 			auto cameraMode = GetCameraMode();
 
@@ -704,23 +705,14 @@ namespace spades {
 					return;
 				}
 
-				// Pie menu: hold to open, release to commit.
-				// Aim at a teammate to send a DM; otherwise broadcast on team chat, or
-				// drop a ping when the slice has a reason and the server allows it.
-				if (CheckKey(cg_keyPieMenu, name) && localPlayerIsAlive && !localPlayerIsSpectating) {
+				// Pie menu: hold to open, release to commit. Stays available while dead
+				// and waiting to respawn, which is when calling out what just happened
+				// matters most. Aim at a teammate to send a DM; otherwise broadcast on
+				// team chat, or drop a ping when the slice points somewhere and the
+				// server allows it.
+				if (CheckKey(cg_keyPieMenu, name) && !localPlayerIsSpectating) {
 					if (down && !pieMenuView->IsOpen()) {
-						auto hot = HotTrackedPlayer();
-						if (hot) {
-							Player& target = std::get<0>(*hot);
-							pieMenuView->Open(PieMenuView::Variant::Player, target.GetId());
-						} else {
-							pieMenuView->Open(PieMenuView::Variant::World);
-						}
-
-						// Freeze what the player was pointing at, along with the rest of
-						// the context the menu resolves once at open.
-						pieMenuPingValid = ResolveCrosshairWorldPos(pieMenuPingPos);
-
+						OpenPieMenu();
 						weapInput = WeaponInput();
 					} else if (!down && pieMenuView->IsOpen()) {
 						PieMenuView::Variant v = pieMenuView->GetVariant();
@@ -734,16 +726,25 @@ namespace spades {
 						bool slicePings = pieMenuView->SlicePings(pieMenuView->GetSelection());
 						pieMenuView->Close();
 						if (!msg.empty() && net) {
-							if (v == PieMenuView::Variant::Player && targetId >= 0) {
+							if (v == PieMenuView::Variant::Teammate && targetId >= 0) {
 								char cmd[128];
 								std::snprintf(cmd, sizeof(cmd), "/pm #%d %s", targetId, msg.c_str());
 								net->SendChat(cmd, false);
-							} else if (v == PieMenuView::Variant::World) {
+							} else {
+								// Name the target so a broadcast taunt still lands
+								// personally on the player it was aimed at.
+								if (v == PieMenuView::Variant::Enemy && targetId >= 0) {
+									std::string target = world->GetPlayerName(targetId);
+									if (!target.empty())
+										msg = target + ", " + msg;
+								}
 								// The marker says it better than the message does, but
 								// the message is what reaches a server without the
 								// extension — so the chat is the fallback, not a double.
 								// Either way the same words go out, as the ping's reason
 								// or as the chat line, on the channel the ring speaks on.
+								// Only a ring that points has pinging slices, so a taunt
+								// never drops a marker.
 								bool pinged = slicePings && pieMenuPingValid &&
 											  SendTeamplayPing(pieMenuPingPos, msg);
 								if (!pinged)

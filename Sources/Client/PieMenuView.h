@@ -35,7 +35,10 @@ namespace spades {
 
 		class PieMenuView {
 		public:
-			enum class Variant { World, Player };
+			// What the crosshair is on when the menu opens decides which set of rings
+			// is offered. It is fixed from then on: the aim is free to leave, and a
+			// message meant for someone must not need them held under the crosshair.
+			enum class Variant { World, Teammate, Enemy };
 			enum Slice { None = -1 };
 
 			static constexpr int kSliceCount = 6;
@@ -76,7 +79,13 @@ namespace spades {
 			std::array<float, kSliceCount> highlight{};
 
 			std::vector<Page> worldPages;
-			std::vector<Page> playerPages;
+			std::vector<Page> teammatePages;
+			std::vector<Page> enemyPages;
+
+			// Ring each context was last left on. A player who works out of one ring
+			// gets it back on the next open instead of paying for the flip every time.
+			static constexpr int kVariantCount = 3;
+			std::array<int, kVariantCount> lastPage{};
 
 			// Precomputed per-slice ray params (sin/cos of θ_c ± α).
 			// Populated once in the constructor; used by scanline fill.
@@ -85,9 +94,14 @@ namespace spades {
 			std::array<float, kSliceCount> sliceCenterAngles;
 
 			const std::vector<Page>& CurrentPages() const {
-				return (variant == Variant::Player) ? playerPages : worldPages;
+				switch (variant) {
+					case Variant::Teammate: return teammatePages;
+					case Variant::Enemy: return enemyPages;
+					default: return worldPages;
+				}
 			}
 			const Page& CurrentPage() const;
+			void RestorePage();
 			void DrawPageIndicator(Vector2 center, float rOuter, float alpha);
 
 		public:
