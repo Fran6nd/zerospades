@@ -82,6 +82,29 @@ namespace spades {
 			// top and wins conflicts. Mods missing from disk are skipped.
 			static std::vector<std::string> GetEnabledModPakPaths();
 
+			// Mounts the enabled set as an overlay over the base paks. Startup
+			// and a live apply both go through here, so the two can't diverge.
+			// Re-reads the enabled set and the Mods/ folder every time, which is
+			// what lets a pak added while the game runs be picked up.
+			static void MountEnabledMods();
+
+			// Unmounts everything MountEnabledMods put in place, leaving the
+			// base paks alone. Safe at any time: streams already handed out are
+			// self-contained, but callers must drop whatever they cached from
+			// the old mount (see MainScreen::ReloadMods).
+			static void UnmountMods();
+
+			// The names actually mounted right now, in applied order. Compare
+			// against GetEnabledMods to find what a live apply would change.
+			static std::vector<std::string> GetMountedMods();
+
+			// Why this mod cannot be applied without restarting, or "" when it
+			// can. Assets loaded once per process (fonts, shaders) can't be
+			// swapped mid-session, so a mod shipping them needs a restart.
+			// A mod that can't be read reports a reason, so an unreadable pak
+			// never passes for hot-swappable.
+			std::string GetRestartRequiredReason(std::string modName);
+
 		protected:
 			~ModsScreenHelper();
 

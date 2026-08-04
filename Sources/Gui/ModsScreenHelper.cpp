@@ -751,6 +751,111 @@ namespace spades {
 
 		void ModsScreenHelper::ClearEnabledMods() { WriteEnabled({}); }
 
+		namespace {
+			// What MountEnabledMods currently has mounted, so UnmountMods can
+			// take exactly those back out and leave the base paks in place.
+			std::vector<IFileSystem*> g_mountedModFs;
+			std::vector<std::string> g_mountedModNames;
+
+			// Path prefixes whose assets are loaded once per process and cannot
+			// be swapped while running: font faces are handed to FreeType and
+			// cached globally, shader programs are compiled into the renderer at
+			// its creation. A mod touching either needs a restart.
+			bool IsRestartRequiredPath(const std::string& path) {
+				static const char* const kPrefixes[] = {"Gfx/Fonts/", "Fonts/", "Shaders/"};
+				for (const char* prefix : kPrefixes) {
+					if (path.compare(0, std::strlen(prefix), prefix) == 0)
+						return true;
+				}
+				return false;
+			}
+		} // namespace
+
+		void ModsScreenHelper::MountEnabledMods() {
+			SPADES_MARK_FUNCTION();
+
+			// A --try-mod run deliberately ignores the enabled set so the mod
+			// under test applies on top of the base config alone.
+			if (spades::g_tryMod)
+				return;
+
+			// Idempotent: mounting twice without unmounting in between would
+			// stack a second copy of the overlay and leak the first.
+			UnmountMods();
+
+			for (const std::string& path : GetEnabledModPakPaths()) {
+				try {
+					// Read the whole pak into memory and mount from there, so the
+					// file on disk is never held open for the session. That lets
+					// the mod manager overwrite or delete an enabled pak (for
+					// example re-downloading it) while the game is running — a
+					// mounted stream reading straight from the file would lock it.
+					std::string bytes;
+					{
+						auto file = FileManager::OpenForReading(path.c_str());
+						bytes = file->ReadAllBytes();
+					} // file handle closed here
+					auto mem = stmp::make_unique<DynamicMemoryStream>();
+					if (!bytes.empty())
+						mem->Write(bytes.data(), bytes.size());
+					mem->SetPosition(0);
+					auto* zfs = new ZipFileSystem(mem.get());
+					mem.release(); // ownership transferred to the ZipFileSystem
+					FileManager::PrependFileSystem(zfs);
+					g_mountedModFs.push_back(zfs);
+					SPLog("Mod pak mounted (in memory): %s", path.c_str());
+				} catch (const std::exception& ex) {
+					SPLog("Mod pak failed to mount: %s: %s", path.c_str(), ex.what());
+				}
+			}
+
+			g_mountedModNames = ReadEnabled();
+		}
+
+		void ModsScreenHelper::UnmountMods() {
+			SPADES_MARK_FUNCTION();
+
+			for (IFileSystem* fs : g_mountedModFs)
+				FileManager::RemoveFileSystem(fs);
+
+			g_mountedModFs.clear();
+			g_mountedModNames.clear();
+			SPLog("Mod overlay unmounted");
+		}
+
+		std::vector<std::string> ModsScreenHelper::GetMountedMods() { return g_mountedModNames; }
+
+		std::string ModsScreenHelper::GetRestartRequiredReason(std::string modName) {
+			if (!modsCached)
+				RebuildModsCache();
+
+			const ModEntry* m = FindMod(modName);
+			if (m == nullptr)
+				return {}; // not on disk: nothing to mount, nothing to restart for
+
+			for (const std::string& pak : m->paks) {
+				std::string overlayPath = m->isFolder
+					? (std::string(kModsDir) + "/" + m->name + "/" + pak)
+					: (std::string(kModsDir) + "/" + pak);
+				try {
+					auto stream = FileManager::OpenForReading(overlayPath.c_str());
+					ZipFileSystem zfs(stream.release());
+					for (const std::string& f : zfs.GetAllFiles()) {
+						if (IsRestartRequiredPath(f))
+							return _Tr("MainScreen", "contains fonts or shaders");
+					}
+				} catch (const std::exception& ex) {
+					// Can't tell what's inside, so assume the worst rather than
+					// promise a live apply that might half-work.
+					SPLog("Mod pak unreadable, assuming it needs a restart: %s: %s",
+					      overlayPath.c_str(), ex.what());
+					return _Tr("MainScreen", "could not be read");
+				}
+			}
+
+			return {};
+		}
+
 		std::vector<std::string> ModsScreenHelper::GetEnabledModPakPaths() {
 			// Resolve the enabled names to pak paths relative to the resource
 			// root, in enabled order. Runs at startup before any instance
