@@ -445,7 +445,9 @@ namespace spades {
 			void ToggleLimboView();
 			void SpawnPressed();
 
-			stmp::optional<std::tuple<Player&, hitTag_t>> HotTrackedPlayer();
+			// Enemies are excluded by default: naming whoever is under the crosshair
+			// would double as an aim aid. Opt in only where that is intended.
+			stmp::optional<std::tuple<Player&, hitTag_t>> HotTrackedPlayer(bool includeEnemies = false);
 
 			// effects (local entity, etc)
 			std::vector<DynamicLightParam> flashDlights;
@@ -566,6 +568,10 @@ namespace spades {
 			void DrawPlayerStats();
 
 			void UpdateDamageIndicators(float dt);
+
+			// Opens the pie menu on the ring set the crosshair calls for. The context
+			// is resolved once, here, and then stays put for as long as the menu is up.
+			void OpenPieMenu();
 			void DrawDamageIndicators();
 
 			// ── Teamplay ───────────────────────────────────────────

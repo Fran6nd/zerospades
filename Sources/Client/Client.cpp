@@ -694,6 +694,40 @@ namespace spades {
 			}
 		}
 
+		void Client::OpenPieMenu() {
+			if (!pieMenuView || !world)
+				return;
+
+			auto maybePlayer = world->GetLocalPlayer();
+			if (!maybePlayer)
+				return;
+
+			Player& lp = maybePlayer.value();
+
+			// Hot tracking resolves against the camera target, so once dead it would
+			// follow whoever the spectated teammate is aiming at. Dead players broadcast.
+			int targetId = -1;
+			auto variant = PieMenuView::Variant::World;
+			if (lp.IsAlive()) {
+				auto hot = HotTrackedPlayer(true);
+				if (hot) {
+					Player& target = std::get<0>(*hot);
+					targetId = target.GetId();
+					variant = lp.IsTeammate(target) ? PieMenuView::Variant::Teammate
+													: PieMenuView::Variant::Enemy;
+				}
+			}
+
+			// Where a ping would land is settled here with the rest of the context
+			// and not re-resolved: the marker belongs to the place the player
+			// called out as they opened the menu, not to wherever the crosshair
+			// drifted while they picked a slice. A dead player is looking through
+			// somebody else's eyes, so there is nothing of their own to point at.
+			pieMenuPingValid = lp.IsAlive() && ResolveCrosshairWorldPos(pieMenuPingPos);
+
+			pieMenuView->Open(variant, targetId);
+		}
+
 		void Client::RunFrame(float dt) {
 			SPADES_MARK_FUNCTION();
 
@@ -761,14 +795,15 @@ namespace spades {
 			paletteView->Update(dt);
 
 			// Close the pie menu if the conditions that let it open no longer hold
-			// (player died, changed team to spectator, entered limbo, opened scripted UI).
+			// (changed team to spectator, entered limbo, opened scripted UI). Dying
+			// is not one of them — the menu stays usable through the respawn wait.
 			if (pieMenuView->IsOpen()) {
 				bool shouldClose = true;
 				if (world && !scriptedUI->NeedsInput() && !inGameLimbo && !staffSpectating) {
 					auto maybePlayer = world->GetLocalPlayer();
 					if (maybePlayer) {
 						Player& lp = maybePlayer.value();
-						if (lp.IsAlive() && !lp.IsSpectator())
+						if (!lp.IsSpectator())
 							shouldClose = false;
 					}
 				}

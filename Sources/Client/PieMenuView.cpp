@@ -204,6 +204,7 @@ namespace spades {
 			// Layout rule, held across every ring: the vertical axis carries a pair
 			// of opposites, the right half is about them, the left half is about us.
 			// "Where" is deliberately subject-free so it chains onto any other call.
+			// Offered when the crosshair is on terrain rather than on a player.
 			const PageDef kWorldPages[] = {
 				// A reply is about a direction or an event rather than a point on
 				// the map, so this ring only talks; the rings that point at places
@@ -227,17 +228,11 @@ namespace spades {
 				 // Work to be done to a piece of ground: those point. The intel
 				 // has a place of its own, and a spawnkiller is an event.
 				 {false, true, false, false, false, true}},
-				// Taunts go out on global chat, at nobody in particular; a team
-				// marker has no business carrying one.
-				{"Taunt", true,
-				 {"I See You", "Nice Try", "Miss Me?",
-				  "Too Easy", "Behind You...", "Say Goodbye"},
-				 {false, false, false, false, false, false}},
 			};
 
 			// Directions here are relative to the teammate under the crosshair, which
 			// makes them exact in a way the broadcast ring's "our right" cannot be.
-			const PageDef kPlayerPages[] = {
+			const PageDef kTeammatePages[] = {
 				// Aimed at a person, who is not a place: nothing here points.
 				{"Reply", false,
 				 {"Affirmative", "Thank You", "Behind You!",
@@ -250,6 +245,17 @@ namespace spades {
 				{"Plan", false,
 				 {"Help Me Build", "Stay Here", "Sorry!",
 				  "Tear This Down", "Boost Me Up", "Let Me Through"},
+				 {false, false, false, false, false, false}},
+			};
+
+			// Offered only while the crosshair is on an enemy. Goes out on global chat
+			// so the whole server reads it, addressed to the player it was aimed at.
+			const PageDef kEnemyPages[] = {
+				// A taunt goes to the whole server, at the player it was aimed at;
+				// a team marker has no business carrying one.
+				{"Taunt", true,
+				 {"I See You", "Nice Try", "Miss Me?",
+				  "Too Easy", "Behind You...", "Say Goodbye"},
 				 {false, false, false, false, false, false}},
 			};
 		} // namespace
@@ -275,7 +281,8 @@ namespace spades {
 			};
 
 			worldPages = buildPages(kWorldPages, std::size(kWorldPages));
-			playerPages = buildPages(kPlayerPages, std::size(kPlayerPages));
+			teammatePages = buildPages(kTeammatePages, std::size(kTeammatePages));
+			enemyPages = buildPages(kEnemyPages, std::size(kEnemyPages));
 
 			const float halfSliceRad = kSliceSpan * 0.5F - DEG2RAD(kSliceGapDeg) * 0.5F;
 			for (int i = 0; i < kSliceCount; i++) {
@@ -298,16 +305,21 @@ namespace spades {
 			return pages[idx];
 		}
 
+		void PieMenuView::RestorePage() {
+			int remembered = lastPage[static_cast<size_t>(variant)];
+			page = std::max(0, std::min(remembered, GetPageCount() - 1));
+		}
+
 		void PieMenuView::Open(Variant v, int tgtId) {
 			open = true;
 			variant = v;
 			targetPlayerId = tgtId;
 			cursor = {0.0F, 0.0F};
 			selection = None;
-			page = 0;
 			openPhase = 0.0F;
 			pagePhase = 1.0F;
 			highlight.fill(0.0F);
+			RestorePage();
 		}
 
 		int PieMenuView::Close() {
@@ -331,6 +343,7 @@ namespace spades {
 				return;
 
 			page = ((page + dir) % count + count) % count;
+			lastPage[static_cast<size_t>(variant)] = page;
 			pagePhase = 0.0F;
 			hintNeeded = false;
 		}
