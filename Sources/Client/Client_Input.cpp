@@ -165,11 +165,12 @@ namespace spades {
 				return;
 			}
 
-			// The menu tracks the same motion the camera does rather than consuming
-			// it, so the crosshair keeps aiming while a ring is up. Whatever is under
-			// it decides the ring set until the cursor leaves the dead zone.
-			if (pieMenuView && pieMenuView->IsOpen())
+			// The menu takes the mouse for itself: the same motion cannot pick a slice
+			// and turn the head at once without doing both badly.
+			if (pieMenuView && pieMenuView->IsOpen()) {
 				pieMenuView->HandleMouseDelta(x, y);
+				return;
+			}
 
 			auto cameraMode = GetCameraMode();
 
@@ -713,7 +714,9 @@ namespace spades {
 				if (CheckKey(cg_keyPieMenu, name) && !localPlayerIsSpectating) {
 					if (down && !pieMenuView->IsOpen()) {
 						OpenPieMenu();
-						weapInput = WeaponInput();
+						// Only firing is dropped. Aiming down sights is a stance the
+						// player is holding, and opening the menu must not break it.
+						weapInput.primary = false;
 					} else if (!down && pieMenuView->IsOpen()) {
 						PieMenuView::Variant v = pieMenuView->GetVariant();
 						int targetId = pieMenuView->GetTargetPlayerId();
@@ -761,8 +764,13 @@ namespace spades {
 				// left cycles backward, so every ring is at most two taps away.
 				if (pieMenuView->IsOpen()) {
 					if (CheckKey(cg_keyAltAttack, name)) {
-						if (down)
+						if (down) {
 							pieMenuView->CyclePage(1);
+						} else if (cg_holdAimDownSight) {
+							// The release still has to land in hold mode, or a scope
+							// that was up when the menu opened stays stuck on.
+							weapInput.secondary = false;
+						}
 						return;
 					}
 					if (CheckKey(cg_keyAttack, name)) {
