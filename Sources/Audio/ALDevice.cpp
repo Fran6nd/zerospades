@@ -84,7 +84,15 @@ namespace spades {
 				SPADES_MARK_FUNCTION();
 
 				al::qalDeleteBuffers(1, &handle);
-				ALCheckErrorPrecise();
+
+				// A destructor must never throw, and with s_alErrorFatal set the
+				// error check does exactly that. Report and carry on instead;
+				// the buffer is gone either way.
+				try {
+					ALCheckErrorPrecise();
+				} catch (const std::exception& ex) {
+					SPLog("Failed to delete an audio buffer: %s", ex.what());
+				}
 			}
 
 		public:
@@ -561,6 +569,17 @@ namespace spades {
 					delete srcs[i];
 			}
 
+			// Stops every source and detaches its buffer. Sources refer to a
+			// chunk by raw OpenAL buffer name without holding a reference to it,
+			// so a buffer that is still bound cannot be deleted - this has to
+			// run before any chunk is released.
+			void TerminateAllSources() {
+				SPADES_MARK_FUNCTION();
+
+				for (ALSrc* src : srcs)
+					src->Terminate();
+			}
+
 			ALSrc* AllocChunk() {
 				SPADES_MARK_FUNCTION();
 
@@ -806,6 +825,11 @@ namespace spades {
 
 		void ALDevice::ClearCache() {
 			SPADES_MARK_FUNCTION();
+
+			// Silence everything first: releasing the last reference to a chunk
+			// deletes its OpenAL buffer, which fails while a source still has
+			// that buffer bound.
+			d->TerminateAllSources();
 
 			for (const auto& chunk : chunks)
 				chunk.second->Release();
