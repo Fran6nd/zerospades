@@ -756,10 +756,13 @@ namespace spades {
 		}
 
 		void MainScreenMainMenu::UpdateModsStatus() {
+			// Reads the enabled file, so compute it once for the whole update.
+			bool pending = HasPendingModChanges();
+
 			if (modsApplyButton != nullptr) {
-				// Toggles already persist; Apply only restarts to make pending
-				// changes live, so it's actionable only when something changed.
-				modsApplyButton->enable = modsDirty && !modsDownloading;
+				// Toggles already persist; Apply only makes them live, so it's
+				// actionable only while the mounted set differs from them.
+				modsApplyButton->enable = pending && !modsDownloading;
 			}
 			if (modsDownloading) {
 				int done = modsHelper->GetRefreshDone();
@@ -785,7 +788,7 @@ namespace spades {
 				modsStatusLabel->text = msg;
 				return;
 			}
-			if (modsDirty) {
+			if (pending) {
 				// Say up front whether applying will cost a restart, so the
 				// button never surprises anyone.
 				std::string blockerName, blockerReason;
@@ -825,6 +828,13 @@ namespace spades {
 			modsDownloading = true;
 			modsHelper->StartRefresh();
 			UpdateModsStatus();
+		}
+
+		bool MainScreenMainMenu::HasPendingModChanges() {
+			// Compared as ordered lists, not sets: the order decides which mod
+			// wins a file conflict, so a reorder is a real pending change even
+			// when the same mods are enabled.
+			return modsHelper->GetEnabledMods() != ModsScreenHelper::GetMountedMods();
 		}
 
 		std::vector<std::string> MainScreenMainMenu::GetPendingModChanges() {
@@ -887,7 +897,6 @@ namespace spades {
 				return;
 			}
 
-			modsDirty = false;
 			LoadModList();
 			// LoadModList clears the status line, so say it worked afterwards -
 			// an in-place apply is otherwise invisible.
@@ -913,7 +922,6 @@ namespace spades {
 			if (cs == nullptr || !cs->GetResult())
 				return;
 			modsHelper->ClearEnabledMods();
-			modsDirty = true;
 			// Refresh the rows to clear every checkbox, not just the status line.
 			LoadModList();
 		}
@@ -928,7 +936,6 @@ namespace spades {
 				modsHelper->DisableMod(modName);
 			else
 				modsHelper->EnableMod(modName);
-			modsDirty = true;
 			LoadModList();
 		}
 

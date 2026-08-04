@@ -138,7 +138,10 @@ namespace spades {
 			ui::Label* modsStatusLabel;
 			ModsProgressBar* modsProgressBar;
 			bool modsDownloading = false;
-			bool modsDirty = false; // enabled set changed this session; restart to apply
+			// Whether the enabled set differs from what is actually mounted.
+			// Derived rather than remembered, so enabling a mod and changing
+			// your mind again leaves nothing to apply.
+			bool HasPendingModChanges();
 			float modsCheckColWidth;
 			float modsOrderColWidth;
 			float modsTagColWidth;
