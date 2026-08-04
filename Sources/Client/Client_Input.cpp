@@ -725,12 +725,15 @@ namespace spades {
 					} else if (!down && pieMenuView->IsOpen()) {
 						PieMenuView::Variant v = pieMenuView->GetVariant();
 						int targetId = pieMenuView->GetTargetPlayerId();
-						const auto& labels = pieMenuView->GetLabels();
+						// Both are read while the menu still stands: closing it
+						// forgets which ring was on show, and the ring is what says
+						// whether the slice points at somewhere and which channel it
+						// speaks on.
+						std::string msg = pieMenuView->GetSelectionLabel();
+						bool global = pieMenuView->IsCurrentPageGlobal();
 						bool slicePings = pieMenuView->SlicePings(pieMenuView->GetSelection());
-						int sel = pieMenuView->Close();
-						if (sel >= 0 && sel < PieMenuView::kSliceCount && net) {
-							size_t idx = static_cast<size_t>(sel);
-							const std::string& msg = labels[idx];
+						pieMenuView->Close();
+						if (!msg.empty() && net) {
 							if (v == PieMenuView::Variant::Player && targetId >= 0) {
 								char cmd[128];
 								std::snprintf(cmd, sizeof(cmd), "/pm #%d %s", targetId, msg.c_str());
@@ -740,11 +743,11 @@ namespace spades {
 								// the message is what reaches a server without the
 								// extension — so the chat is the fallback, not a double.
 								// Either way the same words go out, as the ping's reason
-								// or as the chat line.
+								// or as the chat line, on the channel the ring speaks on.
 								bool pinged = slicePings && pieMenuPingValid &&
 											  SendTeamplayPing(pieMenuPingPos, msg);
 								if (!pinged)
-									net->SendChat(msg, false);
+									net->SendChat(msg, global);
 							}
 						}
 						pieMenuPingValid = false;
@@ -752,10 +755,20 @@ namespace spades {
 					return;
 				}
 
-				// Swallow attack inputs while the pie menu is open
+				// Cycle the pie menu's rings with the attack buttons, which are
+				// otherwise unusable while the menu is held. Right cycles forward,
+				// left cycles backward, so every ring is at most two taps away.
 				if (pieMenuView->IsOpen()) {
-					if (CheckKey(cg_keyAttack, name) || CheckKey(cg_keyAltAttack, name))
+					if (CheckKey(cg_keyAltAttack, name)) {
+						if (down)
+							pieMenuView->CyclePage(1);
 						return;
+					}
+					if (CheckKey(cg_keyAttack, name)) {
+						if (down)
+							pieMenuView->CyclePage(-1);
+						return;
+					}
 				}
 
 				switch (cameraMode) {
