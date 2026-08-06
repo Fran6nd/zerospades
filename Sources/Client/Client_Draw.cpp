@@ -19,8 +19,11 @@
 
  */
 
+#include <algorithm>
 #include <cstdarg>
 #include <cstdlib>
+#include <iterator>
+#include <vector>
 
 #include "Client.h"
 
@@ -36,6 +39,7 @@
 #include "ChatWindow.h"
 #include "ClientPlayer.h"
 #include "ClientUI.h"
+#include "ExtendedTeamplay.h"
 #include "Fonts.h"
 #include "GameProperties.h"
 #include "HitTestDebugger.h"
@@ -57,6 +61,7 @@
 
 DEFINE_SPADES_SETTING(cg_hitIndicator, "1");
 DEFINE_SPADES_SETTING(cg_debugAim, "0");
+SPADES_SETTING(cg_orientationSmoothing);
 SPADES_SETTING(cg_keyReloadWeapon);
 SPADES_SETTING(cg_keyJump);
 SPADES_SETTING(cg_keyAttack);
@@ -822,6 +827,426 @@ namespace spades {
 					DrawPlayerBox(p, color);
 				if (spectatorPlayerNames)
 					DrawPlayerName(p, color);
+			}
+		}
+
+#pragma mark - Extended Teamplay
+
+		namespace {
+			/** Strokes a screen-space segment as a quad, the only 2D primitive the
+			 * renderer exposes that is not axis-aligned. */
+			void StrokeSegment(IRenderer& renderer, const Vector2& a, const Vector2& b,
+							   float thickness, const Vector4& premultipliedColor) {
+				Vector2 d = b - a;
+				float len = d.GetLength();
+				if (len <= 0.0001F)
+					return;
+
+				Vector2 n = MakeVector2(-d.y / len, d.x / len) * (thickness * 0.5F);
+				renderer.SetColorAlphaPremultiplied(premultipliedColor);
+				renderer.DrawImage(nullptr, a - n, b - n, a + n, AABB2(0, 0, 1, 1));
+			}
+
+			/** Premultiplies a straight (non-premultiplied) colour. */
+			Vector4 Premultiply(const Vector4& c) {
+				return MakeVector4(c.x * c.w, c.y * c.w, c.z * c.w, c.w);
+			}
+
+			/** Andrew's monotone chain. `points` is reordered; the hull is returned in
+			 * counter-clockwise order and never repeats its first point. */
+			std::vector<Vector2> ConvexHull(std::vector<Vector2>& points) {
+				if (points.size() < 3)
+					return points;
+
+				std::sort(points.begin(), points.end(), [](const Vector2& a, const Vector2& b) {
+					return (a.x != b.x) ? (a.x < b.x) : (a.y < b.y);
+				});
+
+				auto cross = [](const Vector2& o, const Vector2& a, const Vector2& b) {
+					return (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x);
+				};
+
+				std::vector<Vector2> hull(points.size() * 2);
+				size_t k = 0;
+
+				for (size_t i = 0; i < points.size(); i++) { // lower hull
+					while (k >= 2 && cross(hull[k - 2], hull[k - 1], points[i]) <= 0.0F)
+						k--;
+					hull[k++] = points[i];
+				}
+
+				for (size_t i = points.size() - 1, t = k + 1; i > 0; i--) { // upper hull
+					while (k >= t && cross(hull[k - 2], hull[k - 1], points[i - 1]) <= 0.0F)
+						k--;
+					hull[k++] = points[i - 1];
+				}
+
+				hull.resize(k > 0 ? k - 1 : 0); // the last point repeats the first
+				return hull;
+			}
+		} // namespace
+
+		Vector4 Client::GetTeamplayTeamColor(Player& p, float alpha) {
+			// The extension is explicit that a TEAM_ESP highlight uses the team colour
+			// the server sent in State Data, not the player's own block colour, so the
+			// highlight reads as team information at a glance.
+			Vector4 color = ConvertColorRGBA(world->GetTeamColor(p.GetTeamId()));
+			color.w = alpha;
+			return color;
+		}
+
+		void Client::DrawPlayerChevron(Player& p, const Vector4& color, bool showWeapon) {
+			SPADES_MARK_FUNCTION();
+
+			float alpha = color.w;
+			if (alpha <= 0.0F)
+				return;
+
+			Vector3 origin = p.GetEye();
+			origin.z -= 0.95F; // clear of the helmet at any pitch
+
+			Vector2 scrPos;
+			if (!Project(origin, scrPos))
+				return;
+
+			scrPos.x = floorf(scrPos.x) + 0.5F;
+			scrPos.y = floorf(scrPos.y) + 0.5F;
+
+			IFont& font = cg_smallFont
+				? fontManager->GetSmallFont()
+				: fontManager->GetGuiFont();
+
+			// Sized against the screen height so the marker keeps its apparent size on
+			// a high-DPI display instead of shrinking to nothing.
+			float sz = Clamp(renderer->ScreenHeight() * 0.012F, 9.0F, 22.0F);
+			float halfW = sz * 0.95F;
+			float depth = sz * 0.7F;
+			float thickShadow = std::max(3.0F, sz * 0.32F);
+			float thickOutline = std::max(1.5F, sz * 0.18F);
+
+			Vector2 tip = scrPos;
+			Vector2 wingL = MakeVector2(scrPos.x - halfW, scrPos.y - depth);
+			Vector2 wingR = MakeVector2(scrPos.x + halfW, scrPos.y - depth);
+
+			Vector4 shadow = MakeVector4(0, 0, 0, 0.6F * alpha);
+			Vector4 outline = Premultiply(color);
+
+			StrokeSegment(*renderer, wingL, tip, thickShadow, shadow);
+			StrokeSegment(*renderer, tip, wingR, thickShadow, shadow);
+			StrokeSegment(*renderer, wingL, tip, thickOutline, outline);
+			StrokeSegment(*renderer, tip, wingR, thickOutline, outline);
+
+			Vector4 nameCol = MakeVector4(color.x, color.y, color.z, alpha);
+			Vector4 textShadow = MakeVector4(0, 0, 0, 0.7F * alpha);
+
+			// Stack the class weapon icon and then the name above the chevron. The class
+			// weapon is shown rather than the held tool: it says what role the player is
+			// playing, which is what a teammate needs to know at a glance.
+			float stackBottom = scrPos.y - depth - (floorf(sz * 0.35F) + 2.0F);
+
+			Handle<IImage> weaponIcon;
+			if (showWeapon) {
+				const char* path = "Gfx/Hotbar/Rifle.png";
+				switch (p.GetWeaponType()) {
+					case RIFLE_WEAPON: path = "Gfx/Hotbar/Rifle.png"; break;
+					case SMG_WEAPON: path = "Gfx/Hotbar/SMG.png"; break;
+					case SHOTGUN_WEAPON: path = "Gfx/Hotbar/Shotgun.png"; break;
+				}
+				weaponIcon = renderer->RegisterImage(path);
+			}
+
+			if (weaponIcon) {
+				const float iconH = 14.0F;
+				float iconW = weaponIcon->GetWidth() * (iconH / weaponIcon->GetHeight());
+				Vector2 iconPos = MakeVector2(floorf(scrPos.x - iconW * 0.5F),
+											  floorf(stackBottom - iconH));
+				AABB2 inRect(0, 0, weaponIcon->GetWidth(), weaponIcon->GetHeight());
+
+				renderer->SetColorAlphaPremultiplied(MakeVector4(0, 0, 0, 0.7F * alpha));
+				renderer->DrawImage(weaponIcon.GetPointerOrNull(),
+									AABB2(iconPos.x + 1, iconPos.y + 1, iconW, iconH), inRect);
+
+				renderer->SetColorAlphaPremultiplied(MakeVector4(alpha, alpha, alpha, alpha));
+				renderer->DrawImage(weaponIcon.GetPointerOrNull(),
+									AABB2(iconPos.x, iconPos.y, iconW, iconH), inRect);
+
+				stackBottom = iconPos.y;
+			}
+
+			const std::string& name = p.GetName();
+			Vector2 nameSize = font.Measure(name);
+			Vector2 namePos = MakeVector2(floorf(scrPos.x - nameSize.x * 0.5F),
+										  floorf(stackBottom - nameSize.y - 1.0F));
+			font.DrawShadow(name, namePos, 1.0F, nameCol, textShadow);
+		}
+
+		void Client::DrawPlayerOutline(Player& p, const Vector4& color) {
+			SPADES_MARK_FUNCTION();
+
+			float alpha = color.w;
+			if (alpha <= 0.0F)
+				return;
+
+			// The hit boxes follow the body and its pose — head, torso and the three
+			// limb boxes — which is what the extension requires a mark to draw, rather
+			// than a box or a marker standing in for the player.
+			Player::HitBoxes hb = p.GetHitBoxes(cg_orientationSmoothing);
+			const OBB3* boxes[] = {&hb.head, &hb.torso, &hb.limbs[0], &hb.limbs[1], &hb.limbs[2]};
+
+			std::vector<Vector2> points;
+			points.reserve(std::size(boxes) * 8);
+
+			for (const OBB3* box : boxes) {
+				const Matrix4& m = box->m;
+				for (int i = 0; i < 8; i++) {
+					Vector3 unit = MakeVector3((float)(i & 1), (float)((i >> 1) & 1),
+											   (float)((i >> 2) & 1));
+					Vector2 scrPos;
+					if (!Project((m * unit).GetXYZ(), scrPos))
+						return; // straddling the near plane; the player is on top of us
+
+					points.push_back(scrPos);
+				}
+			}
+
+			std::vector<Vector2> hull = ConvexHull(points);
+			if (hull.size() < 3)
+				return;
+
+			float thickness = std::max(1.5F, renderer->ScreenHeight() * 0.0022F);
+			Vector4 shadow = MakeVector4(0, 0, 0, 0.55F * alpha);
+			Vector4 stroke = Premultiply(color);
+
+			// Two passes so the outline stays legible against both a bright sky and a
+			// dark wall, the same trick the text shadows use.
+			for (int pass = 0; pass < 2; pass++) {
+				float thick = (pass == 0) ? thickness + 2.0F : thickness;
+				const Vector4& col = (pass == 0) ? shadow : stroke;
+				for (size_t i = 0; i < hull.size(); i++)
+					StrokeSegment(*renderer, hull[i], hull[(i + 1) % hull.size()], thick, col);
+			}
+		}
+
+		void Client::DrawTeamOverlay() {
+			SPADES_MARK_FUNCTION();
+
+			// TEAM_ESP is a permission, not an instruction: the server allows the client
+			// to reveal its own team, and this client spends that permission only while
+			// the overlay key is held, so the view stays clear the rest of the time.
+			if (!teamplay->IsTeamESPEnabled())
+				return;
+
+			constexpr float kOverlayOpacity = 0.9F;
+			float alpha = kOverlayOpacity * teamOverlayAlpha;
+			if (alpha <= 0.0F)
+				return;
+
+			auto maybeLocal = world->GetLocalPlayer();
+			if (!maybeLocal)
+				return;
+
+			Player& local = maybeLocal.value();
+			if (local.IsSpectator())
+				return;
+
+			for (size_t i = 0; i < world->GetNumPlayerSlots(); i++) {
+				auto maybePlayer = world->GetPlayer(static_cast<unsigned int>(i));
+				if (!maybePlayer)
+					continue;
+
+				Player& p = maybePlayer.value();
+				if (&p == &local || p.IsSpectator() || !p.IsAlive())
+					continue;
+				if (!local.IsTeammate(p))
+					continue;
+				if (p.GetFront().GetSquaredLength() < 0.01F)
+					continue; // invalid state
+
+				// A marked player is drawn by DrawEspMarks with its own presentation;
+				// stacking both would double the name above their head.
+				if (teamplay->GetMark(p.GetId()))
+					continue;
+
+				DrawPlayerChevron(p, GetTeamplayTeamColor(p, alpha), true);
+			}
+		}
+
+		void Client::DrawEspMarks() {
+			SPADES_MARK_FUNCTION();
+
+			// A mark is an instruction rather than a permission, so it is drawn whatever
+			// the TEAM_ESP bit says and without waiting for the overlay key.
+			if (!teamplay->HasMarks())
+				return;
+
+			int localPlayerId = world->GetLocalPlayerIndex().value_or(-1);
+
+			for (size_t i = 0; i < world->GetNumPlayerSlots(); i++) {
+				int playerId = static_cast<int>(i);
+				if (playerId == localPlayerId)
+					continue; // shown as a notice instead, see below
+
+				auto mark = teamplay->GetMark(playerId);
+				if (!mark)
+					continue;
+
+				auto maybePlayer = world->GetPlayer(static_cast<unsigned int>(i));
+				if (!maybePlayer)
+					continue;
+
+				Player& p = maybePlayer.value();
+				if (p.IsSpectator() || !p.IsAlive())
+					continue;
+				if (p.GetFront().GetSquaredLength() < 0.01F)
+					continue; // invalid state
+
+				// The extension leaves a mark's colour to the client precisely so it can
+				// be told apart from a plain teammate highlight, which is team-coloured.
+				constexpr float kMarkOpacity = 0.95F;
+				Vector4 color = MakeVector4(1.0F, 0.75F, 0.15F, kMarkOpacity);
+
+				DrawPlayerOutline(p, color);
+				DrawPlayerChevron(p, color, false);
+
+				// The Reason, when the server sent one, goes under the chevron so the
+				// audience knows why this player and not another.
+				if (!mark->reason.empty()) {
+					Vector3 origin = p.GetEye();
+					origin.z -= 0.95F;
+
+					Vector2 scrPos;
+					if (Project(origin, scrPos)) {
+						IFont& font = fontManager->GetSmallFont();
+						Vector2 size = font.Measure(mark->reason);
+						Vector2 pos = MakeVector2(floorf(scrPos.x - size.x * 0.5F),
+												  floorf(scrPos.y + 2.0F));
+						font.DrawShadow(mark->reason, pos, 1.0F, color,
+										MakeVector4(0, 0, 0, 0.7F * color.w));
+					}
+				}
+			}
+		}
+
+		void Client::DrawLocalPlayerMarkedIndicator() {
+			SPADES_MARK_FUNCTION();
+
+			// The server chooses the audience of a mark, so being included in the
+			// recipients for one's own id is how a player learns they are being shown to
+			// others. Telling them is the honest reading of that.
+			if (!teamplay->HasMarks())
+				return;
+
+			auto localPlayerId = world->GetLocalPlayerIndex();
+			if (!localPlayerId)
+				return;
+
+			auto mark = teamplay->GetMark(localPlayerId.value());
+			if (!mark)
+				return;
+
+			std::string str = _Tr("Client", "YOU ARE MARKED");
+			if (!mark->reason.empty())
+				str += " — " + mark->reason;
+
+			IFont& font = fontManager->GetGuiFont();
+			Vector2 size = font.Measure(str);
+			Vector2 pos = MakeVector2(floorf((renderer->ScreenWidth() - size.x) * 0.5F),
+									  floorf(renderer->ScreenHeight() * 0.16F));
+
+			font.DrawShadow(str, pos, 1.0F, MakeVector4(1.0F, 0.75F, 0.15F, 1.0F),
+							MakeVector4(0, 0, 0, 0.8F));
+		}
+
+		void Client::DrawTeamplayPings() {
+			SPADES_MARK_FUNCTION();
+
+			if (!teamplay->IsWorldPingEnabled() || !teamplay->HasPings())
+				return;
+
+			IFont& font = fontManager->GetSmallFont();
+			float sw = renderer->ScreenWidth();
+			float sh = renderer->ScreenHeight();
+
+			// Sized against the screen height, like the chevron, and kept inside a
+			// margin so a ping just off the edge still tells you which way to look.
+			float sz = Clamp(sh * 0.014F, 10.0F, 26.0F);
+			float margin = sz * 2.0F;
+
+			for (const auto& entry : teamplay->GetPings()) {
+				const ExtendedTeamplay::Ping& ping = entry.second;
+
+				// Fade out over the last stretch of the fixed 5 second lifetime rather
+				// than blinking out of existence.
+				constexpr float kFadeOutTime = 0.75F;
+				float alpha = Clamp(ping.timeLeft / kFadeOutTime, 0.0F, 1.0F);
+
+				Vector3 rel = ping.position - lastSceneDef.viewOrigin;
+				float forward = Vector3::Dot(rel, lastSceneDef.viewAxis[2]);
+
+				Vector2 scrPos;
+				bool onScreen = false;
+				if (forward > 0.0F && Project(ping.position, scrPos)) {
+					onScreen = scrPos.x >= margin && scrPos.x <= sw - margin &&
+							   scrPos.y >= margin && scrPos.y <= sh - margin;
+				} else {
+					// Behind the camera: place the marker on the edge in the direction
+					// the player has to turn, using the view-space offset.
+					float right = Vector3::Dot(rel, lastSceneDef.viewAxis[0]);
+					float up = Vector3::Dot(rel, lastSceneDef.viewAxis[1]);
+					Vector2 dir = MakeVector2(right, -up);
+					if (dir.GetSquaredLength() < 0.0001F)
+						dir = MakeVector2(0.0F, 1.0F);
+					dir = dir.Normalize();
+					scrPos = MakeVector2(sw * 0.5F, sh * 0.5F) + dir * (sh * 0.5F);
+				}
+
+				scrPos.x = Clamp(scrPos.x, margin, sw - margin);
+				scrPos.y = Clamp(scrPos.y, margin, sh - margin);
+				scrPos.x = floorf(scrPos.x) + 0.5F;
+				scrPos.y = floorf(scrPos.y) + 0.5F;
+
+				Vector4 color = (ping.playerId == ExtendedTeamplay::kServerPlayerId)
+					? MakeVector4(1.0F, 0.85F, 0.3F, alpha)
+					: MakeVector4(1.0F, 1.0F, 1.0F, alpha);
+
+				// A diamond, drawn as four strokes with a dark pass underneath.
+				Vector2 corners[4] = {
+					MakeVector2(scrPos.x, scrPos.y - sz),
+					MakeVector2(scrPos.x + sz, scrPos.y),
+					MakeVector2(scrPos.x, scrPos.y + sz),
+					MakeVector2(scrPos.x - sz, scrPos.y),
+				};
+
+				float thickness = std::max(1.5F, sz * 0.16F);
+				Vector4 shadow = MakeVector4(0, 0, 0, 0.6F * alpha);
+				Vector4 stroke = Premultiply(color);
+
+				for (int pass = 0; pass < 2; pass++) {
+					float thick = (pass == 0) ? thickness + 2.0F : thickness;
+					const Vector4& col = (pass == 0) ? shadow : stroke;
+					for (int i = 0; i < 4; i++)
+						StrokeSegment(*renderer, corners[i], corners[(i + 1) % 4], thick, col);
+				}
+
+				// Who pinged, and what they said, under the marker. An off-screen ping
+				// also gets its distance, which is the only cue left once the marker is
+				// pinned to the edge.
+				std::string label = (ping.playerId == ExtendedTeamplay::kServerPlayerId)
+					? _Tr("Client", "Server")
+					: world->GetPlayerName(ping.playerId);
+				if (!ping.reason.empty())
+					label += ": " + ping.reason;
+				if (!onScreen) {
+					char buf[32];
+					snprintf(buf, sizeof(buf), " [%.0f]", rel.GetLength());
+					label += buf;
+				}
+
+				Vector2 size = font.Measure(label);
+				Vector2 pos = MakeVector2(floorf(scrPos.x - size.x * 0.5F),
+										  floorf(scrPos.y + sz + 2.0F));
+				font.DrawShadow(label, pos, 1.0F, MakeVector4(color.x, color.y, color.z, alpha),
+								MakeVector4(0, 0, 0, 0.8F * alpha));
 			}
 		}
 
@@ -1940,6 +2365,15 @@ namespace spades {
 				} else if (spectatorPlayerNames) { // only if we are spectating
 					DrawPubOVL();
 				}
+
+				// Extended Teamplay. Marks and pings come from the server and are drawn
+				// whether or not the local player is spectating; the team overlay is the
+				// local player's own view of their team and is not.
+				DrawEspMarks();
+				DrawLocalPlayerMarkedIndicator();
+				DrawTeamplayPings();
+				if (!localPlayerIsSpectator)
+					DrawTeamOverlay();
 
 				if (shouldDrawHUD) {
 					// draw firstperson camera player HUD
