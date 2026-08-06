@@ -568,9 +568,15 @@ namespace spades {
 			 * one the server sent in State Data, not the player's block colour. */
 			Vector4 GetTeamplayTeamColor(Player&, float alpha);
 
-			/** A chevron above a player's head, with their name and class weapon. Used
-			 * for the team overlay, which the extension leaves to the client. */
-			void DrawPlayerChevron(Player&, const Vector4& color, bool showWeapon);
+			/** A chevron above a player's head, with their name and class weapon, and
+			 * `note` above the name when there is one. Used for the team overlay, which
+			 * the extension leaves to the client. */
+			void DrawPlayerChevron(Player&, const Vector4& color, bool showWeapon,
+								   const std::string& note = std::string());
+
+			/** Whether a player's name is already drawn by a teamplay chevron, so the
+			 * ordinary name label must not draw it a second time lower down. */
+			bool HasTeamplayChevron(Player&);
 
 			/** The outline of a player's body through walls, following its pose. The
 			 * extension requires this shape (not a box or a marker) for an ESP Mark. */

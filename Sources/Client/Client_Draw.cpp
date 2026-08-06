@@ -731,6 +731,8 @@ namespace spades {
 			auto hottracked = HotTrackedPlayer();
 			if (hottracked) {
 				Player& player = std::get<0>(*hottracked);
+				if (HasTeamplayChevron(player))
+					return; // the chevron already names them, higher up
 				DrawPlayerName(player, MakeVector4(1, 1, 1, 1));
 			}
 		}
@@ -825,7 +827,7 @@ namespace spades {
 				const auto& color = GetPlayerColor(p);
 				if (staffSpectating)
 					DrawPlayerBox(p, color);
-				if (spectatorPlayerNames)
+				if (spectatorPlayerNames && !HasTeamplayChevron(p))
 					DrawPlayerName(p, color);
 			}
 		}
@@ -895,7 +897,30 @@ namespace spades {
 			return color;
 		}
 
-		void Client::DrawPlayerChevron(Player& p, const Vector4& color, bool showWeapon) {
+		bool Client::HasTeamplayChevron(Player& p) {
+			SPADES_MARK_FUNCTION();
+
+			if (!world || !p.IsAlive() || p.IsSpectator())
+				return false;
+
+			auto maybeLocal = world->GetLocalPlayer();
+			if (!maybeLocal)
+				return false;
+
+			Player& local = maybeLocal.value();
+			if (&p == &local)
+				return false;
+
+			if (teamplay->GetMark(p.GetId()))
+				return true; // DrawEspMarks draws the chevron
+
+			// DrawTeamOverlay draws one for every teammate while the key is held.
+			return teamplay->IsTeamESPEnabled() && teamOverlayAlpha > 0.0F &&
+				   !local.IsSpectator() && local.IsTeammate(p);
+		}
+
+		void Client::DrawPlayerChevron(Player& p, const Vector4& color, bool showWeapon,
+									   const std::string& note) {
 			SPADES_MARK_FUNCTION();
 
 			float alpha = color.w;
@@ -978,6 +1003,15 @@ namespace spades {
 			Vector2 namePos = MakeVector2(floorf(scrPos.x - nameSize.x * 0.5F),
 										  floorf(stackBottom - nameSize.y - 1.0F));
 			font.DrawShadow(name, namePos, 1.0F, nameCol, textShadow);
+
+			// Everything this marker has to say stays in one stack above the head, so
+			// it never collides with the ordinary name label lower down.
+			if (!note.empty()) {
+				Vector2 noteSize = font.Measure(note);
+				Vector2 notePos = MakeVector2(floorf(scrPos.x - noteSize.x * 0.5F),
+											  floorf(namePos.y - noteSize.y - 1.0F));
+				font.DrawShadow(note, notePos, 1.0F, nameCol, textShadow);
+			}
 		}
 
 		void Client::DrawPlayerOutline(Player& p, const Vector4& color) {
@@ -1105,25 +1139,11 @@ namespace spades {
 				constexpr float kMarkOpacity = 0.95F;
 				Vector4 color = MakeVector4(1.0F, 0.75F, 0.15F, kMarkOpacity);
 
+				// The Reason, when the server sent one, rides above the name so the
+				// audience knows why this player and not another. It is rendered as
+				// received: the extension assigns no reason values.
 				DrawPlayerOutline(p, color);
-				DrawPlayerChevron(p, color, false);
-
-				// The Reason, when the server sent one, goes under the chevron so the
-				// audience knows why this player and not another.
-				if (!mark->reason.empty()) {
-					Vector3 origin = p.GetEye();
-					origin.z -= 0.95F;
-
-					Vector2 scrPos;
-					if (Project(origin, scrPos)) {
-						IFont& font = fontManager->GetSmallFont();
-						Vector2 size = font.Measure(mark->reason);
-						Vector2 pos = MakeVector2(floorf(scrPos.x - size.x * 0.5F),
-												  floorf(scrPos.y + 2.0F));
-						font.DrawShadow(mark->reason, pos, 1.0F, color,
-										MakeVector4(0, 0, 0, 0.7F * color.w));
-					}
-				}
+				DrawPlayerChevron(p, color, false, mark->reason);
 			}
 		}
 
