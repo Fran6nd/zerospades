@@ -172,13 +172,19 @@ namespace spades {
 
 		PieMenuView::PieMenuView(Client* c, IFont* f, IFont* big)
 			: renderer(c->GetRenderer()), font(f), bigFont(big) {
-			// Slice order: top, then clockwise. Affirmative/Negative occupy
-			// the same slots in both variants so the gesture transfers.
+			// Slice order: top, then clockwise.
+			//
+			// The World variant is aimed at a place, so its slices are callouts about
+			// somewhere rather than replies to somebody: four of them drop an Extended
+			// Teamplay ping on whatever the crosshair was on when the menu opened, and
+			// fall back to the same message on team chat when the server does not allow
+			// pings. "Affirmative" and "Negative" have no place to point at and stayed
+			// on the Player variant, where a reply is what is wanted.
 			worldLabels = {
-				"Affirmative",
+				"Enemies!",
 				"Behind Us!",
 				"Spawnkiller!",
-				"Negative",
+				"Go Here!",
 				"Help Me Build",
 				"Tear It Down!",
 			};
@@ -191,13 +197,29 @@ namespace spades {
 				"Thank You",
 			};
 			worldDisplayLabels = {
-				_Tr("Client", "Affirmative"),
+				_Tr("Client", "Enemies!"),
 				_Tr("Client", "Behind Us!"),
 				_Tr("Client", "Spawnkiller!"),
-				_Tr("Client", "Negative"),
+				_Tr("Client", "Go Here!"),
 				_Tr("Client", "Help Me Build"),
 				_Tr("Client", "Tear It Down!"),
 			};
+
+			// The reason a slice pings with, or empty for a chat-only slice. These are
+			// the lowercase tokens the extension gives as examples, not the labels: a
+			// receiving client maps a token it knows to its own wording and falls back
+			// to a neutral marker for one it does not. "Behind Us!" and "Spawnkiller!"
+			// stay chat-only — both are about a direction or an event, not a point on
+			// the map, so a marker would put them somewhere they do not belong.
+			worldPingReasons = {
+				"enemy",
+				"",
+				"",
+				"go",
+				"build",
+				"tear",
+			};
+			playerPingReasons = {"", "", "", "", "", ""};
 			playerDisplayLabels = {
 				_Tr("Client", "Affirmative"),
 				_Tr("Client", "Behind You"),
