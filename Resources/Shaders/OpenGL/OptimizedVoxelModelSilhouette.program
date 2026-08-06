@@ -1,0 +1,3 @@
+Shaders/OpenGL/OptimizedVoxelModelSilhouette.fs
+Shaders/OpenGL/OptimizedVoxelModelSilhouette.vs
+Shaders/OpenGL/Fog.vs

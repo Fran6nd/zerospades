@@ -59,6 +59,11 @@ namespace spades {
 			void RenderDynamicLightPass(std::vector<GLDynamicLight> lights);
 			void RenderOutlinePass();
 
+			/** Whether any model in this frame asked for a silhouette, so the whole
+			 * pass can be skipped in the common case where none did. */
+			bool HasSilhouettes() const;
+			void RenderSilhouettePass();
+
 			void Clear();
 		};
 	} // namespace draw

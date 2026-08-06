@@ -49,6 +49,7 @@
 #include "GLProgramAttribute.h"
 #include "GLProgramManager.h"
 #include "GLProgramUniform.h"
+#include "GLQuadRenderer.h"
 #include "GLRadiosityRenderer.h"
 #include "GLRenderer.h"
 #include "GLResampleBicubicFilter.h"
@@ -698,6 +699,84 @@ namespace spades {
 				device->PolygonOffset(0.0F, 0.0F);
 				device->LineWidth(1.0F);
 			}
+
+			// A silhouette reveals a player the viewer cannot see, which has no meaning
+			// in a mirror's reflection of them.
+			if (!mirror && modelRenderer->HasSilhouettes())
+				RenderSilhouettes();
+		}
+
+		void GLRenderer::RenderSilhouettes() {
+			SPADES_MARK_FUNCTION();
+
+			GLProfiler::Context p(*profiler, "Silhouette Pass");
+
+			// Under MSAA the models draw into the multisampled depth buffer while the
+			// mask shader samples the single-sample depth texture, so resolve it first
+			// — the same reason the SSAO pass above does.
+			GetFramebufferManager()->ResolveDepth();
+
+			GLColorBuffer mask = GetFramebufferManager()->CreateBufferHandle(-1, -1, true);
+
+			// Pass 1: the shapes, keeping only what the viewer cannot already see.
+			device->BindFramebuffer(IGLDevice::Framebuffer, mask.GetFramebuffer());
+			device->Viewport(0, 0, mask.GetWidth(), mask.GetHeight());
+			device->ClearColor(0.0F, 0.0F, 0.0F, 0.0F);
+			device->Clear(IGLDevice::ColorBufferBit);
+
+			// Depth testing is off because the shader does the comparison itself: it
+			// needs to know that a fragment is occluded, which a depth test would have
+			// thrown away before the shader ever ran.
+			device->Enable(IGLDevice::DepthTest, false);
+			device->DepthMask(false);
+			device->Enable(IGLDevice::Blend, false);
+			device->Enable(IGLDevice::CullFace, true);
+
+			modelRenderer->RenderSilhouettePass();
+
+			// Pass 2: the contour of that mask, composited onto the scene.
+			GetFramebufferManager()->PrepareSceneRendering();
+
+			device->Enable(IGLDevice::CullFace, false);
+			device->Enable(IGLDevice::Blend, true);
+			device->BlendFunc(IGLDevice::SrcAlpha, IGLDevice::OneMinusSrcAlpha,
+							  IGLDevice::Zero, IGLDevice::One);
+
+			GLProgram* edgeProgram =
+			  RegisterProgram("Shaders/OpenGL/PostFilters/SilhouetteEdge.program");
+			edgeProgram->Use();
+
+			static GLProgramAttribute positionAttribute("positionAttribute");
+			static GLProgramUniform maskTexture("maskTexture");
+			static GLProgramUniform texelSize("texelSize");
+			static GLProgramUniform thickness("thickness");
+
+			positionAttribute(edgeProgram);
+			maskTexture(edgeProgram);
+			texelSize(edgeProgram);
+			thickness(edgeProgram);
+
+			maskTexture.SetValue(0);
+			texelSize.SetValue(1.0F / (float)mask.GetWidth(), 1.0F / (float)mask.GetHeight());
+
+			// Scaled with the render height so the line keeps its weight on a
+			// high-resolution display instead of thinning away. The edge shader's
+			// sampling window bounds this at 3 texels.
+			float lineWidth = Clamp((float)mask.GetHeight() / 480.0F, 1.0F, 3.0F);
+			thickness.SetValue(lineWidth);
+
+			device->ActiveTexture(0);
+			device->BindTexture(IGLDevice::Texture2D, mask.GetTexture());
+
+			GLQuadRenderer quadRenderer(*device);
+			quadRenderer.SetCoordAttributeIndex(positionAttribute());
+			quadRenderer.Draw();
+
+			device->BindTexture(IGLDevice::Texture2D, 0);
+
+			device->Enable(IGLDevice::Blend, false);
+			device->Enable(IGLDevice::DepthTest, true);
+			device->DepthMask(true);
 		}
 
 		void GLRenderer::RenderGhosts() {

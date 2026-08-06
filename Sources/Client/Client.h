@@ -578,9 +578,13 @@ namespace spades {
 			 * ordinary name label must not draw it a second time lower down. */
 			bool HasTeamplayChevron(Player&);
 
-			/** The outline of a player's body through walls, following its pose. The
-			 * extension requires this shape (not a box or a marker) for an ESP Mark. */
-			void DrawPlayerOutline(Player&, const Vector4& color);
+			/**
+			 * Whether this player is currently revealed through walls, and in what
+			 * colour. Called by `ClientPlayer` as it submits the player's models, so the
+			 * renderer draws the contour of their body and weapon where the world hides
+			 * them. The extension requires that shape for an ESP Mark.
+			 */
+			bool ShouldRevealPlayer(Player&, Vector3& outColor);
 
 			/** Teammates revealed through `TEAM_ESP`, while the overlay key is held. */
 			void DrawTeamOverlay();

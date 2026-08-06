@@ -78,6 +78,8 @@ namespace spades {
 			Handle<IRenderer> base;
 			AABB3 clipBox;
 			bool allowDepthHack;
+			bool silhouette = false;
+			Vector3 silhouetteColor = MakeVector3(1, 1, 1);
 
 			void OnProhibitedAction() {}
 
@@ -103,6 +105,20 @@ namespace spades {
 
 			void SetClipBox(const AABB3& b) { clipBox = b; }
 			void SetAllowDepthHack(bool h) { allowDepthHack = h; }
+
+			/**
+			 * Makes every model submitted from here on draw a contour where it is
+			 * hidden behind the world.
+			 *
+			 * Set on the sandbox rather than on individual models because the weapon in
+			 * a player's hands is submitted by their AngelScript skin, which this class
+			 * is the only thing standing between and the renderer. Flagging it here is
+			 * what makes the body and the weapon come out as one outline.
+			 */
+			void SetSilhouette(bool enable, const Vector3& color) {
+				silhouette = enable;
+				silhouetteColor = color;
+			}
 
 			void Init() { OnProhibitedAction(); }
 			void Shutdown() { OnProhibitedAction(); }
@@ -135,6 +151,11 @@ namespace spades {
 
 			void RenderModel(IModel& model, const ModelRenderParam& _p) {
 				ModelRenderParam p = _p;
+
+				if (silhouette) {
+					p.silhouette = true;
+					p.silhouetteColor = silhouetteColor;
+				}
 
 				if (p.depthHack && !allowDepthHack) {
 					OnProhibitedAction();
@@ -669,6 +690,10 @@ namespace spades {
 			sandboxedRenderer->SetClipBox(clip);
 			sandboxedRenderer->SetAllowDepthHack(true); // allow depthhack
 
+			// Nothing hides a player from their own eyes, and the flag persists on the
+			// sandbox between frames, so it has to be cleared and not merely not set.
+			sandboxedRenderer->SetSilhouette(false, MakeVector3(1, 1, 1));
+
 			// no flashlight if spectating other players while dead
 			if (client.flashlightOn && p.IsLocalPlayer()) {
 				float brightness = client.time - client.flashlightOnTime;
@@ -1088,6 +1113,12 @@ namespace spades {
 			);
 			sandboxedRenderer->SetClipBox(clip);
 			sandboxedRenderer->SetAllowDepthHack(false); // disable depthhack
+
+			// Reveal this player through walls when the client is showing them, which
+			// covers the body parts below and the weapon the skin submits after them.
+			Vector3 silhouetteColor;
+			sandboxedRenderer->SetSilhouette(
+			  client.ShouldRevealPlayer(player, silhouetteColor), silhouetteColor);
 
 			// ready for tool rendering
 			asIScriptObject* curSkin = GetCurrentSkin(false);

@@ -145,6 +145,11 @@ namespace spades {
 			void RenderObjects(bool mirror = false);
 			void RenderGhosts();
 
+			/** Draws the contour of every model flagged `silhouette`, where it is
+			 * hidden behind the world or lost in the fog. Renders the shapes into an
+			 * offscreen mask, then composites that mask's edge onto the scene. */
+			void RenderSilhouettes();
+
 			void EnsureInitialized();
 			void EnsureSceneStarted();
 			void EnsureSceneNotStarted();

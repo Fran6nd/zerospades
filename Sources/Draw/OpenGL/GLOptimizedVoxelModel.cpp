@@ -46,6 +46,7 @@ namespace spades {
 			renderer.RegisterProgram("Shaders/OpenGL/OptimizedVoxelModelDynamicLit.program");
 			renderer.RegisterProgram("Shaders/OpenGL/OptimizedVoxelModelShadowMap.program");
 			renderer.RegisterProgram("Shaders/OpenGL/OptimizedVoxelModelOutlines.program");
+			renderer.RegisterProgram("Shaders/OpenGL/OptimizedVoxelModelSilhouette.program");
 			renderer.RegisterImage("Gfx/AmbientOcclusion.png");
 		}
 		GLOptimizedVoxelModel::GLOptimizedVoxelModel(VoxelModel* m, GLRenderer& r)
@@ -62,6 +63,7 @@ namespace spades {
 			dlightProgram = renderer.RegisterProgram("Shaders/OpenGL/OptimizedVoxelModelDynamicLit.program");
 			shadowMapProgram = renderer.RegisterProgram("Shaders/OpenGL/OptimizedVoxelModelShadowMap.program");
 			outlinesProgram = renderer.RegisterProgram("Shaders/OpenGL/OptimizedVoxelModelOutlines.program");
+			silhouetteProgram = renderer.RegisterProgram("Shaders/OpenGL/OptimizedVoxelModelSilhouette.program");
 			aoImage = renderer.RegisterImage("Gfx/AmbientOcclusion.png").Cast<GLImage>();
 
 			buffer = device.GenBuffer();
@@ -1014,6 +1016,99 @@ namespace spades {
 			device.BindBuffer(IGLDevice::ElementArrayBuffer, 0);
 
 			device.EnableVertexAttribArray(positionAttribute(), false);
+		}
+
+		void GLOptimizedVoxelModel::RenderSilhouettePass(
+			std::vector<client::ModelRenderParam> params) {
+			SPADES_MARK_FUNCTION();
+
+			const auto& viewOrigin = renderer.GetSceneDef().viewOrigin;
+			const auto& pvMat = renderer.GetProjectionViewMatrix();
+
+			// The scene depth decides, per fragment, whether this model is hidden
+			// behind the world. Bound here rather than by the caller because the
+			// program's sampler unit is this pass's business.
+			device.ActiveTexture(0);
+			device.BindTexture(IGLDevice::Texture2D,
+				renderer.GetFramebufferManager()->GetDepthTexture());
+
+			silhouetteProgram->Use();
+
+			static GLProgramUniform fogDistance("fogDistance");
+			fogDistance(silhouetteProgram);
+			fogDistance.SetValue(renderer.GetFogDistance());
+
+			static GLProgramUniform modelOrigin("modelOrigin");
+			modelOrigin(silhouetteProgram);
+			modelOrigin.SetValue(origin.x, origin.y, origin.z);
+
+			static GLProgramUniform viewOriginVector("viewOriginVector");
+			viewOriginVector(silhouetteProgram);
+			viewOriginVector.SetValue(viewOrigin.x, viewOrigin.y, viewOrigin.z);
+
+			static GLProgramUniform sceneDepthTexture("sceneDepthTexture");
+			sceneDepthTexture(silhouetteProgram);
+			sceneDepthTexture.SetValue(0);
+
+			static GLProgramUniform inverseScreenSize("inverseScreenSize");
+			inverseScreenSize(silhouetteProgram);
+			inverseScreenSize.SetValue(1.0F / (float)device.ScreenWidth(),
+									   1.0F / (float)device.ScreenHeight());
+
+			static GLProgramUniform silhouetteColor("silhouetteColor");
+			silhouetteColor(silhouetteProgram);
+
+			static GLProgramAttribute positionAttribute("positionAttribute");
+			positionAttribute(silhouetteProgram);
+
+			device.BindBuffer(IGLDevice::ArrayBuffer, buffer);
+			device.VertexAttribPointer(positionAttribute(), 4,
+				IGLDevice::UnsignedByte, false, sizeof(Vertex), (void*)0);
+			device.BindBuffer(IGLDevice::ArrayBuffer, 0);
+
+			device.EnableVertexAttribArray(positionAttribute(), true);
+			device.BindBuffer(IGLDevice::ElementArrayBuffer, idxBuffer);
+
+			for (const auto& param : params) {
+				if (!param.silhouette)
+					continue;
+
+				const auto& modelMatrix = param.matrix;
+				const auto& axisX = modelMatrix.GetAxis(0);
+				const auto& axisY = modelMatrix.GetAxis(1);
+				const auto& axisZ = modelMatrix.GetAxis(2);
+				const auto& modelOriginPos = modelMatrix.GetOrigin();
+
+				// frustrum cull
+				float rad = radius * axisX.GetLength();
+				if (!renderer.SphereFrustrumCull(modelOriginPos, rad))
+					continue;
+
+				static GLProgramUniform projectionViewModelMatrix("projectionViewModelMatrix");
+				projectionViewModelMatrix(silhouetteProgram);
+				projectionViewModelMatrix.SetValue(pvMat * modelMatrix);
+
+				static GLProgramUniform modelMatrixU("modelMatrix");
+				modelMatrixU(silhouetteProgram);
+				modelMatrixU.SetValue(modelMatrix);
+
+				silhouetteColor.SetValue(param.silhouetteColor.x, param.silhouetteColor.y,
+										 param.silhouetteColor.z);
+
+				bool isMirrored = Vector3::Dot(Vector3::Cross(axisX, axisY), axisZ) < 0.0F;
+				if (isMirrored)
+					device.FrontFace(IGLDevice::CCW);
+
+				device.DrawElements(IGLDevice::Triangles,
+					numIndices, IGLDevice::UnsignedInt, (void*)0);
+
+				if (isMirrored)
+					device.FrontFace(IGLDevice::CW);
+			}
+
+			device.BindBuffer(IGLDevice::ElementArrayBuffer, 0);
+			device.EnableVertexAttribArray(positionAttribute(), false);
+			device.BindTexture(IGLDevice::Texture2D, 0);
 		}
 	} // namespace draw
 } // namespace spades

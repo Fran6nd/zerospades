@@ -22,7 +22,6 @@
 #include <algorithm>
 #include <cstdarg>
 #include <cstdlib>
-#include <iterator>
 #include <vector>
 
 #include "Client.h"
@@ -61,7 +60,6 @@
 
 DEFINE_SPADES_SETTING(cg_hitIndicator, "1");
 DEFINE_SPADES_SETTING(cg_debugAim, "0");
-SPADES_SETTING(cg_orientationSmoothing);
 SPADES_SETTING(cg_keyReloadWeapon);
 SPADES_SETTING(cg_keyJump);
 SPADES_SETTING(cg_keyAttack);
@@ -854,38 +852,6 @@ namespace spades {
 				return MakeVector4(c.x * c.w, c.y * c.w, c.z * c.w, c.w);
 			}
 
-			/** Andrew's monotone chain. `points` is reordered; the hull is returned in
-			 * counter-clockwise order and never repeats its first point. */
-			std::vector<Vector2> ConvexHull(std::vector<Vector2>& points) {
-				if (points.size() < 3)
-					return points;
-
-				std::sort(points.begin(), points.end(), [](const Vector2& a, const Vector2& b) {
-					return (a.x != b.x) ? (a.x < b.x) : (a.y < b.y);
-				});
-
-				auto cross = [](const Vector2& o, const Vector2& a, const Vector2& b) {
-					return (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x);
-				};
-
-				std::vector<Vector2> hull(points.size() * 2);
-				size_t k = 0;
-
-				for (size_t i = 0; i < points.size(); i++) { // lower hull
-					while (k >= 2 && cross(hull[k - 2], hull[k - 1], points[i]) <= 0.0F)
-						k--;
-					hull[k++] = points[i];
-				}
-
-				for (size_t i = points.size() - 1, t = k + 1; i > 0; i--) { // upper hull
-					while (k >= t && cross(hull[k - 2], hull[k - 1], points[i - 1]) <= 0.0F)
-						k--;
-					hull[k++] = points[i - 1];
-				}
-
-				hull.resize(k > 0 ? k - 1 : 0); // the last point repeats the first
-				return hull;
-			}
 		} // namespace
 
 		Vector4 Client::GetTeamplayTeamColor(Player& p, float alpha) {
@@ -1014,51 +980,39 @@ namespace spades {
 			}
 		}
 
-		void Client::DrawPlayerOutline(Player& p, const Vector4& color) {
+		bool Client::ShouldRevealPlayer(Player& p, Vector3& outColor) {
 			SPADES_MARK_FUNCTION();
 
-			float alpha = color.w;
-			if (alpha <= 0.0F)
-				return;
+			if (!world || !p.IsAlive() || p.IsSpectator())
+				return false;
 
-			// The hit boxes follow the body and its pose — head, torso and the three
-			// limb boxes — which is what the extension requires a mark to draw, rather
-			// than a box or a marker standing in for the player.
-			Player::HitBoxes hb = p.GetHitBoxes(cg_orientationSmoothing);
-			const OBB3* boxes[] = {&hb.head, &hb.torso, &hb.limbs[0], &hb.limbs[1], &hb.limbs[2]};
+			// Never the player whose eyes we are looking through: they are not hidden
+			// from themselves, and their own contour would frame the whole screen.
+			auto maybeLocal = world->GetLocalPlayer();
+			if (maybeLocal && &p == &maybeLocal.value())
+				return false;
 
-			std::vector<Vector2> points;
-			points.reserve(std::size(boxes) * 8);
-
-			for (const OBB3* box : boxes) {
-				const Matrix4& m = box->m;
-				for (int i = 0; i < 8; i++) {
-					Vector3 unit = MakeVector3((float)(i & 1), (float)((i >> 1) & 1),
-											   (float)((i >> 2) & 1));
-					Vector2 scrPos;
-					if (!Project((m * unit).GetXYZ(), scrPos))
-						return; // straddling the near plane; the player is on top of us
-
-					points.push_back(scrPos);
-				}
+			// A mark is an instruction from the server and outranks the team overlay,
+			// including its colour, which is what tells the two apart.
+			if (teamplay->GetMark(p.GetId())) {
+				outColor = MakeVector3(1.0F, 0.75F, 0.15F);
+				return true;
 			}
 
-			std::vector<Vector2> hull = ConvexHull(points);
-			if (hull.size() < 3)
-				return;
+			if (!teamplay->IsTeamESPEnabled() || teamOverlayAlpha <= 0.0F)
+				return false;
+			if (!maybeLocal)
+				return false;
 
-			float thickness = std::max(1.5F, renderer->ScreenHeight() * 0.0022F);
-			Vector4 shadow = MakeVector4(0, 0, 0, 0.55F * alpha);
-			Vector4 stroke = Premultiply(color);
+			Player& local = maybeLocal.value();
+			if (local.IsSpectator() || !local.IsTeammate(p))
+				return false;
 
-			// Two passes so the outline stays legible against both a bright sky and a
-			// dark wall, the same trick the text shadows use.
-			for (int pass = 0; pass < 2; pass++) {
-				float thick = (pass == 0) ? thickness + 2.0F : thickness;
-				const Vector4& col = (pass == 0) ? shadow : stroke;
-				for (size_t i = 0; i < hull.size(); i++)
-					StrokeSegment(*renderer, hull[i], hull[(i + 1) % hull.size()], thick, col);
-			}
+			// The extension mandates the team colour the server sent in State Data for a
+			// TEAM_ESP highlight.
+			Vector4 teamColor = GetTeamplayTeamColor(p, 1.0F);
+			outColor = MakeVector3(teamColor.x, teamColor.y, teamColor.z);
+			return true;
 		}
 
 		void Client::DrawTeamOverlay() {
@@ -1142,7 +1096,8 @@ namespace spades {
 				// The Reason, when the server sent one, rides above the name so the
 				// audience knows why this player and not another. It is rendered as
 				// received: the extension assigns no reason values.
-				DrawPlayerOutline(p, color);
+				// The body-and-weapon contour is the renderer's job now, driven by
+				// ShouldRevealPlayer; here only the name and reason are drawn.
 				DrawPlayerChevron(p, color, false, mark->reason);
 			}
 		}
