@@ -53,6 +53,11 @@ namespace spades {
 
 			virtual void RenderOutlinePass(std::vector<client::ModelRenderParam> params) = 0;
 
+			/** Renders the models flagged `silhouette` as solid shapes into the
+			 * silhouette mask, keeping only the fragments hidden behind the world or
+			 * lost in the fog. The contour is extracted from the mask afterwards. */
+			virtual void RenderSilhouettePass(std::vector<client::ModelRenderParam> params) = 0;
+
 		private:
 			// members used when rendering by GLModelRenderer
 			int renderId;

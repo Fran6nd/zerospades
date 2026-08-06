@@ -118,6 +118,27 @@ namespace spades {
 			}
 		}
 
+		bool GLModelRenderer::HasSilhouettes() const {
+			for (const auto& m : models) {
+				for (const auto& param : m.params) {
+					if (param.silhouette)
+						return true;
+				}
+			}
+			return false;
+		}
+
+		void GLModelRenderer::RenderSilhouettePass() {
+			SPADES_MARK_FUNCTION();
+
+			GLProfiler::Context profiler(renderer.GetGLProfiler(), "Model Silhouette");
+
+			for (const auto& m : models) {
+				GLModel* model = m.model;
+				model->RenderSilhouettePass(m.params);
+			}
+		}
+
 		void GLModelRenderer::Clear() {
 			// last phase: clear scene
 			for (const auto& m : models) {
