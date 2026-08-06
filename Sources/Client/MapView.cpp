@@ -23,6 +23,7 @@
 
 #include "CTFGameMode.h"
 #include "Client.h"
+#include "ExtendedTeamplay.h"
 #include "Fonts.h"
 #include "GameMap.h"
 #include "IImage.h"
@@ -907,6 +908,50 @@ namespace spades {
 					Vector4 teamColorF = ModifyColor(teamColor) * largeMapAlpha;
 					DrawIcon(t.pos.GetXY(), *baseIcon, teamColorF);
 				}
+			}
+
+			DrawTeamplayPings(largeMapAlpha);
+		}
+
+		void MapView::DrawTeamplayPings(float mapAlpha) {
+			const ExtendedTeamplay& teamplay = *client->teamplay;
+			if (!teamplay.IsMinimapPingEnabled() || !teamplay.HasPings())
+				return;
+
+			World* world = client->GetWorld();
+			if (!world)
+				return;
+
+			for (const auto& entry : teamplay.GetPings()) {
+				const ExtendedTeamplay::Ping& ping = entry.second;
+
+				// Match the world marker's fade so a ping does not linger on the minimap
+				// after it has gone from the view, or the other way round.
+				constexpr float kFadeOutTime = 0.75F;
+				float alpha = Clamp(ping.timeLeft / kFadeOutTime, 0.0F, 1.0F) * mapAlpha;
+				if (alpha <= 0.0F)
+					continue;
+
+				Vector4 color = (ping.playerId == ExtendedTeamplay::kServerPlayerId)
+					? MakeVector4(1.0F, 0.85F, 0.3F, 1.0F)
+					: MakeVector4(1.0F, 1.0F, 1.0F, 1.0F);
+				color.w = alpha;
+				color.x *= alpha;
+				color.y *= alpha;
+				color.z *= alpha;
+
+				// A ring that shrinks as the ping ages, so a fresh callout catches the
+				// eye and an old one does not compete with the player icons.
+				constexpr float kOuterRadius = 7.0F;
+				constexpr float kInnerRadius = 2.5F;
+				float age = 1.0F - Clamp(ping.timeLeft / ExtendedTeamplay::kPingLifetime,
+										 0.0F, 1.0F);
+				float radius = Mix(kOuterRadius, kInnerRadius, age);
+
+				// The map is flat, so a ping's height plays no part in where it lands.
+				const Vector2 pingPos = ping.position.GetXY();
+				DrawMapCircle(pingPos, color, radius, 1.5F);
+				DrawMapCircle(pingPos, color, kInnerRadius * 0.5F, 1.5F);
 			}
 		}
 
