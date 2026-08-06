@@ -27,6 +27,7 @@
 
 #include "CTFGameMode.h"
 #include "Client.h"
+#include "ExtendedTeamplay.h"
 #include "GameMap.h"
 #include "NetProtocol.h"
 #include "GameMapLoader.h"
@@ -576,6 +577,14 @@ namespace spades {
 		// Max chat packet is 255 bytes: type + playerId + chatType + msg → 252 msg bytes.
 		static constexpr size_t kKickReasonMaxBytes = 252;
 
+		/** Whether a world position falls inside the fixed Ace of Spades map volume.
+		 * Used to reject nonsensical coordinates before they reach the renderer. */
+		static bool IsInsideMapBounds(const Vector3& v) {
+			return v.x >= 0.0F && v.x <= (float)GameMap::DefaultWidth &&
+				   v.y >= 0.0F && v.y <= (float)GameMap::DefaultHeight &&
+				   v.z >= 0.0F && v.z <= (float)GameMap::DefaultDepth;
+		}
+
 		void NetClient::CaptureKickReason(spades::client::NetPacketReader& r) {
 			std::string msg = StripNewlines(TrimSpaces(r.ReadRemainingString()));
 			customKickReasonString = msg.substr(0, kKickReasonMaxBytes);
@@ -603,6 +612,11 @@ namespace spades {
 			switch (r.GetType()) {
 				case PacketTypeHandShakeInit: SendHandShakeValid(r.ReadInt()); return true;
 				case PacketTypeExtensionInfo: HandleExtensionPacket(r); return true;
+				// Handled here rather than in HandleGamePacket so the server may send a
+				// Config as soon as the extension is negotiated: during the Connecting
+				// stage anything but MapStart is treated as an unexpected packet, and
+				// during a map transfer it would be parked until the world exists.
+				case PacketTypeExtendedTeamplay: HandleExtendedTeamplayPacket(r); return true;
 				case PacketTypeVersionGet: {
 					if (r.GetNumRemainingBytes() > 0) {
 						// Enhanced variant
@@ -657,6 +671,60 @@ namespace spades {
 			}
 
 			SendSupportedExtensions();
+		}
+
+		void NetClient::HandleExtendedTeamplayPacket(spades::client::NetPacketReader& r) {
+			SPADES_MARK_FUNCTION();
+
+			// A server that never negotiated the extension has no business sending its
+			// packets; ignoring them keeps the client's state defined by the handshake.
+			if (!HasExtension(ExtensionTypeExtendedTeamplay)) {
+				SPLog("Ignoring an Extended Teamplay packet from a server that did not "
+					  "negotiate the extension");
+				return;
+			}
+
+			switch (r.ReadByte()) { // sub packet id
+				case ExtendedTeamplaySubConfig: {
+					client->ExtendedTeamplayConfigured(r.ReadByte());
+				} break;
+				case ExtendedTeamplaySubPing: {
+					int pId = r.ReadByte();
+					Vector3 pos = r.ReadVector3();
+
+					// The Reason occupies the rest of the packet and may be empty.
+					std::string reason = r.GetNumRemainingBytes()
+						? ExtendedTeamplay::TruncateReason(r.ReadRemainingString())
+						: std::string();
+
+					// The server is authoritative on placement, but a NaN or a wildly
+					// out-of-bounds position would corrupt the projection maths, so it
+					// is rejected rather than drawn.
+					if (pos.IsNaN() || !IsInsideMapBounds(pos)) {
+						SPLog("Dropped an Extended Teamplay ping at an invalid position");
+						break;
+					}
+
+					client->ExtendedTeamplayPingReceived(pId, pos, std::move(reason));
+				} break;
+				case ExtendedTeamplaySubESPMark: {
+					int pId = r.ReadByte();
+					uint8_t duration = r.ReadByte();
+					uint8_t flags = r.ReadByte();
+
+					std::string reason = r.GetNumRemainingBytes()
+						? ExtendedTeamplay::TruncateReason(r.ReadRemainingString())
+						: std::string();
+
+					client->ExtendedTeamplayMarkReceived(pId, duration, flags,
+														 std::move(reason));
+				} break;
+				default:
+					// Sub packets are the extension's own versioning seam: an unknown one
+					// belongs to a newer version and is skipped, not treated as an error.
+					SPLog("Ignoring an unknown Extended Teamplay sub packet");
+					break;
+			}
 		}
 
 		void NetClient::HandleGamePacket(spades::client::NetPacketReader& r) {
@@ -1641,6 +1709,28 @@ namespace spades {
 			w.WriteString(osInfo);
 
 			SPLog("Sending version back.");
+			enet_peer_send(peer, 0, w.CreatePacket());
+		}
+
+		void NetClient::SendTeamplayPing(Vector3 position, const std::string& reason) {
+			SPADES_MARK_FUNCTION();
+
+			// The caller is expected to have checked the feature bits, but the
+			// negotiation is this class's own business, so it is enforced here.
+			if (!HasExtension(ExtensionTypeExtendedTeamplay))
+				return;
+
+			NetPacketWriter w(PacketTypeExtendedTeamplay);
+			w.WriteByte((uint8_t)ExtendedTeamplaySubPing);
+
+			// The Player ID is ignored in this direction; the server fills it in
+			// authoritatively. Sent as 255 so a server reading it sees "unset" rather
+			// than a plausible-looking impersonation of some other player.
+			w.WriteByte((uint8_t)ExtendedTeamplay::kServerPlayerId);
+
+			w.WriteVector3(position);
+			w.WriteString(ExtendedTeamplay::TruncateReason(reason));
+
 			enet_peer_send(peer, 0, w.CreatePacket());
 		}
 

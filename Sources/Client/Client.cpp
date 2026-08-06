@@ -39,6 +39,7 @@
 #include "ChatWindow.h"
 #include "ClientPlayer.h"
 #include "ClientUI.h"
+#include "ExtendedTeamplay.h"
 #include "HurtRingView.h"
 #include "LimboView.h"
 #include "MapView.h"
@@ -135,7 +136,10 @@ namespace spades {
 			  nextScreenShotIndex(0),
 			  nextMapShotIndex(0),
 			  staffSpectating(false),
-			  spectatorPlayerNames(true) {
+			  spectatorPlayerNames(true),
+			  teamOverlayHeld(false),
+			  teamOverlayAlpha(0.0F),
+			  lastTeamplayPingTime(-100.0F) {
 			SPADES_MARK_FUNCTION();
 			SPLog("Initializing...");
 
@@ -158,6 +162,7 @@ namespace spades {
 			pieMenuView = stmp::make_unique<PieMenuView>(this, chatFont,
 				&fontManager->GetHeadingFont());
 			tcView = stmp::make_unique<TCProgressView>(*this);
+			teamplay = stmp::make_unique<ExtendedTeamplay>();
 			scriptedUI = Handle<ClientUI>::New(renderer.GetPointerOrNull(),
 				audioDev.GetPointerOrNull(), fontManager.GetPointerOrNull(), this);
 
@@ -183,6 +188,12 @@ namespace spades {
 			lastHitWasAirborne = false;
 			hurtRingView->ClearAll();
 			killStreaks.clear();
+
+			// Marks and pings do not survive a map change, but the server's feature
+			// policy does until it sends a new Config.
+			teamplay->ClearTransientState();
+			teamOverlayHeld = false;
+			teamOverlayAlpha = 0.0F;
 
 			// reset on new map
 			placedBlocks = 0;
@@ -1130,6 +1141,93 @@ namespace spades {
 				params.volume = (float)cg_chatBeep;
 				audioDevice->PlayLocal(c.GetPointerOrNull(), params);
 			}
+		}
+
+#pragma mark - Extended Teamplay
+
+		void Client::ExtendedTeamplayConfigured(uint8_t features) {
+			SPADES_MARK_FUNCTION();
+
+			teamplay->SetFeatures(features);
+			NetLog("Extended Teamplay features: 0x%02x", (unsigned int)teamplay->GetFeatures());
+		}
+
+		void Client::ExtendedTeamplayPingReceived(int playerId, Vector3 position,
+												  std::string reason) {
+			SPADES_MARK_FUNCTION();
+
+			// With both ping bits clear the client renders nothing, so there is no point
+			// keeping the ping alive. The server should not have relayed it either.
+			if (!teamplay->IsWorldPingEnabled() && !teamplay->IsMinimapPingEnabled())
+				return;
+
+			std::string who = (playerId == ExtendedTeamplay::kServerPlayerId)
+				? _Tr("Client", "The server")
+				: world ? world->GetPlayerName(playerId) : std::string();
+
+			NetLog("[Ping] %s @ (%.1f, %.1f, %.1f): %s", who.c_str(),
+				   position.x, position.y, position.z, reason.c_str());
+
+			teamplay->AddPing(playerId, position, std::move(reason));
+
+			// A ping is a callout: it has to register even when the player is looking
+			// somewhere else, so it gets an audible cue as well as a marker.
+			if (!IsMuted()) {
+				Handle<IAudioChunk> c = audioDevice->RegisterSound("Sounds/Feedback/Beep1.opus");
+				audioDevice->PlayLocal(c.GetPointerOrNull(), AudioParam());
+			}
+		}
+
+		void Client::ExtendedTeamplayMarkReceived(int playerId, uint8_t duration, uint8_t flags,
+												  std::string reason) {
+			SPADES_MARK_FUNCTION();
+
+			NetLog("[ESP Mark] player %d, duration %u, flags 0x%02x: %s", playerId,
+				   (unsigned int)duration, (unsigned int)flags, reason.c_str());
+
+			teamplay->SetMark(playerId, duration, flags, std::move(reason));
+		}
+
+		void Client::SendTeamplayPingAtCrosshair() {
+			SPADES_MARK_FUNCTION();
+
+			if (!world)
+				return;
+
+			// The extension gates pinging on the server's policy, and a server that
+			// never negotiated the extension leaves every bit clear. Say so instead of
+			// swallowing the key, so the binding never looks broken.
+			if (!teamplay->CanSendPing()) {
+				ShowAlert(_Tr("Client", "This server does not allow team pings."),
+						  AlertType::Notice);
+				return;
+			}
+
+			auto maybePlayer = world->GetLocalPlayer();
+			if (!maybePlayer)
+				return;
+
+			Player& p = maybePlayer.value();
+			if (p.IsSpectator() || !p.IsAlive())
+				return;
+
+			// Rate-limited on the client too. The server is expected to rate-limit as
+			// well, but there is no reason to make it drop packets we chose to send.
+			constexpr float kMinPingInterval = 1.0F;
+			if (time - lastTeamplayPingTime < kMinPingInterval)
+				return;
+
+			World::WeaponRayCastResult res =
+			  world->WeaponRayCast(p.GetEye(), p.GetFront(), p.GetId());
+			if (!res.hit || res.startSolid)
+				return;
+
+			lastTeamplayPingTime = time;
+
+			// The reason is deliberately left empty — a neutral "look here" marker.
+			// Deriving it from what the crosshair is on would turn the ping key into a
+			// confirmation that an enemy is under the crosshair with line of sight.
+			activeNet->SendTeamplayPing(res.hitPos, std::string());
 		}
 
 		void Client::ServerSentMessage(bool system, const std::string& msg) {

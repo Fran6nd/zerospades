@@ -76,6 +76,7 @@ namespace spades {
 		class BloodMarks;
 		class ClientUI;
 		class PieMenuView;
+		class ExtendedTeamplay;
 
 		class Client : public IWorldListener, public gui::View {
 			friend class ScoreboardView;
@@ -172,6 +173,11 @@ namespace spades {
 
 			// pie menu
 			std::unique_ptr<PieMenuView> pieMenuView;
+
+			// Extended Teamplay protocol extension (team ESP, pings, ESP marks).
+			// Always allocated; it simply stays empty when the server does not
+			// negotiate the extension.
+			std::unique_ptr<ExtendedTeamplay> teamplay;
 
 			// player state
 			PlayerInput playerInput;
@@ -550,6 +556,39 @@ namespace spades {
 			void UpdateDamageIndicators(float dt);
 			void DrawDamageIndicators();
 
+			// ── Extended Teamplay ───────────────────────────────────────────
+			/** True while the team overlay key is held. */
+			bool teamOverlayHeld;
+			/** Eased `teamOverlayHeld`, so the overlay fades instead of snapping. */
+			float teamOverlayAlpha;
+			/** When the local player last sent a ping, for the client-side rate limit. */
+			float lastTeamplayPingTime;
+
+			/** The team colour the extension mandates for a `TEAM_ESP` highlight: the
+			 * one the server sent in State Data, not the player's block colour. */
+			Vector4 GetTeamplayTeamColor(Player&, float alpha);
+
+			/** A chevron above a player's head, with their name and class weapon. Used
+			 * for the team overlay, which the extension leaves to the client. */
+			void DrawPlayerChevron(Player&, const Vector4& color, bool showWeapon);
+
+			/** The outline of a player's body through walls, following its pose. The
+			 * extension requires this shape (not a box or a marker) for an ESP Mark. */
+			void DrawPlayerOutline(Player&, const Vector4& color);
+
+			/** Teammates revealed through `TEAM_ESP`, while the overlay key is held. */
+			void DrawTeamOverlay();
+			/** Players the server marked, which are drawn whatever `TEAM_ESP` says. */
+			void DrawEspMarks();
+			/** A notice when the server marked the local player to somebody. */
+			void DrawLocalPlayerMarkedIndicator();
+			/** Relayed pings, as markers anchored to their world position. */
+			void DrawTeamplayPings();
+
+			/** Sends a ping at whatever the crosshair points at, if the server allows
+			 * it. Bound to a key; reports why nothing happened when it does not. */
+			void SendTeamplayPingAtCrosshair();
+
 			void DrawScene();
 			void AddGrenadeToScene(Grenade&);
 			void AddDebugObjectToScene(const OBB3&, const Vector4& col = MakeVector4(1, 1, 1, 1));
@@ -643,6 +682,16 @@ namespace spades {
 
 			void PlayerSentChatMessage(Player&, bool global, const std::string&);
 			void ServerSentMessage(bool system, const std::string&);
+
+			// ── Extended Teamplay, called by the net client ─────────────────
+			/** The server announced which of the extension's features it permits. */
+			void ExtendedTeamplayConfigured(uint8_t features);
+			/** A ping was relayed to us. `playerId` is `255` for a server-origin ping. */
+			void ExtendedTeamplayPingReceived(int playerId, Vector3 position,
+											  std::string reason);
+			/** The server marked (or, with a `0` duration, unmarked) a player. */
+			void ExtendedTeamplayMarkReceived(int playerId, uint8_t duration, uint8_t flags,
+											  std::string reason);
 
 			void PlayerCapturedIntel(Player&);
 			void PlayerPickedIntel(Player&);

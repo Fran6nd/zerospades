@@ -25,6 +25,7 @@
 #include "CTFGameMode.h"
 #include "Client.h"
 #include "DemoNetClient.h"
+#include "ExtendedTeamplay.h"
 #include "NetProtocol.h"
 #include "GameMap.h"
 #include "GameMapLoader.h"
@@ -842,6 +843,42 @@ namespace spades {
 						p->Restock(hp, grenades, blocks);
 					w.Restock(clip, reserve);
 					GetWorld()->GetPlayerPersistent(pId).score = score;
+				} break;
+				case PacketTypeExtendedTeamplay: {
+					switch (r.ReadByte()) { // sub packet id
+						case ExtendedTeamplaySubConfig:
+							client->ExtendedTeamplayConfigured(r.ReadByte());
+							break;
+						case ExtendedTeamplaySubPing: {
+							int pId = r.ReadByte();
+							Vector3 pos = r.ReadVector3();
+							std::string reason = r.GetNumRemainingBytes()
+								? ExtendedTeamplay::TruncateReason(r.ReadRemainingString())
+								: std::string();
+
+							// A ping is a momentary event with a 5 second life, so
+							// replaying the whole demo to reach a seek target would
+							// otherwise pop every ping ever sent at the destination.
+							if (!seekingMode)
+								client->ExtendedTeamplayPingReceived(pId, pos,
+																	 std::move(reason));
+						} break;
+						case ExtendedTeamplaySubESPMark: {
+							int pId = r.ReadByte();
+							uint8_t duration = r.ReadByte();
+							uint8_t flags = r.ReadByte();
+							std::string reason = r.GetNumRemainingBytes()
+								? ExtendedTeamplay::TruncateReason(r.ReadRemainingString())
+								: std::string();
+
+							// Marks are state rather than events, so they are replayed
+							// during a seek to rebuild what was in force. Their timers
+							// restart from the seek, which a fast replay cannot avoid.
+							client->ExtendedTeamplayMarkReceived(pId, duration, flags,
+																 std::move(reason));
+						} break;
+						default: break; // a sub packet from a newer extension version
+					}
 				} break;
 				default:
 					SPLog("Demo: dropped unknown packet %d", (int)r.GetType());
