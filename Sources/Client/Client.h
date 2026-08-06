@@ -585,9 +585,24 @@ namespace spades {
 			/** Relayed pings, as markers anchored to their world position. */
 			void DrawTeamplayPings();
 
-			/** Sends a ping at whatever the crosshair points at, if the server allows
-			 * it. Bound to a key; reports why nothing happened when it does not. */
+			/** The world position the local player's crosshair points at. Returns false
+			 * when the ray hits nothing usable. */
+			bool ResolveCrosshairWorldPos(Vector3& out);
+
+			/** Sends a ping, honouring the server's feature bits and the client-side
+			 * rate limit. Returns whether it was actually sent, so a caller with
+			 * something else to say can fall back to it. */
+			bool SendTeamplayPing(const Vector3& position, const std::string& reason);
+
+			/** Sends a neutral ping at whatever the crosshair points at. Bound to a key;
+			 * reports why nothing happened when the server does not allow pings. */
 			void SendTeamplayPingAtCrosshair();
+
+			/** Where the pie menu will ping, frozen when it opens. The menu takes the
+			 * mouse for itself, but the player can still move, so resolving the target
+			 * again on release would drift away from what they were pointing at. */
+			Vector3 pieMenuPingPos;
+			bool pieMenuPingValid;
 
 			void DrawScene();
 			void AddGrenadeToScene(Grenade&);

@@ -56,6 +56,8 @@ namespace spades {
 
 			std::array<std::string, kSliceCount> worldLabels;
 			std::array<std::string, kSliceCount> playerLabels;
+			std::array<std::string, kSliceCount> worldPingReasons;
+			std::array<std::string, kSliceCount> playerPingReasons;
 			std::array<std::string, kSliceCount> worldDisplayLabels;
 			std::array<std::string, kSliceCount> playerDisplayLabels;
 
@@ -79,6 +81,17 @@ namespace spades {
 			const std::string& GetSelectionLabel() const;
 			const std::array<std::string, kSliceCount>& GetLabels() const {
 				return (variant == Variant::Player) ? playerLabels : worldLabels;
+			}
+
+			/**
+			 * The *Extended Teamplay* ping reason each slice sends, indexed like
+			 * `GetLabels()`. An empty entry means the slice is a plain chat message.
+			 *
+			 * Only the World variant pings: it is aimed at a place, whereas the Player
+			 * variant is aimed at a person and has nowhere to put a marker.
+			 */
+			const std::array<std::string, kSliceCount>& GetPingReasons() const {
+				return (variant == Variant::Player) ? playerPingReasons : worldPingReasons;
 			}
 
 			void HandleMouseDelta(float dx, float dy);

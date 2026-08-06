@@ -139,7 +139,8 @@ namespace spades {
 			  spectatorPlayerNames(true),
 			  teamOverlayHeld(false),
 			  teamOverlayAlpha(0.0F),
-			  lastTeamplayPingTime(-100.0F) {
+			  lastTeamplayPingTime(-100.0F),
+			  pieMenuPingValid(false) {
 			SPADES_MARK_FUNCTION();
 			SPLog("Initializing...");
 
@@ -1188,11 +1189,48 @@ namespace spades {
 			teamplay->SetMark(playerId, duration, flags, std::move(reason));
 		}
 
-		void Client::SendTeamplayPingAtCrosshair() {
+		bool Client::ResolveCrosshairWorldPos(Vector3& out) {
 			SPADES_MARK_FUNCTION();
 
 			if (!world)
-				return;
+				return false;
+
+			auto maybePlayer = world->GetLocalPlayer();
+			if (!maybePlayer)
+				return false;
+
+			Player& p = maybePlayer.value();
+			if (p.IsSpectator() || !p.IsAlive())
+				return false;
+
+			World::WeaponRayCastResult res =
+			  world->WeaponRayCast(p.GetEye(), p.GetFront(), p.GetId());
+			if (!res.hit || res.startSolid)
+				return false;
+
+			out = res.hitPos;
+			return true;
+		}
+
+		bool Client::SendTeamplayPing(const Vector3& position, const std::string& reason) {
+			SPADES_MARK_FUNCTION();
+
+			if (!teamplay->CanSendPing())
+				return false;
+
+			// Rate-limited on the client too. The server is expected to rate-limit as
+			// well, but there is no reason to make it drop packets we chose to send.
+			constexpr float kMinPingInterval = 1.0F;
+			if (time - lastTeamplayPingTime < kMinPingInterval)
+				return false;
+
+			lastTeamplayPingTime = time;
+			activeNet->SendTeamplayPing(position, reason);
+			return true;
+		}
+
+		void Client::SendTeamplayPingAtCrosshair() {
+			SPADES_MARK_FUNCTION();
 
 			// The extension gates pinging on the server's policy, and a server that
 			// never negotiated the extension leaves every bit clear. Say so instead of
@@ -1203,31 +1241,15 @@ namespace spades {
 				return;
 			}
 
-			auto maybePlayer = world->GetLocalPlayer();
-			if (!maybePlayer)
+			Vector3 pos;
+			if (!ResolveCrosshairWorldPos(pos))
 				return;
-
-			Player& p = maybePlayer.value();
-			if (p.IsSpectator() || !p.IsAlive())
-				return;
-
-			// Rate-limited on the client too. The server is expected to rate-limit as
-			// well, but there is no reason to make it drop packets we chose to send.
-			constexpr float kMinPingInterval = 1.0F;
-			if (time - lastTeamplayPingTime < kMinPingInterval)
-				return;
-
-			World::WeaponRayCastResult res =
-			  world->WeaponRayCast(p.GetEye(), p.GetFront(), p.GetId());
-			if (!res.hit || res.startSolid)
-				return;
-
-			lastTeamplayPingTime = time;
 
 			// The reason is deliberately left empty — a neutral "look here" marker.
 			// Deriving it from what the crosshair is on would turn the ping key into a
-			// confirmation that an enemy is under the crosshair with line of sight.
-			activeNet->SendTeamplayPing(res.hitPos, std::string());
+			// confirmation that an enemy is under the crosshair with line of sight. The
+			// pie menu is where a player says what they mean, deliberately.
+			SendTeamplayPing(pos, std::string());
 		}
 
 		void Client::ServerSentMessage(bool system, const std::string& msg) {

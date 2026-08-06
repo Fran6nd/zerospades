@@ -852,6 +852,33 @@ namespace spades {
 				return MakeVector4(c.x * c.w, c.y * c.w, c.z * c.w, c.w);
 			}
 
+			/**
+			 * Turns a reason token into something readable.
+			 *
+			 * The extension assigns no fixed reason values, so a client renders what it
+			 * recognises in its own wording and shows anything else as it came. The
+			 * tokens below are the ones the specification gives as examples, plus the
+			 * two the pie menu adds for building and demolishing.
+			 */
+			std::string TeamplayReasonLabel(const std::string& reason) {
+				// Ping reasons
+				if (reason == "enemy") return _Tr("Client", "Enemies!");
+				if (reason == "go") return _Tr("Client", "Go Here!");
+				if (reason == "build") return _Tr("Client", "Help Me Build");
+				if (reason == "tear") return _Tr("Client", "Tear It Down!");
+				if (reason == "defend") return _Tr("Client", "Defend Here!");
+				if (reason == "help") return _Tr("Client", "Need Backup!");
+				if (reason == "objective") return _Tr("Client", "Objective!");
+
+				// ESP mark reasons
+				if (reason == "cheater") return _Tr("Client", "Cheater");
+				if (reason == "leader") return _Tr("Client", "Leader");
+				if (reason == "carrier") return _Tr("Client", "Carrier");
+				if (reason == "target") return _Tr("Client", "Target");
+
+				return reason;
+			}
+
 			/** Andrew's monotone chain. `points` is reordered; the hull is returned in
 			 * counter-clockwise order and never repeats its first point. */
 			std::vector<Vector2> ConvexHull(std::vector<Vector2>& points) {
@@ -1116,11 +1143,12 @@ namespace spades {
 
 					Vector2 scrPos;
 					if (Project(origin, scrPos)) {
+						std::string label = TeamplayReasonLabel(mark->reason);
 						IFont& font = fontManager->GetSmallFont();
-						Vector2 size = font.Measure(mark->reason);
+						Vector2 size = font.Measure(label);
 						Vector2 pos = MakeVector2(floorf(scrPos.x - size.x * 0.5F),
 												  floorf(scrPos.y + 2.0F));
-						font.DrawShadow(mark->reason, pos, 1.0F, color,
+						font.DrawShadow(label, pos, 1.0F, color,
 										MakeVector4(0, 0, 0, 0.7F * color.w));
 					}
 				}
@@ -1235,7 +1263,7 @@ namespace spades {
 					? _Tr("Client", "Server")
 					: world->GetPlayerName(ping.playerId);
 				if (!ping.reason.empty())
-					label += ": " + ping.reason;
+					label += ": " + TeamplayReasonLabel(ping.reason);
 				if (!onScreen) {
 					char buf[32];
 					snprintf(buf, sizeof(buf), " [%.0f]", rel.GetLength());
