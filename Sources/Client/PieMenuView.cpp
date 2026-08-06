@@ -205,21 +205,16 @@ namespace spades {
 				_Tr("Client", "Tear It Down!"),
 			};
 
-			// The reason a slice pings with, or empty for a chat-only slice. These are
-			// the lowercase tokens the extension gives as examples, not the labels: a
-			// receiving client maps a token it knows to its own wording and falls back
-			// to a neutral marker for one it does not. "Behind Us!" and "Spawnkiller!"
-			// stay chat-only — both are about a direction or an event, not a point on
-			// the map, so a marker would put them somewhere they do not belong.
-			worldPingReasons = {
-				"enemy",
-				"",
-				"",
-				"go",
-				"build",
-				"tear",
-			};
-			playerPingReasons = {"", "", "", "", "", ""};
+			// Which slices drop a ping instead of talking. The ping carries the slice's
+			// own message as its reason: the extension assigns no reason values, and a
+			// receiving client renders the string as it came, so a made-up token would
+			// only show up as "tear" on somebody else's screen.
+			//
+			// "Behind Us!" and "Spawnkiller!" stay chat-only — both are about a
+			// direction or an event, not a point on the map, so a marker would put them
+			// somewhere they do not belong.
+			worldSlicePings = {true, false, false, true, true, true};
+			playerSlicePings = {false, false, false, false, false, false};
 			playerDisplayLabels = {
 				_Tr("Client", "Affirmative"),
 				_Tr("Client", "Behind You"),
