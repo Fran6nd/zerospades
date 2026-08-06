@@ -728,7 +728,7 @@ namespace spades {
 						PieMenuView::Variant v = pieMenuView->GetVariant();
 						int targetId = pieMenuView->GetTargetPlayerId();
 						const auto& labels = pieMenuView->GetLabels();
-						const auto& reasons = pieMenuView->GetPingReasons();
+						bool slicePings = pieMenuView->SlicePings(pieMenuView->GetSelection());
 						int sel = pieMenuView->Close();
 						if (sel >= 0 && sel < PieMenuView::kSliceCount && net) {
 							size_t idx = static_cast<size_t>(sel);
@@ -741,9 +741,10 @@ namespace spades {
 								// The marker says it better than the message does, but
 								// the message is what reaches a server without the
 								// extension — so the chat is the fallback, not a double.
-								const std::string& reason = reasons[idx];
-								bool pinged = !reason.empty() && pieMenuPingValid &&
-											  SendTeamplayPing(pieMenuPingPos, reason);
+								// Either way the same words go out, as the ping's reason
+								// or as the chat line.
+								bool pinged = slicePings && pieMenuPingValid &&
+											  SendTeamplayPing(pieMenuPingPos, msg);
 								if (!pinged)
 									net->SendChat(msg, false);
 							}
