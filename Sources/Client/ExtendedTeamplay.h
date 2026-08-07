@@ -153,9 +153,19 @@ namespace spades {
 			 * itself goes away. */
 			void Reset();
 
-			/** Truncates a reason string to `kMaxReasonBytes` on a UTF-8 codepoint
-			 * boundary. Exposed for the packet parser, which applies it on receipt. */
-			static std::string TruncateReason(std::string reason);
+			/**
+			 * Makes a reason string safe to draw and to send.
+			 *
+			 * A reason is free-form UTF-8 chosen by whoever sent it, so it arrives
+			 * unvetted: newlines would break out of the one line the marker gives it,
+			 * and padding would push the label off centre. Strips both, then caps the
+			 * length on a UTF-8 codepoint boundary.
+			 *
+			 * A reason that was nothing but whitespace comes back **empty**, which is a
+			 * value the protocol allows in its own right — a neutral marker with no
+			 * wording — so every caller has to cope with it either way.
+			 */
+			static std::string SanitizeReason(std::string reason);
 
 		private:
 			uint8_t features = 0;
