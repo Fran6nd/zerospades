@@ -694,7 +694,7 @@ namespace spades {
 
 					// The Reason occupies the rest of the packet and may be empty.
 					std::string reason = r.GetNumRemainingBytes()
-						? ExtendedTeamplay::TruncateReason(r.ReadRemainingString())
+						? ExtendedTeamplay::SanitizeReason(r.ReadRemainingString())
 						: std::string();
 
 					// The server is authoritative on placement, but a NaN or a wildly
@@ -713,7 +713,7 @@ namespace spades {
 					uint8_t flags = r.ReadByte();
 
 					std::string reason = r.GetNumRemainingBytes()
-						? ExtendedTeamplay::TruncateReason(r.ReadRemainingString())
+						? ExtendedTeamplay::SanitizeReason(r.ReadRemainingString())
 						: std::string();
 
 					client->ExtendedTeamplayMarkReceived(pId, duration, flags,
@@ -1729,7 +1729,7 @@ namespace spades {
 			w.WriteByte((uint8_t)ExtendedTeamplay::kServerPlayerId);
 
 			w.WriteVector3(position);
-			w.WriteString(ExtendedTeamplay::TruncateReason(reason));
+			w.WriteString(ExtendedTeamplay::SanitizeReason(reason));
 
 			enet_peer_send(peer, 0, w.CreatePacket());
 		}

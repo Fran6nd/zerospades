@@ -853,7 +853,7 @@ namespace spades {
 							int pId = r.ReadByte();
 							Vector3 pos = r.ReadVector3();
 							std::string reason = r.GetNumRemainingBytes()
-								? ExtendedTeamplay::TruncateReason(r.ReadRemainingString())
+								? ExtendedTeamplay::SanitizeReason(r.ReadRemainingString())
 								: std::string();
 
 							// A ping is a momentary event with a 5 second life, so
@@ -868,7 +868,7 @@ namespace spades {
 							uint8_t duration = r.ReadByte();
 							uint8_t flags = r.ReadByte();
 							std::string reason = r.GetNumRemainingBytes()
-								? ExtendedTeamplay::TruncateReason(r.ReadRemainingString())
+								? ExtendedTeamplay::SanitizeReason(r.ReadRemainingString())
 								: std::string();
 
 							// Marks are state rather than events, so they are replayed

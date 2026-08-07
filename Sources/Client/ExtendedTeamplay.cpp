@@ -39,18 +39,23 @@ namespace spades {
 			bool IsUTF8Continuation(char c) { return (static_cast<unsigned char>(c) & 0xC0) == 0x80; }
 		} // namespace
 
-		std::string ExtendedTeamplay::TruncateReason(std::string reason) {
-			if (reason.size() <= kMaxReasonBytes)
-				return reason;
+		std::string ExtendedTeamplay::SanitizeReason(std::string reason) {
+			reason = TrimSpaces(StripNewlines(reason));
 
-			// Back off to the start of the codepoint that straddles the cap, so the
-			// result is never a half-encoded character. A codepoint is at most 4 bytes,
-			// so this walks back 3 bytes at the very most.
-			size_t end = kMaxReasonBytes;
-			while (end > 0 && IsUTF8Continuation(reason[end]))
-				end--;
+			if (reason.size() > kMaxReasonBytes) {
+				// Back off to the start of the codepoint that straddles the cap, so the
+				// result is never a half-encoded character. A codepoint is at most 4
+				// bytes, so this walks back 3 bytes at the very most.
+				size_t end = kMaxReasonBytes;
+				while (end > 0 && IsUTF8Continuation(reason[end]))
+					end--;
 
-			reason.resize(end);
+				reason.resize(end);
+
+				// Cutting mid-phrase can leave the space that preceded the dropped word.
+				reason = TrimSpaces(reason);
+			}
+
 			return reason;
 		}
 
