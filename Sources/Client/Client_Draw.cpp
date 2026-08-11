@@ -90,6 +90,7 @@ DEFINE_SPADES_SETTING(cg_hudSafezoneY, "1");
 DEFINE_SPADES_SETTING(cg_hudPlayerCount, "0");
 DEFINE_SPADES_SETTING(cg_hudHealthBar, "1");
 DEFINE_SPADES_SETTING(cg_hudHealthAnimation, "1");
+DEFINE_SPADES_SETTING(cg_hudCompassBar, "0");
 DEFINE_SPADES_SETTING(cg_playerNames, "2");
 DEFINE_SPADES_SETTING(cg_playerNameX, "0");
 DEFINE_SPADES_SETTING(cg_playerNameY, "0");
@@ -1602,6 +1603,9 @@ namespace spades {
 			Player& p = world->GetPlayer(focusedPlayerId).value();
 			clientPlayers[focusedPlayerId]->Draw2D();
 
+			if (cg_hudCompassBar)
+				DrawCompassBar(p);
+
 			if (cg_debugAim && p.IsToolWeapon())
 				DrawDebugAim(p);
 		}
@@ -1744,6 +1748,145 @@ namespace spades {
 				addLine(_Tr("Client", "[{0}] Toggle Demo HUD", TrKey(cg_keyDemoToggleHud)));
 			} else if (!inGameLimbo) {
 				addLine(_Tr("Client", "[{0}] Select Team/Weapon", TrKey(cg_keyLimbo)));
+			}
+		}
+
+		void Client::DrawCompassBar(Player& p) {
+			const float sw = renderer->ScreenWidth();
+
+			const float barW = 280.0F;
+			const float barH = 18.0F;
+			const float barX = (sw - barW) * 0.5F;
+
+			float barY = 16.0F;
+			if (scoreboardVisible)
+				barY += 30.0F;
+			const int statsMode = cg_stats;
+			if (statsMode == 2 || (statsMode >= 3 && scoreboardVisible))
+				barY += cg_statsSmallFont ? 10.0F : 20.0F;
+			const int playerCountMode = cg_hudPlayerCount;
+			if (playerCountMode == 1)
+				barY += 42.0F;
+
+			const Vector4 color = GetHUDColor(p);
+			float luminosity = color.x + color.y + color.z;
+
+			const Vector4 white = MakeVector4(1, 1, 1, 1);
+			const Vector4 shadow = MakeVector4(0, 0, 0, 0.65F);
+			const Vector4 gray = MakeVector4(0.4F, 0.4F, 0.4F, 1);
+			const Vector4 bgColor = (luminosity > 0.9F) ? color * gray : gray;
+
+			// premultiplied
+			Vector4 shadowP = shadow;
+			shadowP.x *= shadowP.w;
+			shadowP.y *= shadowP.w;
+			shadowP.z *= shadowP.w;
+
+			// draw background
+			renderer->DrawFilledRectFade(barX, barY, barX + barW, barY + barH,
+				MakeVector4(0, 0, 0, 0), bgColor);
+
+			// draw border
+			const float sideH = barH * 0.5F;
+			auto drawBorder = [&](float x, float y, Vector4 col) {
+				renderer->SetColorAlphaPremultiplied(col);
+				renderer->DrawFilledRect(x - 1, y + (barH - sideH), x, y + barH + 1); // left
+				renderer->DrawFilledRect(x + barW, y + (barH - sideH), x + barW + 1, y + barH + 1); // right
+				renderer->DrawFilledRect(x, y + barH, x + barW,   y + barH + 1); // bottom
+			};
+			drawBorder(barX + 1, barY + 1, shadowP);
+			drawBorder(barX, barY, color);
+
+			IFont& font = fontManager->GetSmallFont();
+
+			auto toAngle = [](float y, float x) -> float {
+				float deg = RAD2DEG(atan2f(y, x));
+				deg = fmodf(deg + 180.0F, 360.0F);
+				if (deg < 0.0F)
+					deg += 360.0F;
+				return deg;
+			};
+
+			const auto& o = p.GetFront2D();
+			const float yawDeg = toAngle(o.y, o.x);
+			const float range = 120.0F;
+
+			// draw labels and ticks
+			static const char* cardinalLabels[] = { "N", "NE", "E", "SE", "S", "SW", "W", "NW" };
+			for (int deg = 0; deg < 360; deg += 10) {
+				float delta = std::remainderf((float)deg - roundf(yawDeg), 360.0F);
+				if (fabsf(delta) > range * 0.5F)
+					continue;
+
+				float fadeStart = range * 0.42F;
+				float fadeEnd = range * 0.48F;
+				float edgeFade = 1.0F - (fabsf(delta) - fadeStart) / (fadeEnd - fadeStart);
+				edgeFade = Clamp(edgeFade, 0.0F, 1.0F);
+
+				bool isCardinal = (deg % 45) == 0;
+
+				float px = roundf(barX + barW * 0.5F + (delta / range) * barW);
+				float tH = isCardinal ? barH * 0.55F : barH * 0.3F;
+
+				// draw tick marks
+				renderer->SetColorAlphaPremultiplied(shadowP * edgeFade);
+				renderer->DrawFilledRect(px + 1, barY + barH - tH, px + 2.0F, barY + barH);
+				renderer->SetColorAlphaPremultiplied(color * edgeFade);
+				renderer->DrawFilledRect(px, barY + barH - tH, px + 1.0F, barY + barH);
+
+				// draw cardinal labels
+				if (isCardinal) {
+					const auto& label = cardinalLabels[deg / 45];
+					Vector2 size = font.Measure(label);
+					float tx = floorf(px - size.x * 0.5F);
+					float ty = floorf(barY + (barH - tH - size.y) * 0.5F + 1.0F);
+					Vector4 colorLabel = MakeVector4(color.x, color.y, color.z, color.w * edgeFade);
+					Vector4 shadowLabel = MakeVector4(shadow.x, shadow.y, shadow.z, shadow.w * edgeFade);
+					font.DrawOutline(label, MakeVector2(tx, ty), 1.0F, colorLabel, shadowLabel);
+				}
+			}
+
+			// draw heading degrees
+			char degBuf[8];
+			snprintf(degBuf, sizeof(degBuf), "%d\xC2\xB0", (int)roundf(yawDeg) % 360);
+			Vector2 degSize = font.Measure(degBuf);
+			float degX = floorf(barX + barW * 0.5F - degSize.x * 0.5F);
+			float degY = barY + barH + 3.0F;
+			font.DrawOutline(degBuf, MakeVector2(degX, degY), 1.0F, color, shadow);
+
+			// draw icons
+			Vector2 pos2D = p.GetPosition().GetXY();
+
+			auto drawIcon = [&](Handle<IImage>& icon, Vector3 targetPos, Vector4 color, float size = 12.0F) {
+				Vector2 delta = targetPos.GetXY() - pos2D;
+				float angle = toAngle(delta.y, delta.x);
+				float yawDelta = std::remainderf(angle - roundf(yawDeg), 360.0F);
+				if (fabsf(yawDelta) > range * 0.5F)
+					return;
+				float px = roundf(barX + barW * 0.5F + (yawDelta / range) * barW);
+				float fade = 1.0F - Clamp((fabsf(yawDelta) - range * 0.42F) / (range * 0.06F), 0.0F, 1.0F);
+				renderer->SetColorAlphaPremultiplied(color * fade);
+				renderer->DrawImage(icon, AABB2(px - size * 0.5F, barY + (barH - size) * 0.5F, size, size));
+			};
+
+			// draw map objects
+			stmp::optional<IGameMode&> mode = world->GetMode();
+			if (mode && mode->ModeType() == IGameMode::m_CTF) {
+				auto& ctf = dynamic_cast<CTFGameMode&>(mode.value());
+				Handle<IImage> baseIcon = renderer->RegisterImage("Gfx/Map/CommandPost.png");
+				Handle<IImage> intelIcon = renderer->RegisterImage("Gfx/Map/Intel.png");
+
+				for (int tId = 0; tId < 2; tId++) {
+					CTFGameMode::Team& team = ctf.GetTeam(tId);
+					CTFGameMode::Team& otherTeam = ctf.GetTeam(1 - tId);
+
+					// draw base
+					drawIcon(baseIcon, team.basePos, color);
+
+					// draw intel
+					if (!otherTeam.hasIntel)
+						drawIcon(intelIcon, team.flagPos, color);
+				}
 			}
 		}
 
