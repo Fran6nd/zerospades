@@ -261,7 +261,7 @@ namespace spades {
 					fade(0.0F), lastHitTime(0.0F), crit(false) {}
 			};
 			std::list<DamageIndicator> damageIndicators;
-			
+
 			struct SoundFeedbackIndicator {
 				float fade = 0.0F;
 				float radius = 0.0F;
@@ -324,10 +324,10 @@ namespace spades {
 			float lastSnowDropTime;
 
 			float hotBarIconState;
-			
+
 			float hitFeedbackIconState;
 			bool hitFeedbackFriendly;
-			
+
 			float debugHitTestZoomState;
 			bool debugHitTestZoom;
 
@@ -413,7 +413,7 @@ namespace spades {
 
 			bool IsPlayerBeingFollowed(int playerId);
 			bool IsPlayerInFirstPerson(int playerId);
-			
+
 			/**
 			 * Calculate the zoom value incorporating the effect of ADS for a first-person view.
 			 *
@@ -500,7 +500,7 @@ namespace spades {
 			void Draw2D();
 			void Draw2DWithoutWorld();
 			void Draw2DWithWorld();
-			
+
 			Vector4 GetHUDColor(Player&);
 
 			/** Called when the local player is alive. */
@@ -538,6 +538,7 @@ namespace spades {
 			void DrawScreenEffect(bool hurt, float fadeTime = 0.35F);
 			void DrawAlert();
 			void DrawDebugAim(Player&);
+			void DrawCompassBar(Player&);
 			void DrawStats();
 			void DrawNetGraph();
 			void DrawHitTestDebugger();
