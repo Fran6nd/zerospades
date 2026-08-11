@@ -457,6 +457,14 @@ namespace spades {
 				focusPlayerPos = pos;
 				focusPlayerAngle = atan2f(ori.y, ori.x) + M_PI_F * 0.5F;
 				focusPlayerPtr = p;
+				if (IsThirdPerson(cameraMode)) {
+					// In third person, the camera orbits around the player, so we don't set
+					// focusPlayerPtr: the player icon is drawn in the players loop
+					focusPlayerAngle = client->followAndFreeCameraState.yaw - M_PI_F * 0.5F;
+				} else {
+					focusPlayerAngle = atan2f(ori.y, ori.x) + M_PI_F * 0.5F;
+					focusPlayerPtr = p;
+				}
 			} else if (isFreeCamera) {
 				focusPlayerPos = client->freeCameraState.position;
 				focusPlayerAngle = client->followAndFreeCameraState.yaw - M_PI_F * 0.5F;
