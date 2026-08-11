@@ -48,6 +48,7 @@ namespace spades {
 			float toolRaiseState;
 			Player::ToolType currentTool;
 			float time;
+			bool wasAimingDownSight;
 
 			/**
 			 * Indicates whether the third-person weapon skin script has the latest

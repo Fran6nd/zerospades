@@ -250,6 +250,7 @@ namespace spades {
 			toolRaiseState = 0.0F;
 			currentTool = p.GetTool();
 			time = 0.0F;
+			wasAimingDownSight = false;
 			viewWeaponOffset = MakeVector3(0, 0, 0);
 			lastFront = MakeVector3(0, 0, 0);
 			flashlightOrientation = p.GetFront();
@@ -344,14 +345,28 @@ namespace spades {
 			time += dt;
 
 			bool isLocalPlayer = player.IsLocalPlayer();
+			bool isThirdPerson = ShouldRenderInThirdPersonView();
 
 			PlayerInput actualInput = player.GetInput();
 			WeaponInput actualWeapInput = player.GetWeaponInput();
 
 			int zoomAnimation = cg_animations;
 			float speed = (zoomAnimation >= 2) ? 2.0F : 1.0F;
-			if (player.IsToolWeapon() && actualWeapInput.secondary) {
-				if (zoomAnimation && isLocalPlayer) {
+
+			bool aimingDownSight = player.IsToolWeapon() && actualWeapInput.secondary;
+			if (aimingDownSight) {
+				// play zoom in sound
+				if (!wasAimingDownSight && !isThirdPerson) {
+					IAudioDevice& audioDevice = client.GetAudioDevice();
+					AudioParam param;
+					param.volume = 0.1F;
+					Handle<IAudioChunk> c =
+						audioDevice.RegisterSound("Sounds/Weapons/AimDownSightLocal.opus");
+					audioDevice.PlayLocal(c.GetPointerOrNull(),
+						MakeVector3(0.4F, -0.3F, 0.5F), param);
+				}
+
+				if (zoomAnimation && isLocalPlayer && !isThirdPerson) {
 					aimDownState += dt * 8.0F * speed;
 					if (aimDownState > 1.0F)
 						aimDownState = 1.0F;
@@ -359,7 +374,7 @@ namespace spades {
 					aimDownState = 1.0F;
 				}
 			} else {
-				if (zoomAnimation && isLocalPlayer) {
+				if (zoomAnimation && isLocalPlayer && !isThirdPerson) {
 					aimDownState -= dt * 3.0F * speed;
 					if (aimDownState < 0.0F)
 						aimDownState = 0.0F;
@@ -367,6 +382,7 @@ namespace spades {
 					aimDownState = 0.0F;
 				}
 			}
+			wasAimingDownSight = aimingDownSight;
 
 			if (actualInput.sprint) {
 				sprintState += dt * 4.0F;
@@ -434,7 +450,6 @@ namespace spades {
 				}
 			}
 
-			bool isThirdPerson = ShouldRenderInThirdPersonView();
 			if (!isThirdPerson) {
 				Vector3 front = player.GetFront();
 				Vector3 right = player.GetRight();
