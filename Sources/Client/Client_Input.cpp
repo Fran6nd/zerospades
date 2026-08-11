@@ -869,27 +869,15 @@ namespace spades {
 					playerInput.jump = down;
 				} else if (CheckKey(cg_keyAttack, name)) {
 					weapInput.primary = down;
-
 					if (p.IsToolWeapon() && weapInput.primary && !CanLocalPlayerUseWeapon())
 						PlayerDryFiredWeapon(p);
 				} else if (CheckKey(cg_keyAltAttack, name)) {
-					bool lastVal = weapInput.secondary;
 					if (p.IsToolWeapon() && !cg_holdAimDownSight) {
 						Weapon& w = p.GetWeapon();
 						if (down && (!w.IsReloading() || w.IsReloadSlow()))
 							weapInput.secondary = !weapInput.secondary;
 					} else {
 						weapInput.secondary = down;
-					}
-
-					if (p.IsToolWeapon() && weapInput.secondary
-						&& !lastVal && CanLocalPlayerUseWeapon()) {
-						AudioParam param;
-						param.volume = 0.08F;
-						Handle<IAudioChunk> c =
-						  audioDevice->RegisterSound("Sounds/Weapons/AimDownSightLocal.opus");
-						audioDevice->PlayLocal(c.GetPointerOrNull(),
-							MakeVector3(0.4F, -0.3F, 0.5F), param);
 					}
 				} else if (CheckKey(cg_keyReloadWeapon, name)) {
 					reloadKeyPressed = down;
