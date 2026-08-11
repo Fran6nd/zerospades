@@ -185,6 +185,20 @@ namespace spades {
 			/** Sets color for image drawing. Always alpha premultiplied. */
 			void SetColorAlphaPremultiplied(Vector4 col) { base->SetColorAlphaPremultiplied(col); }
 
+			void DrawFilledTriangle(const Vector2& v0, const Vector2& v1, const Vector2& v2) {
+				if (allowDepthHack)
+					base->DrawFilledTriangle(v0, v1, v2);
+				else
+					OnProhibitedAction();
+			}
+
+			void DrawFilledRectFade(float x0, float y0, float x1, float y1, Vector4 colorTop, Vector4 colorBottom, bool horizontal) {
+				if (allowDepthHack)
+					base->DrawFilledRectFade(x0, y0, x1, y1, colorTop, colorBottom, horizontal);
+				else
+					OnProhibitedAction();
+			}
+
 			void DrawImage(stmp::optional<IImage&> img, const Vector2& outTopLeft) {
 				if (allowDepthHack)
 					base->DrawImage(img, outTopLeft);

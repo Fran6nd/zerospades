@@ -166,17 +166,6 @@ namespace spades {
 			                       const Vector2& outTopRight, const Vector2& outBottomLeft,
 			                       const AABB2& inRect) = 0;
 
-			void DrawFilledRect(float x0, float y0, float x1, float y1) {
-				DrawImage(nullptr, AABB2(x0, y0, x1 - x0, y1 - y0));
-			}
-
-			void DrawOutlinedRect(float x0, float y0, float x1, float y1, int thickness = 1) {
-				DrawFilledRect(x0, y0, x1, y0 + thickness);         				// top
-				DrawFilledRect(x0, y1 - thickness, x1, y1);         				// bottom
-				DrawFilledRect(x0, y0 + thickness, x0 + thickness, y1 - thickness); // left
-				DrawFilledRect(x1 - thickness, y0 + thickness, x1, y1 - thickness); // right
-			}
-
 			virtual void UpdateFlatGameMap() = 0;
 			virtual void DrawFlatGameMap(const AABB2& outRect, const AABB2& inRect) = 0;
 			/**
@@ -235,6 +224,79 @@ namespace spades {
 
 			virtual float ScreenWidth() = 0;
 			virtual float ScreenHeight() = 0;
+
+			/**
+			 * 2D drawing helpers
+			 */
+			void DrawLine(const Vector2& p1, const Vector2& p2, float thickness = 1.0F) {
+				const auto& normal = (p2 - p1).Normalize().Perpendicular() * (thickness * 0.5F);
+				const Vector2 vt[3] = { p1 - normal, p1 + normal, p2 - normal };
+				DrawImage(nullptr, vt[0], vt[1], vt[2], AABB2(0, 0, 1, 1));
+			}
+			void DrawFilledRect(float x0, float y0, float x1, float y1) {
+				DrawImage(nullptr, AABB2(x0, y0, x1 - x0, y1 - y0));
+			}
+			void DrawFilledRectFadeSolid(float x0, float y0, float x1, float y1,
+                            float fadeStart, float fadeEnd,
+                            Vector4 color0, Vector4 color1,
+                            bool horizontal = false) {
+				if (horizontal) {
+					if (fadeStart > x0 && color0.w > 0.0F) {
+						SetColorAlphaPremultiplied(color0);
+						DrawFilledRect(x0, y0, fadeStart, y1);
+					}
+					DrawFilledRectFade(fadeStart, y0, fadeEnd, y1, color0, color1, true);
+					if (x1 > fadeEnd && color1.w > 0.0F) {
+						SetColorAlphaPremultiplied(color1);
+						DrawFilledRect(fadeEnd, y0, x1, y1);
+					}
+				} else {
+					if (fadeStart > y0 && color0.w > 0.0F) {
+						SetColorAlphaPremultiplied(color0);
+						DrawFilledRect(x0, y0, x1, fadeStart);
+					}
+					DrawFilledRectFade(x0, fadeStart, x1, fadeEnd, color0, color1, false);
+					if (y1 > fadeEnd && color1.w > 0.0F) {
+						SetColorAlphaPremultiplied(color1);
+						DrawFilledRect(x0, fadeEnd, x1, y1);
+					}
+				}
+			}
+			virtual void DrawFilledRectFade(float x0, float y0, float x1, float y1,
+                                Vector4 color0, Vector4 color1,
+                                bool horizontal = false) = 0;
+			void DrawOutlinedRect(float x0, float y0, float x1, float y1, int thickness = 1) {
+				DrawFilledRect(x0, y0, x1, y0 + thickness); // top
+				DrawFilledRect(x0, y1 - thickness, x1, y1); // bottom
+				DrawFilledRect(x0, y0 + thickness, x0 + thickness, y1 - thickness); // left
+				DrawFilledRect(x1 - thickness, y0 + thickness, x1, y1 - thickness); // right
+			}
+			void DrawFilledCircle(const Vector2& pos, float radius) {
+				const int segments = Clamp((int)radius, 16, 64);
+				const float step = M_PI_F * 2.0F / (float)segments;
+				auto prev = pos + MakeVector2(radius, 0.0F);
+				for (int i = 1; i <= segments; i++) {
+					const float a = (float)i * step;
+					const auto cur = pos + MakeVector2(cosf(a), sinf(a)) * radius;
+					DrawFilledTriangle(pos, prev, cur);
+					prev = cur;
+				}
+			}
+			void DrawOutlinedCircle(const Vector2& pos, float radius, float thickness = 1.0F) {
+				const float inner = radius - (thickness * 0.5F);
+				const float outer = radius + (thickness * 0.5F);
+				const int segments = Clamp((int)radius, 16, 64);
+				const float step = M_PI_F * 2.0F / (float)segments;
+				auto d1 = MakeVector2(1.0F, 0.0F); // cos(0), sin(0)
+				for (int i = 0; i < segments; i++) {
+					const float a2 = (float)(i + 1) * step;
+					const auto d2 = MakeVector2(cosf(a2), sinf(a2));
+					DrawFilledTriangle(pos + d1 * inner, pos + d1 * outer, pos + d2 * inner);
+					DrawFilledTriangle(pos + d1 * outer, pos + d2 * outer, pos + d2 * inner);
+					d1 = d2;
+				}
+			}
+			virtual void DrawFilledTriangle(const Vector2& v0, const Vector2& v1, const Vector2& v2) = 0;
 		};
 	} // namespace client
 } // namespace spades

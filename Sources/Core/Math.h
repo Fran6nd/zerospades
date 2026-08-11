@@ -258,6 +258,8 @@ namespace spades {
 			return Make(x * scale, y * scale);
 		}
 
+		Vector2 Perpendicular() const { return Vector2(-y, x); }
+
 		Vector2 Floor() const { return Vector2(floorf(x), floorf(y)); }
 	};
 
@@ -373,6 +375,8 @@ namespace spades {
 				scale = 1.0F / scale;
 			return Make(x * scale, y * scale, z * scale);
 		}
+		
+		Vector2 GetXY() const { return Vector2::Make(x, y); }
 
 		IntVector3 Floor() const {
 			return IntVector3::Make((int)floorf(x), (int)floorf(y), (int)floorf(z));

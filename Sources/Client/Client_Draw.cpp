@@ -508,15 +508,14 @@ namespace spades {
 			renderer->DrawImage(img, AABB2(x, teamBarY, teamBarW, size.y));
 
 			// draw shadow
-			size.x = teamBarW * 2;
-			size.y = 12.0F;
-			renderer->SetColorAlphaPremultiplied(MakeVector4(0, 0, 0, 0.4F));
-			renderer->DrawImage(img,
-				AABB2(x - teamBarW, teamBarY + size.y, size.x, -size.y + 2.0F));
-			img = renderer->RegisterImage("Gfx/Scoreboard/TopShadow.tga");
-			size.y = 32.0F;
-			renderer->DrawImage(img,
-				AABB2(x - teamBarW, teamBarY + size.y + 12.0F, size.x, -size.y));
+			const float shadowSolid = 12.0F;
+			const float shadowFade = 28.0F;
+			const float shadowTotal = shadowSolid + shadowFade;
+			Vector4 shadow1 = MakeVector4(0, 0, 0, 0.4F), shadow2 = MakeVector4(0, 0, 0, 0);
+			renderer->DrawFilledRectFadeSolid(
+				x - teamBarW, teamBarY + 2.0F, x + teamBarW, teamBarY + shadowTotal,
+				teamBarY + shadowSolid, teamBarY + shadowTotal, shadow1, shadow2
+			);
 
 			// draw player icon
 			img = renderer->RegisterImage("Gfx/User.png");
@@ -778,7 +777,7 @@ namespace spades {
 			shadowP.y *= shadowP.w;
 			shadowP.z *= shadowP.w;
 
-			Vector4 colorP = MakeVector4(color.x, color.y, color.z, 1.0F * color.w);
+			Vector4 colorP = MakeVector4(color.x, color.y, color.z, color.w);
 			colorP.x *= colorP.w;
 			colorP.y *= colorP.w;
 			colorP.z *= colorP.w;

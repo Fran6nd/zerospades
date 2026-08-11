@@ -162,5 +162,86 @@ namespace spades {
 			indices.push_back(idx + 2);
 			indices.push_back(idx + 3);
 		}
+
+		void GLImageRenderer::AddTriangle(float dx1, float dy1, float dx2, float dy2,
+                                  float dx3, float dy3,
+                                  float r, float g, float b, float a) {
+			ImageVertex v;
+			v.r = r; v.g = g; v.b = b; v.a = a;
+
+			uint32_t idx = (uint32_t)vertices.size();
+
+			v.x = dx1; v.y = dy1; v.u = 0.0F; v.v = 0.0F;
+			vertices.push_back(v);
+			v.x = dx2; v.y = dy2; v.u = 0.0F; v.v = 0.0F;
+			vertices.push_back(v);
+			v.x = dx3; v.y = dy3; v.u = 0.0F; v.v = 0.0F;
+			vertices.push_back(v);
+
+			indices.push_back(idx);
+			indices.push_back(idx + 1);
+			indices.push_back(idx + 2);
+		}
+
+		void GLImageRenderer::AddGradient(
+			float dx1, float dy1, float dx2, float dy2,
+			float dx3, float dy3, float dx4, float dy4,
+			float sx1, float sy1, float sx2, float sy2,
+			float sx3, float sy3, float sx4, float sy4,
+			float r0, float g0, float b0, float a0,
+			float r1, float g1, float b1, float a1,
+			bool horizontal) {
+
+			uint32_t idx = (uint32_t)vertices.size();
+			ImageVertex v;
+
+			if (horizontal) {
+				// left verts = color0, right verts = color1
+				// top-left (color0)
+				v.x = dx1; v.y = dy1; v.u = sx1; v.v = sy1;
+				v.r = r0; v.g = g0; v.b = b0; v.a = a0;
+				vertices.push_back(v);
+
+				// top-right (color1)
+				v.x = dx2; v.y = dy2; v.u = sx2; v.v = sy2;
+				v.r = r1; v.g = g1; v.b = b1; v.a = a1;
+				vertices.push_back(v);
+
+				// bottom-right (color1)
+				v.x = dx3; v.y = dy3; v.u = sx3; v.v = sy3;
+				vertices.push_back(v);
+
+				// bottom-left (color0)
+				v.x = dx4; v.y = dy4; v.u = sx4; v.v = sy4;
+				v.r = r0; v.g = g0; v.b = b0; v.a = a0;
+				vertices.push_back(v);
+			} else {
+				// top verts = color0, bottom verts = color1
+				// top-left (color0)
+				v.x = dx1; v.y = dy1; v.u = sx1; v.v = sy1;
+				v.r = r0; v.g = g0; v.b = b0; v.a = a0;
+				vertices.push_back(v);
+
+				// top-right (color0)
+				v.x = dx2; v.y = dy2; v.u = sx2; v.v = sy2;
+				vertices.push_back(v);
+
+				// bottom-right (color1)
+				v.x = dx3; v.y = dy3; v.u = sx3; v.v = sy3;
+				v.r = r1; v.g = g1; v.b = b1; v.a = a1;
+				vertices.push_back(v);
+
+				// bottom-left (color1)
+				v.x = dx4; v.y = dy4; v.u = sx4; v.v = sy4;
+				vertices.push_back(v);
+			}
+
+			indices.push_back(idx);
+			indices.push_back(idx + 1);
+			indices.push_back(idx + 2);
+			indices.push_back(idx);
+			indices.push_back(idx + 2);
+			indices.push_back(idx + 3);
+		}
 	} // namespace draw
 } // namespace spades

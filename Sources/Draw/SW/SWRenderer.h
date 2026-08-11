@@ -195,7 +195,11 @@ namespace spades {
 			void DrawImage(stmp::optional<client::IImage &>, const Vector2 &outTopLeft,
 			               const Vector2 &outTopRight, const Vector2 &outBottomLeft,
 			               const AABB2 &inRect) override;
-			
+
+			void DrawFilledTriangle(const Vector2& v0, const Vector2& v1, const Vector2& v2) override;
+			void DrawFilledRectFade(float x0, float y0, float x1, float y1,
+                            Vector4 colorTop, Vector4 colorBottom, bool horizontal) override;
+
 			void UpdateFlatGameMap() override;
 			void DrawFlatGameMap(const AABB2 &outRect, const AABB2 &inRect) override;
 			void DrawFlatGameMap(const Vector2 &outTopLeft, const Vector2 &outTopRight,
