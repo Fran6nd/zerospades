@@ -84,9 +84,9 @@ namespace spades {
 				int health = col >> 24;
 				uint32_t f = (std::max(health, 32) << 8) / 100;
 				col = DarkenColor(col, f);
-				
+
 				col = map->GetColorJit(col); // randomize color
-				col &= 0xFFFFFF; // use the default material			
+				col &= 0xFFFFFF; // use the default material
 				vmodel->SetSolid(v.x - minX, v.y - minY, v.z - minZ, col);
 			}
 
@@ -139,9 +139,6 @@ namespace spades {
 				Vector3 vmAxis1 = vmat.GetAxis(0);
 				Vector3 vmAxis2 = vmat.GetAxis(1);
 				Vector3 vmAxis3 = vmat.GetAxis(2);
-
-				// play sound
-				client->PlayBlockDestroySound(vmOrigin);
 
 				int particleMode = cg_particles;
 				if (!particleMode)
