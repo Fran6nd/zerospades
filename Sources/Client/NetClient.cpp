@@ -88,6 +88,41 @@ namespace spades {
 
 				return str;
 			}
+
+			static WeaponType GetWeaponType(int weapon) {
+				switch (weapon) {
+					case 0: return RIFLE_WEAPON;
+					case 1: return SMG_WEAPON;
+					case 2: return SHOTGUN_WEAPON;
+					default: SPRaise("Received invalid weapon: %d", weapon);
+				}
+			}
+			static int GetWeaponId(WeaponType type) {
+				switch (type) {
+					case RIFLE_WEAPON: return 0;
+					case SMG_WEAPON: return 1;
+					case SHOTGUN_WEAPON: return 2;
+					default: SPInvalidEnum("weapon", type);
+				}
+			}
+			static Player::ToolType GetToolType(int tool) {
+				switch (tool) {
+					case 0: return Player::ToolSpade;
+					case 1: return Player::ToolBlock;
+					case 2: return Player::ToolWeapon;
+					case 3: return Player::ToolGrenade;
+					default: SPRaise("Received invalid tool: %d", tool);
+				}
+			}
+			static int GetToolId(Player::ToolType type) {
+				switch (type) {
+					case Player::ToolSpade: return 0;
+					case Player::ToolBlock: return 1;
+					case Player::ToolWeapon: return 2;
+					case Player::ToolGrenade: return 3;
+					default: SPInvalidEnum("tool", type);
+				}
+			}
 		} // namespace
 
 		class NetPacketWriter {
@@ -740,14 +775,7 @@ namespace spades {
 				case PacketTypeSetTool: {
 					Player& p = GetPlayer(r.ReadByte());
 					int tool = r.ReadByte();
-
-					switch (tool) {
-						case 0: p.SetTool(Player::ToolSpade); break;
-						case 1: p.SetTool(Player::ToolBlock); break;
-						case 2: p.SetTool(Player::ToolWeapon); break;
-						case 3: p.SetTool(Player::ToolGrenade); break;
-						default: SPRaise("Received invalid tool type: %d", tool);
-					}
+					p.SetTool(GetToolType(tool));
 				} break;
 				case PacketTypeSetColour: {
 					stmp::optional<Player&> p = GetPlayerOrNull(r.ReadByte());
@@ -768,14 +796,7 @@ namespace spades {
 						int score = r.ReadInt();
 						IntVector3 color = r.ReadIntColor(); // block color
 						std::string name = StripNewlines(TrimSpaces(r.ReadRemainingString()));
-
-						WeaponType wType;
-						switch (weapon) {
-							case 0: wType = RIFLE_WEAPON; break;
-							case 1: wType = SMG_WEAPON; break;
-							case 2: wType = SHOTGUN_WEAPON; break;
-							default: SPRaise("Received invalid weapon: %d", weapon);
-						}
+						WeaponType wType = GetWeaponType(weapon);
 
 						auto p = stmp::make_unique<Player>(*GetWorld(), pId, wType, team);
 
@@ -786,13 +807,7 @@ namespace spades {
 						p->SetHeldBlockColor(color);
 
 						// set tool
-						switch (tool) {
-							case 0: p->SetTool(Player::ToolSpade); break;
-							case 1: p->SetTool(Player::ToolBlock); break;
-							case 2: p->SetTool(Player::ToolWeapon); break;
-							case 3: p->SetTool(Player::ToolGrenade); break;
-							default: SPRaise("Received invalid tool type: %d", tool);
-						}
+						p->SetTool(GetToolType(tool));
 
 						GetWorld()->SetPlayer(pId, std::move(p));
 
@@ -859,13 +874,7 @@ namespace spades {
 						break;
 					}
 
-					WeaponType wType;
-					switch (weapon) {
-						case 0: wType = RIFLE_WEAPON; break;
-						case 1: wType = SMG_WEAPON; break;
-						case 2: wType = SHOTGUN_WEAPON; break;
-						default: SPRaise("Received invalid weapon: %d", weapon);
-					}
+					WeaponType wType = GetWeaponType(weapon);
 
 					auto p = stmp::make_unique<Player>(*GetWorld(), pId, wType, team);
 
@@ -1305,13 +1314,7 @@ namespace spades {
 
 					/*
 						Player& p = GetPlayer(pId);
-						WeaponType wType;
-						switch (weapon) {
-							case 0: wType = RIFLE_WEAPON; break;
-							case 1: wType = SMG_WEAPON; break;
-							case 2: wType = SHOTGUN_WEAPON; break;
-							default: SPRaise("Received invalid weapon: %d", weapon);
-						}
+						WeaponType wType = GetWeaponType(weapon);
 						p.SetWeaponType(wType);
 					*/
 				} break;
@@ -1379,18 +1382,10 @@ namespace spades {
 		void NetClient::SendJoin(int team, WeaponType weapType, std::string name, int score) {
 			SPADES_MARK_FUNCTION();
 
-			int weapId;
-			switch (weapType) {
-				case RIFLE_WEAPON: weapId = 0; break;
-				case SMG_WEAPON: weapId = 1; break;
-				case SHOTGUN_WEAPON: weapId = 2; break;
-				default: SPInvalidEnum("weapType", weapType);
-			}
-
 			NetPacketWriter w(PacketTypeExistingPlayer);
 			w.WriteByte((uint8_t)0); // Player ID, but shouldn't matter here
 			w.WriteByte((uint8_t)team);
-			w.WriteByte((uint8_t)weapId);
+			w.WriteByte((uint8_t)GetWeaponId(weapType));
 			w.WriteByte((uint8_t)2); // TODO: change tool
 			w.WriteInt((uint32_t)score);
 			w.WriteColor(GetWorld()->GetTeamColor(team));
@@ -1507,14 +1502,7 @@ namespace spades {
 
 			NetPacketWriter w(PacketTypeSetTool);
 			w.WriteByte((uint8_t)GetLocalPlayer().GetId());
-			Player::ToolType type = GetLocalPlayer().GetTool();
-			switch (type) {
-				case Player::ToolSpade: w.WriteByte((uint8_t)0); break;
-				case Player::ToolBlock: w.WriteByte((uint8_t)1); break;
-				case Player::ToolWeapon: w.WriteByte((uint8_t)2); break;
-				case Player::ToolGrenade: w.WriteByte((uint8_t)3); break;
-				default: SPInvalidEnum("tool", type);
-			}
+			w.WriteByte((uint8_t)GetToolId(GetLocalPlayer().GetTool()));
 
 			// Record to demo before sending (server doesn't echo this back)
 			if (demoRecorder && demoRecorder->IsRecording()) {
@@ -1604,12 +1592,12 @@ namespace spades {
 			enet_peer_send(peer, 0, w.CreatePacket());
 		}
 
-		void NetClient::SendWeaponChange(WeaponType wType) {
+		void NetClient::SendWeaponChange(WeaponType type) {
 			SPADES_MARK_FUNCTION();
 
 			NetPacketWriter w(PacketTypeChangeWeapon);
 			w.WriteByte((uint8_t)GetLocalPlayer().GetId());
-			w.WriteByte((uint8_t)wType);
+			w.WriteByte((uint8_t)GetWeaponId(type));
 			enet_peer_send(peer, 0, w.CreatePacket());
 		}
 
@@ -1812,7 +1800,7 @@ namespace spades {
 
 			SPLog("Writing initial demo state...");
 
-			// Step 1: Compress and write map data
+			// compress and write map data
 			{
 				// Save map to memory stream
 				DynamicMemoryStream rawMapStream;
@@ -1852,7 +1840,7 @@ namespace spades {
 				}
 			}
 
-			// Step 2: Write StateData packet
+			// write StateData packet
 			{
 				NetPacketWriter w(PacketTypeStateData);
 
@@ -1929,7 +1917,7 @@ namespace spades {
 				demoRecorder->RecordPacket(data.data(), data.size());
 			}
 
-			// Step 3: Write ExistingPlayer packets for all players
+			// write ExistingPlayer packets for all players
 			for (unsigned int i = 0; i < world->GetNumPlayerSlots(); i++) {
 				stmp::optional<Player&> maybePlayer = world->GetPlayer(i);
 				if (!maybePlayer)
@@ -1938,28 +1926,13 @@ namespace spades {
 				Player& p = *maybePlayer;
 
 				NetPacketWriter w(PacketTypeExistingPlayer);
-				w.WriteByte(static_cast<uint8_t>(i));  // Player ID
-				w.WriteByte(static_cast<uint8_t>(p.GetTeamId()));  // Team
-				w.WriteByte(static_cast<uint8_t>(p.GetWeaponType()));  // Weapon
-
-				// Tool
-				int tool = 0;
-				switch (p.GetTool()) {
-					case Player::ToolSpade: tool = 0; break;
-					case Player::ToolBlock: tool = 1; break;
-					case Player::ToolWeapon: tool = 2; break;
-					case Player::ToolGrenade: tool = 3; break;
-				}
-				w.WriteByte(static_cast<uint8_t>(tool));
-
-				// Kill count (score)
-				w.WriteInt(static_cast<uint32_t>(world->GetPlayerPersistent(i).score));
-
-				// Block color
-				w.WriteColor(p.GetBlockColor());
-
-				// Name
-				w.WriteString(world->GetPlayerPersistent(i).name);
+				w.WriteByte(static_cast<uint8_t>(i)); // player ID
+				w.WriteByte(static_cast<uint8_t>(p.GetTeamId())); // team
+				w.WriteByte(static_cast<uint8_t>(GetWeaponId(p.GetWeaponType()))); // weapon
+				w.WriteByte(static_cast<uint8_t>(GetToolId(p.GetTool()))); // tool
+				w.WriteInt(static_cast<uint32_t>(world->GetPlayerPersistent(i).score)); // kill count (score)
+				w.WriteColor(p.GetBlockColor()); // block color
+				w.WriteString(world->GetPlayerPersistent(i).name); // name
 
 				const auto& data = w.GetData();
 				demoRecorder->RecordPacket(data.data(), data.size());
@@ -2003,7 +1976,7 @@ namespace spades {
 		}
 
 		float NetClient::GetDemoRecordingTime() const {
-			return demoRecorder ? demoRecorder->GetRecordingTime() : 0.0f;
+			return demoRecorder ? demoRecorder->GetRecordingTime() : 0.0F;
 		}
 
 		uint64_t NetClient::GetDemoPacketCount() const {
