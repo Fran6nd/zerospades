@@ -203,18 +203,13 @@ namespace spades {
 			return scrPos;
 		}
 
-		void MapView::DrawRotatedLine(const Vector2& p1, const Vector2& p2) {
-			const auto& dir = (p2 - p1).Normalize();
-			const auto& normal = MakeVector2(-dir.y, dir.x) * 0.5F;
-			const Vector2 vt[3] = { p1 - normal, p1 + normal, p2 - normal };
-			renderer.DrawImage(nullptr, vt[0], vt[1], vt[2], AABB2(0, 0, 1, 1));
-		}
-		void MapView::DrawGridLines(const Vector2& gridSize, const AABB2& gridRect, bool rotated) {
+		void MapView::DrawGridLines(const Vector2& gridSize, const AABB2& gridRect, const Vector4& col, bool rotates) {
+			renderer.SetColorAlphaPremultiplied(col);
 			for (float x = gridSize.x; x < gridRect.GetMaxX() - 1; x += gridSize.x) {
 				if (x < gridRect.GetMinX() || x >= gridRect.GetMaxX())
 					continue;
-				const auto& p1 = Project(MakeVector2(x, gridRect.GetMinY()), rotated);
-				if (!rotated) {
+				const auto& p1 = Project(MakeVector2(x, gridRect.GetMinY()), rotates);
+				if (!rotates) {
 					float wx = roundf(p1.x); // rounded for better pixel alignment
 					for (float dx = 0; dx < outRect.GetHeight(); dx += 4) {
 						renderer.DrawImage(nullptr,
@@ -222,15 +217,15 @@ namespace spades {
 								AABB2(0, 0, 1, 2));
 					}
 				} else {
-					const auto& p2 = Project(MakeVector2(x, gridRect.GetMaxY()), rotated);
-					DrawRotatedLine(p1, p2);
+					const auto& p2 = Project(MakeVector2(x, gridRect.GetMaxY()), rotates);
+					renderer.DrawLine(p1, p2);
 				}
 			}
 			for (float y = gridSize.y; y < gridRect.GetMaxY() - 1; y += gridSize.y) {
 				if (y < gridRect.GetMinY() || y >= gridRect.GetMaxY())
 					continue;
-				const auto& p1 = Project(MakeVector2(gridRect.GetMinX(), y), rotated);
-				if (!rotated) {
+				const auto& p1 = Project(MakeVector2(gridRect.GetMinX(), y), rotates);
+				if (!rotates) {
 					float wy = roundf(p1.y); // rounded for better pixel alignment
 					for (float dy = 0; dy < outRect.GetWidth(); dy += 4) {
 						renderer.DrawImage(nullptr,
@@ -238,18 +233,17 @@ namespace spades {
 								AABB2(0, 0, 2, 1));
 					}
 				} else {
-					const auto& p2 = Project(MakeVector2(gridRect.GetMaxX(), y), rotated);
-					DrawRotatedLine(p1, p2);
+					const auto& p2 = Project(MakeVector2(gridRect.GetMaxX(), y), rotates);
+					renderer.DrawLine(p1, p2);
 				}
 			}
 		}
 
-		void MapView::DrawIcon(const Vector3& pos, IImage& img, const Vector4& col, float rotation) {
+		void MapView::DrawIcon(const Vector2& pos, IImage& img, const Vector4& col, float rotation) {
 			bool rotates = rotation != 0.0F;
-			Vector2 pos2D = MakeVector2(pos.x, pos.y);
 			Vector2 scrPos;
 			if (circularMap) {
-				scrPos = Project(pos2D, true);
+				scrPos = Project(pos, true);
 				Vector2 rel = scrPos - scrCenter;
 				float len = rel.GetLength();
 				bool outside = len > scrRadius;
@@ -262,7 +256,7 @@ namespace spades {
 				if (rotates && mapAngle != 0.0F)
 					rotation += mapAngle;
 			} else if (rotatingMap) {
-				scrPos = Project(pos2D, true);
+				scrPos = Project(pos, true);
 				if ((int)cg_minimapPlayerIcon >= 2 && !rotates) { // clamp to edge
 					scrPos.x = Clamp(scrPos.x, outRect.GetMinX(), outRect.GetMaxX());
 					scrPos.y = Clamp(scrPos.y, outRect.GetMinY(), outRect.GetMaxY());
@@ -272,13 +266,14 @@ namespace spades {
 				if (rotates && mapAngle != 0.0F)
 					rotation += mapAngle;
 			} else {
+				scrPos = pos;
 				if ((int)cg_minimapPlayerIcon >= 2 && !rotates) { // clamp to edge
-					pos2D.x = Clamp(pos2D.x, inRect.GetMinX(), inRect.GetMaxX());
-					pos2D.y = Clamp(pos2D.y, inRect.GetMinY(), inRect.GetMaxY());
-				} else if (!inRect.Contains(pos2D)) {
+					scrPos.x = Clamp(scrPos.x, inRect.GetMinX(), inRect.GetMaxX());
+					scrPos.y = Clamp(scrPos.y, inRect.GetMinY(), inRect.GetMaxY());
+				} else if (!inRect.Contains(scrPos)) {
 					return;
 				}
-				scrPos = Project(pos2D);
+				scrPos = Project(scrPos);
 			}
 
 			// rounded for better pixel alignment
@@ -306,22 +301,21 @@ namespace spades {
 			renderer.DrawImage(img, vt[0], vt[1], vt[2], inRect);
 		}
 
-		void MapView::DrawText(IFont& font, std::string s, const Vector3& pos, const Vector4& col) {
-			Vector2 pos2D = MakeVector2(pos.x, pos.y);
+		void MapView::DrawText(IFont& font, std::string s, const Vector2& pos, const Vector4& col) {
 			Vector2 scrPos;
 			if (circularMap) {
-				scrPos = Project(pos2D, true);
+				scrPos = Project(pos, true);
 				Vector2 rel = scrPos - scrCenter;
 				if (rel.GetSquaredLength() > scrRadius*scrRadius)
 					return;
 			} else if (rotatingMap) {
-				scrPos = Project(pos2D, true);
+				scrPos = Project(pos, true);
 				if (!outRect.Contains(scrPos))
 					return;
 			} else {
-				if (!inRect.Contains(pos2D))
+				if (!inRect.Contains(pos))
 					return;
-				scrPos = Project(pos2D);
+				scrPos = Project(pos);
 			}
 
 			Vector2 size = font.Measure(s);
@@ -335,49 +329,24 @@ namespace spades {
 			font.DrawShadow(s, scrPos, 1.0F, col, MakeVector4(0, 0, 0, col.w));
 		}
 
-		void MapView::DrawCircle(const Vector2& pos, const Vector4& col, float radius, float thickness) {
-			Handle<IImage> img = renderer.RegisterImage("Gfx/White.tga");
-			const AABB2 lineInRect{0.0F, 0.0F, img->GetWidth(), img->GetHeight()};
-			const float inner = radius - thickness * 0.5F;
-			const float outer = radius + thickness * 0.5F;
-
-			renderer.SetColorAlphaPremultiplied(col);
-
-			const int segments = Clamp((int)radius, 16, 64);
-			for (int i = 0; i < segments; i++) {
-				const float a1 = (float)i / (float)segments * M_PI_F * 2.0F;
-				const float a2 = (float)(i + 1) / (float)segments * M_PI_F * 2.0F;
-				const auto& d1 = MakeVector2(cosf(a1), sinf(a1));
-				const auto& d2 = MakeVector2(cosf(a2), sinf(a2));
-
-				renderer.DrawImage(img,
-					pos + d1 * inner,
-					pos + d1 * outer,
-					pos + d2 * inner, lineInRect);
-				renderer.DrawImage(img,
-					pos + d1 * outer,
-					pos + d2 * outer,
-					pos + d2 * inner, lineInRect);
-			}
-		}
-		void MapView::DrawMapCircle(const Vector3& pos, const Vector4& col, float radius, float thickness) {
-			Vector2 pos2D = MakeVector2(pos.x, pos.y);
+		void MapView::DrawMapCircle(const Vector2& pos, const Vector4& col, float radius, float thickness) {
 			Vector2 scrPos;
 			if (circularMap) {
-				scrPos = Project(pos2D, true);
+				scrPos = Project(pos, true);
 				Vector2 rel = scrPos - scrCenter;
 				if (rel.GetSquaredLength() > scrRadius*scrRadius)
 					return;
 			} else if (rotatingMap) {
-				scrPos = Project(pos2D, true);
+				scrPos = Project(pos, true);
 				if (!outRect.Contains(scrPos))
 					return;
 			} else {
-				if (!inRect.Contains(pos2D))
+				if (!inRect.Contains(pos))
 					return;
-				scrPos = Project(pos2D);
+				scrPos = Project(pos);
 			}
-			DrawCircle(scrPos, col, radius, thickness);
+			renderer.SetColorAlphaPremultiplied(col);
+			renderer.DrawOutlinedCircle(scrPos, radius, thickness);
 		}
 
 		void MapView::SwitchScale() {
@@ -386,9 +355,9 @@ namespace spades {
 			cg_minimapScaleMode = scaleMode;
 		}
 
-		std::string MapView::ToGrid(float x, float y) {
-			auto letter = char(int('A') + int(x / 64));
-			auto number = std::to_string(int(y / 64) + 1);
+		std::string MapView::ToGrid(const Vector2& pos) {
+			auto letter = char(int('A') + int(pos.x / 64));
+			auto number = std::to_string(int(pos.y / 64) + 1);
 			return letter + number;
 		}
 
@@ -441,7 +410,7 @@ namespace spades {
 
 			// The player to focus on
 			stmp::optional<Player&> focusPlayerPtr;
-			Vector3 focusPlayerPos;
+			Vector2 focusPlayerPos;
 			float focusPlayerAngle;
 
 			if (isFollowing) {
@@ -454,9 +423,7 @@ namespace spades {
 				const auto& pos = p.GetPosition();
 				const auto& ori = p.GetFront2D();
 
-				focusPlayerPos = pos;
-				focusPlayerAngle = atan2f(ori.y, ori.x) + M_PI_F * 0.5F;
-				focusPlayerPtr = p;
+				focusPlayerPos = pos.GetXY();
 				if (IsThirdPerson(cameraMode)) {
 					// In third person, the camera orbits around the player, so we don't set
 					// focusPlayerPtr: the player icon is drawn in the players loop
@@ -466,7 +433,7 @@ namespace spades {
 					focusPlayerPtr = p;
 				}
 			} else if (isFreeCamera) {
-				focusPlayerPos = client->freeCameraState.position;
+				focusPlayerPos = client->freeCameraState.position.GetXY();
 				focusPlayerAngle = client->followAndFreeCameraState.yaw - M_PI_F * 0.5F;
 				focusPlayerPtr = world->GetLocalPlayer(); // May be empty in demo mode
 			} else {
@@ -512,7 +479,7 @@ namespace spades {
 			if (sw < zoomedSize.x || sh < zoomedSize.y)
 				zoomedSize *= 0.75F;
 
-			Vector2 center = {focusPlayerPos.x, focusPlayerPos.y};
+			Vector2 center = focusPlayerPos;
 			center = Mix(center, mapSize * 0.5F, zoomState);
 
 			if (largeMap) {
@@ -590,17 +557,13 @@ namespace spades {
 				// draw grid lines
 				Vector2 gridSize = mapSize / 8.0F;
 				Vector4 gridCol = MakeVector4(0, 0, 0, 1) * 0.4F * alpha;
-				renderer.SetColorAlphaPremultiplied(gridCol);
-				if (mapAngle != 0.0F) {
-					DrawGridLines(gridSize, inRect, true);
-				} else {
-					DrawGridLines(gridSize, inRect);
-				}
+				DrawGridLines(gridSize, inRect, gridCol, (mapAngle != 0.0F));
 
 				renderer.EndClippingCircle();
 
 				// draw map border
-				DrawCircle(scrCenter, MakeVector4(0, 0, 0, 1) * alpha, scrRadius + 1.0F, 2.0F);
+				renderer.SetColorAlphaPremultiplied(MakeVector4(0, 0, 0, 1) * alpha);
+				renderer.DrawOutlinedCircle(scrCenter, scrRadius + 1.0F, 2.0F);
 			} else if (rotatingMap) {
 				const Vector2 bigScrHalf = scrHalfSize * static_cast<float>(M_SQRT2);
 				const Vector2 bigMapHalf = mapHalfSize * static_cast<float>(M_SQRT2);
@@ -620,8 +583,7 @@ namespace spades {
 				// draw grid lines
 				Vector2 gridSize = mapSize / 8.0F;
 				Vector4 gridCol = MakeVector4(0, 0, 0, 1) * 0.4F * alpha;
-				renderer.SetColorAlphaPremultiplied(gridCol);
-				DrawGridLines(gridSize, bigInRect, true);
+				DrawGridLines(gridSize, bigInRect, gridCol, true);
 
 				renderer.EndClippingRect();
 
@@ -637,8 +599,7 @@ namespace spades {
 				// draw grid lines
 				Vector2 gridSize = mapSize / 8.0F;
 				Vector4 gridCol = MakeVector4(0, 0, 0, 1) * 0.4F * alpha;
-				renderer.SetColorAlphaPremultiplied(gridCol);
-				DrawGridLines(gridSize, inRect);
+				DrawGridLines(gridSize, inRect, gridCol);
 
 				// draw grid labels
 				Handle<IImage> mapFont = renderer.RegisterImage("Gfx/Fonts/MapFont.tga");
@@ -700,7 +661,7 @@ namespace spades {
 			int minimapCoords = cg_minimapCoords;
 			if (!largeMap && (minimapCoords || rotatingMap)) {
 				IFont& font = client->fontManager->GetGuiFont();
-				auto gridStr = ToGrid(focusPlayerPos.x, focusPlayerPos.y);
+				auto gridStr = ToGrid(focusPlayerPos);
 				Vector2 size = font.Measure(gridStr);
 				Vector2 pos = outRect.min;
 				const float gap = 6.0F;
@@ -742,7 +703,7 @@ namespace spades {
 						const float thickness = 2.0F * fade;
 						renderer.SetColorAlphaPremultiplied(color * fade);
 						if (circularMap) {
-							DrawCircle(scrCenter, color * fade, scrRadius - thickness * 0.5F, thickness);
+							renderer.DrawOutlinedCircle(scrCenter, scrRadius - thickness * 0.5F, thickness);
 						} else {
 							renderer.DrawOutlinedRect(outRect.GetMinX(), outRect.GetMinY(),
 								outRect.GetMaxX(), outRect.GetMaxY(), (int)floorf(thickness));
@@ -812,7 +773,7 @@ namespace spades {
 				}
 
 				// draw player icons
-				const auto& pos = p.GetPosition();
+				const auto& pos = p.GetPosition().GetXY();
 				const auto& ori = p.GetFront2D();
 				const float ang = atan2f(ori.y, ori.x) + M_PI_F * 0.5F;
 				DrawIcon(pos, *iconImg, iconColorF, ang);
@@ -872,9 +833,6 @@ namespace spades {
 			}
 
 			// draw bullet tracers
-			Handle<IImage> tracerImg = renderer.RegisterImage("Gfx/White.tga");
-			const float tracerW = 0.5F;
-			const AABB2 tracerInRect{0.0F, 0.0F, tracerImg->GetWidth(), tracerImg->GetHeight()};
 			renderer.SetColorAlphaPremultiplied(MakeVector4(1, 1, 0, 1) * largeMapAlpha);
 			for (const auto& localEntity : client->localEntities) {
 				auto* const tracer = dynamic_cast<MapViewTracer*>(localEntity.get());
@@ -910,16 +868,7 @@ namespace spades {
 					line3 = *clipped;
 				}
 
-				Vector2 normal = (line3.second - line3.first).Normalize();
-				normal = MakeVector2(-normal.y, normal.x);
-
-				const Vector2 vt[3] = {
-					line3.first - normal * tracerW,
-					line3.first + normal * tracerW,
-					line3.second - normal * tracerW
-				};
-
-				renderer.DrawImage(tracerImg, vt[0], vt[1], vt[2], tracerInRect);
+				renderer.DrawLine(line3.first, line3.second);
 			}
 
 			// draw map objects
@@ -934,17 +883,17 @@ namespace spades {
 
 					// draw base
 					Vector4 teamColorF = ModifyColor(world->GetTeamColor(tId)) * largeMapAlpha;
-					DrawIcon(team1.basePos, *baseIcon, teamColorF);
+					DrawIcon(team1.basePos.GetXY(), *baseIcon, teamColorF);
 
 					// draw both flags
 					if (team2.hasIntel) {
 						stmp::optional<Player&> carrier = world->GetPlayer(team2.carrierId);
 						if (carrier && (localPlayerIsSpectating || (localPlayer && carrier->IsTeammate(*localPlayer)))) {
 							float pulse = std::max(0.5F, fabsf(sinf(world->GetTime() * 4.0F)));
-							DrawIcon(carrier->GetPosition(), *intelIcon, teamColorF * pulse);
+							DrawIcon(carrier->GetPosition().GetXY(), *intelIcon, teamColorF * pulse);
 						}
 					} else {
-						DrawIcon(team1.flagPos, *intelIcon, teamColorF);
+						DrawIcon(team1.flagPos.GetXY(), *intelIcon, teamColorF);
 					}
 				}
 			} else if (mode && mode->ModeType() == IGameMode::m_TC) {
@@ -956,7 +905,7 @@ namespace spades {
 											 : world->GetTeamColor(t.ownerTeamId);
 
 					Vector4 teamColorF = ModifyColor(teamColor) * largeMapAlpha;
-					DrawIcon(t.pos, *baseIcon, teamColorF);
+					DrawIcon(t.pos.GetXY(), *baseIcon, teamColorF);
 				}
 			}
 		}

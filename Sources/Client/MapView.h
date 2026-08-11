@@ -58,14 +58,10 @@ namespace spades {
 			Vector2 RotateMap(const Vector2& offset) const;
 			Vector2 Project(const Vector2&, bool rotated = false) const;
 
-			void DrawRotatedLine(const Vector2&, const Vector2&);
-			void DrawGridLines(const Vector2&, const AABB2&, bool rotated = false);
-
-			void DrawIcon(const Vector3& pos, IImage& img, const Vector4&, float rotation = 0.0F);
-			void DrawText(IFont& font, std::string s, const Vector3& pos, const Vector4&);
-
-			void DrawCircle(const Vector2& pos, const Vector4& col, float radius, float thickness = 1.0F);
-			void DrawMapCircle(const Vector3& pos, const Vector4&, float radius, float thickness = 1.0F);
+			void DrawGridLines(const Vector2&, const AABB2&, const Vector4&, bool rotates = false);
+			void DrawIcon(const Vector2&, IImage& img, const Vector4&, float rotation = 0.0F);
+			void DrawText(IFont& font, std::string s, const Vector2&, const Vector4&);
+			void DrawMapCircle(const Vector2&, const Vector4&, float radius, float thickness = 1.0F);
 
 		public:
 			MapView(Client*, bool largeMap);
@@ -75,7 +71,7 @@ namespace spades {
 			void SwitchScale();
 			bool IsZoomed() { return zoomed; }
 			void SetZoom(bool value) { zoomed = value; }
-			std::string ToGrid(float x, float y);
+			std::string ToGrid(const Vector2&);
 
 			void Draw();
 		};

@@ -1280,6 +1280,39 @@ namespace spades {
 							   inRect.GetMinX(), inRect.GetMaxY(), col.x, col.y, col.z, col.w);
 		}
 
+		void GLRenderer::DrawFilledTriangle(const Vector2& v0, const Vector2& v1, const Vector2& v2) {
+			SPADES_MARK_FUNCTION();
+
+			EnsureSceneNotStarted();
+
+			imageRenderer->SetImage(imageManager->GetWhiteImage());
+
+			Vector4 col = drawColorAlphaPremultiplied;
+			if (legacyColorPremultiply) {
+				col.x *= col.w;
+				col.y *= col.w;
+				col.z *= col.w;
+			}
+
+			imageRenderer->AddTriangle(v0.x, v0.y, v1.x, v1.y, v2.x, v2.y,
+										col.x, col.y, col.z, col.w);
+		}
+
+		void GLRenderer::DrawFilledRectFade(float x0, float y0, float x1, float y1,
+                                    Vector4 color0, Vector4 color1, bool horizontal) {
+			EnsureSceneNotStarted();
+			if (color0.w <= 0.0F && color1.w <= 0.0F)
+				return; // skip fully transparent draws
+			imageRenderer->SetImage(imageManager->GetWhiteImage());
+			imageRenderer->AddGradient(
+				x0, y0, x1, y0, x1, y1, x0, y1,
+				0.0F, 0.0F, 1.0F, 0.0F, 1.0F, 1.0F, 0.0F, 1.0F,
+				color0.x, color0.y, color0.z, color0.w,
+				color1.x, color1.y, color1.z, color1.w,
+				horizontal
+			);
+		}
+
 		void GLRenderer::UpdateFlatGameMap() {
 			EnsureSceneNotStarted();
 			if (flatMapRenderer)

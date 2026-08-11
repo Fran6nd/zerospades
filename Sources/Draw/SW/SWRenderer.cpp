@@ -1023,6 +1023,41 @@ namespace spades {
 			imageRenderer->DrawPolygon(img, vtx[1], vtx[3], vtx[2]);
 		}
 
+		void SWRenderer::DrawFilledTriangle(const spades::Vector2& v0, const spades::Vector2& v1,
+                                    const spades::Vector2& v2) {
+			SPADES_MARK_FUNCTION();
+
+			EnsureValid();
+			EnsureSceneNotStarted();
+
+			imageRenderer->SetShaderType(SWImageRenderer::ShaderType::Image);
+
+			Vector4 col = drawColorAlphaPremultiplied;
+			if (legacyColorPremultiply) {
+				col.x *= col.w;
+				col.y *= col.w;
+				col.z *= col.w;
+			}
+
+			SWImageRenderer::Vertex vtx0, vtx1, vtx2;
+			vtx0.color = vtx1.color = vtx2.color = col;
+			vtx0.position = MakeVector4(v0.x, v0.y, 1.0F, 1.0F);
+			vtx1.position = MakeVector4(v1.x, v1.y, 1.0F, 1.0F);
+			vtx2.position = MakeVector4(v2.x, v2.y, 1.0F, 1.0F);
+			vtx0.uv = vtx1.uv = vtx2.uv = MakeVector2(0.0F, 0.0F);
+
+			imageRenderer->DrawPolygon(whiteImage.GetPointerOrNull(), vtx0, vtx1, vtx2);
+		}
+		void SWRenderer::DrawFilledRectFade(float x0, float y0, float x1, float y1,
+                                     Vector4 color0, Vector4 color1, bool horizontal) {
+			EnsureValid();
+			EnsureSceneNotStarted();
+
+			// SW renderer doesn't support this yet
+			SetColorAlphaPremultiplied((color0 + color1) * 0.5F);
+			DrawImage(nullptr, AABB2(x0, y0, x1 - x0, y1 - y0));
+		}
+
 		void SWRenderer::UpdateFlatGameMap() {
 			SPADES_MARK_FUNCTION();
 		}
