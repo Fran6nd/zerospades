@@ -386,9 +386,6 @@ namespace spades {
 		}
 
 		void Client::DrawRecordingIndicator() {
-			if (!net || !net->IsDemoRecording())
-				return;
-
 			float sw = renderer->ScreenWidth();
 
 			int recTime = static_cast<int>(net->GetDemoRecordingTime());
@@ -397,12 +394,12 @@ namespace spades {
 
 			const std::string recStr = "REC";
 
-			IFont& font = fontManager->GetGuiFont();
+			IFont& font = fontManager->GetSmallGuiFont();
 
 			const Vector2 recSize = font.Measure(recStr);
 			const float timeFixedW = font.Measure("00:00").x;
 
-			const float iconSize = 16.0F;
+			const float iconSize = 10.0F;
 			const float iconTextOffset = iconSize - 4.0F;
 			const float labelGap = 6.0F;
 			const float totalW = iconTextOffset + labelGap + recSize.x + labelGap + timeFixedW;
@@ -417,13 +414,15 @@ namespace spades {
 			const float y = minimapY;
 
 			Vector4 red = MakeVector4(1, 0.15F, 0.15F, 1);
-			Vector4 shadow = MakeVector4(0, 0, 0, 0.5F);
+			Vector4 shadow = MakeVector4(0, 0, 0, 0.6F);
 
-			Handle<IImage> recIcon = renderer->RegisterImage("Gfx/Demo/Recording.png");
 			bool dotVisible = fmodf(time, 1.0F) < 0.6F;
 			if (dotVisible) {
+				float size = (iconSize - 2.0F) * 0.5F;
+				renderer->SetColorAlphaPremultiplied(shadow * 0.3F);
+				renderer->DrawOutlinedCircle(MakeVector2(x + size, y + size), size, 2.0F);
 				renderer->SetColorAlphaPremultiplied(red);
-				renderer->DrawImage(recIcon, AABB2(x, y, iconSize, iconSize));
+				renderer->DrawFilledCircle(MakeVector2(x + size, y + size), size);
 			}
 
 			float textX = x + iconTextOffset + labelGap;
@@ -1907,7 +1906,8 @@ namespace spades {
 				// draw demo hud
 				if (isDemoMode)
 					DrawDemoPlaybackHUD();
-				DrawRecordingIndicator();
+				if (net && net->IsDemoRecording())
+					DrawRecordingIndicator();
 
 				if (cg_stats)
 					DrawStats();

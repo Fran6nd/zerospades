@@ -332,7 +332,6 @@ namespace spades {
 			renderer->RegisterImage("Gfx/Bullet/12gauge.png");
 			renderer->RegisterImage("Gfx/Demo/Pause.png");
 			renderer->RegisterImage("Gfx/Demo/Play.png");
-			renderer->RegisterImage("Gfx/Demo/Recording.png");
 			renderer->RegisterImage("Gfx/Hotbar/Block.png");
 			renderer->RegisterImage("Gfx/Hotbar/Grenade.png");
 			renderer->RegisterImage("Gfx/Hotbar/Spade.png");
