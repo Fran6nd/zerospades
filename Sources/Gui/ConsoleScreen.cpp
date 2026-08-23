@@ -17,6 +17,7 @@
  along with OpenSpades.	 If not, see <http://www.gnu.org/licenses/>.
 
  */
+
 #include <ScriptBindings/Config.h>
 #include <ScriptBindings/ScriptFunction.h>
 
@@ -29,6 +30,8 @@
 
 namespace spades {
 	namespace gui {
+		static bool s_consoleOpen = false;
+
 		ConsoleScreen::ConsoleScreen(Handle<client::IRenderer> renderer,
 									 Handle<client::IAudioDevice> audioDevice,
 									 Handle<client::FontManager> fontManager, Handle<View> subview)
@@ -55,6 +58,7 @@ namespace spades {
 		ConsoleScreen::~ConsoleScreen() {
 			SPADES_MARK_FUNCTION();
 
+			s_consoleOpen = false;
 			helper->ConsoleScreenDestroyed();
 		}
 
@@ -290,8 +294,11 @@ namespace spades {
 			ScriptContextHandle c = func.Prepare();
 			c->SetObject(&*ui);
 			c.ExecuteChecked();
-			return c->GetReturnByte() != 0;
+			s_consoleOpen = c->GetReturnByte() != 0;
+			return s_consoleOpen;
 		}
+
+		bool ConsoleScreen::IsConsoleOpen() { return s_consoleOpen; }
 
 		void ConsoleScreen::ToggleConsole() {
 			SPADES_MARK_FUNCTION();

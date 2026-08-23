@@ -43,6 +43,7 @@
 #include "World.h"
 
 #include "NetClient.h"
+#include <Gui/ConsoleScreen.h>
 
 using namespace std;
 
@@ -134,6 +135,8 @@ namespace spades {
 		bool Client::NeedsAbsoluteMouseCoordinate() {
 			SPADES_MARK_FUNCTION();
 
+			if (gui::ConsoleScreen::IsConsoleOpen())
+				return true;
 			if (scriptedUI->NeedsInput())
 				return true;
 			if (!world)

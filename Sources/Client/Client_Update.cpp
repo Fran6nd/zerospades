@@ -223,11 +223,13 @@ namespace spades {
 
 				// disable input when UI is open
 				if (NeedsAbsoluteMouseCoordinate()) {
-					weapInput.primary = false;
+					weapInput = WeaponInput();
 
-					// don't reset player input if chat is open
 					if (!AcceptsTextInput()) {
-						weapInput.secondary = false;
+						// don't reset player input when chat box is open
+						// this way player movement isn't interrupted
+						// https://github.com/yvt/openspades/issues/215
+						// TODO: make this configurable
 						playerInput = PlayerInput();
 						largeMapView->SetZoom(false);
 						chatWindow->SetExpanded(false);
