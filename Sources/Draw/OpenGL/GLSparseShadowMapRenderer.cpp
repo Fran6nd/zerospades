@@ -244,7 +244,7 @@ namespace spades {
 		void GLSparseShadowMapRenderer::Render() {
 			SPADES_MARK_FUNCTION();
 
-			client::SceneDefinition def = GetRenderer().GetSceneDef();
+			const client::SceneDefinition& def = GetRenderer().GetSceneDef();
 
 			// skip until the camera is initialized
 			if (def.fovX <= 0.0F || def.fovY <= 0.0F)
@@ -778,10 +778,11 @@ namespace spades {
 					matrix = mat;
 
 					for (size_t mId = g.firstInstance; mId != NoInstance;
-					     mId = itnl.allInstances[mId].next) {
+						 mId = itnl.allInstances[mId].next) {
 						Internal::Instance& inst = itnl.allInstances[mId];
 						mrend.RenderModel(inst.model, *inst.param);
 
+#ifndef NDEBUG
 						// Sanity-check that the packed instance overlaps the shadow map
 						// region, consistent with the build-time frustum cull. The cull
 						// keeps an instance by bounding-box overlap, so a model close to
@@ -795,6 +796,7 @@ namespace spades {
 						SPAssert(shadowBounds.max.y >= -1.2F);
 						SPAssert(shadowBounds.min.x <= 1.2F);
 						SPAssert(shadowBounds.min.y <= 1.2F);
+#endif
 					}
 					mrend.Flush();
 				}
