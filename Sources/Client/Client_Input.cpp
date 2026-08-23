@@ -872,12 +872,11 @@ namespace spades {
 					if (p.IsToolWeapon() && weapInput.primary && !CanLocalPlayerUseWeapon())
 						PlayerDryFiredWeapon(p);
 				} else if (CheckKey(cg_keyAltAttack, name)) {
+					weapInput.secondary = down;
 					if (p.IsToolWeapon() && !cg_holdAimDownSight) {
 						Weapon& w = p.GetWeapon();
 						if (down && (!w.IsReloading() || w.IsReloadSlow()))
-							weapInput.secondary = !weapInput.secondary;
-					} else {
-						weapInput.secondary = down;
+							aimingDownSight = !aimingDownSight;
 					}
 				} else if (CheckKey(cg_keyReloadWeapon, name)) {
 					reloadKeyPressed = down;

@@ -178,6 +178,7 @@ namespace spades {
 			WeaponInput weapInput;
 			KeypadInput keypadInput;
 			Player::ToolType lastTool;
+			bool aimingDownSight;
 			bool hasLastTool;
 			Vector3 lastPosSent;
 			Vector3 lastFrontSent;

@@ -195,6 +195,7 @@ namespace spades {
 				return;
 			lastTool = world->GetLocalPlayer()->GetTool();
 			hasLastTool = true;
+			aimingDownSight = false;
 			hotBarIconState = 1.0F;
 			world->GetLocalPlayer()->SetTool(type);
 
@@ -587,15 +588,18 @@ namespace spades {
 			Player& player = world->GetLocalPlayer().value();
 			Weapon& weapon = player.GetWeapon();
 
+			// raw client input; restrictions are applied before
+			// sending to the server and passing to the player object.
 			PlayerInput inp = playerInput;
 			WeaponInput winp = weapInput;
 
-			// suppress weapon input while pie menu is held
-			if (pieMenuView && pieMenuView->IsOpen())
-				winp = WeaponInput();
-
 			bool isToolWeapon = player.IsToolWeapon();
 			bool isWeaponShotgun = weapon.IsReloadSlow();
+			bool isToggleADSMode = isToolWeapon && !cg_holdAimDownSight;
+
+			// disable tool input while pie menu is held
+			if (pieMenuView && pieMenuView->IsOpen())
+				winp = WeaponInput();
 
 			// stop sprinting if player is moving too slow
 			float vel2D = player.GetVelocity().GetSquaredLength2D();
@@ -614,6 +618,7 @@ namespace spades {
 			if (!CanLocalPlayerUseTool()) {
 				winp.primary = false;
 				winp.secondary = false;
+				aimingDownSight = false;
 				player.SetBlockCursorDragging(false);
 			}
 
@@ -626,16 +631,23 @@ namespace spades {
 				if (weapon.IsAwaitingReloadCompletion() && !isWeaponShotgun) {
 					winp.primary = false;
 					winp.secondary = false;
+					aimingDownSight = false;
 				}
+
+				// sync secondary input from the ADS toggle state
+				if (isToggleADSMode)
+					winp.secondary = aimingDownSight;
 			}
 
+			// set player input
 			player.SetInput(inp);
 			player.SetWeaponInput(winp);
 
+			// read back what the player actually accepted
 			PlayerInput actualInput = player.GetInput();
-			WeaponInput actualWeapInput = player.GetWeaponInput();
+			//WeaponInput actualWeapInput = player.GetWeaponInput();
 
-			// Uncrouching may be prevented by an obstacle
+			// sync crouch input in case uncrouching was blocked by an obstacle
 			inp.crouch = actualInput.crouch;
 
 			// send player input
@@ -652,12 +664,13 @@ namespace spades {
 				// disable zoom while reloading (except for shotgun)
 				if (winp.secondary && !isWeaponShotgun) {
 					winp.secondary = false;
+					aimingDownSight = false;
 					player.SetWeaponInput(winp);
 					activeNet->SendWeaponInput(winp);
-					actualWeapInput = winp;
-					// do not overwrite input so zoom resumes automatically
-					if (!cg_holdAimDownSight)
+					// sync secondary input to prevent ADS from persisting after reload
+					if (isToggleADSMode)
 						weapInput.secondary = winp.secondary;
+					//actualWeapInput.secondary = winp.secondary;
 				}
 
 				weapon.Reload();
@@ -669,9 +682,11 @@ namespace spades {
 				// release mouse buttons before auto-switching tools
 				winp.primary = false;
 				winp.secondary = false;
+				aimingDownSight = false;
 				player.SetWeaponInput(winp);
 				activeNet->SendWeaponInput(winp);
-				actualWeapInput = weapInput = winp;
+				weapInput = winp;
+				//actualWeapInput = winp;
 
 				// select another tool
 				Player::ToolType t = player.GetTool();

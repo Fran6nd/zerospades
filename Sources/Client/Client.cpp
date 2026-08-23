@@ -90,6 +90,7 @@ namespace spades {
 			  worldSubFrameFast(0.0F),
 			  frameToRendererInit(5),
 			  timeSinceInit(0.0F),
+			  aimingDownSight(false),
 			  hasLastTool(false),
 			  lastPosSentTime(0.0F),
 			  lastOriSentTime(0.0F),
@@ -186,6 +187,7 @@ namespace spades {
 			// preserve the staff/ESP toggle across seeks.
 			if (!IsDemoMode())
 				staffSpectating = false;
+			aimingDownSight = false;
 			reloadKeyPressed = false;
 			scoreboardVisible = false;
 			flashlightOn = false;
