@@ -37,6 +37,8 @@ namespace spades {
 		    : mapShadowTexture("mapShadowTexture"),
 		      fogColor("fogColor"),
 		      ambientColor("ambientColor"),
+			  cascadeSplit1("cascadeSplit1"),
+			  cascadeSplit2("cascadeSplit2"),
 		      shadowMapViewMatrix("shadowMapViewMatrix"),
 		      shadowMapTexture1("shadowMapTexture1"),
 		      shadowMapTexture2("shadowMapTexture2"),
@@ -165,6 +167,8 @@ namespace spades {
 					shadowMapMatrix2(program);
 					shadowMapMatrix3(program);
 					shadowMapViewMatrix(program);
+					cascadeSplit1(program);
+					cascadeSplit2(program);
 
 					GLBasicShadowMapRenderer* s =
 					  static_cast<GLBasicShadowMapRenderer*>(renderer->GetShadowMapRenderer());
@@ -204,6 +208,8 @@ namespace spades {
 					texStage++;
 
 					shadowMapViewMatrix.SetValue(renderer->GetViewMatrix());
+					cascadeSplit1.SetValue(-s->cascadeSplits[0]);
+					cascadeSplit2.SetValue(-s->cascadeSplits[1]);
 				}
 			}
 

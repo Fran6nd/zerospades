@@ -33,6 +33,8 @@ namespace spades {
 			GLProgramUniform mapShadowTexture;
 			GLProgramUniform fogColor;
 			GLProgramUniform ambientColor;
+			GLProgramUniform cascadeSplit1;
+			GLProgramUniform cascadeSplit2;
 			GLProgramUniform shadowMapViewMatrix;
 			GLProgramUniform shadowMapTexture1;
 			GLProgramUniform shadowMapTexture2;

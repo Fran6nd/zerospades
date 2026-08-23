@@ -26,14 +26,17 @@ varying vec4 shadowMapCoord1;
 varying vec4 shadowMapCoord2;
 varying vec4 shadowMapCoord3;
 
+uniform float cascadeSplit1;
+uniform float cascadeSplit2;
+
 #define shadowMapViewPosZ shadowMapCoord1.w
 
 float EvaluteModelShadow() {
-	if (shadowMapViewPosZ > -12.0) {
+	if (shadowMapViewPosZ > cascadeSplit1) {
 		vec4 scoord = shadowMapCoord1.xyzw;
 		float v = shadow2D(shadowMapTexture1, scoord.xyz).x;
 		return v;
-	} else if (shadowMapViewPosZ > -40.0) {
+	} else if (shadowMapViewPosZ > cascadeSplit2) {
 		vec4 scoord = shadowMapCoord2.xyzw;
 		float v = shadow2D(shadowMapTexture2, scoord.xyz).x;
 		return v;

@@ -14,7 +14,7 @@
  GNU General Public License for more details.
 
  You should have received a copy of the GNU General Public License
- along with OpenSpades.  If not, see <http://www.gnu.org/licenses/>.
+ along with OpenSpades.	 If not, see <http://www.gnu.org/licenses/>.
 
  */
 
@@ -31,7 +31,9 @@ namespace spades {
 
 			enum { NumSlices = 3 };
 
-			IGLDevice &device;
+			float cascadeSplits[NumSlices];
+
+			IGLDevice& device;
 
 			int textureSize;
 
@@ -49,12 +51,12 @@ namespace spades {
 			bool BuildMatrix(float near, float far);
 
 		public:
-			GLBasicShadowMapRenderer(GLRenderer &);
+			GLBasicShadowMapRenderer(GLRenderer&);
 			~GLBasicShadowMapRenderer();
 			void Render() override;
 
-			bool Cull(const AABB3 &) override;
-			bool SphereCull(const Vector3 &center, float rad) override;
+			bool Cull(const AABB3&) override;
+			bool SphereCull(const Vector3& center, float rad) override;
 		};
 	} // namespace draw
 } // namespace spades
