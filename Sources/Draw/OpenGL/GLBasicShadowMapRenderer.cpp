@@ -147,8 +147,8 @@ namespace spades {
 			// build frustrum
 			client::SceneDefinition def = GetRenderer().GetSceneDef();
 			Vector3 frustrum[8];
-			float tanX = tanf(def.fovX * .5f);
-			float tanY = tanf(def.fovY * .5f);
+			float tanX = tanf(def.fovX * 0.5F);
+			float tanY = tanf(def.fovY * 0.5F);
 
 			frustrum[0] = FrustrumCoord(def, tanX, tanY, near);
 			frustrum[1] = FrustrumCoord(def, tanX, -tanY, near);
@@ -178,8 +178,8 @@ namespace spades {
 
 			// compute frustrum's z boundary
 			Segment seg;
-			Plane3 plane1(0, 0, 1, -4.f);
-			Plane3 plane2(0, 0, 1, 64.f);
+			Plane3 plane1(0, 0, 1, -4.0F);
+			Plane3 plane2(0, 0, 1, 64.0F);
 			seg += ZRange(side * minX + up * minY, lightDir, plane1, plane2);
 			seg += ZRange(side * minX + up * maxY, lightDir, plane1, plane2);
 			seg += ZRange(side * maxX + up * minY, lightDir, plane1, plane2);
@@ -206,17 +206,17 @@ namespace spades {
 				return false;
 
 			obb = OBB3(Matrix4::FromAxis(axis1, axis2, axis3, origin));
-			vpWidth = 2.f / len1;
-			vpHeight = 2.f / len2;
+			vpWidth = 2.0F / len1;
+			vpHeight = 2.0F / len2;
 
 			// convert to projectionview matrix
 			matrix = obb.m.InversedFast();
 
-			matrix = Matrix4::Scale(2.f) * matrix;
+			matrix = Matrix4::Scale(2.0F) * matrix;
 			matrix = Matrix4::Translate(-1, -1, -1) * matrix;
 
 			// scale a little big for padding
-			matrix = Matrix4::Scale(.98f) * matrix;
+			matrix = Matrix4::Scale(0.98F) * matrix;
 			matrix = Matrix4::Scale(1, 1, -1) * matrix;
 
 // make sure frustrums in range
@@ -225,10 +225,8 @@ namespace spades {
 				Vector4 v = matrix * frustrum[i];
 				SPAssert(v.x >= -1.f);
 				SPAssert(v.y >= -1.f);
-				// SPAssert(v.z >= -1.f);
 				SPAssert(v.x < 1.f);
 				SPAssert(v.y < 1.f);
-				// SPAssert(v.z < 1.f);
 			}
 #endif
 			return true;
@@ -242,29 +240,34 @@ namespace spades {
 			if (def.fovX <= 0.0F || def.fovY <= 0.0F)
 				return;
 
-			float nearDist = 0.0F;
+			const float nearClip = def.zNear;
+			const float farClip = def.zFar;
+			const float clipRange = farClip - nearClip;
+
+			// blend factor between logarithmic and uniform PSSM split schemes.
+			static constexpr float splitWeight = 0.5F;
+
+			float nearDist = nearClip;
 			for (int i = 0; i < NumSlices; i++) {
 				GLProfiler::Context profiler(GetRenderer().GetGLProfiler(), "Slice %d / %d", i + 1,
 				                             (int)NumSlices);
 
-				float farDist = 0.0F;
-				// TODO: variable far distance according to the scene definition
-				//       (note that this needs uniform shader variable)
-				switch (i) {
-					case 0: farDist = 12.0F; break;
-					case 1: farDist = 40.0F; break;
-					case 2: farDist = 150.0F; break;
-				}
+				float p = (i + 1) / float(NumSlices);
+				float logSplit = nearClip * powf(farClip / nearClip, p);
+				float uniSplit = nearClip + clipRange * p;
+				float farDist = splitWeight * logSplit + (1.0F - splitWeight) * uniSplit;
 
 				// skip shadow rendering this frame if the camera isn't usable yet
 				// (e.g. an uninitialized scene definition during a transition)
 				if (!BuildMatrix(nearDist, farDist))
 					return;
+
 				matrices[i] = matrix;
+				cascadeSplits[i] = farDist;
 
 				device.BindFramebuffer(IGLDevice::Framebuffer, framebuffer[i]);
 				device.Viewport(0, 0, textureSize, textureSize);
-				device.ClearDepth(1.f);
+				device.ClearDepth(1.0F);
 				device.Clear(IGLDevice::DepthBufferBit);
 
 				RenderShadowMapPass();
@@ -274,7 +277,6 @@ namespace spades {
 		}
 
 		bool GLBasicShadowMapRenderer::Cull(const spades::AABB3&) {
-
 			// TODO: who uses this?
 			SPNotImplemented();
 			return true;
@@ -286,7 +288,6 @@ namespace spades {
 			float yy = fabsf(vw.y);
 			float rx = rad * vpWidth;
 			float ry = rad * vpHeight;
-
 			return xx < (1.0F + rx) && yy < (1.0F + ry);
 		}
 	} // namespace draw
