@@ -59,6 +59,8 @@ namespace spades {
 			Handle<ConsoleCommandCandidateIterator>
 			AutocompleteCommandName(const std::string& name) override;
 
+			static bool IsConsoleOpen();
+
 		private:
 			~ConsoleScreen();
 
