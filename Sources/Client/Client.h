@@ -189,6 +189,8 @@ namespace spades {
 			float lastAliveTime;
 			int lastRespawnCount;
 			float lastHitTime;
+			bool lastHitWasScoped;
+			bool lastHitWasAirborne;
 			int damageTaken;
 			int lastHealth;
 			int lastScore;
