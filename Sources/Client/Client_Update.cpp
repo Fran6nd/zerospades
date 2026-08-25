@@ -63,6 +63,7 @@ DEFINE_SPADES_SETTING(cg_hitLog, "0");
 DEFINE_SPADES_SETTING(cg_killfeedIcons, "1");
 DEFINE_SPADES_SETTING(cg_killfeedStreaks, "1");
 DEFINE_SPADES_SETTING(cg_classicSprinting, "0");
+DEFINE_SPADES_SETTING(cg_autoUnscope, "0");
 DEFINE_SPADES_SETTING(cg_spectatorNoclip, "0");
 
 SPADES_SETTING(cg_smallFont);
@@ -639,6 +640,17 @@ namespace spades {
 				// sync secondary input from the ADS toggle state
 				if (isToggleADSMode)
 					winp.secondary = aimingDownSight;
+
+				// cancel ADS on fire
+				if (cg_autoUnscope && player.GetWeaponType() != SMG_WEAPON && winp.secondary) {
+					float nextFireTime = weapon.GetTimeToNextFire();
+					float timeSinceLastShot = weapon.GetDelay() - nextFireTime;
+					if (nextFireTime > 0.0F && timeSinceLastShot < 0.1F) {
+						if (isToggleADSMode)
+							aimingDownSight = false;
+						winp.secondary = false;
+					}
+				}
 			}
 
 			// set player input
