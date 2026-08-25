@@ -96,6 +96,8 @@ namespace spades {
 			  lastOriSentTime(0.0F),
 			  lastAliveTime(0.0F),
 			  lastRespawnCount(0),
+			  lastHitWasScoped(false),
+			  lastHitWasAirborne(false),
 			  damageTaken(0),
 			  lastScore(0),
 			  curKills(0),
@@ -177,6 +179,8 @@ namespace spades {
 			lastHurtTime = -100.0F;
 			lastHealTime = -100.0F;
 			lastHitTime = -100.0F;
+			lastHitWasScoped = false;
+			lastHitWasAirborne = false;
 			hurtRingView->ClearAll();
 			killStreaks.clear();
 
