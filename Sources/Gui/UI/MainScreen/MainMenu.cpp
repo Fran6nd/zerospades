@@ -598,6 +598,15 @@ namespace spades {
 					modsPanel->AddChild(modsList);
 				}
 
+				{
+					Handle<KV6BrowserPanel> panel = Handle<KV6BrowserPanel>::New(
+					    manager, helper, this, contentsLeft, contentsWidth, headerPos,
+					    headerHeight, listPos, footerPos);
+					editorPanel = panel.GetPointerOrNull();
+					editorPanel->visible = false;
+					AddChild(editorPanel);
+				}
+
 				AddChild(serverPanel);
 				AddChild(demoPanel);
 				AddChild(modsPanel);
@@ -613,6 +622,7 @@ namespace spades {
 					// the mod manager is irrelevant and its enabled set is bypassed.
 					if (!helper->IsTryingMod())
 						tabStrip->AddItem(_Tr("MainScreen", "Mods"), modsPanel);
+					tabStrip->AddItem(_Tr("MainScreen", "Editor"), editorPanel);
 					tabStrip->changed = [this](UIElement& s) { OnTabChanged(s); };
 				}
 
@@ -690,6 +700,8 @@ namespace spades {
 				LoadDemoList();
 			if (modsPanel->visible)
 				LoadModList();
+			if (editorPanel->visible)
+				editorPanel->Refresh();
 		}
 
 		MainScreenMainMenuState MainScreenMainMenu::GetState() {
@@ -1142,6 +1154,8 @@ namespace spades {
 			if (IsEnabled() && key == "Enter") {
 				if (demoPanel->visible) {
 					PlaySelectedDemo();
+				} else if (editorPanel->visible) {
+					editorPanel->SubmitPath();
 				} else {
 					Connect();
 				}
