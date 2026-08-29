@@ -25,8 +25,7 @@
 #include <Core/Exception.h>
 #include <Core/Settings.h>
 #include <Core/Strings.h>
-#include <ScriptBindings/Config.h>
-#include <ScriptBindings/ScriptFunction.h>
+#include <Gui/UI/MainScreen/MainScreenUI.h>
 
 DEFINE_SPADES_SETTING(cg_playerName, "Deuce");
 
@@ -61,11 +60,8 @@ namespace spades {
 		// Restores renderer's state (game map, fog color)
 		// after returning from the game client.
 		void MainScreen::RestoreRenderer() {
-			ScopedPrivilegeEscalation privilege;
-			static ScriptFunction func("MainScreenUI", "void SetupRenderer()");
-			ScriptContextHandle c = func.Prepare();
-			c->SetObject(&*ui);
-			c.ExecuteChecked();
+			if (ui)
+				ui->SetupRenderer();
 		}
 
 		bool MainScreen::NeedsAbsoluteMouseCoordinate() {
@@ -85,13 +81,7 @@ namespace spades {
 			if (!ui)
 				return;
 
-			ScopedPrivilegeEscalation privilege;
-			static ScriptFunction func("MainScreenUI", "void MouseEvent(float, float)");
-			ScriptContextHandle c = func.Prepare();
-			c->SetObject(&*ui);
-			c->SetArgFloat(0, x);
-			c->SetArgFloat(1, y);
-			c.ExecuteChecked();
+			ui->MouseEvent(x, y);
 		}
 
 		void MainScreen::WheelEvent(float x, float y) {
@@ -103,13 +93,7 @@ namespace spades {
 			if (!ui)
 				return;
 
-			ScopedPrivilegeEscalation privilege;
-			static ScriptFunction func("MainScreenUI", "void WheelEvent(float, float)");
-			ScriptContextHandle c = func.Prepare();
-			c->SetObject(&*ui);
-			c->SetArgFloat(0, x);
-			c->SetArgFloat(1, y);
-			c.ExecuteChecked();
+			ui->WheelEvent(x, y);
 		}
 
 		void MainScreen::KeyEvent(const std::string& key, bool down) {
@@ -120,14 +104,7 @@ namespace spades {
 			}
 			if (!ui)
 				return;
-			ScopedPrivilegeEscalation privilege;
-			static ScriptFunction func("MainScreenUI", "void KeyEvent(string, bool)");
-			ScriptContextHandle c = func.Prepare();
-			std::string k = key;
-			c->SetObject(&*ui);
-			c->SetArgObject(0, reinterpret_cast<void*>(&k));
-			c->SetArgByte(1, down ? 1 : 0);
-			c.ExecuteChecked();
+			ui->KeyEvent(key, down);
 		}
 
 		void MainScreen::TextInputEvent(const std::string& ch) {
@@ -138,13 +115,7 @@ namespace spades {
 			}
 			if (!ui)
 				return;
-			ScopedPrivilegeEscalation privilege;
-			static ScriptFunction func("MainScreenUI", "void TextInputEvent(string)");
-			ScriptContextHandle c = func.Prepare();
-			std::string k = ch;
-			c->SetObject(&*ui);
-			c->SetArgObject(0, reinterpret_cast<void*>(&k));
-			c.ExecuteChecked();
+			ui->TextInputEvent(ch);
 		}
 
 		void MainScreen::TextEditingEvent(const std::string& ch, int start, int len) {
@@ -155,15 +126,7 @@ namespace spades {
 			}
 			if (!ui)
 				return;
-			ScopedPrivilegeEscalation privilege;
-			static ScriptFunction func("MainScreenUI", "void TextEditingEvent(string, int, int)");
-			ScriptContextHandle c = func.Prepare();
-			std::string k = ch;
-			c->SetObject(&*ui);
-			c->SetArgObject(0, reinterpret_cast<void*>(&k));
-			c->SetArgDWord(1, static_cast<asDWORD>(start));
-			c->SetArgDWord(2, static_cast<asDWORD>(len));
-			c.ExecuteChecked();
+			ui->TextEditingEvent(ch, start, len);
 		}
 
 		bool MainScreen::AcceptsTextInput() {
@@ -172,12 +135,7 @@ namespace spades {
 				return subview->AcceptsTextInput();
 			if (!ui)
 				return false;
-			ScopedPrivilegeEscalation privilege;
-			static ScriptFunction func("MainScreenUI", "bool AcceptsTextInput()");
-			ScriptContextHandle c = func.Prepare();
-			c->SetObject(&*ui);
-			c.ExecuteChecked();
-			return c->GetReturnByte() != 0;
+			return ui->AcceptsTextInput();
 		}
 
 		AABB2 MainScreen::GetTextInputRect() {
@@ -186,24 +144,14 @@ namespace spades {
 				return subview->GetTextInputRect();
 			if (!ui)
 				return AABB2();
-			ScopedPrivilegeEscalation privilege;
-			static ScriptFunction func("MainScreenUI", "AABB2 GetTextInputRect()");
-			ScriptContextHandle c = func.Prepare();
-			c->SetObject(&*ui);
-			c.ExecuteChecked();
-			return *reinterpret_cast<AABB2*>(c->GetReturnObject());
+			return ui->GetTextInputRect();
 		}
 
 		bool MainScreen::WantsToBeClosed() {
 			SPADES_MARK_FUNCTION();
 			if (!ui)
 				return false;
-			ScopedPrivilegeEscalation privilege;
-			static ScriptFunction func("MainScreenUI", "bool WantsToBeClosed()");
-			ScriptContextHandle c = func.Prepare();
-			c->SetObject(&*ui);
-			c.ExecuteChecked();
-			return c->GetReturnByte() != 0;
+			return ui->WantsToBeClosed();
 		}
 
 		void MainScreen::DrawStartupScreen() {
@@ -232,9 +180,6 @@ namespace spades {
 			pos = MakeVector2(sw - 16.0F, sh - 16.0F);
 			pos -= size;
 			font.DrawShadow(str, pos, 1.0F, MakeVector4(1, 1, 1, 1), MakeVector4(0, 0, 0, 0.5));
-
-			renderer->FrameDone();
-			renderer->Flip();
 		}
 
 		void MainScreen::RunFrame(float dt) {
@@ -267,62 +212,55 @@ namespace spades {
 
 			helper->Update();
 
-			ScopedPrivilegeEscalation privilege;
-			static ScriptFunction func("MainScreenUI", "void RunFrame(float)");
-			ScriptContextHandle c = func.Prepare();
-			c->SetObject(&*ui);
-			c->SetArgFloat(0, dt);
-			c.ExecuteChecked();
-		}
-
-		void MainScreen::RunFrameLate(float dt) {
-			SPADES_MARK_FUNCTION();
-			if (subview) {
-				try {
-					subview->RunFrameLate(dt);
-					if (subview->WantsToBeClosed()) {
-						subview->Closing();
-						subview = NULL;
-						RestoreRenderer();
-					} else {
-						return;
-					}
-				} catch (const std::exception& ex) {
-					SPLog("[!] Error while running a game client: %s", ex.what());
-					subview->Closing();
-					subview = NULL;
-					RestoreRenderer();
-					helper->errorMessage = ex.what();
-				}
-			}
-
+			// `DoInit` either sets `ui` or throws, so this should not fire. Guard it
+			// anyway, so that an init path which ever leaves `ui` unset stops here
+			// instead of dereferencing null.
 			if (!ui)
 				return;
 
-			ScopedPrivilegeEscalation privilege;
-			static ScriptFunction func("MainScreenUI", "void RunFrameLate(float)");
-			ScriptContextHandle c = func.Prepare();
-			c->SetObject(&*ui);
-			c->SetArgFloat(0, dt);
-			c.ExecuteChecked();
+			ui->RunFrame(dt);
+		}
+
+		// Runs after the runner has presented the frame: this is where the game client
+		// is torn down, so the renderer state it leaves behind is never swapped in.
+		void MainScreen::RunFrameLate(float dt) {
+			SPADES_MARK_FUNCTION();
+			if (!subview)
+				return;
+
+			try {
+				subview->RunFrameLate(dt);
+				if (!subview->WantsToBeClosed())
+					return;
+
+				subview->Closing();
+				subview = NULL;
+				RestoreRenderer();
+			} catch (const std::exception& ex) {
+				SPLog("[!] Error while running a game client: %s", ex.what());
+				subview->Closing();
+				subview = NULL;
+				RestoreRenderer();
+				helper->errorMessage = ex.what();
+			}
 		}
 
 		void MainScreen::DoInit() {
 			SPADES_MARK_FUNCTION();
-			renderer->Init();
+			try {
+				renderer->Init();
 
-			ScopedPrivilegeEscalation privilege;
-			static ScriptFunction uiFactory("MainScreenUI@ CreateMainScreenUI(Renderer@, "
-			                                "AudioDevice@, FontManager@, MainScreenHelper@)");
-			{
-				ScriptContextHandle ctx = uiFactory.Prepare();
-				ctx->SetArgObject(0, renderer.GetPointerOrNull());
-				ctx->SetArgObject(1, audioDevice.GetPointerOrNull());
-				ctx->SetArgObject(2, fontManager.GetPointerOrNull());
-				ctx->SetArgObject(3, &*helper);
-
-				ctx.ExecuteChecked();
-				ui = reinterpret_cast<asIScriptObject*>(ctx->GetReturnObject());
+				ui = Handle<MainScreenUI>::New(renderer.GetPointerOrNull(),
+				                               audioDevice.GetPointerOrNull(),
+				                               fontManager.GetPointerOrNull(),
+				                               helper.GetPointerOrNull());
+			} catch (const std::exception& ex) {
+				// Let the failure reach the top-level handler, but name the phase in
+				// SystemMessages.log first: a failure here leaves the startup screen as
+				// the last presented frame, which is otherwise hard to tell apart from
+				// a hang.
+				SPLog("[!] Failed to initialize the main screen UI: %s", ex.what());
+				throw;
 			}
 		}
 
@@ -336,11 +274,7 @@ namespace spades {
 			if (!ui)
 				return;
 
-			ScopedPrivilegeEscalation privilege;
-			static ScriptFunction func("MainScreenUI", "void Closing()");
-			ScriptContextHandle c = func.Prepare();
-			c->SetObject(&*ui);
-			c.ExecuteChecked();
+			ui->Closing();
 		}
 
 		bool MainScreen::ExecCommand(const Handle<ConsoleCommand>& cmd) {
