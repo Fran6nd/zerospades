@@ -1365,6 +1365,10 @@ namespace spades {
 			undo.Begin("Set Pivot");
 			ApplyOriginRaw(after);
 			undo.RecordOrigin(before, after);
+			// In .2kv6 mode, also update the scene object's position
+			if (is2KV6 && activeObjectIndex < scene.size()) {
+				scene[activeObjectIndex].position = pivot;
+			}
 			undo.End();
 		}
 
@@ -1372,7 +1376,13 @@ namespace spades {
 
 		// Live, non-journaled pivot move for a drag in progress; the tool commits the
 		// net change with one SetPivot on release.
-		void KV6EditorView::PreviewPivot(const Vector3& pivot) { ApplyOriginRaw(pivot * -1.0F); }
+		void KV6EditorView::PreviewPivot(const Vector3& pivot) {
+			ApplyOriginRaw(pivot * -1.0F);
+			// In .2kv6 mode, also update the scene object's position for live preview
+			if (is2KV6 && activeObjectIndex < scene.size()) {
+				scene[activeObjectIndex].position = pivot;
+			}
+		}
 
 		void KV6EditorView::BeginPivotEntry() {
 			Vector3 p = GetPivot();
