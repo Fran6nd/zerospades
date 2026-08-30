@@ -44,8 +44,10 @@ namespace spades {
 		}
 
 		void MapEditorView::MouseEvent(float x, float y) {
+			if (!ui)
+				return;
 			EditorMenu* menu = ui->GetEditorMenu();
-			if (menu->IsActive())
+			if (!menu || menu->IsActive())
 				return;
 			if (client) {
 				client->MouseEvent(x, y);
@@ -53,8 +55,10 @@ namespace spades {
 		}
 
 		void MapEditorView::WheelEvent(float x, float y) {
+			if (!ui)
+				return;
 			EditorMenu* menu = ui->GetEditorMenu();
-			if (menu->IsActive())
+			if (!menu || menu->IsActive())
 				return;
 			if (client) {
 				client->WheelEvent(x, y);
@@ -62,7 +66,11 @@ namespace spades {
 		}
 
 		void MapEditorView::KeyEvent(const std::string& key, bool down) {
+			if (!ui)
+				return;
 			EditorMenu* menu = ui->GetEditorMenu();
+			if (!menu)
+				return;
 			if (menu->KeyEvent(key, down))
 				return;
 
@@ -77,7 +85,11 @@ namespace spades {
 		}
 
 		void MapEditorView::TextInputEvent(const std::string& text) {
+			if (!ui)
+				return;
 			EditorMenu* menu = ui->GetEditorMenu();
+			if (!menu)
+				return;
 			if (menu->AcceptsTextInput()) {
 				menu->TextInputEvent(text);
 			} else if (client) {
@@ -86,12 +98,20 @@ namespace spades {
 		}
 
 		bool MapEditorView::AcceptsTextInput() {
+			if (!ui)
+				return false;
 			EditorMenu* menu = ui->GetEditorMenu();
+			if (!menu)
+				return false;
 			return menu->AcceptsTextInput() || (client && client->AcceptsTextInput());
 		}
 
 		AABB2 MapEditorView::GetTextInputRect() {
+			if (!ui)
+				return AABB2();
 			EditorMenu* menu = ui->GetEditorMenu();
+			if (!menu)
+				return AABB2();
 			if (menu->AcceptsTextInput())
 				return menu->GetTextInputRect();
 			if (client)
@@ -145,8 +165,11 @@ namespace spades {
 			}
 
 			// Draw menu overlay
-			EditorMenu* menu = ui->GetEditorMenu();
-			menu->Draw();
+			if (ui) {
+				EditorMenu* menu = ui->GetEditorMenu();
+				if (menu)
+					menu->Draw();
+			}
 		}
 
 		void MapEditorView::SaveDocument(const std::string& path) {
