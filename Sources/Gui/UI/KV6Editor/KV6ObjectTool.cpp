@@ -96,9 +96,25 @@ namespace spades {
 			Vector2 cur = ctx.CursorPos();
 			int best = -1;
 			float bestDist = kHitDist;
+
+			// Determine axes based on global/local space (must match DrawOverlay)
+			Vector3 axes[3];
+			if (!objectTool->GetGlobalTransformSpace()) {
+				// Local space: rotate axes by object rotation
+				Quaternion rot(ctx.GetObjectRotation());
+				axes[0] = rot.Apply(AxisUnit(0));
+				axes[1] = rot.Apply(AxisUnit(1));
+				axes[2] = rot.Apply(AxisUnit(2));
+			} else {
+				// Global space: use world axes
+				axes[0] = AxisUnit(0);
+				axes[1] = AxisUnit(1);
+				axes[2] = AxisUnit(2);
+			}
+
 			for (int a = 0; a < 3; a++) {
 				bool ok1;
-				Vector2 tip = ctx.WorldToScreen(origin + AxisUnit(a) * kGizLen, ok1);
+				Vector2 tip = ctx.WorldToScreen(origin + axes[a] * kGizLen, ok1);
 				if (!ok1)
 					continue;
 				float d = std::min(DistToSeg(cur, s0, tip), (cur - tip).GetLength());
@@ -317,9 +333,25 @@ namespace spades {
 			Vector2 cur = ctx.CursorPos();
 			int best = -1;
 			float bestDist = kHitDist * 1.5F;
+
+			// Determine axes based on global/local space (must match DrawOverlay)
+			Vector3 axes[3];
+			if (!objectTool->GetGlobalTransformSpace()) {
+				// Local space: rotate axes by object rotation
+				Quaternion rot(ctx.GetObjectRotation());
+				axes[0] = rot.Apply(AxisUnit(0));
+				axes[1] = rot.Apply(AxisUnit(1));
+				axes[2] = rot.Apply(AxisUnit(2));
+			} else {
+				// Global space: use world axes
+				axes[0] = AxisUnit(0);
+				axes[1] = AxisUnit(1);
+				axes[2] = AxisUnit(2);
+			}
+
 			for (int a = 0; a < 3; a++) {
 				bool ok1;
-				Vector2 tip = ctx.WorldToScreen(origin + AxisUnit(a) * kGizLen, ok1);
+				Vector2 tip = ctx.WorldToScreen(origin + axes[a] * kGizLen, ok1);
 				if (!ok1)
 					continue;
 				float d = std::min(DistToSeg(cur, s0, tip), (cur - tip).GetLength());
@@ -517,9 +549,25 @@ namespace spades {
 			Vector2 cur = ctx.CursorPos();
 			int best = -1;
 			float bestDist = kHitDist;
+
+			// Determine axes based on global/local space (must match DrawOverlay)
+			Vector3 axes[3];
+			if (!objectTool->GetGlobalTransformSpace()) {
+				// Local space: rotate axes by object rotation
+				Quaternion rot(ctx.GetObjectRotation());
+				axes[0] = rot.Apply(AxisUnit(0));
+				axes[1] = rot.Apply(AxisUnit(1));
+				axes[2] = rot.Apply(AxisUnit(2));
+			} else {
+				// Global space: use world axes
+				axes[0] = AxisUnit(0);
+				axes[1] = AxisUnit(1);
+				axes[2] = AxisUnit(2);
+			}
+
 			for (int a = 0; a < 3; a++) {
 				bool ok1;
-				Vector2 tip = ctx.WorldToScreen(origin + AxisUnit(a) * kGizLen, ok1);
+				Vector2 tip = ctx.WorldToScreen(origin + axes[a] * kGizLen, ok1);
 				if (!ok1)
 					continue;
 				float d = std::min(DistToSeg(cur, s0, tip), (cur - tip).GetLength());
