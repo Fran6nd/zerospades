@@ -182,26 +182,53 @@ namespace spades {
 			if (!ctx.IsScene2KV6())
 				return;
 
-			if (!gizmo)
-				gizmo = std::make_unique<Gizmo>();
+			Vector3 origin = ctx.GetPivot();
 
-			// Read current space mode from options
-			useGlobalSpace = options.Count() > 0 ? !options.At(0).bvalue : true;
+			// Highlight the origin cell
+			Vector4 highlightColor = MakeVector4(1.0F, 1.0F, 0.3F, 1.0F);
+			ctx.DrawCellOutline(int(origin.x), int(origin.y), int(origin.z), highlightColor);
 
-			// Draw gizmo at the pivot point (represents current object's origin)
-			Vector3 selectedObjectOrigin = ctx.GetPivot();
-			Vector4 selectedObjectRotation = MakeVector4(0, 0, 0, 1); // Identity
+			// Draw axis lines (like PivotGizmoSubTool)
+			const Vector4 kAxisCol[3] = {
+				MakeVector4(1.0F, 0.35F, 0.35F, 1.0F),  // X - red
+				MakeVector4(0.4F, 1.0F, 0.4F, 1.0F),    // Y - green
+				MakeVector4(0.45F, 0.6F, 1.0F, 1.0F)    // Z - blue
+			};
 
-			// Draw all gizmo modes together
-			gizmo->Draw(ctx, selectedObjectOrigin, Gizmo::All,
-			            useGlobalSpace ? nullptr : &selectedObjectRotation);
+			// Check which axis is hovered
+			int hover = (gizmoAxis < 0) ? HitAxis(ctx, origin) : -1;
 
-			// Status: show selected object info
-			ctx.SetStatus("Object 0 selected | Tab=cycle, E=edit, Shift+N=new, Del=delete");
+			// Draw each axis
+			for (int a = 0; a < 3; a++) {
+				bool active = (gizmoAxis == a) || (hover == a);
+				Vector4 col = active ? MakeVector4(1, 1, 1, 1) : kAxisCol[a];
+				Vector3 axisEnd = origin + AxisUnit(a) * kGizLen;
+				ctx.DrawLine3D(origin, axisEnd, col);
+			}
 		}
 
 		void ObjectTool::DrawOverlay(IEditorContext& ctx) {
-			// Show status and hint text
+			if (!ctx.IsScene2KV6())
+				return;
+
+			Vector3 origin = ctx.GetPivot();
+
+			// Draw solid cube handles at axis tips (like PivotGizmoSubTool)
+			const Vector4 kAxisCol[3] = {
+				MakeVector4(1.0F, 0.35F, 0.35F, 1.0F),
+				MakeVector4(0.4F, 1.0F, 0.4F, 1.0F),
+				MakeVector4(0.45F, 0.6F, 1.0F, 1.0F)
+			};
+
+			int hover = (gizmoAxis < 0) ? HitAxis(ctx, origin) : -1;
+
+			for (int a = 0; a < 3; a++) {
+				bool active = (gizmoAxis == a) || (hover == a);
+				Vector4 col = active ? MakeVector4(1, 1, 1, 1) : kAxisCol[a];
+				Vector3 handle = origin + AxisUnit(a) * kGizLen;
+				float size = active ? 1.05F : 0.8F;
+				ctx.DrawSolidCube(handle, size, col);
+			}
 		}
 
 		void ObjectTool::CreateNewObject(IEditorContext& ctx, const std::string& name) {
