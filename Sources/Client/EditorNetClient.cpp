@@ -239,7 +239,6 @@ namespace spades {
 			if (!map)
 				return;
 
-			// Bresenham line drawing for block line
 			int dx = abs(v2.x - v1.x);
 			int dy = abs(v2.y - v1.y);
 			int dz = abs(v2.z - v1.z);
@@ -248,7 +247,10 @@ namespace spades {
 			int sy = (v1.y < v2.y) ? 1 : -1;
 			int sz = (v1.z < v2.z) ? 1 : -1;
 
-			int err = dx + dy + dz;
+			// 3D Bresenham algorithm: track error terms for each axis
+			int err_x = dx - dy - dz;
+			int err_y = dy - dx - dz;
+			int err_z = dz - dx - dy;
 
 			IntVector3 pos = v1;
 			while (true) {
@@ -257,17 +259,25 @@ namespace spades {
 				if (pos.x == v2.x && pos.y == v2.y && pos.z == v2.z)
 					break;
 
-				int e2 = 2 * err;
-				if (e2 > -(dx + dy + dz)) {
-					err -= dy + dz;
+				// Find which axis has the largest error and step that direction
+				int abs_err_x = abs(err_x + dy + dz);
+				int abs_err_y = abs(err_y + dx + dz);
+				int abs_err_z = abs(err_z + dx + dy);
+
+				if (abs_err_x > abs_err_y && abs_err_x > abs_err_z) {
+					err_x -= 2 * (dy + dz);
+					err_y += 2 * dx;
+					err_z += 2 * dx;
 					pos.x += sx;
-				}
-				if (e2 < dx + dy + dz) {
-					err -= dx + dz;
+				} else if (abs_err_y > abs_err_z) {
+					err_x += 2 * dy;
+					err_y -= 2 * (dx + dz);
+					err_z += 2 * dy;
 					pos.y += sy;
-				}
-				if (e2 < dx + dy) {
-					err -= dx + dy;
+				} else {
+					err_x += 2 * dz;
+					err_y += 2 * dz;
+					err_z -= 2 * (dx + dy);
 					pos.z += sz;
 				}
 			}
