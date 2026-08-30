@@ -382,7 +382,7 @@ namespace spades {
 			// --- IEditorMenuHost (overrides) ---
 			std::string GetMenuTitle() override { return "KV6 Editor"; }
 			std::string GetDocumentPath() override { return filePath; }
-			std::string GetDocumentExtension() override { return ".kv6"; }
+			std::string GetDocumentExtension() override { return is2KV6 ? ".2kv6" : ".kv6"; }
 			void SaveDocument(const std::string& path) override;
 			void RequestClose() override { wantsClose = true; }
 			bool OnMenuEscape() override;

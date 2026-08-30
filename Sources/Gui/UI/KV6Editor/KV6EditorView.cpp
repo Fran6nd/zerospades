@@ -529,6 +529,38 @@ namespace spades {
 		}
 
 		void KV6EditorView::SaveDocument(const std::string& path) {
+			size_t dotPos = path.rfind('.');
+			if (dotPos != std::string::npos) {
+				std::string ext = path.substr(dotPos);
+				bool newIs2KV6 = (ext == ".2kv6" || ext == ".2KV6");
+				if (newIs2KV6 != is2KV6) {
+					// Format change: convert the document before saving
+					if (newIs2KV6) {
+						// Converting .kv6 → .2kv6: wrap model in a scene
+						if (scene.empty()) {
+							VoxelObject root;
+							root.name = "";
+							root.model = model;
+							scene.push_back(root);
+							activeSceneRootIndex = 0;
+						}
+						is2KV6 = true;
+					} else {
+						// Converting .2kv6 → .kv6: extract a model from the scene
+						if (activeSceneRootIndex < scene.size()) {
+							if (currentMode == EditorMode::Edit &&
+							    activeChildIndex < scene[activeSceneRootIndex].children.size()) {
+								model = scene[activeSceneRootIndex].children[activeChildIndex].model;
+							} else if (!scene[activeSceneRootIndex].children.empty()) {
+								model = scene[activeSceneRootIndex].children[0].model;
+							} else if (scene[activeSceneRootIndex].model) {
+								model = scene[activeSceneRootIndex].model;
+							}
+						}
+						is2KV6 = false;
+					}
+				}
+			}
 			filePath = path;
 			Save();
 		}
