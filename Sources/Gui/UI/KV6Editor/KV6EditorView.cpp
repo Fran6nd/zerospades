@@ -1374,10 +1374,10 @@ namespace spades {
 		// --- Pivot ------------------------------------------------------------
 
 		Vector3 KV6EditorView::GetPivot() const {
-			// In .2kv6 mode, return the scene object's position
+			// In .2kv6 mode, return the active child object's position
 			// In regular .kv6 mode, return the model's pivot
-			if (is2KV6 && activeObjectIndex < scene.size()) {
-				return scene[activeObjectIndex].position;
+			if (const VoxelObject* obj = GetActiveObject()) {
+				return obj->position;
 			}
 			return model->GetOrigin() * -1.0F;
 		}
@@ -1390,13 +1390,12 @@ namespace spades {
 		}
 
 		void KV6EditorView::SetPivot(const Vector3& pivot) {
-			// In .2kv6 mode, update the scene object's position (not the model's origin)
-			if (is2KV6 && activeObjectIndex < scene.size()) {
-				Vector3& objPos = scene[activeObjectIndex].position;
-				if (objPos.x == pivot.x && objPos.y == pivot.y && objPos.z == pivot.z)
+			// In .2kv6 mode, update the active child object's position
+			if (VoxelObject* obj = GetActiveObject()) {
+				if (obj->position.x == pivot.x && obj->position.y == pivot.y && obj->position.z == pivot.z)
 					return;
 				undo.Begin("Move Object");
-				objPos = pivot;
+				obj->position = pivot;
 				undo.End();
 				return;
 			}
@@ -1416,9 +1415,9 @@ namespace spades {
 		// Live, non-journaled pivot move for a drag in progress; the tool commits the
 		// net change with one SetPivot on release.
 		void KV6EditorView::PreviewPivot(const Vector3& pivot) {
-			// In .2kv6 mode, update scene object position for live preview (no model origin change)
-			if (is2KV6 && activeObjectIndex < scene.size()) {
-				scene[activeObjectIndex].position = pivot;
+			// In .2kv6 mode, update active child object position for live preview
+			if (VoxelObject* obj = GetActiveObject()) {
+				obj->position = pivot;
 				return;
 			}
 			// In regular .kv6 mode, update the model's pivot
@@ -2175,17 +2174,21 @@ namespace spades {
 		}
 
 		bool KV6EditorView::CreateSceneObject(const std::string& name) {
-			if (!is2KV6)
-				return false;
-
-			if (activeObjectIndex >= scene.size())
+			if (!is2KV6 || activeObjectIndex >= scene.size())
 				return false;
 
 			// Create new object as child of the root object
 			VoxelObject newObj = VoxelModel2KV6::CreateObject(name, cubeSize);
 			scene[activeObjectIndex].children.push_back(newObj);
 
-			SetStatus("Created object: " + (name.empty() ? "(unnamed)" : name));
+			// Select the newly created object
+			activeChildIndex = scene[activeObjectIndex].children.size() - 1;
+			if (scene[activeObjectIndex].children[activeChildIndex].model) {
+				model = scene[activeObjectIndex].children[activeChildIndex].model;
+				RebuildRenderModel();
+			}
+
+			SetStatus("Created object " + std::to_string(activeChildIndex));
 			return true;
 		}
 
@@ -2209,94 +2212,106 @@ namespace spades {
 		}
 
 		void KV6EditorView::SetActiveObjectIndex(size_t index) {
-			if (!is2KV6 || index >= scene.size())
+			if (!is2KV6)
 				return;
-			activeObjectIndex = index;
-			// Update the working model to the new active object's model
-			if (index < scene.size() && scene[index].model) {
-				model = scene[index].model;
-				RebuildRenderModel();
+			if (activeObjectIndex < scene.size() && index < scene[activeObjectIndex].children.size()) {
+				activeChildIndex = index;
+				// Update the working model to the new active child's model
+				if (scene[activeObjectIndex].children[index].model) {
+					model = scene[activeObjectIndex].children[index].model;
+					RebuildRenderModel();
+				}
 			}
 		}
 
 		size_t KV6EditorView::GetObjectCount() const {
-			if (!is2KV6)
-				return 1;
-			return scene.size();
+			if (!is2KV6 || activeObjectIndex >= scene.size())
+				return 0;
+			return scene[activeObjectIndex].children.size();
+		}
+
+		VoxelObject* KV6EditorView::GetActiveObject() {
+			if (!is2KV6 || activeObjectIndex >= scene.size() || activeChildIndex >= scene[activeObjectIndex].children.size())
+				return nullptr;
+			return &scene[activeObjectIndex].children[activeChildIndex];
+		}
+
+		const VoxelObject* KV6EditorView::GetActiveObject() const {
+			if (!is2KV6 || activeObjectIndex >= scene.size() || activeChildIndex >= scene[activeObjectIndex].children.size())
+				return nullptr;
+			return &scene[activeObjectIndex].children[activeChildIndex];
 		}
 
 		Vector4 KV6EditorView::GetObjectRotation() const {
-			if (!is2KV6 || activeObjectIndex >= scene.size())
-				return MakeVector4(0.0F, 0.0F, 0.0F, 1.0F);
-			return scene[activeObjectIndex].rotation;
+			if (const VoxelObject* obj = GetActiveObject())
+				return obj->rotation;
+			return MakeVector4(0.0F, 0.0F, 0.0F, 1.0F);
 		}
 
 		void KV6EditorView::SetObjectRotation(const Vector4& quat) {
-			if (!is2KV6 || activeObjectIndex >= scene.size())
-				return;
-			BeginUndoGroup("Set Object Rotation");
-			scene[activeObjectIndex].rotation = quat;
-			EndUndoGroup();
+			if (VoxelObject* obj = GetActiveObject()) {
+				BeginUndoGroup("Set Object Rotation");
+				obj->rotation = quat;
+				EndUndoGroup();
+			}
 		}
 
 		void KV6EditorView::PreviewObjectRotation(const Vector4& quat) {
-			if (!is2KV6 || activeObjectIndex >= scene.size())
-				return;
-			scene[activeObjectIndex].rotation = quat;
+			if (VoxelObject* obj = GetActiveObject())
+				obj->rotation = quat;
 		}
 
 		Vector3 KV6EditorView::GetObjectScale() const {
-			if (!is2KV6 || activeObjectIndex >= scene.size())
-				return MakeVector3(1.0F, 1.0F, 1.0F);
-			return scene[activeObjectIndex].scale;
+			if (const VoxelObject* obj = GetActiveObject())
+				return obj->scale;
+			return MakeVector3(1.0F, 1.0F, 1.0F);
 		}
 
 		void KV6EditorView::SetObjectScale(const Vector3& scale) {
-			if (!is2KV6 || activeObjectIndex >= scene.size())
-				return;
-			BeginUndoGroup("Set Object Scale");
-			scene[activeObjectIndex].scale = scale;
-			EndUndoGroup();
+			if (VoxelObject* obj = GetActiveObject()) {
+				BeginUndoGroup("Set Object Scale");
+				obj->scale = scale;
+				EndUndoGroup();
+			}
 		}
 
 		void KV6EditorView::PreviewObjectScale(const Vector3& scale) {
-			if (!is2KV6 || activeObjectIndex >= scene.size())
-				return;
-			scene[activeObjectIndex].scale = scale;
+			if (VoxelObject* obj = GetActiveObject())
+				obj->scale = scale;
 		}
 
 		void KV6EditorView::DrawObjectOutline(size_t objectIndex, const Vector4& color) {
-			if (!is2KV6 || objectIndex >= scene.size())
-				return;
+			// In .2kv6 mode, objectIndex refers to the child object index
+			if (const VoxelObject* obj = GetActiveObject()) {
+				if (!obj->model)
+					return;
 
-			const VoxelObject& obj = scene[objectIndex];
-			if (!obj.model)
-				return;
+				// Draw bounding box of the active child object's model
+				int w = obj->model->GetWidth();
+				int h = obj->model->GetHeight();
+				int d = obj->model->GetDepth();
 
-			// Draw bounding box of the object's model
-			int w = obj.model->GetWidth();
-			int h = obj.model->GetHeight();
-			int d = obj.model->GetDepth();
-
-			IntVector3 lo = MakeIntVector3(0, 0, 0);
-			IntVector3 hi = MakeIntVector3(w - 1, h - 1, d - 1);
-			DrawBoxOutline(lo, hi, color);
+				IntVector3 lo = MakeIntVector3(0, 0, 0);
+				IntVector3 hi = MakeIntVector3(w - 1, h - 1, d - 1);
+				DrawBoxOutline(lo, hi, color);
+			}
 		}
 
 		bool KV6EditorView::SelectObjectAtCursor() {
-			if (!is2KV6 || scene.empty())
+			if (!is2KV6 || activeObjectIndex >= scene.size())
 				return false;
 
 			DoPick();
 			if (!HasPick())
 				return false;
 
-			// Check which object contains the picked voxel
+			// Check which child object contains the picked voxel
 			IntVector3 picked = PickSolid();
+			VoxelObject& root = scene[activeObjectIndex];
 
-			// Try each object to see if it contains this voxel
-			for (size_t i = 0; i < scene.size(); i++) {
-				const VoxelObject& obj = scene[i];
+			// Try each child object to see if it contains this voxel
+			for (size_t i = 0; i < root.children.size(); i++) {
+				const VoxelObject& obj = root.children[i];
 				if (!obj.model)
 					continue;
 

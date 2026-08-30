@@ -197,7 +197,7 @@ namespace spades {
 		}
 
 		void ObjectMoveSubTool::DrawScene(IEditorContext& ctx) {
-			if (!ctx.IsScene2KV6())
+			if (!ctx.IsScene2KV6() || ctx.GetObjectCount() == 0)
 				return;
 
 			Vector3 origin = ctx.GetPivot();
@@ -400,7 +400,7 @@ namespace spades {
 		}
 
 		void ObjectRotateSubTool::DrawScene(IEditorContext& ctx) {
-			if (!ctx.IsScene2KV6())
+			if (!ctx.IsScene2KV6() || ctx.GetObjectCount() == 0)
 				return;
 
 			Vector3 origin = ctx.GetPivot();
@@ -409,10 +409,12 @@ namespace spades {
 			Vector4 outlineColor = MakeVector4(1.0F, 1.0F, 0.3F, 1.0F);
 			ctx.DrawObjectOutline(ctx.GetActiveObjectIndex(), outlineColor);
 
-			// Draw gizmo with rotation
-			Vector4 rotation = ctx.GetObjectRotation();
-			if (gizmo)
-				gizmo->Draw(ctx, origin, Gizmo::Rotate, &rotation);
+			// Draw gizmo - pass rotation only in local space mode
+			if (gizmo) {
+				Vector4 rotation = ctx.GetObjectRotation();
+				Vector4* rotPtr = objectTool->GetGlobalTransformSpace() ? nullptr : &rotation;
+				gizmo->Draw(ctx, origin, Gizmo::Rotate, rotPtr);
+			}
 		}
 
 		void ObjectRotateSubTool::DrawOverlay(IEditorContext& ctx) {
@@ -569,7 +571,7 @@ namespace spades {
 		}
 
 		void ObjectScaleSubTool::DrawScene(IEditorContext& ctx) {
-			if (!ctx.IsScene2KV6())
+			if (!ctx.IsScene2KV6() || ctx.GetObjectCount() == 0)
 				return;
 
 			Vector3 origin = ctx.GetPivot();
@@ -578,10 +580,12 @@ namespace spades {
 			Vector4 outlineColor = MakeVector4(1.0F, 1.0F, 0.3F, 1.0F);
 			ctx.DrawObjectOutline(ctx.GetActiveObjectIndex(), outlineColor);
 
-			// Draw gizmo with rotation
-			Vector4 rotation = ctx.GetObjectRotation();
-			if (gizmo)
-				gizmo->Draw(ctx, origin, Gizmo::Scale, &rotation);
+			// Draw gizmo - pass rotation only in local space mode
+			if (gizmo) {
+				Vector4 rotation = ctx.GetObjectRotation();
+				Vector4* rotPtr = objectTool->GetGlobalTransformSpace() ? nullptr : &rotation;
+				gizmo->Draw(ctx, origin, Gizmo::Scale, rotPtr);
+			}
 		}
 
 		void ObjectScaleSubTool::DrawOverlay(IEditorContext& ctx) {
