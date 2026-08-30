@@ -52,7 +52,7 @@ namespace spades {
 			gizmoMode = Gizmo::Move;
 			gizmoAxis = -1;
 			// Read the space toggle from options (default: global)
-			useGlobalSpace = options.Count() > 0 ? !options.At(0).bvalue : true;
+			useGlobalSpace = options.Count() > 0 ? options.At(0).bvalue : true;
 		}
 
 		int ObjectTool::HitAxis(IEditorContext& ctx, const Vector3& origin) const {
@@ -123,7 +123,7 @@ namespace spades {
 				if (gizmoMode == Gizmo::Move) {
 					// Apply movement to object by updating pivot (live preview like PivotGizmoSubTool)
 					Vector3 newOrigin = gizmoDragStartOrigin + AxisUnit(gizmoAxis) * offset;
-					ctx.PreviewPivot(newOrigin * -1.0F);
+					ctx.PreviewPivot(newOrigin);
 					ctx.SetStatus("Move axis " + std::to_string(gizmoAxis) + " offset: " + std::to_string(offset));
 				} else if (gizmoMode == Gizmo::Rotate) {
 					ctx.SetStatus("Rotate axis " + std::to_string(gizmoAxis));
@@ -137,8 +137,8 @@ namespace spades {
 					if (gizmoMode == Gizmo::Move && offset != 0.0F) {
 						// Finalize the move
 						Vector3 newOrigin = gizmoDragStartOrigin + AxisUnit(gizmoAxis) * offset;
-						ctx.PreviewPivot(gizmoDragStartOrigin * -1.0F); // rewind preview
-						ctx.SetPivot(newOrigin * -1.0F); // apply as single undo step
+						ctx.PreviewPivot(gizmoDragStartOrigin); // rewind preview
+						ctx.SetPivot(newOrigin); // apply as single undo step
 					}
 					ctx.SetStatus("");
 				}
@@ -190,6 +190,9 @@ namespace spades {
 		void ObjectTool::DrawScene(IEditorContext& ctx) {
 			if (!ctx.IsScene2KV6())
 				return;
+
+			// Read current space mode from options
+			useGlobalSpace = options.Count() > 0 ? options.At(0).bvalue : true;
 
 			Vector3 origin = ctx.GetPivot();
 
