@@ -2324,14 +2324,24 @@ namespace spades {
 			if (!is2KV6 || activeSceneRootIndex >= scene.size())
 				return false;
 
+			VoxelObject& root = scene[activeSceneRootIndex];
+
 			// Create new object as child of the active root object
 			VoxelObject newObj = VoxelModel2KV6::CreateObject(name, cubeSize);
-			scene[activeSceneRootIndex].children.push_back(newObj);
+
+			// Position new object at center of root's model (if it has one), for intuitive placement
+			if (root.model) {
+				newObj.position = MakeVector3(float(root.model->GetWidth()) * 0.5F - 0.5F,
+				                              float(root.model->GetHeight()) * 0.5F - 0.5F,
+				                              float(root.model->GetDepth()) * 0.5F - 0.5F);
+			}
+
+			root.children.push_back(newObj);
 
 			// Select the newly created object
-			activeChildIndex = scene[activeSceneRootIndex].children.size() - 1;
-			if (scene[activeSceneRootIndex].children[activeChildIndex].model) {
-				model = scene[activeSceneRootIndex].children[activeChildIndex].model;
+			activeChildIndex = root.children.size() - 1;
+			if (root.children[activeChildIndex].model) {
+				model = root.children[activeChildIndex].model;
 				RebuildRenderModel();
 				voxelCount = CountSolids();
 			}
