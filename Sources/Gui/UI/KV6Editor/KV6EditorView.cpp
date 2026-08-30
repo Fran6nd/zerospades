@@ -2063,9 +2063,15 @@ namespace spades {
 			if (renderModel) {
 				client::ModelRenderParam param;
 				// In .2kv6 mode, position the model at the scene object's world position
+				// with rotation and scale applied
 				// In regular .kv6 mode, use the model's origin (pivot)
 				if (is2KV6 && activeObjectIndex < scene.size()) {
-					param.matrix = Matrix4::Translate(scene[activeObjectIndex].position);
+					const VoxelObject& obj = scene[activeObjectIndex];
+					// Build transform: translate * rotate * scale
+					Matrix4 scale = Matrix4::Scale(obj.scale);
+					Matrix4 rotate = Quaternion(obj.rotation).ToRotationMatrix();
+					Matrix4 translate = Matrix4::Translate(obj.position);
+					param.matrix = translate * rotate * scale;
 				} else {
 					// Cancel the KV6 pivot so the model sits in the editor's grid space.
 					param.matrix = Matrix4::Translate(model->GetOrigin() * -1.0F);
