@@ -50,6 +50,7 @@ namespace spades {
 			Handle<ui::UIManager> uiManager;
 
 			std::unique_ptr<EditorMenu> editorMenu;
+			std::unique_ptr<SoftwareCursor> defaultCursor;
 
 			// weak reference to the editor view
 			MapEditorView* editor;

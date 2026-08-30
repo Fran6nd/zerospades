@@ -21,6 +21,7 @@
 #include "MapEditorUI.h"
 #include "MapEditorView.h"
 #include <Client/Fonts.h>
+#include <Client/IRenderer.h>
 #include <Gui/UI/Components/EditorMenu.h>
 #include <Gui/UI/Components/SoftwareCursor.h>
 #include <Gui/UI/Framework/UIManager.h>
@@ -44,13 +45,18 @@ namespace spades {
 			if (!_editor)
 				throw std::invalid_argument("MapEditorView cannot be null");
 
-			if (cursor) {
-				try {
-					editorMenu = std::make_unique<EditorMenu>(*_editor, *_renderer, *_fontManager, *cursor, _audioDevice);
-				} catch (const std::exception& ex) {
-					SPLog("[!] Failed to initialize map editor UI: %s", ex.what());
-					throw;
-				}
+			// Create a default cursor if none provided
+			SoftwareCursor* cursorToUse = cursor;
+			if (!cursorToUse) {
+				defaultCursor = std::make_unique<SoftwareCursor>(*_renderer);
+				cursorToUse = defaultCursor.get();
+			}
+
+			try {
+				editorMenu = std::make_unique<EditorMenu>(*_editor, *_renderer, *_fontManager, *cursorToUse, _audioDevice);
+			} catch (const std::exception& ex) {
+				SPLog("[!] Failed to initialize map editor UI: %s", ex.what());
+				throw;
 			}
 		}
 
