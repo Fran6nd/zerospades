@@ -2400,28 +2400,64 @@ namespace spades {
 			if (root.children.empty())
 				return false;
 
-			DoPick();
-			if (!HasPick())
+			// Perform a ray pick to find which object was clicked on
+			const Vector2& cursorPos = softwareCursor->GetPosition();
+			if (camSW <= 0.0F || camSH <= 0.0F)
 				return false;
 
-			// DoPick() checks against the current model (activeChildIndex).
-			// PickSolid() returns model-space coordinates, which directly index the model.
-			// Check if the picked voxel is solid - if so, the active object is selected.
-			IntVector3 picked = PickSolid();
+			float sx = ((cursorPos.x - camVpX) / camSW) * 2.0F - 1.0F;
+			float sy = ((cursorPos.y - camVpY) / camSH) * 2.0F - 1.0F;
+			Vector3 dir = camFwd + camRight * (sx * tanf(camFovX * 0.5F)) -
+			              camUp * (sy * tanf(camFovY * 0.5F));
+			dir = dir.Normalize();
 
-			// For now, only allow selecting the currently active object by clicking on it.
-			// To select a different object, use SelectNextObject/SelectPreviousObject.
-			if (activeChildIndex < root.children.size()) {
-				const VoxelObject& obj = root.children[activeChildIndex];
-				if (obj.model && obj.model->IsSolid(picked.x, picked.y, picked.z)) {
-					// Clicked on the active object - confirm selection
-					return true;
+			// Ray-cast against all child objects to find which one is clicked
+			float closestDist = 1.0e30F;
+			int selectedIndex = -1;
+
+			for (size_t i = 0; i < root.children.size(); i++) {
+				const VoxelObject& obj = root.children[i];
+				if (!obj.model)
+					continue;
+
+				// Ray-cast against this object's bounding box (transformed by its position)
+				Vector3 aabbMin = obj.position;
+				Vector3 aabbMax = obj.position + MakeVector3(
+					float(obj.model->GetWidth()),
+					float(obj.model->GetHeight()),
+					float(obj.model->GetDepth())
+				);
+
+				// Simple ray-AABB intersection
+				float tMin = -1.0e30F, tMax = 1.0e30F;
+				for (int axis = 0; axis < 3; axis++) {
+					float minVal = (axis == 0) ? aabbMin.x : (axis == 1) ? aabbMin.y : aabbMin.z;
+					float maxVal = (axis == 0) ? aabbMax.x : (axis == 1) ? aabbMax.y : aabbMax.z;
+					float dirVal = (axis == 0) ? dir.x : (axis == 1) ? dir.y : dir.z;
+					float rayVal = (axis == 0) ? camEye.x : (axis == 1) ? camEye.y : camEye.z;
+
+					if (std::fabs(dirVal) < 1.0e-6F) {
+						if (rayVal < minVal || rayVal > maxVal)
+							return false; // Ray misses AABB
+					} else {
+						float t1 = (minVal - rayVal) / dirVal;
+						float t2 = (maxVal - rayVal) / dirVal;
+						if (t1 > t2) { float tmp = t1; t1 = t2; t2 = tmp; }
+						tMin = std::max(tMin, t1);
+						tMax = std::min(tMax, t2);
+						if (tMin > tMax)
+							break; // Ray misses AABB
+					}
+				}
+
+				if (tMin > 0.0F && tMin < closestDist) {
+					closestDist = tMin;
+					selectedIndex = int(i);
 				}
 			}
 
-			// If clicking on empty space, try to select the first object if none selected
-			if (activeChildIndex >= root.children.size() && !root.children.empty()) {
-				SetActiveObjectIndex(0);
+			if (selectedIndex >= 0) {
+				SetActiveObjectIndex(size_t(selectedIndex));
 				return true;
 			}
 
