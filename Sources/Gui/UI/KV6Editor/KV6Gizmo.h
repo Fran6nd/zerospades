@@ -41,7 +41,9 @@ namespace spades {
 			Gizmo();
 
 			// Draw gizmos at `origin` (world position).
-			void Draw(IEditorContext& ctx, const Vector3& origin, int visibleModes = All);
+			// If `localRotation` is provided (quaternion), gizmo axes rotate to show local space.
+			void Draw(IEditorContext& ctx, const Vector3& origin, int visibleModes = All,
+			          const Vector4* localRotation = nullptr);
 
 			// Check if cursor is over a gizmo axis/component; returns axis index (0=X, 1=Y, 2=Z, -1=none)
 			int HitTest(IEditorContext& ctx, const Vector3& origin, Mode mode);

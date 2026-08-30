@@ -23,11 +23,18 @@
 
 namespace spades {
 	namespace gui {
+		ObjectTool::ObjectTool() {
+			// Transform space toggle: global (world-aligned) vs local (object-aligned)
+			options.AddBool("space.global", "Global", "Transform Space");
+		}
+
 		void ObjectTool::OnActivate(IEditorContext& ctx) {
 			if (!gizmo)
 				gizmo = std::make_unique<Gizmo>();
 			gizmoMode = Gizmo::Move;
 			gizmoAxis = -1;
+			// Read the space toggle from options (default: global)
+			useGlobalSpace = options.Count() > 0 ? !options.At(0).bvalue : true;
 		}
 
 		void ObjectTool::OnPointer(IEditorContext& ctx, const PointerInput& input) {
@@ -79,8 +86,15 @@ namespace spades {
 		void ObjectTool::DrawScene(IEditorContext& ctx) {
 			if (!gizmo)
 				gizmo = std::make_unique<Gizmo>();
-			// Draw gizmo at active object's origin (future: get from scene)
-			// gizmo->Draw(ctx, activeObjectOrigin, gizmoMode);
+
+			// Read current space mode from options
+			useGlobalSpace = options.Count() > 0 ? !options.At(0).bvalue : true;
+
+			// Future: Draw gizmo at active object's origin with proper rotation
+			// Vector3 activeObjectOrigin = ...;
+			// Vector4 activeObjectRotation = useGlobalSpace ? nullptr : ...;
+			// gizmo->Draw(ctx, activeObjectOrigin, gizmoMode,
+			//             useGlobalSpace ? nullptr : &activeObjectRotation);
 		}
 
 		void ObjectTool::DrawOverlay(IEditorContext& ctx) {
