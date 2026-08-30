@@ -30,8 +30,11 @@ namespace spades {
 		void ObjectNewTool::OnActivate(IEditorContext& ctx) {
 			if (!ctx.IsScene2KV6())
 				return;
-			ctx.CreateSceneObject("");
-			ctx.SetStatus("Created new object");
+			if (ctx.CreateSceneObject("")) {
+				size_t index = ctx.GetObjectCount() - 1;
+				ctx.SetActiveObjectIndex(index);
+				ctx.SetStatus("Created object " + std::to_string(index));
+			}
 		}
 
 		void ObjectDeleteTool::OnActivate(IEditorContext& ctx) {
