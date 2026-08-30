@@ -21,7 +21,9 @@
 #pragma once
 
 #include "KV6EditorTool.h"
+#include "KV6Gizmo.h"
 #include <Core/Math.h>
+#include <memory>
 
 namespace spades {
 	namespace gui {
@@ -44,7 +46,10 @@ namespace spades {
 			void DrawOverlay(IEditorContext&) override;
 
 		private:
-			// Future: drag state for object movement/rotation
+			std::unique_ptr<Gizmo> gizmo;
+			int gizmoMode = Gizmo::Move; // Current mode displayed
+			int gizmoAxis = -1; // Axis being dragged (-1 = none)
+			Vector2 gizmoDragStart;
 		};
 	} // namespace gui
 } // namespace spades

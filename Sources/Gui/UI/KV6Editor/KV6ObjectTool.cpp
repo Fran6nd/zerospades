@@ -24,26 +24,60 @@
 namespace spades {
 	namespace gui {
 		void ObjectTool::OnActivate(IEditorContext& ctx) {
-			// Future: initialize drag state
+			if (!gizmo)
+				gizmo = std::make_unique<Gizmo>();
+			gizmoMode = Gizmo::Move;
+			gizmoAxis = -1;
 		}
 
 		void ObjectTool::OnPointer(IEditorContext& ctx, const PointerInput& input) {
-			// Object tool is only functional in .2kv6 mode
-			// For now, acts as a no-op when not in .2kv6 mode
+			// Object tool is only functional in .2kv6 mode (checked by toolbar at render time)
+			// Drag gizmo to transform active object
+			if (input.IsDrag()) {
+				if (gizmoAxis >= 0) {
+					// Drag in progress: apply transformation
+					// Future: apply the input.delta to transform active object
+				}
+			} else if (input.IsDown() && input.IsLeft()) {
+				// Click: start drag if over gizmo
+				gizmoDragStart = input.pos;
+				// gizmoAxis = gizmo->HitTest(ctx, objectOrigin, (Gizmo::Mode)gizmoMode);
+			} else if (input.IsUp() && input.IsLeft()) {
+				// Release: end drag
+				gizmoAxis = -1;
+			}
 		}
 
 		void ObjectTool::OnKey(IEditorContext& ctx, const KeyInput& input) {
-			// Future: keyboard shortcuts for object creation, deletion, etc.
+			// Keyboard shortcuts for gizmo mode selection (industry standard)
+			if (!input.IsDown())
+				return;
+			if (input.key == "g") {
+				gizmoMode = Gizmo::Move;
+				ctx.SetStatus("Move mode (G)");
+			} else if (input.key == "r") {
+				gizmoMode = Gizmo::Rotate;
+				ctx.SetStatus("Rotate mode (R)");
+			} else if (input.key == "s") {
+				gizmoMode = Gizmo::Scale;
+				ctx.SetStatus("Scale mode (S)");
+			}
 		}
 
-		bool ObjectTool::OnEscape(IEditorContext& ctx) { return false; }
+		bool ObjectTool::OnEscape(IEditorContext& ctx) {
+			gizmoAxis = -1;
+			return false;
+		}
 
 		void ObjectTool::DrawScene(IEditorContext& ctx) {
-			// Draw bounding box of active object (future implementation)
+			if (!gizmo)
+				gizmo = std::make_unique<Gizmo>();
+			// Draw gizmo at active object's origin (future: get from scene)
+			// gizmo->Draw(ctx, activeObjectOrigin, gizmoMode);
 		}
 
 		void ObjectTool::DrawOverlay(IEditorContext& ctx) {
-			// Draw object selector UI (future implementation)
+			// Show status and hint text
 		}
 	} // namespace gui
 } // namespace spades
