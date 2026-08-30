@@ -255,8 +255,9 @@ namespace spades {
 			ui->GetToolbar()->OnToolClicked = [this](int idx) {
 				if (currentMode == EditorMode::Edit) {
 					activeTool = idx;
+				} else if (currentMode == EditorMode::Object && is2KV6) {
+					activeObjectModeToolIndex = idx;
 				}
-				// Object mode buttons don't map to tools, toolbar buttons just change visual state
 			};
 			ui->GetToolbar()->OnUndoClicked = [this]() { Undo(); };
 			ui->GetToolbar()->OnRedoClicked = [this]() { Redo(); };
@@ -317,8 +318,11 @@ namespace spades {
 				}
 			}
 
-			// Object mode tool
-			objectTool = std::make_unique<ObjectTool>();
+			// Object mode tools (New, Transform, Delete)
+			objectModeTools.push_back(CreateObjectNewTool());
+			objectModeTools.push_back(std::make_unique<ObjectTool>());
+			objectModeTools.push_back(CreateObjectDeleteTool());
+			activeObjectModeToolIndex = 1; // Default to Transform
 
 			if (isNew || path.empty())
 				NewModel(cubeSize, path);
@@ -1674,8 +1678,9 @@ namespace spades {
 		}
 
 		EditorTool* KV6EditorView::ActiveTool() {
-			if (currentMode == EditorMode::Object && objectTool)
-				return objectTool.get();
+			if (currentMode == EditorMode::Object && is2KV6 && activeObjectModeToolIndex >= 0 &&
+			    activeObjectModeToolIndex < int(objectModeTools.size()))
+				return objectModeTools[activeObjectModeToolIndex].get();
 			if (currentMode == EditorMode::Edit && activeTool >= 0 && activeTool < int(tools.size()))
 				return tools[activeTool].get();
 			return nullptr;
@@ -1727,7 +1732,7 @@ namespace spades {
 			ui->GetToolbar()->SetModeButtons(modeButtons);
 			ui->GetToolbar()->SetActiveModeButton(activeModeIndex);
 
-			// Set up tool buttons (only in Edit mode)
+			// Set up tool buttons (for Edit and Object modes)
 			std::vector<Toolbar::ToolbarButton> toolButtons;
 			if (currentMode == EditorMode::Edit) {
 				for (int i = 0; i < int(tools.size()); i++) {
@@ -1735,6 +1740,14 @@ namespace spades {
 					btn.label = tools[i]->Label();
 					btn.enabled = true;
 					btn.active = (activeTool == i);
+					toolButtons.push_back(btn);
+				}
+			} else if (currentMode == EditorMode::Object && is2KV6) {
+				for (int i = 0; i < int(objectModeTools.size()); i++) {
+					Toolbar::ToolbarButton btn;
+					btn.label = objectModeTools[i]->Label();
+					btn.enabled = true;
+					btn.active = (activeObjectModeToolIndex == i);
 					toolButtons.push_back(btn);
 				}
 			}

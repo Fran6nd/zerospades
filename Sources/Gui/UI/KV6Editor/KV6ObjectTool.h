@@ -32,7 +32,7 @@ namespace spades {
 		class ObjectTool : public ContainerTool {
 		public:
 			ObjectTool();
-			const char* Label() const override { return "Object"; }
+			const char* Label() const override { return "Transform"; }
 			ToolOptions* Options() override { return &options; }
 			void OnKey(IEditorContext&, const KeyInput&) override;
 
@@ -48,5 +48,9 @@ namespace spades {
 			void SelectNextObject(IEditorContext& ctx);
 			void SelectPreviousObject(IEditorContext& ctx);
 		};
+
+		// Factory functions for object mode tools
+		std::unique_ptr<EditorTool> CreateObjectNewTool();
+		std::unique_ptr<EditorTool> CreateObjectDeleteTool();
 	} // namespace gui
 } // namespace spades

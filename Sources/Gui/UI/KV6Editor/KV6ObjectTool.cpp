@@ -27,6 +27,9 @@
 
 namespace spades {
 	namespace gui {
+		// Forward declaration
+		class ObjectTool;
+
 		namespace {
 			Vector3 AxisUnit(int a) {
 				return MakeVector3(a == 0 ? 1.0F : 0.0F, a == 1 ? 1.0F : 0.0F, a == 2 ? 1.0F : 0.0F);
@@ -573,6 +576,35 @@ namespace spades {
 			}
 		}
 
+		// --- ObjectNewTool ---
+		class ObjectNewTool : public EditorTool {
+		public:
+			const char* Label() const override { return "New"; }
+			void OnActivate(IEditorContext& ctx) override;
+		};
+
+		void ObjectNewTool::OnActivate(IEditorContext& ctx) {
+			if (!ctx.IsScene2KV6())
+				return;
+			ctx.CreateSceneObject("");
+			ctx.SetStatus("Created new object");
+		}
+
+		// --- ObjectDeleteTool ---
+		class ObjectDeleteTool : public EditorTool {
+		public:
+			const char* Label() const override { return "Delete"; }
+			void OnActivate(IEditorContext& ctx) override;
+		};
+
+		void ObjectDeleteTool::OnActivate(IEditorContext& ctx) {
+			if (!ctx.IsScene2KV6())
+				return;
+			if (ctx.DeleteActiveSceneObject()) {
+				ctx.SetStatus("Deleted object");
+			}
+		}
+
 		// --- ObjectTool (Container) ---
 		ObjectTool::ObjectTool() {
 			options.AddBool("space.global", "Global", "Transform Space");
@@ -680,6 +712,15 @@ namespace spades {
 				ctx.SetActiveObjectIndex(prevIndex);
 				ctx.SetStatus("Selected object " + std::to_string(prevIndex));
 			}
+		}
+
+		// Factory functions
+		std::unique_ptr<EditorTool> CreateObjectNewTool() {
+			return std::make_unique<ObjectNewTool>();
+		}
+
+		std::unique_ptr<EditorTool> CreateObjectDeleteTool() {
+			return std::make_unique<ObjectDeleteTool>();
 		}
 	} // namespace gui
 } // namespace spades

@@ -226,10 +226,12 @@ namespace spades {
 			// --- Tools (available in Edit mode) -------------------------------
 			std::vector<std::unique_ptr<EditorTool>> tools;
 			int activeTool = 0;
-			EditorTool* ActiveTool(); // active tool based on current mode
 
-			// --- Object mode tool -------------------------------------------------
-			std::unique_ptr<class ObjectTool> objectTool;
+			// --- Object mode tools -----------------------------------------------
+			std::vector<std::unique_ptr<EditorTool>> objectModeTools;
+			int activeObjectModeToolIndex = 0;
+
+			EditorTool* ActiveTool(); // active tool based on current mode
 
 			// --- Selection ----------------------------------------------------
 			std::set<int64_t> selection; // packed voxel keys
