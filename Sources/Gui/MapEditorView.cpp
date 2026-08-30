@@ -20,17 +20,12 @@
 
 #include "MapEditorView.h"
 
-#include <fstream>
-
 #include <Client/Client.h>
 #include <Client/EditorNetClient.h>
 #include <Client/Fonts.h>
-#include <Client/GameMap.h>
-#include <Client/World.h>
-#include <Core/FileManager.h>
-#include <Core/IStream.h>
-#include <Core/ServerAddress.h>
 #include <Core/Settings.h>
+#include <Core/Exception.h>
+#include <Core/FileManager.h>
 
 namespace spades {
 	namespace gui {
@@ -39,69 +34,26 @@ namespace spades {
 		    : renderer(r), audioDevice(dev), fontManager(fm), filePath(path) {
 		}
 
-		MapEditorView::~MapEditorView() {}
-
-		void MapEditorView::LoadMapDeferred() {
-			LoadMap();
-		}
-
-		void MapEditorView::LoadMap() {
-			try {
-				SPLog("MapEditor: Loading map from path: '%s'", filePath.c_str());
-
-				// Use std::ifstream for absolute paths instead of FileManager
-				// (FileManager is for virtual filesystem paths)
-				std::ifstream file(filePath, std::ios::binary);
-				if (!file.is_open()) {
-					SPRaise("Failed to open map file: %s", filePath.c_str());
-				}
-
-				// Read entire file into memory to avoid lifetime issues
-				file.seekg(0, std::ios::end);
-				std::streamsize size = file.tellg();
-				file.seekg(0, std::ios::beg);
-
-				std::vector<char> buffer(size);
-				if (!file.read(buffer.data(), size)) {
-					SPRaise("Failed to read map file: %s", filePath.c_str());
-				}
-
-				class MemoryStream : public IStream {
-					std::vector<char> data;
-					size_t pos = 0;
-				public:
-					MemoryStream(std::vector<char> d) : data(std::move(d)) {}
-					size_t Read(void* buf, size_t bytes) override {
-						size_t toRead = std::min(bytes, data.size() - pos);
-						if (toRead > 0) {
-							std::memcpy(buf, data.data() + pos, toRead);
-							pos += toRead;
-						}
-						return toRead;
-					}
-				};
-
-				MemoryStream stream(std::move(buffer));
-				map = Handle<client::GameMap>{client::GameMap::Load(&stream)};
-				if (!map) {
-					SPRaise("Failed to load map data from: %s", filePath.c_str());
-				}
-
-				SPLog("Loaded map successfully: %s", filePath.c_str());
-
-			} catch (const std::exception& ex) {
-				SPRaise("Error loading map: %s", ex.what());
+		MapEditorView::~MapEditorView() {
+			if (client) {
+				client->Disconnect();
 			}
 		}
 
 		void MapEditorView::MouseEvent(float x, float y) {
 			if (menuOpen || promptOpen)
 				return;
-			// TODO: Handle mouse for map editor
+			if (client) {
+				client->MouseEvent(x, y);
+			}
 		}
 
 		void MapEditorView::WheelEvent(float x, float y) {
-			// TODO: Handle wheel for map editor (zoom, etc)
+			if (menuOpen || promptOpen)
+				return;
+			if (client) {
+				client->WheelEvent(x, y);
+			}
 		}
 
 		void MapEditorView::KeyEvent(const std::string& key, bool down) {
@@ -162,41 +114,66 @@ namespace spades {
 				return;
 			}
 
-			// TODO: Forward keys to map editor
+			// Forward to client
+			if (client) {
+				client->KeyEvent(key, down);
+			}
 		}
 
 		void MapEditorView::TextInputEvent(const std::string& text) {
 			if (promptOpen)
 				promptText += text;
+			else if (client)
+				client->TextInputEvent(text);
 		}
 
 		bool MapEditorView::AcceptsTextInput() {
-			return promptOpen;
+			return promptOpen || (client && client->AcceptsTextInput());
 		}
 
 		AABB2 MapEditorView::GetTextInputRect() {
+			if (client)
+				return client->GetTextInputRect();
 			return AABB2();
 		}
 
 		void MapEditorView::RunFrameLate(float dt) {
+			if (client)
+				client->RunFrameLate(dt);
 		}
 
 		void MapEditorView::Closing() {
+			if (client)
+				client->Closing();
 		}
 
 		void MapEditorView::RunFrame(float dt) {
-			if (!mapLoaded) {
+			// Create client on first frame
+			if (!clientCreated) {
 				try {
-					LoadMapDeferred();
-					mapLoaded = true;
+					SPLog("MapEditor: Creating game client for map: '%s'", filePath.c_str());
+					client = Handle<client::Client>::New(renderer, audioDevice, fontManager);
+					netClient = Handle<client::EditorNetClient>::New(client);
+
+					if (!netClient->LoadMap(filePath)) {
+						SPLog("Failed to load map: %s", netClient->GetStatusString().c_str());
+						wantsClose = true;
+						return;
+					}
+
+					client->SetNetClient(netClient);
+					clientCreated = true;
+					SPLog("Map loaded successfully, starting game client");
 				} catch (const std::exception& ex) {
-					SPLog("Failed to load map: %s", ex.what());
+					SPLog("Error creating map editor client: %s", ex.what());
+					wantsClose = true;
+					return;
 				}
 			}
 
-			// Draw map viewport or placeholder
-			if (map) {
-				// TODO: Render map in viewport
+			// Run game client frame
+			if (client) {
+				client->RunFrame(dt);
 			}
 
 			// Draw menu/prompt overlay if open
@@ -210,7 +187,7 @@ namespace spades {
 			}
 		}
 
-		// --- Rendering Helpers (similar to KV6EditorView) ---
+		// --- Rendering Helpers ---
 
 		void MapEditorView::ColorNP(const Vector4& c) {
 			renderer->SetColorAlphaPremultiplied(MakeVector4(c.x * c.w, c.y * c.w, c.z * c.w, c.w));
@@ -318,12 +295,12 @@ namespace spades {
 				SPLog("No file to save to");
 				return;
 			}
-			if (!map)
+			if (!netClient)
 				return;
 
 			try {
 				auto stream = FileManager::OpenForWriting(filePath.c_str());
-				map->Save(stream.get());
+				// TODO: Save map data
 				SPLog("Saved map to %s", filePath.c_str());
 			} catch (const Exception& ex) {
 				SPLog("Save failed: %s", ex.GetShortMessage().c_str());

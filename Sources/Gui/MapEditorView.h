@@ -35,6 +35,11 @@ namespace spades {
 		class Client;
 	}
 	namespace gui {
+		namespace client {
+			class Client;
+			class EditorNetClient;
+		}
+
 		/**
 		 * Map editor view for .vxl files.
 		 *
@@ -59,8 +64,6 @@ namespace spades {
 			void Closing() override;
 			bool WantsToBeClosed() override { return wantsClose; }
 
-			void LoadMapDeferred();
-
 		protected:
 			~MapEditorView();
 
@@ -68,10 +71,11 @@ namespace spades {
 			Handle<client::IRenderer> renderer;
 			Handle<client::IAudioDevice> audioDevice;
 			Handle<client::FontManager> fontManager;
-			Handle<client::GameMap> map;
+			Handle<client::Client> client;
+			Handle<client::EditorNetClient> netClient;
 			std::string filePath;
 			bool wantsClose = false;
-			bool mapLoaded = false;
+			bool clientCreated = false;
 
 			// Esc menu state
 			bool menuOpen = false;
