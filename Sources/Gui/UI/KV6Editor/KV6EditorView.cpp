@@ -2296,7 +2296,14 @@ namespace spades {
 		size_t KV6EditorView::GetObjectCount() const {
 			if (!is2KV6 || activeSceneRootIndex >= scene.size())
 				return 0;
-			return scene[activeSceneRootIndex].children.size();
+			size_t count = scene[activeSceneRootIndex].children.size();
+			// DEBUG: Trace object count
+			static int frameCount = 0;
+			if (frameCount++ % 60 == 0) {  // Log every 60 frames
+				SPLog("DEBUG GetObjectCount: is2KV6=%d, scene.size()=%zu, activeSceneRootIndex=%zu, children.size()=%zu, COUNT=%zu",
+					is2KV6, scene.size(), activeSceneRootIndex, scene[activeSceneRootIndex].children.size(), count);
+			}
+			return count;
 		}
 
 		VoxelObject* KV6EditorView::GetActiveObject() {
