@@ -35,6 +35,9 @@ namespace spades {
 		/** True if `name` is a recognized voxel model file (`.kv6`/`.2kv6`/`.vxl`). */
 		bool EditorIsModelFile(const std::string& name);
 
+		/** True if `name` is a voxel terrain map file (`.vxl`). */
+		bool EditorIsMapFile(const std::string& name);
+
 		/** One entry in the file browser: a folder or a model file. */
 		struct EditorEntry {
 			std::string name;

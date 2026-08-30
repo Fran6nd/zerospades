@@ -44,12 +44,16 @@ namespace spades {
 			}
 		} // namespace
 
-		bool EditorIsEditable(const std::string& name) { return ToLowerExt(name, 4) == ".kv6"; }
+		bool EditorIsEditable(const std::string& name) {
+			return ToLowerExt(name, 4) == ".kv6" || ToLowerExt(name, 4) == ".vxl";
+		}
 
 		bool EditorIsModelFile(const std::string& name) {
 			return ToLowerExt(name, 4) == ".kv6" || ToLowerExt(name, 5) == ".2kv6" ||
 			       ToLowerExt(name, 4) == ".vxl";
 		}
+
+		bool EditorIsMapFile(const std::string& name) { return ToLowerExt(name, 4) == ".vxl"; }
 
 		// -- EditorListItem --
 

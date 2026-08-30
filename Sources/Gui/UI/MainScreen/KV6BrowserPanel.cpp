@@ -295,12 +295,18 @@ namespace spades {
 		}
 
 		std::string KV6BrowserPanel::Child(const std::string& name) const {
+			std::string result;
 			if (dir.empty())
-				return name;
-			char last = dir[dir.size() - 1];
-			if (last == '/' || last == '\\')
-				return dir + name;
-			return dir + "/" + name;
+				result = name;
+			else {
+				char last = dir[dir.size() - 1];
+				if (last == '/' || last == '\\')
+					result = dir + name;
+				else
+					result = dir + "/" + name;
+			}
+			SPLog("KV6BrowserPanel::Child - dir='%s', name='%s', result='%s'", dir.c_str(), name.c_str(), result.c_str());
+			return result;
 		}
 
 		void KV6BrowserPanel::Reload() {
@@ -327,7 +333,14 @@ namespace spades {
 		}
 
 		void KV6BrowserPanel::OpenModel(const std::string& absPath, bool isNew) {
-			std::string msg = helper->OpenKV6Editor(absPath, isNew);
+			SPLog("KV6BrowserPanel: Opening model from path: '%s'", absPath.c_str());
+			std::string msg;
+			if (EditorIsMapFile(absPath)) {
+				SPLog("KV6BrowserPanel: Detected as map file, opening MapEditor");
+				msg = helper->OpenMapEditor(absPath);
+			} else {
+				msg = helper->OpenKV6Editor(absPath, isNew);
+			}
 			if (msg.size() > 0) {
 				Handle<AlertScreen> al = Handle<AlertScreen>::New(modalOwner, msg);
 				al->Run();

@@ -21,7 +21,7 @@
 #include "ConsoleCommandField.h"
 #include <Client/IFont.h>
 #include <Client/IRenderer.h>
-#include <Gui/Utils/ConsoleHelper.h>
+#include <Gui/ConsoleHelper.h>
 #include <Gui/UI/Framework/TextUtils.h>
 #include <Gui/UI/Framework/UIManager.h>
 #include <Gui/UI/Widgets/DrawUtils.h>

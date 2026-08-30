@@ -19,6 +19,7 @@
  */
 
 #include "UI/KV6Editor/KV6EditorView.h"
+#include "MapEditorView.h"
 #include "MainScreen.h"
 #include "MainScreenHelper.h"
 #include <Client/Client.h>
@@ -76,6 +77,18 @@ namespace spades {
 				            .Cast<View>();
 			} catch (const std::exception& ex) {
 				SPLog("[!] Error while opening the KV6 editor: %s", ex.what());
+				return ex.what();
+			}
+			return "";
+		}
+
+		std::string MainScreen::OpenMapEditor(const std::string& path) {
+			try {
+				subview = Handle<MapEditorView>::New(&*renderer, &*audioDevice, &*fontManager,
+				                                     path)
+				            .Cast<View>();
+			} catch (const std::exception& ex) {
+				SPLog("[!] Error while opening the map editor: %s", ex.what());
 				return ex.what();
 			}
 			return "";
