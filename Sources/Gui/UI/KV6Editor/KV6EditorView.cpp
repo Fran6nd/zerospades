@@ -387,8 +387,14 @@ namespace spades {
 
 				// Ensure root object exists (scene should have at least one root)
 				if (scene.empty()) {
-					// Fallback: create empty root if NewScene2KV6 didn't
-					VoxelObject root = VoxelModel2KV6::CreateObject("Scene", n);
+					// Create empty root object (no children, no model)
+					VoxelObject root;
+					root.name = "Scene";
+					root.position = MakeVector3(0.0F, 0.0F, 0.0F);
+					root.rotation = MakeVector4(0.0F, 0.0F, 0.0F, 1.0F);
+					root.scale = MakeVector3(1.0F, 1.0F, 1.0F);
+					root.model = nullptr;
+					// root.children is empty by default
 					scene.push_back(root);
 				}
 
