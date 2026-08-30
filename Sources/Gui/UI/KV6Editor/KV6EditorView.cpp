@@ -2101,23 +2101,40 @@ namespace spades {
 			camSH = sh;
 
 			renderer->StartScene(sceneDef);
-			if (renderModel) {
-				client::ModelRenderParam param;
-				// In .2kv6 mode, position the model at the active child object's world position
-				// with rotation and scale applied
-				// In regular .kv6 mode, use the model's origin (pivot)
-				if (is2KV6 && activeSceneRootIndex < scene.size() &&
-				    activeChildIndex < scene[activeSceneRootIndex].children.size()) {
-					const VoxelObject& obj = scene[activeSceneRootIndex].children[activeChildIndex];
-					// Build transform: translate * rotate * scale
-					Matrix4 scale = Matrix4::Scale(obj.scale);
-					Matrix4 rotate = Quaternion(obj.rotation).ToRotationMatrix();
-					Matrix4 translate = Matrix4::Translate(obj.position);
-					param.matrix = translate * rotate * scale;
-				} else {
-					// Cancel the KV6 pivot so the model sits in the editor's grid space.
-					param.matrix = Matrix4::Translate(model->GetOrigin() * -1.0F);
+
+			// In .2kv6 mode, render all child objects with their respective transforms
+			if (is2KV6 && activeSceneRootIndex < scene.size()) {
+				const VoxelObject& root = scene[activeSceneRootIndex];
+				for (size_t i = 0; i < root.children.size(); i++) {
+					const VoxelObject& obj = root.children[i];
+					if (!obj.model)
+						continue;
+
+					// Create a render model for this child if needed
+					// (for now, we temporarily switch the model pointer to render each child)
+					Handle<VoxelModel> savedModel = model;
+					Handle<client::IModel> savedRenderModel = renderModel;
+
+					model = obj.model;
+					RebuildRenderModel();
+
+					if (renderModel) {
+						client::ModelRenderParam param;
+						// Build transform: translate * rotate * scale
+						Matrix4 scale = Matrix4::Scale(obj.scale);
+						Matrix4 rotate = Quaternion(obj.rotation).ToRotationMatrix();
+						Matrix4 translate = Matrix4::Translate(obj.position);
+						param.matrix = translate * rotate * scale;
+						renderer->RenderModel(*renderModel, param);
+					}
+
+					model = savedModel;
+					renderModel = savedRenderModel;
 				}
+			} else if (renderModel) {
+				// Regular .kv6 mode: render single model with origin pivot
+				client::ModelRenderParam param;
+				param.matrix = Matrix4::Translate(model->GetOrigin() * -1.0F);
 				renderer->RenderModel(*renderModel, param);
 			}
 			DrawHelpers();
