@@ -1348,7 +1348,14 @@ namespace spades {
 
 		// --- Pivot ------------------------------------------------------------
 
-		Vector3 KV6EditorView::GetPivot() const { return model->GetOrigin() * -1.0F; }
+		Vector3 KV6EditorView::GetPivot() const {
+			// In .2kv6 mode, return the scene object's position
+			// In regular .kv6 mode, return the model's pivot
+			if (is2KV6 && activeObjectIndex < scene.size()) {
+				return scene[activeObjectIndex].position;
+			}
+			return model->GetOrigin() * -1.0F;
+		}
 
 		// The renderer bakes `origin` into the render model, so re-bake after changing
 		// it; that keeps the voxels visually fixed while the pivot marker moves.
@@ -1358,6 +1365,17 @@ namespace spades {
 		}
 
 		void KV6EditorView::SetPivot(const Vector3& pivot) {
+			// In .2kv6 mode, update the scene object's position (not the model's origin)
+			if (is2KV6 && activeObjectIndex < scene.size()) {
+				Vector3& objPos = scene[activeObjectIndex].position;
+				if (objPos.x == pivot.x && objPos.y == pivot.y && objPos.z == pivot.z)
+					return;
+				undo.Begin("Move Object");
+				objPos = pivot;
+				undo.End();
+				return;
+			}
+			// In regular .kv6 mode, update the model's pivot
 			Vector3 before = model->GetOrigin();
 			Vector3 after = pivot * -1.0F;
 			if (after.x == before.x && after.y == before.y && after.z == before.z)
@@ -1365,10 +1383,6 @@ namespace spades {
 			undo.Begin("Set Pivot");
 			ApplyOriginRaw(after);
 			undo.RecordOrigin(before, after);
-			// In .2kv6 mode, also update the scene object's position
-			if (is2KV6 && activeObjectIndex < scene.size()) {
-				scene[activeObjectIndex].position = pivot;
-			}
 			undo.End();
 		}
 
@@ -1377,11 +1391,13 @@ namespace spades {
 		// Live, non-journaled pivot move for a drag in progress; the tool commits the
 		// net change with one SetPivot on release.
 		void KV6EditorView::PreviewPivot(const Vector3& pivot) {
-			ApplyOriginRaw(pivot * -1.0F);
-			// In .2kv6 mode, also update the scene object's position for live preview
+			// In .2kv6 mode, update scene object position for live preview (no model origin change)
 			if (is2KV6 && activeObjectIndex < scene.size()) {
 				scene[activeObjectIndex].position = pivot;
+				return;
 			}
+			// In regular .kv6 mode, update the model's pivot
+			ApplyOriginRaw(pivot * -1.0F);
 		}
 
 		void KV6EditorView::BeginPivotEntry() {
