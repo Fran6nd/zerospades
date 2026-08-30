@@ -24,9 +24,7 @@
 #include <Gui/UI/Components/EditorMenu.h>
 #include <Gui/UI/Components/SoftwareCursor.h>
 #include <Gui/UI/Framework/UIManager.h>
-#include <Gui/UI/Settings/PreferenceView.h>
 #include <Core/Debug.h>
-#include <Core/RefCountedObject.h>
 
 namespace spades {
 	namespace gui {
@@ -38,9 +36,7 @@ namespace spades {
 		      editor(_editor) {
 			SPADES_MARK_FUNCTION();
 			try {
-				preferenceState = Handle<PreferenceViewPersistedState>::New();
 				editorMenu = std::make_unique<EditorMenu>(*_editor, *_renderer, *_fontManager, *cursor, _audioDevice);
-				editorMenu->OnSetupRequested = [this]() { OnSetupRequested(); };
 			} catch (const std::exception& ex) {
 				SPLog("[!] Failed to initialize map editor UI: %s", ex.what());
 				throw;
@@ -87,17 +83,6 @@ namespace spades {
 		void MapEditorUI::Closing() {
 			SPADES_MARK_FUNCTION();
 			shouldClose = true;
-		}
-
-		void MapEditorUI::OnSetupRequested() {
-			SPADES_MARK_FUNCTION();
-			PreferenceViewOptions opt;
-			opt.gameActive = true;
-			opt.persistedState = preferenceState;
-
-			Handle<PreferenceView> view =
-			    Handle<PreferenceView>::New(nullptr, opt, fontManager.GetPointerOrNull());
-			view->Run();
 		}
 	} // namespace gui
 } // namespace spades

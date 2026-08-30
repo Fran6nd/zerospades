@@ -33,7 +33,6 @@ namespace spades {
 		class MapEditorView;
 		class EditorMenu;
 		class SoftwareCursor;
-		class PreferenceViewPersistedState;
 
 		namespace ui {
 			class UIManager;
@@ -51,7 +50,6 @@ namespace spades {
 			Handle<ui::UIManager> uiManager;
 
 			std::unique_ptr<EditorMenu> editorMenu;
-			Handle<PreferenceViewPersistedState> preferenceState;
 
 			// weak reference to the editor view
 			MapEditorView* editor;
@@ -87,9 +85,6 @@ namespace spades {
 
 			// Component accessors for MapEditorView
 			EditorMenu* GetEditorMenu() { return editorMenu.get(); }
-
-		private:
-			void OnSetupRequested();
 		};
 	} // namespace gui
 } // namespace spades
