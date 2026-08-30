@@ -150,10 +150,10 @@ namespace spades {
 			if (!clientCreated) {
 				try {
 					SPLog("MapEditor: Creating game client for map: '%s'", filePath.c_str());
-					client::ServerAddress addr;
+					ServerAddress addr;
 					client = Handle<client::Client>::New(renderer, audioDevice, addr, fontManager);
 
-					auto editorNet = std::make_unique<client::EditorNetClient>(client);
+					auto editorNet = std::make_unique<client::EditorNetClient>(client.GetPointerOrNull());
 					if (!editorNet->LoadMap(filePath)) {
 						SPLog("Failed to load map: %s", editorNet->GetStatusString().c_str());
 						wantsClose = true;
