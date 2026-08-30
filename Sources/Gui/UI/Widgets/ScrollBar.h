@@ -78,7 +78,7 @@ namespace spades {
 			/** Invisible repeat-button covering the track above/below the thumb. */
 			class ScrollBarFill : public ButtonBase {
 			public:
-				ScrollBarFill(ScrollBarBase* scrollBar, bool up);
+				ScrollBarFill(UIManager* manager);
 
 				void PlayMouseEnterSound() override {} // suppress
 				void PlayActivateSound() override {}   // suppress

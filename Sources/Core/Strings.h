@@ -314,6 +314,13 @@ namespace spades {
 	void LoadCurrentLocale();
 
 	/**
+	 * Drops every translation catalog read so far, so the next lookup reloads it
+	 * from the resources mounted at that time. Needed when the mounted set
+	 * changes, since a catalog is otherwise cached for the process lifetime.
+	 */
+	void ClearLocalizationCache();
+
+	/**
 	 * Returns a current local identifier in this format: `[language[_territory]]`.
 	 */
 	std::string GetCurrentLocaleAndRegion();

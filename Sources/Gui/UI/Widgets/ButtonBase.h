@@ -55,6 +55,7 @@ namespace spades {
 				std::string activateHotKey;
 
 				ButtonBase(UIManager* manager);
+				~ButtonBase();
 
 				virtual void PlayMouseEnterSound();
 				virtual void PlayActivateSound();

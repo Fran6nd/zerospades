@@ -57,7 +57,27 @@ namespace spades {
 		~ScriptManager();
 
 	public:
+		/**
+		 * Returns the script engine, building it on first use. Building compiles
+		 * every script reachable from `Scripts/Main.as` against the resources
+		 * that are mounted right now, so the caller decides which set of mods
+		 * the scripts come from by mounting before the first call.
+		 */
 		static ScriptManager* GetInstance();
+
+		/**
+		 * Releases the script engine and every context it owns. The next
+		 * `GetInstance` call builds a fresh engine and recompiles the scripts,
+		 * which is how a changed mod set is picked up without restarting.
+		 *
+		 * Every script object must already be destroyed - the engine owns their
+		 * types, so a surviving object would dangle. In practice that means no
+		 * `client::Client` may be alive.
+		 */
+		static void Shutdown();
+
+		/** Whether the engine is currently built. */
+		static bool IsLoaded();
 
 		static void CheckError(int);
 
@@ -107,6 +127,15 @@ namespace spades {
 
 		static void RegisterOne(const std::string& name, ScriptManager* manager, Phase);
 		static void RegisterAll(ScriptManager* manager, Phase);
+
+		/**
+		 * Marks every phase of every registrar as not yet done, so the next
+		 * `RegisterAll` runs them again. Registrars are process-wide statics
+		 * while the registrations they perform (and any type handle they cache)
+		 * belong to a single engine, so this must run before registering
+		 * against a newly created engine.
+		 */
+		static void ResetAllPhases();
 
 	private:
 		bool phaseDone[PhaseCount];

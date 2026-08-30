@@ -23,15 +23,44 @@
 #include <Core/Exception.h>
 #include <Core/FileManager.h>
 #include <Core/IStream.h>
+#include <algorithm>
+#include <map>
 #include <sstream>
 #include <vector>
 
 namespace spades {
 
+	namespace {
+		// The engine is built on demand and released again when the game ends,
+		// so that a changed mod set is compiled in on the next game without
+		// restarting the process. Guarded because `GetInstance` is reachable
+		// from any thread that runs script code, even though today only the
+		// main thread does.
+		std::mutex g_instanceMutex;
+		ScriptManager* g_instance = nullptr;
+	} // namespace
+
 	ScriptManager* ScriptManager::GetInstance() {
 		SPADES_MARK_FUNCTION_DEBUG();
-		static ScriptManager* m = new ScriptManager();
-		return m;
+		std::lock_guard<std::mutex> _lock{g_instanceMutex};
+		if (!g_instance)
+			g_instance = new ScriptManager();
+		return g_instance;
+	}
+
+	void ScriptManager::Shutdown() {
+		SPADES_MARK_FUNCTION();
+		std::lock_guard<std::mutex> _lock{g_instanceMutex};
+		if (!g_instance)
+			return;
+		SPLog("Releasing script engine");
+		delete g_instance;
+		g_instance = nullptr;
+	}
+
+	bool ScriptManager::IsLoaded() {
+		std::lock_guard<std::mutex> _lock{g_instanceMutex};
+		return g_instance != nullptr;
 	}
 
 	static void MessageCallback(const asSMessageInfo* msg, void* param) {
@@ -160,6 +189,9 @@ namespace spades {
 
 			SPLog("Registering APIs");
 			engine->SetDefaultNamespace("");
+			// Registrars are statics that outlive the engine, so any phase they
+			// completed for a previous engine has to be run again for this one.
+			ScriptObjectRegistrar::ResetAllPhases();
 			ScriptObjectRegistrar::RegisterAll(this, ScriptObjectRegistrar::PhaseObjectType);
 			ScriptObjectRegistrar::RegisterAll(this, ScriptObjectRegistrar::PhaseGlobalFunction);
 			ScriptObjectRegistrar::RegisterAll(this, ScriptObjectRegistrar::PhaseObjectMember);
@@ -229,6 +261,21 @@ namespace spades {
 
 	ScriptManager::~ScriptManager() {
 		SPADES_MARK_FUNCTION();
+
+		// Pooled contexts hold a reference on the engine, so they have to go
+		// first or the engine would outlive this object. Any context still
+		// handed out would mean script code is running right now, which cannot
+		// happen: the caller destroys every script object before shutting down.
+		{
+			std::lock_guard<std::recursive_mutex> _lock{contextMutex};
+			for (Context* ctx : contextFreeList) {
+				SPAssert(ctx->refCount == 0);
+				ctx->obj->Release();
+				delete ctx;
+			}
+			contextFreeList.clear();
+		}
+
 		engine->Release();
 	}
 
@@ -333,6 +380,15 @@ namespace spades {
 				return;
 			r->phaseDone[(int)phase] = true;
 			r->Register(manager, phase);
+		}
+	}
+
+	void ScriptObjectRegistrar::ResetAllPhases() {
+		if (!registrars)
+			return;
+		for (auto& entry : *registrars) {
+			ScriptObjectRegistrar* r = entry.second;
+			std::fill(r->phaseDone, r->phaseDone + PhaseCount, false);
 		}
 	}
 

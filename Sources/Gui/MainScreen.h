@@ -49,6 +49,18 @@ namespace spades {
 
 			void RestoreRenderer();
 
+			// Drops everything the game session loaded (scripts, models,
+			// images, sounds) so the next game reloads it from the resources
+			// mounted at that time. Called after the game view is destroyed.
+			void UnloadGameResources();
+
+			// Tears the game view down and returns the process to the menu.
+			void CloseSubview();
+
+			// Drops the cached game assets of a previous session, so this game
+			// loads its models, images and sounds from the current resources.
+			void PrepareForGame();
+
 			std::string Connect(const ServerAddress &host);
 		std::string PlayDemo(const std::string &demoPath);
 
