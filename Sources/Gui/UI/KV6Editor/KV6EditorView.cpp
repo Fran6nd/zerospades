@@ -384,11 +384,23 @@ namespace spades {
 				scene = io->NewScene2KV6(n);
 				activeSceneRootIndex = 0;
 				activeChildIndex = SIZE_MAX; // No child selected initially
-				// Note: model will be set when first child is created
-				if (!scene.empty() && !scene[activeSceneRootIndex].children.empty() && activeChildIndex < scene[activeSceneRootIndex].children.size()) {
+
+				// Ensure root object exists (scene should have at least one root)
+				if (scene.empty()) {
+					// Fallback: create empty root if NewScene2KV6 didn't
+					VoxelObject root = VoxelModel2KV6::CreateObject("Scene", n);
+					scene.push_back(root);
+				}
+
+				// Set model to root or active child if it exists
+				if (activeSceneRootIndex < scene.size() &&
+				    activeChildIndex < scene[activeSceneRootIndex].children.size()) {
 					model = scene[activeSceneRootIndex].children[activeChildIndex].model;
-				} else {
+				} else if (activeSceneRootIndex < scene.size()) {
 					model = scene[activeSceneRootIndex].model;
+				} else {
+					// Shouldn't reach here, but create a fallback model
+					model = Handle<VoxelModel>::New(n, n, n);
 				}
 				voxelCount = 1;
 			} else {
