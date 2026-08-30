@@ -2260,9 +2260,11 @@ namespace spades {
 			// Delete the ACTIVE child
 			root.children.erase(root.children.begin() + activeChildIndex);
 
-			// Adjust activeChildIndex if it's now out of bounds
-			if (activeChildIndex >= root.children.size() && !root.children.empty()) {
-				activeChildIndex = root.children.size() - 1;
+			// Adjust activeChildIndex: reset to SIZE_MAX if no children left
+			if (root.children.empty()) {
+				activeChildIndex = SIZE_MAX;  // No selection when all deleted
+			} else if (activeChildIndex >= root.children.size()) {
+				activeChildIndex = root.children.size() - 1;  // Select last if needed
 			}
 
 			// Update the working model
