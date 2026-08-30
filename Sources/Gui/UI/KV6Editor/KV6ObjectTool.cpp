@@ -676,6 +676,10 @@ namespace spades {
 		// --- ObjectTool (Container) ---
 		ObjectTool::ObjectTool() {
 			options.AddBool("space.global", "Global", "Transform Space");
+			// Initialize option to match the code state (global = true by default)
+			if (options.Count() > 0) {
+				options.At(0).bvalue = useGlobalSpace;
+			}
 
 			// Create subtools
 			auto moveTool = std::make_unique<ObjectMoveSubTool>();
