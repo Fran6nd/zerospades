@@ -302,6 +302,22 @@ namespace spades {
 				const ToolOption& opt = opts->At(idx);
 				if (opt.type != ToolOption::Type::Bool) return;
 				opts->At(idx).bvalue = !opts->At(idx).bvalue;
+
+				// Special handling for ObjectTool's transform space toggle
+				if (currentMode == EditorMode::Object && is2KV6) {
+					if (activeObjectModeToolIndex >= 0 &&
+					    activeObjectModeToolIndex < int(objectModeTools.size())) {
+						EditorTool* objTool = objectModeTools[activeObjectModeToolIndex].get();
+						// Check if this is the Transform tool (index 1)
+						if (activeObjectModeToolIndex == 1 && opt.id == "space.global") {
+							// Cast to ObjectTool and update transform space
+							if (auto* transformTool = dynamic_cast<ObjectTool*>(objTool)) {
+								transformTool->SetGlobalTransformSpace(opts->At(idx).bvalue);
+								SetStatus(opts->At(idx).bvalue ? "Global transform space" : "Local transform space");
+							}
+						}
+					}
+				}
 			};
 			ui->GetOptionBar()->OnColorClicked = [this](int idx) {
 				EditorTool* tool = ActiveTool();
