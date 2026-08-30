@@ -163,6 +163,8 @@ namespace spades {
 					client->EnableEditorMode(std::move(editorNet));
 					clientCreated = true;
 					SPLog("Map loaded successfully, starting game client");
+					// Skip rendering on first frame to let everything initialize
+					return;
 				} catch (const std::exception& ex) {
 					SPLog("Error creating map editor client: %s", ex.what());
 					wantsClose = true;
@@ -172,7 +174,11 @@ namespace spades {
 
 			// Run game client frame
 			if (client) {
-				client->RunFrame(dt);
+				try {
+					client->RunFrame(dt);
+				} catch (const std::exception& ex) {
+					SPLog("Error in client frame: %s", ex.what());
+				}
 			}
 
 			// Draw menu/prompt overlay if open
