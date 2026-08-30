@@ -27,6 +27,22 @@
 
 namespace spades {
 	namespace gui {
+		// --- ObjectNewTool ---
+		class ObjectNewTool : public EditorTool {
+		public:
+			const char* Label() const override { return "New"; }
+			void OnActivate(IEditorContext& ctx) override;
+			bool ShouldAutoRevert() const override { return true; }
+		};
+
+		// --- ObjectDeleteTool ---
+		class ObjectDeleteTool : public EditorTool {
+		public:
+			const char* Label() const override { return "Delete"; }
+			void OnActivate(IEditorContext& ctx) override;
+			bool ShouldAutoRevert() const override { return true; }
+		};
+
 		// Object mode: create, select, move, rotate, and scale objects in .2kv6 scenes.
 		// When not in .2kv6 mode, acts as a no-op (greyed out in toolbar).
 		class ObjectTool : public ContainerTool {

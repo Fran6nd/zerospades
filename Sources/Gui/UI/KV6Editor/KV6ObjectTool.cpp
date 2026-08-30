@@ -27,8 +27,20 @@
 
 namespace spades {
 	namespace gui {
-		// Forward declaration
-		class ObjectTool;
+		void ObjectNewTool::OnActivate(IEditorContext& ctx) {
+			if (!ctx.IsScene2KV6())
+				return;
+			ctx.CreateSceneObject("");
+			ctx.SetStatus("Created new object");
+		}
+
+		void ObjectDeleteTool::OnActivate(IEditorContext& ctx) {
+			if (!ctx.IsScene2KV6())
+				return;
+			if (ctx.DeleteActiveSceneObject()) {
+				ctx.SetStatus("Deleted object");
+			}
+		}
 
 		namespace {
 			Vector3 AxisUnit(int a) {
@@ -591,37 +603,6 @@ namespace spades {
 			}
 		}
 
-		// --- ObjectNewTool ---
-		class ObjectNewTool : public EditorTool {
-		public:
-			const char* Label() const override { return "New"; }
-			void OnActivate(IEditorContext& ctx) override;
-			bool ShouldAutoRevert() const override { return true; }
-		};
-
-		void ObjectNewTool::OnActivate(IEditorContext& ctx) {
-			if (!ctx.IsScene2KV6())
-				return;
-			ctx.CreateSceneObject("");
-			ctx.SetStatus("Created new object");
-		}
-
-		// --- ObjectDeleteTool ---
-		class ObjectDeleteTool : public EditorTool {
-		public:
-			const char* Label() const override { return "Delete"; }
-			void OnActivate(IEditorContext& ctx) override;
-			bool ShouldAutoRevert() const override { return true; }
-		};
-
-		void ObjectDeleteTool::OnActivate(IEditorContext& ctx) {
-			if (!ctx.IsScene2KV6())
-				return;
-			if (ctx.DeleteActiveSceneObject()) {
-				ctx.SetStatus("Deleted object");
-			}
-		}
-
 		// --- ObjectTool (Container) ---
 		ObjectTool::ObjectTool() {
 			options.AddBool("space.global", "Global", "Transform Space");
@@ -731,7 +712,7 @@ namespace spades {
 			}
 		}
 
-		// Factory functions
+		// Factory functions for object mode tools
 		std::unique_ptr<EditorTool> CreateObjectNewTool() {
 			return std::make_unique<ObjectNewTool>();
 		}

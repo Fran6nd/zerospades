@@ -2322,5 +2322,6 @@ namespace spades {
 
 			return false;
 		}
+
 	} // namespace gui
 } // namespace spades
