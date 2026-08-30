@@ -243,7 +243,9 @@ namespace spades {
 		}
 
 		void ObjectMoveSubTool::DrawOverlay(IEditorContext& ctx) {
-			if (!ctx.IsScene2KV6())
+			if (!ctx.IsScene2KV6() || ctx.GetObjectCount() == 0)
+				return;
+			if (ctx.GetActiveObjectIndex() >= ctx.GetObjectCount())
 				return;
 
 			Vector3 origin = ctx.GetPivot();
@@ -426,7 +428,9 @@ namespace spades {
 		}
 
 		void ObjectRotateSubTool::DrawOverlay(IEditorContext& ctx) {
-			if (!ctx.IsScene2KV6())
+			if (!ctx.IsScene2KV6() || ctx.GetObjectCount() == 0)
+				return;
+			if (ctx.GetActiveObjectIndex() >= ctx.GetObjectCount())
 				return;
 
 			Vector3 origin = ctx.GetPivot();
@@ -601,7 +605,9 @@ namespace spades {
 		}
 
 		void ObjectScaleSubTool::DrawOverlay(IEditorContext& ctx) {
-			if (!ctx.IsScene2KV6())
+			if (!ctx.IsScene2KV6() || ctx.GetObjectCount() == 0)
+				return;
+			if (ctx.GetActiveObjectIndex() >= ctx.GetObjectCount())
 				return;
 
 			Vector3 origin = ctx.GetPivot();
