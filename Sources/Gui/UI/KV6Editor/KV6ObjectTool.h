@@ -50,6 +50,9 @@ namespace spades {
 			int gizmoMode = Gizmo::Move; // Current mode displayed
 			int gizmoAxis = -1; // Axis being dragged (-1 = none)
 			Vector2 gizmoDragStart;
+
+			void CreateNewObject(IEditorContext& ctx, const std::string& name);
+			void DeleteActiveObject(IEditorContext& ctx);
 		};
 	} // namespace gui
 } // namespace spades

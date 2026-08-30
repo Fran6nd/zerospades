@@ -137,6 +137,11 @@ namespace spades {
 			virtual void Redo() = 0;
 			virtual bool CanUndo() const = 0;
 			virtual bool CanRedo() const = 0;
+
+			// --- Scene management (for .2kv6 multi-object editing) ---
+			virtual bool IsScene2KV6() const = 0;
+			virtual bool CreateSceneObject(const std::string& name) = 0;
+			virtual bool DeleteActiveSceneObject() = 0;
 		};
 	} // namespace gui
 } // namespace spades

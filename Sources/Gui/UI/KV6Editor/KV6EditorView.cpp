@@ -2057,5 +2057,39 @@ namespace spades {
 				}
 			}
 		}
+
+		bool KV6EditorView::CreateSceneObject(const std::string& name) {
+			if (!is2KV6)
+				return false;
+
+			if (activeObjectIndex >= scene.size())
+				return false;
+
+			// Create new object as child of the root object
+			VoxelObject newObj = VoxelModel2KV6::CreateObject(name, cubeSize);
+			scene[activeObjectIndex].children.push_back(newObj);
+
+			SetStatus("Created object: " + (name.empty() ? "(unnamed)" : name));
+			return true;
+		}
+
+		bool KV6EditorView::DeleteActiveSceneObject() {
+			if (!is2KV6 || activeObjectIndex >= scene.size())
+				return false;
+
+			// Don't allow deleting if it's the only object
+			if (scene.size() == 1 && scene[0].children.empty())
+				return false;
+
+			// For now, only support deleting children of the root object
+			VoxelObject& root = scene[activeObjectIndex];
+			if (!root.children.empty()) {
+				root.children.pop_back();
+				SetStatus("Deleted object");
+				return true;
+			}
+
+			return false;
+		}
 	} // namespace gui
 } // namespace spades

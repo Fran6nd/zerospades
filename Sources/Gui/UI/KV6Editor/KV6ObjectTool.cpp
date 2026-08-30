@@ -49,9 +49,10 @@ namespace spades {
 		}
 
 		void ObjectTool::OnKey(IEditorContext& ctx, const KeyInput& input) {
-			// Keyboard shortcuts for gizmo mode selection (industry standard)
 			if (!input.IsDown())
 				return;
+
+			// Gizmo mode selection (industry standard)
 			if (input.key == "g") {
 				gizmoMode = Gizmo::Move;
 				ctx.SetStatus("Move mode (G)");
@@ -61,6 +62,12 @@ namespace spades {
 			} else if (input.key == "s") {
 				gizmoMode = Gizmo::Scale;
 				ctx.SetStatus("Scale mode (S)");
+			}
+			// Object creation / deletion
+			else if (input.key == "n" && input.shift) {
+				CreateNewObject(ctx, "");
+			} else if (input.key == "Delete" || input.key == "Backspace") {
+				DeleteActiveObject(ctx);
 			}
 		}
 
@@ -78,6 +85,26 @@ namespace spades {
 
 		void ObjectTool::DrawOverlay(IEditorContext& ctx) {
 			// Show status and hint text
+		}
+
+		void ObjectTool::CreateNewObject(IEditorContext& ctx, const std::string& name) {
+			if (!ctx.IsScene2KV6()) {
+				ctx.SetStatus("Not in .2kv6 mode");
+				return;
+			}
+			if (ctx.CreateSceneObject(name)) {
+				ctx.SetStatus("Created object: " + (name.empty() ? "(unnamed)" : name));
+			}
+		}
+
+		void ObjectTool::DeleteActiveObject(IEditorContext& ctx) {
+			if (!ctx.IsScene2KV6()) {
+				ctx.SetStatus("Not in .2kv6 mode");
+				return;
+			}
+			if (ctx.DeleteActiveSceneObject()) {
+				ctx.SetStatus("Deleted object");
+			}
 		}
 	} // namespace gui
 } // namespace spades

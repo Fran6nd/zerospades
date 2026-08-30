@@ -123,6 +123,12 @@ namespace spades {
 		 */
 		static void Save(IStream& stream, const std::vector<VoxelObject>& objects);
 
+		// Scene editing utilities
+		static VoxelObject CreateObject(const std::string& name, int sizeXYZ);
+		static bool DeleteObject(VoxelObject& parent, size_t childIndex);
+		static VoxelObject* FindObjectByName(std::vector<VoxelObject>& scene,
+		                                      const std::string& name);
+
 	private:
 		static constexpr const char* MAGIC = "2kv6";
 	};

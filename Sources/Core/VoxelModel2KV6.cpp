@@ -248,4 +248,42 @@ namespace spades {
 		stream.Flush();
 	}
 
+	VoxelObject VoxelModel2KV6::CreateObject(const std::string& name, int sizeXYZ) {
+		VoxelObject obj;
+		obj.name = name;
+		obj.model = Handle<VoxelModel>::New(sizeXYZ, sizeXYZ, sizeXYZ);
+		obj.model->SetSolid(sizeXYZ / 2, sizeXYZ / 2, sizeXYZ / 2, 0xFFFFFF);
+		float c = float(sizeXYZ / 2);
+		obj.model->SetOrigin(MakeVector3(-c, -c, -c));
+		return obj;
+	}
+
+	bool VoxelModel2KV6::DeleteObject(VoxelObject& parent, size_t childIndex) {
+		if (childIndex >= parent.children.size())
+			return false;
+		parent.children.erase(parent.children.begin() + childIndex);
+		return true;
+	}
+
+	VoxelObject* VoxelModel2KV6::FindObjectByName(std::vector<VoxelObject>& scene,
+	                                               const std::string& name) {
+		// Breadth-first search for named object
+		std::vector<VoxelObject*> queue;
+		for (auto& obj : scene)
+			queue.push_back(&obj);
+
+		while (!queue.empty()) {
+			VoxelObject* current = queue.front();
+			queue.erase(queue.begin());
+
+			if (current->name == name)
+				return current;
+
+			for (auto& child : current->children)
+				queue.push_back(&child);
+		}
+
+		return nullptr;
+	}
+
 } // namespace spades

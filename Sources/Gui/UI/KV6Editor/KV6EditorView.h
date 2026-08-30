@@ -129,6 +129,9 @@ namespace spades {
 			void Redo() override;
 			bool CanUndo() const override { return undo.CanUndo(); }
 			bool CanRedo() const override { return undo.CanRedo(); }
+			bool IsScene2KV6() const override { return is2KV6; }
+			bool CreateSceneObject(const std::string& name) override;
+			bool DeleteActiveSceneObject() override;
 			void PlaceCube() override;
 			void DeleteCube() override;
 			void Eyedropper() override;
