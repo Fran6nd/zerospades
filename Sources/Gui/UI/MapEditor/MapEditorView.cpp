@@ -19,6 +19,7 @@
  */
 
 #include "MapEditorView.h"
+#include "MapEditorUI.h"
 
 #include <Client/Client.h>
 #include <Client/EditorNetClient.h>
@@ -28,6 +29,7 @@
 #include <Core/ServerAddress.h>
 #include <Core/Settings.h>
 #include <Gui/UI/Components/SoftwareCursor.h>
+#include <Gui/UI/Components/EditorMenu.h>
 
 namespace spades {
 	namespace gui {
@@ -36,13 +38,14 @@ namespace spades {
 		                             const std::string& path)
 		    : renderer(r), audioDevice(dev), fontManager(fm), softwareCursor(cursor),
 		      filePath(path) {
-			menu = Handle<EditorMenu>::New(*this, *r, *fm, *cursor, dev);
+			ui = Handle<MapEditorUI>::New(r, dev, fm, this, cursor);
 		}
 
 		MapEditorView::~MapEditorView() {
 		}
 
 		void MapEditorView::MouseEvent(float x, float y) {
+			EditorMenu* menu = ui->GetEditorMenu();
 			if (menu->IsActive())
 				return;
 			if (client) {
@@ -51,6 +54,7 @@ namespace spades {
 		}
 
 		void MapEditorView::WheelEvent(float x, float y) {
+			EditorMenu* menu = ui->GetEditorMenu();
 			if (menu->IsActive())
 				return;
 			if (client) {
@@ -59,6 +63,7 @@ namespace spades {
 		}
 
 		void MapEditorView::KeyEvent(const std::string& key, bool down) {
+			EditorMenu* menu = ui->GetEditorMenu();
 			if (menu->KeyEvent(key, down))
 				return;
 
@@ -73,6 +78,7 @@ namespace spades {
 		}
 
 		void MapEditorView::TextInputEvent(const std::string& text) {
+			EditorMenu* menu = ui->GetEditorMenu();
 			if (menu->AcceptsTextInput()) {
 				menu->TextInputEvent(text);
 			} else if (client) {
@@ -81,10 +87,12 @@ namespace spades {
 		}
 
 		bool MapEditorView::AcceptsTextInput() {
+			EditorMenu* menu = ui->GetEditorMenu();
 			return menu->AcceptsTextInput() || (client && client->AcceptsTextInput());
 		}
 
 		AABB2 MapEditorView::GetTextInputRect() {
+			EditorMenu* menu = ui->GetEditorMenu();
 			if (menu->AcceptsTextInput())
 				return menu->GetTextInputRect();
 			if (client)
@@ -138,6 +146,7 @@ namespace spades {
 			}
 
 			// Draw menu overlay
+			EditorMenu* menu = ui->GetEditorMenu();
 			menu->Draw();
 		}
 

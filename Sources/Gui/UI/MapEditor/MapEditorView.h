@@ -23,7 +23,6 @@
 #include <string>
 
 #include <Gui/View.h>
-#include <Gui/UI/Components/EditorMenu.h>
 #include <Client/Client.h>
 #include <Client/EditorNetClient.h>
 #include <Core/Math.h>
@@ -37,12 +36,13 @@ namespace spades {
 	}
 	namespace gui {
 		class SoftwareCursor;
+		class MapEditorUI;
 
 		/**
 		 * Map editor view for .vxl files.
 		 *
 		 * Loads a voxel terrain map and provides a local game client for viewing
-		 * and editing using the game engine.
+		 * and editing using the game engine. Uses MapEditorUI to manage UI components.
 		 */
 		class MapEditorView : public View, public IEditorMenuHost {
 		public:
@@ -79,7 +79,7 @@ namespace spades {
 			Handle<client::FontManager> fontManager;
 			Handle<client::Client> client;
 			Handle<SoftwareCursor> softwareCursor;
-			Handle<EditorMenu> menu;
+			Handle<MapEditorUI> ui;
 			std::string filePath;
 			bool wantsClose = false;
 			bool clientCreated = false;
