@@ -132,7 +132,7 @@ namespace spades {
 			bool IsScene2KV6() const override { return is2KV6; }
 			bool CreateSceneObject(const std::string& name) override;
 			bool DeleteActiveSceneObject() override;
-			size_t GetActiveObjectIndex() const override { return activeObjectIndex; }
+			size_t GetActiveObjectIndex() const override { return activeChildIndex; }
 			void SetActiveObjectIndex(size_t index) override;
 			size_t GetObjectCount() const override;
 			VoxelObject* GetActiveObject();
@@ -184,7 +184,7 @@ namespace spades {
 			Handle<KV6ScreenHelper> io;
 
 			// --- Document -----------------------------------------------------
-			Handle<VoxelModel> model; // working model (may be from scene[activeObjectIndex])
+			Handle<VoxelModel> model; // working model (may be from scene[activeSceneRootIndex].children[activeChildIndex])
 			Handle<client::IModel> renderModel; // rebuilt on edit
 			int cubeSize = 32;
 			std::string filePath;
@@ -196,8 +196,8 @@ namespace spades {
 			// .2kv6 scene support (for hierarchical multi-object editing)
 			bool is2KV6 = false; // true if editing a .2kv6 scene, false if single .kv6
 			std::vector<VoxelObject> scene; // root objects (only used if is2KV6)
-			size_t activeObjectIndex = 0; // which root object in scene is being edited
-			size_t activeChildIndex = 0; // which child of root object is being edited (in .2kv6 mode)
+			size_t activeSceneRootIndex = 0; // which root object in scene is being edited (always 0 in .2kv6)
+			size_t activeChildIndex = 0; // which child of active root is being edited (in .2kv6 mode)
 
 			// --- Undo / redo --------------------------------------------------
 			// The stack drives the model back and forth through the Sink interface

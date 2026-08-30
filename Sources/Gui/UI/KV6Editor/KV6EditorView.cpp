@@ -242,10 +242,12 @@ namespace spades {
 					// Regular .kv6: buttons are [Edit=0, Animation=1], map to enum
 					newMode = EditorMode(idx + 1);
 				}
-				// Prevent entering Edit mode in .2kv6 without a selected object
-				if (is2KV6 && newMode == EditorMode::Edit && scene.empty()) {
-					SetStatus("Cannot enter Edit mode: no objects in scene");
-					return;
+				// Prevent entering Edit mode in .2kv6 without any children
+				if (is2KV6 && newMode == EditorMode::Edit) {
+					if (activeSceneRootIndex >= scene.size() || scene[activeSceneRootIndex].children.empty()) {
+						SetStatus("Cannot enter Edit mode: no objects in scene");
+						return;
+					}
 				}
 				if (newMode != currentMode) {
 					// Deactivate current tool
@@ -380,8 +382,14 @@ namespace spades {
 			if (create2KV6) {
 				is2KV6 = true;
 				scene = io->NewScene2KV6(n);
-				activeObjectIndex = 0;
-				model = scene[activeObjectIndex].model;
+				activeSceneRootIndex = 0;
+				activeChildIndex = 0;
+				// Note: model will be set when first child is created
+				if (!scene.empty() && !scene[activeSceneRootIndex].children.empty()) {
+					model = scene[activeSceneRootIndex].children[activeChildIndex].model;
+				} else {
+					model = scene[activeSceneRootIndex].model;
+				}
 				voxelCount = 1;
 			} else {
 				is2KV6 = false;
@@ -2095,11 +2103,12 @@ namespace spades {
 			renderer->StartScene(sceneDef);
 			if (renderModel) {
 				client::ModelRenderParam param;
-				// In .2kv6 mode, position the model at the scene object's world position
+				// In .2kv6 mode, position the model at the active child object's world position
 				// with rotation and scale applied
 				// In regular .kv6 mode, use the model's origin (pivot)
-				if (is2KV6 && activeObjectIndex < scene.size()) {
-					const VoxelObject& obj = scene[activeObjectIndex];
+				if (is2KV6 && activeSceneRootIndex < scene.size() &&
+				    activeChildIndex < scene[activeSceneRootIndex].children.size()) {
+					const VoxelObject& obj = scene[activeSceneRootIndex].children[activeChildIndex];
 					// Build transform: translate * rotate * scale
 					Matrix4 scale = Matrix4::Scale(obj.scale);
 					Matrix4 rotate = Quaternion(obj.rotation).ToRotationMatrix();
@@ -2174,17 +2183,17 @@ namespace spades {
 		}
 
 		bool KV6EditorView::CreateSceneObject(const std::string& name) {
-			if (!is2KV6 || activeObjectIndex >= scene.size())
+			if (!is2KV6 || activeSceneRootIndex >= scene.size())
 				return false;
 
-			// Create new object as child of the root object
+			// Create new object as child of the active root object
 			VoxelObject newObj = VoxelModel2KV6::CreateObject(name, cubeSize);
-			scene[activeObjectIndex].children.push_back(newObj);
+			scene[activeSceneRootIndex].children.push_back(newObj);
 
 			// Select the newly created object
-			activeChildIndex = scene[activeObjectIndex].children.size() - 1;
-			if (scene[activeObjectIndex].children[activeChildIndex].model) {
-				model = scene[activeObjectIndex].children[activeChildIndex].model;
+			activeChildIndex = scene[activeSceneRootIndex].children.size() - 1;
+			if (scene[activeSceneRootIndex].children[activeChildIndex].model) {
+				model = scene[activeSceneRootIndex].children[activeChildIndex].model;
 				RebuildRenderModel();
 			}
 
@@ -2193,53 +2202,69 @@ namespace spades {
 		}
 
 		bool KV6EditorView::DeleteActiveSceneObject() {
-			if (!is2KV6 || activeObjectIndex >= scene.size())
+			if (!is2KV6 || activeSceneRootIndex >= scene.size())
 				return false;
 
-			// Don't allow deleting if it's the only object
-			if (scene.size() == 1 && scene[0].children.empty())
+			VoxelObject& root = scene[activeSceneRootIndex];
+
+			// Can't delete if there are no children
+			if (root.children.empty())
 				return false;
 
-			// For now, only support deleting children of the root object
-			VoxelObject& root = scene[activeObjectIndex];
-			if (!root.children.empty()) {
-				root.children.pop_back();
-				SetStatus("Deleted object");
-				return true;
+			// Can't delete if active child is out of bounds
+			if (activeChildIndex >= root.children.size())
+				return false;
+
+			// Delete the ACTIVE child
+			root.children.erase(root.children.begin() + activeChildIndex);
+
+			// Adjust activeChildIndex if it's now out of bounds
+			if (activeChildIndex >= root.children.size() && !root.children.empty()) {
+				activeChildIndex = root.children.size() - 1;
 			}
 
-			return false;
+			// Update the working model
+			if (activeChildIndex < root.children.size() && root.children[activeChildIndex].model) {
+				model = root.children[activeChildIndex].model;
+				RebuildRenderModel();
+			} else {
+				// No children left; model should point to root (even though Edit mode should be disabled)
+				model = root.model;
+			}
+
+			SetStatus("Deleted object");
+			return true;
 		}
 
 		void KV6EditorView::SetActiveObjectIndex(size_t index) {
 			if (!is2KV6)
 				return;
-			if (activeObjectIndex < scene.size() && index < scene[activeObjectIndex].children.size()) {
+			if (activeSceneRootIndex < scene.size() && index < scene[activeSceneRootIndex].children.size()) {
 				activeChildIndex = index;
 				// Update the working model to the new active child's model
-				if (scene[activeObjectIndex].children[index].model) {
-					model = scene[activeObjectIndex].children[index].model;
+				if (scene[activeSceneRootIndex].children[index].model) {
+					model = scene[activeSceneRootIndex].children[index].model;
 					RebuildRenderModel();
 				}
 			}
 		}
 
 		size_t KV6EditorView::GetObjectCount() const {
-			if (!is2KV6 || activeObjectIndex >= scene.size())
+			if (!is2KV6 || activeSceneRootIndex >= scene.size())
 				return 0;
-			return scene[activeObjectIndex].children.size();
+			return scene[activeSceneRootIndex].children.size();
 		}
 
 		VoxelObject* KV6EditorView::GetActiveObject() {
-			if (!is2KV6 || activeObjectIndex >= scene.size() || activeChildIndex >= scene[activeObjectIndex].children.size())
+			if (!is2KV6 || activeSceneRootIndex >= scene.size() || activeChildIndex >= scene[activeSceneRootIndex].children.size())
 				return nullptr;
-			return &scene[activeObjectIndex].children[activeChildIndex];
+			return &scene[activeSceneRootIndex].children[activeChildIndex];
 		}
 
 		const VoxelObject* KV6EditorView::GetActiveObject() const {
-			if (!is2KV6 || activeObjectIndex >= scene.size() || activeChildIndex >= scene[activeObjectIndex].children.size())
+			if (!is2KV6 || activeSceneRootIndex >= scene.size() || activeChildIndex >= scene[activeSceneRootIndex].children.size())
 				return nullptr;
-			return &scene[activeObjectIndex].children[activeChildIndex];
+			return &scene[activeSceneRootIndex].children[activeChildIndex];
 		}
 
 		Vector4 KV6EditorView::GetObjectRotation() const {
@@ -2280,25 +2305,31 @@ namespace spades {
 				obj->scale = scale;
 		}
 
-		void KV6EditorView::DrawObjectOutline(size_t objectIndex, const Vector4& color) {
-			// In .2kv6 mode, objectIndex refers to the child object index
-			if (const VoxelObject* obj = GetActiveObject()) {
-				if (!obj->model)
-					return;
+		void KV6EditorView::DrawObjectOutline(size_t childIndex, const Vector4& color) {
+			// In .2kv6 mode, childIndex is the child object index to draw
+			if (!is2KV6 || activeSceneRootIndex >= scene.size())
+				return;
 
-				// Draw bounding box of the active child object's model
-				int w = obj->model->GetWidth();
-				int h = obj->model->GetHeight();
-				int d = obj->model->GetDepth();
+			VoxelObject& root = scene[activeSceneRootIndex];
+			if (childIndex >= root.children.size())
+				return;
 
-				IntVector3 lo = MakeIntVector3(0, 0, 0);
-				IntVector3 hi = MakeIntVector3(w - 1, h - 1, d - 1);
-				DrawBoxOutline(lo, hi, color);
-			}
+			const VoxelObject& obj = root.children[childIndex];
+			if (!obj.model)
+				return;
+
+			// Draw bounding box of the specified child object's model
+			int w = obj.model->GetWidth();
+			int h = obj.model->GetHeight();
+			int d = obj.model->GetDepth();
+
+			IntVector3 lo = MakeIntVector3(0, 0, 0);
+			IntVector3 hi = MakeIntVector3(w - 1, h - 1, d - 1);
+			DrawBoxOutline(lo, hi, color);
 		}
 
 		bool KV6EditorView::SelectObjectAtCursor() {
-			if (!is2KV6 || activeObjectIndex >= scene.size())
+			if (!is2KV6 || activeSceneRootIndex >= scene.size())
 				return false;
 
 			DoPick();
@@ -2307,7 +2338,7 @@ namespace spades {
 
 			// Check which child object contains the picked voxel
 			IntVector3 picked = PickSolid();
-			VoxelObject& root = scene[activeObjectIndex];
+			VoxelObject& root = scene[activeSceneRootIndex];
 
 			// Try each child object to see if it contains this voxel
 			for (size_t i = 0; i < root.children.size(); i++) {
