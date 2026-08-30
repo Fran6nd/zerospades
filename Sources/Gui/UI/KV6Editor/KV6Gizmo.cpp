@@ -38,19 +38,32 @@ namespace spades {
 				MakeVector4(0.2F, 0.2F, 1.0F, 1.0F), // Blue (Z)
 			};
 
+			// Build rotated axis vectors if local rotation is provided
+			Vector3 axes[3];
+			if (localRotation) {
+				Quaternion q(*localRotation);
+				axes[0] = q.Apply(MakeVector3(1.0F, 0.0F, 0.0F));
+				axes[1] = q.Apply(MakeVector3(0.0F, 1.0F, 0.0F));
+				axes[2] = q.Apply(MakeVector3(0.0F, 0.0F, 1.0F));
+			} else {
+				axes[0] = MakeVector3(1.0F, 0.0F, 0.0F);
+				axes[1] = MakeVector3(0.0F, 1.0F, 0.0F);
+				axes[2] = MakeVector3(0.0F, 0.0F, 1.0F);
+			}
+
 			// Draw move gizmo (arrow lines along each axis)
 			if (visibleModes & Move) {
 				for (int i = 0; i < 3; i++) {
-					Vector3 axis = MakeVector3(i == 0 ? 1.0F : 0.0F, i == 1 ? 1.0F : 0.0F,
-					                           i == 2 ? 1.0F : 0.0F);
+					Vector3 axis = axes[i];
 					Vector3 end = origin + axis * kArrowLength;
 					ctx.DrawLine3D(origin, end, colors[i]);
 
 					// Arrow head (simple: two short lines forming a V)
 					Vector3 headBase = end - axis * kArrowHeadSize;
-					Vector3 headOffset = (i == 0) ? MakeVector3(0, kArrowHeadSize * 0.5F, 0)
-					                                 : (i == 1) ? MakeVector3(kArrowHeadSize * 0.5F, 0, 0)
-					                                           : MakeVector3(0, kArrowHeadSize * 0.5F, 0);
+					// Perpendicular offset based on the other two axes
+					Vector3 headOffset = (i == 0) ? axes[1] * kArrowHeadSize * 0.5F
+					                                 : (i == 1) ? axes[0] * kArrowHeadSize * 0.5F
+					                                           : axes[1] * kArrowHeadSize * 0.5F;
 					ctx.DrawLine3D(headBase, end + headOffset, colors[i]);
 					ctx.DrawLine3D(headBase, end - headOffset, colors[i]);
 				}
@@ -62,21 +75,20 @@ namespace spades {
 				for (int axis = 0; axis < 3; axis++) {
 					Vector4 color = colors[axis];
 					color.w = 0.6F; // Semi-transparent for rotate
+
+					// Get the two perpendicular axes for this rotation ring
+					Vector3 perp1 = axes[(axis + 1) % 3];
+					Vector3 perp2 = axes[(axis + 2) % 3];
+
 					for (int i = 0; i < segments; i++) {
 						float angle1 = (float(i) / segments) * 6.28318F;
 						float angle2 = (float(i + 1) / segments) * 6.28318F;
 
-						Vector3 p1, p2;
-						if (axis == 0) { // Rotate around X
-							p1 = origin + MakeVector3(0, std::cos(angle1), std::sin(angle1)) * kGizmoRadius;
-							p2 = origin + MakeVector3(0, std::cos(angle2), std::sin(angle2)) * kGizmoRadius;
-						} else if (axis == 1) { // Rotate around Y
-							p1 = origin + MakeVector3(std::cos(angle1), 0, std::sin(angle1)) * kGizmoRadius;
-							p2 = origin + MakeVector3(std::cos(angle2), 0, std::sin(angle2)) * kGizmoRadius;
-						} else { // Rotate around Z
-							p1 = origin + MakeVector3(std::cos(angle1), std::sin(angle1), 0) * kGizmoRadius;
-							p2 = origin + MakeVector3(std::cos(angle2), std::sin(angle2), 0) * kGizmoRadius;
-						}
+						float c1 = std::cos(angle1), s1 = std::sin(angle1);
+						float c2 = std::cos(angle2), s2 = std::sin(angle2);
+
+						Vector3 p1 = origin + (perp1 * c1 + perp2 * s1) * kGizmoRadius;
+						Vector3 p2 = origin + (perp1 * c2 + perp2 * s2) * kGizmoRadius;
 						ctx.DrawLine3D(p1, p2, color);
 					}
 				}
@@ -85,8 +97,7 @@ namespace spades {
 			// Draw scale gizmo (boxes at the end of each axis)
 			if (visibleModes & Scale) {
 				for (int i = 0; i < 3; i++) {
-					Vector3 axis = MakeVector3(i == 0 ? 1.0F : 0.0F, i == 1 ? 1.0F : 0.0F,
-					                           i == 2 ? 1.0F : 0.0F);
+					Vector3 axis = axes[i];
 					Vector3 pos = origin + axis * kArrowLength;
 					Vector4 color = colors[i];
 					color.w = 0.7F;
