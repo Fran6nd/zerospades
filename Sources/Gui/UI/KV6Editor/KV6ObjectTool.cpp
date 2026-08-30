@@ -132,14 +132,31 @@ namespace spades {
 					return;
 
 				float offset = OffsetAlong(ctx, gizmoDragStartOrigin, gizmoAxis);
-				Vector3 newOrigin = gizmoDragStartOrigin + AxisUnit(gizmoAxis) * offset;
+
+				// Get the axis direction based on global/local space
+				Vector3 axis = AxisUnit(gizmoAxis);
+				if (!objectTool->GetGlobalTransformSpace()) {
+					// Local space: rotate axis by object rotation
+					Quaternion rot(ctx.GetObjectRotation());
+					axis = rot.Apply(axis);
+				}
+
+				Vector3 newOrigin = gizmoDragStartOrigin + axis * offset;
 				ctx.PreviewPivot(newOrigin);
 				ctx.SetStatus("Move axis " + std::to_string(gizmoAxis) + " offset: " + std::to_string(offset));
 			} else if (input.IsUp()) {
 				if (gizmoAxis >= 0) {
 					float offset = OffsetAlong(ctx, gizmoDragStartOrigin, gizmoAxis);
 					if (offset != 0.0F) {
-						Vector3 newOrigin = gizmoDragStartOrigin + AxisUnit(gizmoAxis) * offset;
+						// Get the axis direction based on global/local space
+						Vector3 axis = AxisUnit(gizmoAxis);
+						if (!objectTool->GetGlobalTransformSpace()) {
+							// Local space: rotate axis by object rotation
+							Quaternion rot(ctx.GetObjectRotation());
+							axis = rot.Apply(axis);
+						}
+
+						Vector3 newOrigin = gizmoDragStartOrigin + axis * offset;
 						ctx.PreviewPivot(gizmoDragStartOrigin);
 						ctx.SetPivot(newOrigin);
 					}
@@ -175,10 +192,25 @@ namespace spades {
 
 			int hover = (gizmoAxis < 0) ? HitAxis(ctx, origin) : -1;
 
+			// Determine axes based on global/local space
+			Vector3 axes[3];
+			if (!objectTool->GetGlobalTransformSpace()) {
+				// Local space: rotate axes by object rotation
+				Quaternion rot(ctx.GetObjectRotation());
+				axes[0] = rot.Apply(AxisUnit(0));
+				axes[1] = rot.Apply(AxisUnit(1));
+				axes[2] = rot.Apply(AxisUnit(2));
+			} else {
+				// Global space: use world axes
+				axes[0] = AxisUnit(0);
+				axes[1] = AxisUnit(1);
+				axes[2] = AxisUnit(2);
+			}
+
 			for (int a = 0; a < 3; a++) {
 				bool active = (gizmoAxis == a) || (hover == a);
 				Vector4 col = active ? MakeVector4(1, 1, 1, 1) : kAxisCol[a];
-				Vector3 axisEnd = origin + AxisUnit(a) * kGizLen;
+				Vector3 axisEnd = origin + axes[a] * kGizLen;
 				ctx.DrawLine3D(origin, axisEnd, col);
 			}
 		}
@@ -294,8 +326,15 @@ namespace spades {
 				Vector2 m = ctx.CursorPos() - gizmoDragStartCursor;
 				float angle = Vector2::Dot(m, da) / (dl * dl) * 0.1F;
 
-				// Create a quaternion rotation around the axis
+				// Get the rotation axis based on global/local space
 				Vector3 axis = AxisUnit(gizmoAxis);
+				if (!objectTool->GetGlobalTransformSpace()) {
+					// Local space: rotate axis by object's current rotation
+					Quaternion rot(gizmoDragStartRotation);
+					axis = rot.Apply(axis);
+				}
+
+				// Create a quaternion rotation around the axis
 				float halfAngle = angle * 0.5F;
 				Vector4 deltaQuat = MakeVector4(
 					axis.x * std::sin(halfAngle),
@@ -460,6 +499,10 @@ namespace spades {
 					return;
 
 				float offset = OffsetAlong(ctx, origin, gizmoAxis);
+
+				// For scaling, we need to determine which scale component to modify
+				// In local space, the gizmo axis is rotated, but scale is still per-axis
+				// So we apply offset to the axis corresponding to the drag direction
 				Vector3 newScale = gizmoDragStartScale;
 				newScale.x = gizmoAxis == 0 ? gizmoDragStartScale.x + offset : gizmoDragStartScale.x;
 				newScale.y = gizmoAxis == 1 ? gizmoDragStartScale.y + offset : gizmoDragStartScale.y;
