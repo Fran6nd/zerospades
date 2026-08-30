@@ -47,9 +47,11 @@ namespace spades {
 		void MapEditorView::MouseEvent(float x, float y) {
 			if (!ui)
 				return;
+
 			EditorMenu* menu = ui->GetEditorMenu();
-			if (!menu || menu->IsActive())
+			if (menu && menu->IsActive())
 				return;
+
 			if (client) {
 				client->MouseEvent(x, y);
 			}
@@ -58,9 +60,11 @@ namespace spades {
 		void MapEditorView::WheelEvent(float x, float y) {
 			if (!ui)
 				return;
+
 			EditorMenu* menu = ui->GetEditorMenu();
-			if (!menu || menu->IsActive())
+			if (menu && menu->IsActive())
 				return;
+
 			if (client) {
 				client->WheelEvent(x, y);
 			}
@@ -69,14 +73,16 @@ namespace spades {
 		void MapEditorView::KeyEvent(const std::string& key, bool down) {
 			if (!ui)
 				return;
+
 			EditorMenu* menu = ui->GetEditorMenu();
-			if (!menu)
-				return;
-			if (menu->KeyEvent(key, down))
+
+			if (menu && menu->KeyEvent(key, down))
 				return;
 
 			if (down && key == "Escape") {
-				menu->Open();
+				if (menu) {
+					menu->Open();
+				}
 				return;
 			}
 
@@ -88,10 +94,10 @@ namespace spades {
 		void MapEditorView::TextInputEvent(const std::string& text) {
 			if (!ui)
 				return;
+
 			EditorMenu* menu = ui->GetEditorMenu();
-			if (!menu)
-				return;
-			if (menu->AcceptsTextInput()) {
+
+			if (menu && menu->AcceptsTextInput()) {
 				menu->TextInputEvent(text);
 			} else if (client) {
 				client->TextInputEvent(text);
@@ -101,19 +107,23 @@ namespace spades {
 		bool MapEditorView::AcceptsTextInput() {
 			if (!ui)
 				return false;
+
 			EditorMenu* menu = ui->GetEditorMenu();
-			if (!menu)
-				return false;
-			return menu->AcceptsTextInput() || (client && client->AcceptsTextInput());
+
+			if (menu && menu->AcceptsTextInput())
+				return true;
+			if (client && client->AcceptsTextInput())
+				return true;
+			return false;
 		}
 
 		AABB2 MapEditorView::GetTextInputRect() {
 			if (!ui)
 				return AABB2();
+
 			EditorMenu* menu = ui->GetEditorMenu();
-			if (!menu)
-				return AABB2();
-			if (menu->AcceptsTextInput())
+
+			if (menu && menu->AcceptsTextInput())
 				return menu->GetTextInputRect();
 			if (client)
 				return client->GetTextInputRect();
