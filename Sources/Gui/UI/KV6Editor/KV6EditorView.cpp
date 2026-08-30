@@ -2046,8 +2046,14 @@ namespace spades {
 			renderer->StartScene(sceneDef);
 			if (renderModel) {
 				client::ModelRenderParam param;
-				// Cancel the KV6 pivot so the model sits in the editor's grid space.
-				param.matrix = Matrix4::Translate(model->GetOrigin() * -1.0F);
+				// In .2kv6 mode, position the model at the scene object's world position
+				// In regular .kv6 mode, use the model's origin (pivot)
+				if (is2KV6 && activeObjectIndex < scene.size()) {
+					param.matrix = Matrix4::Translate(scene[activeObjectIndex].position);
+				} else {
+					// Cancel the KV6 pivot so the model sits in the editor's grid space.
+					param.matrix = Matrix4::Translate(model->GetOrigin() * -1.0F);
+				}
 				renderer->RenderModel(*renderModel, param);
 			}
 			DrawHelpers();
