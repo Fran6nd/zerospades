@@ -258,10 +258,25 @@ namespace spades {
 
 			int hover = (gizmoAxis < 0) ? HitAxis(ctx, origin) : -1;
 
+			// Determine axes based on global/local space
+			Vector3 axes[3];
+			if (!objectTool->GetGlobalTransformSpace()) {
+				// Local space: rotate axes by object rotation
+				Quaternion rot(ctx.GetObjectRotation());
+				axes[0] = rot.Apply(AxisUnit(0));
+				axes[1] = rot.Apply(AxisUnit(1));
+				axes[2] = rot.Apply(AxisUnit(2));
+			} else {
+				// Global space: use world axes
+				axes[0] = AxisUnit(0);
+				axes[1] = AxisUnit(1);
+				axes[2] = AxisUnit(2);
+			}
+
 			for (int a = 0; a < 3; a++) {
 				bool active = (gizmoAxis == a) || (hover == a);
 				Vector4 col = active ? MakeVector4(1, 1, 1, 1) : kAxisCol[a];
-				Vector3 handle = origin + AxisUnit(a) * kGizLen;
+				Vector3 handle = origin + axes[a] * kGizLen;
 				float size = active ? 1.05F : 0.8F;
 				ctx.DrawSolidCube(handle, size, col);
 			}
@@ -442,10 +457,25 @@ namespace spades {
 				MakeVector4(0.45F, 0.6F, 1.0F, 1.0F)
 			};
 
+			// Determine axes based on global/local space
+			Vector3 axes[3];
+			if (!objectTool->GetGlobalTransformSpace()) {
+				// Local space: rotate axes by object rotation
+				Quaternion rot(ctx.GetObjectRotation());
+				axes[0] = rot.Apply(AxisUnit(0));
+				axes[1] = rot.Apply(AxisUnit(1));
+				axes[2] = rot.Apply(AxisUnit(2));
+			} else {
+				// Global space: use world axes
+				axes[0] = AxisUnit(0);
+				axes[1] = AxisUnit(1);
+				axes[2] = AxisUnit(2);
+			}
+
 			for (int a = 0; a < 3; a++) {
 				bool active = (gizmoAxis == a) || (hover == a);
 				Vector4 col = active ? MakeVector4(1, 1, 1, 1) : kAxisCol[a];
-				Vector3 handle = origin + AxisUnit(a) * kGizLen;
+				Vector3 handle = origin + axes[a] * kGizLen;
 				float size = active ? 1.05F : 0.8F;
 				ctx.DrawSolidCube(handle, size, col);
 			}
@@ -619,10 +649,25 @@ namespace spades {
 				MakeVector4(0.45F, 0.6F, 1.0F, 1.0F)
 			};
 
+			// Determine axes based on global/local space
+			Vector3 axes[3];
+			if (!objectTool->GetGlobalTransformSpace()) {
+				// Local space: rotate axes by object rotation
+				Quaternion rot(ctx.GetObjectRotation());
+				axes[0] = rot.Apply(AxisUnit(0));
+				axes[1] = rot.Apply(AxisUnit(1));
+				axes[2] = rot.Apply(AxisUnit(2));
+			} else {
+				// Global space: use world axes
+				axes[0] = AxisUnit(0);
+				axes[1] = AxisUnit(1);
+				axes[2] = AxisUnit(2);
+			}
+
 			for (int a = 0; a < 3; a++) {
 				bool active = (gizmoAxis == a) || (hover == a);
 				Vector4 col = active ? MakeVector4(1, 1, 1, 1) : kAxisCol[a];
-				Vector3 handle = origin + AxisUnit(a) * kGizLen;
+				Vector3 handle = origin + axes[a] * kGizLen;
 				float size = active ? 1.05F : 0.8F;
 				ctx.DrawSolidCube(handle, size, col);
 			}
