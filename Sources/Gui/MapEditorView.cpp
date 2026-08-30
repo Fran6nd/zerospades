@@ -56,17 +56,32 @@ namespace spades {
 					SPRaise("Failed to open map file: %s", filePath.c_str());
 				}
 
-				class FileStream : public IStream {
-					std::ifstream& file;
+				// Read entire file into memory to avoid lifetime issues
+				file.seekg(0, std::ios::end);
+				std::streamsize size = file.tellg();
+				file.seekg(0, std::ios::beg);
+
+				std::vector<char> buffer(size);
+				if (!file.read(buffer.data(), size)) {
+					SPRaise("Failed to read map file: %s", filePath.c_str());
+				}
+
+				class MemoryStream : public IStream {
+					std::vector<char> data;
+					size_t pos = 0;
 				public:
-					FileStream(std::ifstream& f) : file(f) {}
+					MemoryStream(std::vector<char> d) : data(std::move(d)) {}
 					size_t Read(void* buf, size_t bytes) override {
-						file.read(static_cast<char*>(buf), bytes);
-						return file.gcount();
+						size_t toRead = std::min(bytes, data.size() - pos);
+						if (toRead > 0) {
+							std::memcpy(buf, data.data() + pos, toRead);
+							pos += toRead;
+						}
+						return toRead;
 					}
 				};
 
-				FileStream stream(file);
+				MemoryStream stream(std::move(buffer));
 				map = Handle<client::GameMap>{client::GameMap::Load(&stream)};
 				if (!map) {
 					SPRaise("Failed to load map data from: %s", filePath.c_str());
