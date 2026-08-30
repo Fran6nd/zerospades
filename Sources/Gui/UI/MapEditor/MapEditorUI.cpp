@@ -35,6 +35,16 @@ namespace spades {
 		      uiManager(new ui::UIManager(_renderer, _audioDevice)),
 		      editor(_editor) {
 			SPADES_MARK_FUNCTION();
+			if (!_renderer)
+				throw std::invalid_argument("IRenderer cannot be null");
+			if (!_audioDevice)
+				throw std::invalid_argument("IAudioDevice cannot be null");
+			if (!_fontManager)
+				throw std::invalid_argument("FontManager cannot be null");
+			if (!_editor)
+				throw std::invalid_argument("MapEditorView cannot be null");
+			if (!cursor)
+				throw std::invalid_argument("SoftwareCursor cannot be null");
 			try {
 				editorMenu = std::make_unique<EditorMenu>(*_editor, *_renderer, *_fontManager, *cursor, _audioDevice);
 			} catch (const std::exception& ex) {
