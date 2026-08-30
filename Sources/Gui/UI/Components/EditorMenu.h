@@ -45,6 +45,7 @@ namespace spades {
             virtual void SaveDocument(const std::string& path) = 0;
             virtual void RequestClose() = 0;
             virtual bool OnMenuEscape() { return false; }
+            virtual void OpenSetup() {}  // Optional: open settings/preferences
         };
 
         class EditorMenu : public IModalMenu {
@@ -66,6 +67,9 @@ namespace spades {
             void OpenTextPrompt(const std::string& title, const std::string& initial,
                                 std::function<void(const std::string&)> onSubmit);
             AABB2 GetTextInputRect() const;
+
+            // Optional callbacks (use instead of IEditorMenuHost methods if set)
+            std::function<void()> OnSetupRequested;
 
         private:
             IEditorMenuHost& host;

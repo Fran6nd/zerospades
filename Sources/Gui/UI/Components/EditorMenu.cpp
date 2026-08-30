@@ -35,7 +35,7 @@
 namespace spades {
     namespace gui {
         namespace {
-            const char* kMenuItems[4] = {"Resume", "Save", "Save As...", "Exit to Menu"};
+            const char* kMenuItems[5] = {"Resume", "Save", "Save As...", "Setup", "Exit to Menu"};
 
             bool EndsWithIgnoreCase(const std::string& s, const std::string& suffix) {
                 return s.size() >= suffix.size() &&
@@ -63,8 +63,8 @@ namespace spades {
             float sh = renderer->ScreenHeight();
             float w = 260.0F;
             float x = (sw - w) * 0.5F;
-            float y = sh * 0.5F - 110.0F + 44.0F;
-            for (int i = 0; i < 4; i++) {
+            float y = sh * 0.5F - 130.0F + 44.0F;
+            for (int i = 0; i < 5; i++) {
                 if (OverlayInRect(p, x, y, w, 36.0F))
                     return i;
                 y += 44.0F;
@@ -79,7 +79,7 @@ namespace spades {
 
             float w = 260.0F;
             float x = (sw - w) * 0.5F;
-            float y = sh * 0.5F - 110.0F;
+            float y = sh * 0.5F - 130.0F;
 
             std::string title = host.GetMenuTitle();
             Vector2 sz = font.Measure(title);
@@ -97,7 +97,7 @@ namespace spades {
                 prevSelectedItem = selectedItem;
             }
 
-            for (int i = 0; i < 4; i++) {
+            for (int i = 0; i < 5; i++) {
                 widgets::PaintButton(*renderer, font, MakeVector2(x, y), MakeVector2(w, 36.0F),
                                      kMenuItems[i], MakeVector2(0.5F, 0.5F), "",
                                      MakeVector2(1.0F, 0.5F), true, selectedItem == i, false, false);
@@ -156,8 +156,8 @@ namespace spades {
                 if (!down)
                     return true;
                 if (key == "Escape") { menuOpen = false; return true; }
-                if (key == "Up") { selectedItem = (selectedItem + 3) % 4; return true; }
-                if (key == "Down") { selectedItem = (selectedItem + 1) % 4; return true; }
+                if (key == "Up") { selectedItem = (selectedItem + 4) % 5; return true; }
+                if (key == "Down") { selectedItem = (selectedItem + 1) % 5; return true; }
                 if (key == "Enter" || key == "LeftMouseButton") {
                     int b = (key == "LeftMouseButton") ? MenuButtonAt(cursor.GetPosition()) : selectedItem;
                     if (b >= 0 && audioDevice) {
@@ -178,7 +178,14 @@ namespace spades {
                                     host.SaveDocument(path);
                                 }
                             });
-                    } else if (b == 3) {
+                    } else if (b == 3) {                                            // Setup
+                        if (OnSetupRequested) {
+                            OnSetupRequested();
+                        } else {
+                            host.OpenSetup();
+                        }
+                        menuOpen = false;
+                    } else if (b == 4) {
                         host.RequestClose();
                     }
                     return true;
