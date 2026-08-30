@@ -121,7 +121,9 @@ namespace spades {
 				float offset = OffsetAlong(ctx, gizmoDragStartOrigin, gizmoAxis);
 
 				if (gizmoMode == Gizmo::Move) {
-					// Preview position during drag
+					// Apply movement to object by updating pivot (live preview like PivotGizmoSubTool)
+					Vector3 newOrigin = gizmoDragStartOrigin + AxisUnit(gizmoAxis) * offset;
+					ctx.PreviewPivot(newOrigin * -1.0F);
 					ctx.SetStatus("Move axis " + std::to_string(gizmoAxis) + " offset: " + std::to_string(offset));
 				} else if (gizmoMode == Gizmo::Rotate) {
 					ctx.SetStatus("Rotate axis " + std::to_string(gizmoAxis));
@@ -131,6 +133,13 @@ namespace spades {
 			} else if (input.IsUp()) {
 				// Release: finish drag
 				if (gizmoAxis >= 0) {
+					float offset = OffsetAlong(ctx, gizmoDragStartOrigin, gizmoAxis);
+					if (gizmoMode == Gizmo::Move && offset != 0.0F) {
+						// Finalize the move
+						Vector3 newOrigin = gizmoDragStartOrigin + AxisUnit(gizmoAxis) * offset;
+						ctx.PreviewPivot(gizmoDragStartOrigin * -1.0F); // rewind preview
+						ctx.SetPivot(newOrigin * -1.0F); // apply as single undo step
+					}
 					ctx.SetStatus("");
 				}
 				gizmoAxis = -1;
