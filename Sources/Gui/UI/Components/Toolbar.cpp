@@ -59,10 +59,17 @@ namespace spades {
 
 		void Toolbar::SetModeButtons(const std::vector<std::string>& labels) {
 			modeButtons = labels;
+			modeButtonsEnabled.assign(labels.size(), true);
 		}
 
 		void Toolbar::SetActiveModeButton(int index) {
 			activeModeButton = index;
+		}
+
+		void Toolbar::SetModeButtonEnabled(int index, bool enabled) {
+			if (index >= 0 && index < int(modeButtonsEnabled.size())) {
+				modeButtonsEnabled[index] = enabled;
+			}
 		}
 
 		void Toolbar::SetToolButtons(const std::vector<ToolbarButton>& buttons) {
@@ -139,10 +146,10 @@ namespace spades {
 				                     MakeVector2(1.0F, 0.5F), enabled, hover, false, active, s);
 			};
 
-			// Draw mode buttons (Object and Edit modes are available)
+			// Draw mode buttons
 			for (int i = 0; i < int(modeButtons.size()); i++) {
 				bool active = (i == activeModeButton);
-				bool enabled = (i == 0 || i == 1); // Object (0) and Edit (1) modes are available
+				bool enabled = (i < int(modeButtonsEnabled.size())) ? modeButtonsEnabled[i] : false;
 				button(ToolbarX(i), modeButtons[i].c_str(), active, enabled, i);
 			}
 

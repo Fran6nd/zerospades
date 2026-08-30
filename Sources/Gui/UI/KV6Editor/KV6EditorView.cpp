@@ -1686,6 +1686,8 @@ namespace spades {
 			std::vector<std::string> modeButtons = {"Object", "Edit", "Animation"};
 			ui->GetToolbar()->SetModeButtons(modeButtons);
 			ui->GetToolbar()->SetActiveModeButton(int(currentMode));
+			// Object mode only available in .2kv6 files
+			ui->GetToolbar()->SetModeButtonEnabled(0, is2KV6);
 
 			// Set up tool buttons
 			std::vector<Toolbar::ToolbarButton> toolButtons;

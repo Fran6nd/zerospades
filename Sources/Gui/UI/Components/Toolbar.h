@@ -56,6 +56,7 @@ namespace spades {
 
 			void SetModeButtons(const std::vector<std::string>& labels);
 			void SetActiveModeButton(int index);
+			void SetModeButtonEnabled(int index, bool enabled);
 			void SetToolButtons(const std::vector<ToolbarButton>& buttons);
 			void SetUndoButton(bool enabled);
 			void SetRedoButton(bool enabled);
@@ -74,6 +75,7 @@ namespace spades {
 		private:
 			client::IAudioDevice* audioDevice = nullptr;
 			std::vector<std::string> modeButtons;
+			std::vector<bool> modeButtonsEnabled;
 			std::vector<ToolbarButton> toolButtons;
 			std::vector<bool> previousHoverState; // track hover transitions for sound
 			bool undoEnabled = false;
