@@ -234,7 +234,14 @@ namespace spades {
 
 			// Wire up toolbar callbacks
 			ui->GetToolbar()->OnModeClicked = [this](int idx) {
-				EditorMode newMode = EditorMode(idx);
+				EditorMode newMode;
+				if (is2KV6) {
+					// .2kv6: buttons are [Object=0, Edit=1, Animation=2]
+					newMode = EditorMode(idx);
+				} else {
+					// Regular .kv6: buttons are [Edit=0, Animation=1], map to enum
+					newMode = EditorMode(idx + 1);
+				}
 				if (newMode != currentMode) {
 					// Deactivate current tool
 					if (EditorTool* t = ActiveTool())
@@ -1675,14 +1682,26 @@ namespace spades {
 			(void)sh;
 			if (!ui) return;
 
-			// Set up mode buttons
-			std::vector<std::string> modeButtons = {"Object", "Edit", "Animation"};
+			// Set up mode buttons based on file type
+			std::vector<std::string> modeButtons;
+			int activeModeIndex = int(currentMode);
+			if (is2KV6) {
+				// .2kv6 files: show Object/Edit/Animation
+				modeButtons = {"Object", "Edit", "Animation"};
+			} else {
+				// Regular .kv6 files: show only Edit/Animation
+				modeButtons = {"Edit", "Animation"};
+				// Adjust active mode index for single-file mode
+				if (currentMode == EditorMode::Object) {
+					activeModeIndex = 0; // default to Edit
+				} else {
+					activeModeIndex = int(currentMode) - 1; // shift indices down
+				}
+			}
 			ui->GetToolbar()->SetModeButtons(modeButtons);
-			ui->GetToolbar()->SetActiveModeButton(int(currentMode));
-			// Object mode only available in .2kv6 files
-			ui->GetToolbar()->SetModeButtonEnabled(0, is2KV6);
+			ui->GetToolbar()->SetActiveModeButton(activeModeIndex);
 
-			// Set up tool buttons
+			// Set up tool buttons (only in Edit mode)
 			std::vector<Toolbar::ToolbarButton> toolButtons;
 			if (currentMode == EditorMode::Edit) {
 				for (int i = 0; i < int(tools.size()); i++) {
@@ -1690,16 +1709,6 @@ namespace spades {
 					btn.label = tools[i]->Label();
 					btn.enabled = true;
 					btn.active = (activeTool == i);
-					toolButtons.push_back(btn);
-				}
-			} else if (currentMode == EditorMode::Object) {
-				// Object mode: show transform modes and new object button
-				const char* modes[] = {"Move", "Rotate", "Scale", "New"};
-				for (int i = 0; i < 4; i++) {
-					Toolbar::ToolbarButton btn;
-					btn.label = modes[i];
-					btn.enabled = true;
-					btn.active = false;
 					toolButtons.push_back(btn);
 				}
 			}
