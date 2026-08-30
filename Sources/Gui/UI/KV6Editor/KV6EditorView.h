@@ -197,7 +197,7 @@ namespace spades {
 			bool is2KV6 = false; // true if editing a .2kv6 scene, false if single .kv6
 			std::vector<VoxelObject> scene; // root objects (only used if is2KV6)
 			size_t activeSceneRootIndex = 0; // which root object in scene is being edited (always 0 in .2kv6)
-			size_t activeChildIndex = 0; // which child of active root is being edited (in .2kv6 mode)
+			size_t activeChildIndex = SIZE_MAX; // which child of active root is being edited (SIZE_MAX = none selected)
 
 			// --- Undo / redo --------------------------------------------------
 			// The stack drives the model back and forth through the Sink interface
