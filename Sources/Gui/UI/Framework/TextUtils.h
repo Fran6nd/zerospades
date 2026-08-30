@@ -20,6 +20,7 @@
 
 #pragma once
 
+#include <cstdint>
 #include <string>
 
 namespace spades {
@@ -40,6 +41,9 @@ namespace spades {
 			 * `byteIndex`, starting the scan at byte offset `start`.
 			 */
 			int GetCharIndexForString(const std::string& s, int byteIndex, int start = 0);
+
+			size_t StringCommonPrefixLength(const std::string& a, const std::string& b);
+			std::string FormatFileSize(std::int64_t bytes);
 		} // namespace ui
 	} // namespace gui
 } // namespace spades
