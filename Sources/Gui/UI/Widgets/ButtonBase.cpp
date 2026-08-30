@@ -33,6 +33,8 @@ namespace spades {
 				};
 			}
 
+			ButtonBase::~ButtonBase() { repeatTimer->Stop(); }
+
 			void ButtonBase::PlayMouseEnterSound() {
 				GetManager().PlaySound("Sounds/Feedback/Limbo/Hover.opus");
 			}
