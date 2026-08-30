@@ -51,13 +51,17 @@ namespace spades {
 
 	/**
 	 * Represents a named voxel object within a .2kv6 scene.
-	 * Each object contains a KV6 voxel model with optional transform animation.
+	 * Each object contains a KV6 voxel model with optional transform animation
+	 * and can have child objects forming a scene hierarchy.
+	 *
+	 * Transforms are LOCAL (relative to parent). World transform is computed by
+	 * composing transforms up the hierarchy.
 	 */
 	struct VoxelObject {
 		std::string name; ///< Object name (empty for unnamed objects)
-		Handle<VoxelModel> model; ///< The KV6 voxel model data
+		Handle<VoxelModel> model; ///< The KV6 voxel model data (can be null for group nodes)
 
-		// Static transform (used when there are no keyframes)
+		// Local transform (used when there are no keyframes)
 		Vector3 position;
 		Vector4 rotation; ///< Quaternion (x, y, z, w); identity = (0, 0, 0, 1)
 		Vector3 scale;
@@ -65,28 +69,39 @@ namespace spades {
 		// Animation keyframes (if empty, object is static)
 		std::vector<TransformKeyframe> keyframes;
 
+		// Scene hierarchy: child objects (empty for leaf nodes)
+		std::vector<VoxelObject> children;
+
 		VoxelObject() : position(0, 0, 0), rotation(0, 0, 0, 1), scale(1, 1, 1) {}
 	};
 
 	/**
-	 * .2kv6 file format handler for scenes containing multiple named voxel objects.
-	 * Layout:
+	 * .2kv6 file format handler for hierarchical scenes of named voxel objects.
+	 *
+	 * Supports nested objects forming a scene graph tree. Transforms are LOCAL
+	 * (relative to parent); world transforms are computed by composing up the hierarchy.
+	 *
+	 * Layout (recursive):
 	 *   Magic: "2kv6" (4 bytes)
 	 *   Version: uint16 (current: 1)
-	 *   NumObjects: uint16
-	 *   For each object:
+	 *   NumRootObjects: uint16
+	 *   [For each object, recursively]:
 	 *     NameLength: uint16
 	 *     Name: char[NameLength]
-	 *     Position: float[3]
-	 *     Rotation: float[4] (quaternion)
-	 *     Scale: float[3]
+	 *     Position: float[3] (local)
+	 *     Rotation: float[4] (quaternion, local)
+	 *     Scale: float[3] (local)
+	 *     HasModel: uint8 (0 = group node, 1 = has KV6 data)
+	 *     [If HasModel == 1]:
+	 *       KV6Data: embedded KV6 (header + blocks + indices, no magic)
 	 *     NumKeyframes: uint16
 	 *     For each keyframe:
 	 *       Time: float
-	 *       Position: float[3]
-	 *       Rotation: float[4]
+	 *       Position: float[3] (local)
+	 *       Rotation: float[4] (quaternion, local)
 	 *       Scale: float[3]
-	 *     KV6Data: embedded KV6 (header + blocks + indices, no magic)
+	 *     NumChildren: uint16
+	 *     [For each child, recurse to "NameLength"...]
 	 */
 	class VoxelModel2KV6 {
 	public:

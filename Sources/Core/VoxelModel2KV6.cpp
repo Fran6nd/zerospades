@@ -28,6 +28,164 @@
 #include "IStream.h"
 
 namespace spades {
+	namespace {
+		VoxelObject LoadObject(IStream& stream, int depth = 0) {
+			if (depth > 64)
+				SPRaise("Object hierarchy too deep (max 64 levels)");
+
+			VoxelObject obj;
+
+			// Read object name
+			uint16_t nameLen;
+			if (stream.Read(&nameLen, sizeof(nameLen)) < sizeof(nameLen))
+				SPRaise(".2kv6 file truncated: failed to read name length at depth %d", depth);
+
+			if (nameLen > 0) {
+				std::string name(nameLen, '\0');
+				if (stream.Read(&name[0], nameLen) < nameLen)
+					SPRaise(".2kv6 file truncated: failed to read name at depth %d", depth);
+				obj.name = name;
+			}
+
+			// Read local transform
+			float posData[3], rotData[4], scaleData[3];
+
+			if (stream.Read(posData, sizeof(posData)) < sizeof(posData))
+				SPRaise(".2kv6 file truncated: failed to read position at depth %d", depth);
+			obj.position = MakeVector3(posData[0], posData[1], posData[2]);
+
+			if (stream.Read(rotData, sizeof(rotData)) < sizeof(rotData))
+				SPRaise(".2kv6 file truncated: failed to read rotation at depth %d", depth);
+			obj.rotation = MakeVector4(rotData[0], rotData[1], rotData[2], rotData[3]);
+
+			if (stream.Read(scaleData, sizeof(scaleData)) < sizeof(scaleData))
+				SPRaise(".2kv6 file truncated: failed to read scale at depth %d", depth);
+			obj.scale = MakeVector3(scaleData[0], scaleData[1], scaleData[2]);
+
+			// Read hasModel flag
+			uint8_t hasModel;
+			if (stream.Read(&hasModel, sizeof(hasModel)) < sizeof(hasModel))
+				SPRaise(".2kv6 file truncated: failed to read hasModel flag at depth %d", depth);
+
+			// Load KV6 data if present
+			if (hasModel != 0) {
+				try {
+					obj.model = VoxelModel::LoadKV6(stream);
+				} catch (const std::exception& e) {
+					SPRaise("Failed to load KV6 data at depth %d: %s", depth, e.what());
+				}
+			}
+
+			// Read animation keyframes
+			uint16_t numKeyframes;
+			if (stream.Read(&numKeyframes, sizeof(numKeyframes)) < sizeof(numKeyframes))
+				SPRaise(".2kv6 file truncated: failed to read keyframe count at depth %d", depth);
+
+			obj.keyframes.reserve(numKeyframes);
+			for (uint16_t k = 0; k < numKeyframes; k++) {
+				TransformKeyframe kf;
+
+				if (stream.Read(&kf.time, sizeof(kf.time)) < sizeof(kf.time))
+					SPRaise(".2kv6 file truncated: failed to read keyframe time at depth %d "
+					        "keyframe %u",
+					        depth, k);
+
+				float kfPosData[3], kfRotData[4], kfScaleData[3];
+
+				if (stream.Read(kfPosData, sizeof(kfPosData)) < sizeof(kfPosData))
+					SPRaise(".2kv6 file truncated: failed to read keyframe position at depth %d "
+					        "keyframe %u",
+					        depth, k);
+				kf.position = MakeVector3(kfPosData[0], kfPosData[1], kfPosData[2]);
+
+				if (stream.Read(kfRotData, sizeof(kfRotData)) < sizeof(kfRotData))
+					SPRaise(".2kv6 file truncated: failed to read keyframe rotation at depth %d "
+					        "keyframe %u",
+					        depth, k);
+				kf.rotation = MakeVector4(kfRotData[0], kfRotData[1], kfRotData[2], kfRotData[3]);
+
+				if (stream.Read(kfScaleData, sizeof(kfScaleData)) < sizeof(kfScaleData))
+					SPRaise(".2kv6 file truncated: failed to read keyframe scale at depth %d "
+					        "keyframe %u",
+					        depth, k);
+				kf.scale = MakeVector3(kfScaleData[0], kfScaleData[1], kfScaleData[2]);
+
+				obj.keyframes.push_back(kf);
+			}
+
+			// Read child objects
+			uint16_t numChildren;
+			if (stream.Read(&numChildren, sizeof(numChildren)) < sizeof(numChildren))
+				SPRaise(".2kv6 file truncated: failed to read child count at depth %d", depth);
+
+			obj.children.reserve(numChildren);
+			for (uint16_t c = 0; c < numChildren; c++) {
+				obj.children.push_back(LoadObject(stream, depth + 1));
+			}
+
+			return obj;
+		}
+
+		void SaveObject(IStream& stream, const VoxelObject& obj, int depth = 0) {
+			if (depth > 64)
+				SPRaise("Object hierarchy too deep (max 64 levels)");
+
+			// Write object name
+			uint16_t nameLen = static_cast<uint16_t>(obj.name.length());
+			if (nameLen > UINT16_MAX)
+				SPRaise("Object name too long: %zu characters", obj.name.length());
+
+			stream.Write(&nameLen, sizeof(nameLen));
+			if (nameLen > 0)
+				stream.Write(obj.name.data(), nameLen);
+
+			// Write local transform
+			float posData[3] = {obj.position.x, obj.position.y, obj.position.z};
+			float rotData[4] = {obj.rotation.x, obj.rotation.y, obj.rotation.z, obj.rotation.w};
+			float scaleData[3] = {obj.scale.x, obj.scale.y, obj.scale.z};
+
+			stream.Write(posData, sizeof(posData));
+			stream.Write(rotData, sizeof(rotData));
+			stream.Write(scaleData, sizeof(scaleData));
+
+			// Write hasModel flag
+			uint8_t hasModel = obj.model ? 1 : 0;
+			stream.Write(&hasModel, sizeof(hasModel));
+
+			// Write KV6 data if present
+			if (obj.model) {
+				obj.model->SaveKV6(stream);
+			}
+
+			// Write animation keyframes
+			uint16_t numKeyframes = static_cast<uint16_t>(obj.keyframes.size());
+			stream.Write(&numKeyframes, sizeof(numKeyframes));
+
+			for (const TransformKeyframe& kf : obj.keyframes) {
+				stream.Write(&kf.time, sizeof(kf.time));
+
+				float kfPosData[3] = {kf.position.x, kf.position.y, kf.position.z};
+				float kfRotData[4] = {kf.rotation.x, kf.rotation.y, kf.rotation.z, kf.rotation.w};
+				float kfScaleData[3] = {kf.scale.x, kf.scale.y, kf.scale.z};
+
+				stream.Write(kfPosData, sizeof(kfPosData));
+				stream.Write(kfRotData, sizeof(kfRotData));
+				stream.Write(kfScaleData, sizeof(kfScaleData));
+			}
+
+			// Write child objects
+			uint16_t numChildren = static_cast<uint16_t>(obj.children.size());
+			if (numChildren > UINT16_MAX)
+				SPRaise("Too many children for object '%s': %zu (max %u)", obj.name.c_str(),
+				        obj.children.size(), UINT16_MAX);
+
+			stream.Write(&numChildren, sizeof(numChildren));
+
+			for (const VoxelObject& child : obj.children) {
+				SaveObject(stream, child, depth + 1);
+			}
+		}
+	} // namespace
 
 	std::vector<VoxelObject> VoxelModel2KV6::Load(IStream& stream) {
 		SPADES_MARK_FUNCTION();
@@ -46,89 +204,16 @@ namespace spades {
 			SPRaise("Unsupported .2kv6 format version: %u (expected %u)", version,
 			        FORMAT_VERSION);
 
-		// Read number of objects
-		uint16_t numObjects;
-		if (stream.Read(&numObjects, sizeof(numObjects)) < sizeof(numObjects))
-			SPRaise(".2kv6 file truncated: failed to read object count");
+		// Read number of root objects
+		uint16_t numRootObjects;
+		if (stream.Read(&numRootObjects, sizeof(numRootObjects)) < sizeof(numRootObjects))
+			SPRaise(".2kv6 file truncated: failed to read root object count");
 
 		std::vector<VoxelObject> objects;
-		objects.reserve(numObjects);
+		objects.reserve(numRootObjects);
 
-		for (uint16_t i = 0; i < numObjects; i++) {
-			VoxelObject obj;
-
-			// Read object name
-			uint16_t nameLen;
-			if (stream.Read(&nameLen, sizeof(nameLen)) < sizeof(nameLen))
-				SPRaise(".2kv6 file truncated: failed to read name length for object %u", i);
-
-			if (nameLen > 0) {
-				std::string name(nameLen, '\0');
-				if (stream.Read(&name[0], nameLen) < nameLen)
-					SPRaise(".2kv6 file truncated: failed to read name for object %u", i);
-				obj.name = name;
-			}
-
-			// Read static transform
-			float posData[3], rotData[4], scaleData[3];
-
-			if (stream.Read(posData, sizeof(posData)) < sizeof(posData))
-				SPRaise(".2kv6 file truncated: failed to read position for object %u", i);
-			obj.position = MakeVector3(posData[0], posData[1], posData[2]);
-
-			if (stream.Read(rotData, sizeof(rotData)) < sizeof(rotData))
-				SPRaise(".2kv6 file truncated: failed to read rotation for object %u", i);
-			obj.rotation = MakeVector4(rotData[0], rotData[1], rotData[2], rotData[3]);
-
-			if (stream.Read(scaleData, sizeof(scaleData)) < sizeof(scaleData))
-				SPRaise(".2kv6 file truncated: failed to read scale for object %u", i);
-			obj.scale = MakeVector3(scaleData[0], scaleData[1], scaleData[2]);
-
-			// Read animation keyframes
-			uint16_t numKeyframes;
-			if (stream.Read(&numKeyframes, sizeof(numKeyframes)) < sizeof(numKeyframes))
-				SPRaise(".2kv6 file truncated: failed to read keyframe count for object %u", i);
-
-			obj.keyframes.reserve(numKeyframes);
-			for (uint16_t k = 0; k < numKeyframes; k++) {
-				TransformKeyframe kf;
-
-				if (stream.Read(&kf.time, sizeof(kf.time)) < sizeof(kf.time))
-					SPRaise(".2kv6 file truncated: failed to read keyframe time for object %u "
-					        "keyframe %u",
-					        i, k);
-
-				float kfPosData[3], kfRotData[4], kfScaleData[3];
-
-				if (stream.Read(kfPosData, sizeof(kfPosData)) < sizeof(kfPosData))
-					SPRaise(".2kv6 file truncated: failed to read keyframe position for object "
-					        "%u keyframe %u",
-					        i, k);
-				kf.position = MakeVector3(kfPosData[0], kfPosData[1], kfPosData[2]);
-
-				if (stream.Read(kfRotData, sizeof(kfRotData)) < sizeof(kfRotData))
-					SPRaise(".2kv6 file truncated: failed to read keyframe rotation for object "
-					        "%u keyframe %u",
-					        i, k);
-				kf.rotation = MakeVector4(kfRotData[0], kfRotData[1], kfRotData[2], kfRotData[3]);
-
-				if (stream.Read(kfScaleData, sizeof(kfScaleData)) < sizeof(kfScaleData))
-					SPRaise(".2kv6 file truncated: failed to read keyframe scale for object %u "
-					        "keyframe %u",
-					        i, k);
-				kf.scale = MakeVector3(kfScaleData[0], kfScaleData[1], kfScaleData[2]);
-
-				obj.keyframes.push_back(kf);
-			}
-
-			// Load embedded KV6 data
-			try {
-				obj.model = VoxelModel::LoadKV6(stream);
-			} catch (const std::exception& e) {
-				SPRaise("Failed to load KV6 data for object %u: %s", i, e.what());
-			}
-
-			objects.push_back(obj);
+		for (uint16_t i = 0; i < numRootObjects; i++) {
+			objects.push_back(LoadObject(stream, 0));
 		}
 
 		return objects;
@@ -141,7 +226,8 @@ namespace spades {
 			SPRaise("Cannot save empty .2kv6 scene");
 
 		if (objects.size() > UINT16_MAX)
-			SPRaise("Too many objects in .2kv6 scene: %zu (max %u)", objects.size(), UINT16_MAX);
+			SPRaise("Too many root objects in .2kv6 scene: %zu (max %u)", objects.size(),
+			        UINT16_MAX);
 
 		// Write magic
 		stream.Write(MAGIC, 4);
@@ -150,50 +236,13 @@ namespace spades {
 		uint16_t version = FORMAT_VERSION;
 		stream.Write(&version, sizeof(version));
 
-		// Write number of objects
-		uint16_t numObjects = static_cast<uint16_t>(objects.size());
-		stream.Write(&numObjects, sizeof(numObjects));
+		// Write number of root objects
+		uint16_t numRootObjects = static_cast<uint16_t>(objects.size());
+		stream.Write(&numRootObjects, sizeof(numRootObjects));
 
+		// Recursively write objects
 		for (const VoxelObject& obj : objects) {
-			// Write object name
-			uint16_t nameLen = static_cast<uint16_t>(obj.name.length());
-			if (nameLen > UINT16_MAX)
-				SPRaise("Object name too long: %zu characters", obj.name.length());
-
-			stream.Write(&nameLen, sizeof(nameLen));
-			if (nameLen > 0)
-				stream.Write(obj.name.data(), nameLen);
-
-			// Write static transform
-			float posData[3] = {obj.position.x, obj.position.y, obj.position.z};
-			float rotData[4] = {obj.rotation.x, obj.rotation.y, obj.rotation.z, obj.rotation.w};
-			float scaleData[3] = {obj.scale.x, obj.scale.y, obj.scale.z};
-
-			stream.Write(posData, sizeof(posData));
-			stream.Write(rotData, sizeof(rotData));
-			stream.Write(scaleData, sizeof(scaleData));
-
-			// Write animation keyframes
-			uint16_t numKeyframes = static_cast<uint16_t>(obj.keyframes.size());
-			stream.Write(&numKeyframes, sizeof(numKeyframes));
-
-			for (const TransformKeyframe& kf : obj.keyframes) {
-				stream.Write(&kf.time, sizeof(kf.time));
-
-				float kfPosData[3] = {kf.position.x, kf.position.y, kf.position.z};
-				float kfRotData[4] = {kf.rotation.x, kf.rotation.y, kf.rotation.z, kf.rotation.w};
-				float kfScaleData[3] = {kf.scale.x, kf.scale.y, kf.scale.z};
-
-				stream.Write(kfPosData, sizeof(kfPosData));
-				stream.Write(kfRotData, sizeof(kfRotData));
-				stream.Write(kfScaleData, sizeof(kfScaleData));
-			}
-
-			// Write embedded KV6 data (use existing SaveKV6)
-			if (!obj.model)
-				SPRaise("Object '%s' has no voxel model", obj.name.c_str());
-
-			obj.model->SaveKV6(stream);
+			SaveObject(stream, obj, 0);
 		}
 
 		stream.Flush();
