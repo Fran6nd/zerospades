@@ -70,7 +70,6 @@ namespace spades {
 			Handle<client::IAudioDevice> audioDevice;
 			Handle<client::FontManager> fontManager;
 			Handle<client::Client> client;
-			Handle<client::EditorNetClient> netClient;
 			std::string filePath;
 			bool wantsClose = false;
 			bool clientCreated = false;

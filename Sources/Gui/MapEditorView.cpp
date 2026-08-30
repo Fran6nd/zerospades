@@ -23,9 +23,10 @@
 #include <Client/Client.h>
 #include <Client/EditorNetClient.h>
 #include <Client/Fonts.h>
-#include <Core/Settings.h>
 #include <Core/Exception.h>
 #include <Core/FileManager.h>
+#include <Core/ServerAddress.h>
+#include <Core/Settings.h>
 
 namespace spades {
 	namespace gui {
@@ -35,9 +36,6 @@ namespace spades {
 		}
 
 		MapEditorView::~MapEditorView() {
-			if (client) {
-				client->Disconnect();
-			}
 		}
 
 		void MapEditorView::MouseEvent(float x, float y) {
@@ -152,16 +150,17 @@ namespace spades {
 			if (!clientCreated) {
 				try {
 					SPLog("MapEditor: Creating game client for map: '%s'", filePath.c_str());
-					client = Handle<client::Client>::New(renderer, audioDevice, fontManager);
-					netClient = Handle<client::EditorNetClient>::New(client);
+					client::ServerAddress addr;
+					client = Handle<client::Client>::New(renderer, audioDevice, addr, fontManager);
 
-					if (!netClient->LoadMap(filePath)) {
-						SPLog("Failed to load map: %s", netClient->GetStatusString().c_str());
+					auto editorNet = std::make_unique<client::EditorNetClient>(client);
+					if (!editorNet->LoadMap(filePath)) {
+						SPLog("Failed to load map: %s", editorNet->GetStatusString().c_str());
 						wantsClose = true;
 						return;
 					}
 
-					client->SetNetClient(netClient);
+					client->EnableEditorMode(std::move(editorNet));
 					clientCreated = true;
 					SPLog("Map loaded successfully, starting game client");
 				} catch (const std::exception& ex) {
@@ -295,12 +294,10 @@ namespace spades {
 				SPLog("No file to save to");
 				return;
 			}
-			if (!netClient)
-				return;
 
 			try {
 				auto stream = FileManager::OpenForWriting(filePath.c_str());
-				// TODO: Save map data
+				// TODO: Save map data from client->GetWorld()->GetMap()
 				SPLog("Saved map to %s", filePath.c_str());
 			} catch (const Exception& ex) {
 				SPLog("Save failed: %s", ex.GetShortMessage().c_str());
