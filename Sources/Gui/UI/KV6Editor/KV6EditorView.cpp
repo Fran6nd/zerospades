@@ -250,12 +250,9 @@ namespace spades {
 					activeTool = idx;
 				} else if (currentMode == EditorMode::Object && objectTool) {
 					// Object mode button clicks: Move/Rotate/Scale/New
-					if (idx == 0) {
-						objectTool->SetGizmoMode(0); // Gizmo::Move
-					} else if (idx == 1) {
-						objectTool->SetGizmoMode(1); // Gizmo::Rotate
-					} else if (idx == 2) {
-						objectTool->SetGizmoMode(2); // Gizmo::Scale
+					static const int modes[] = {1, 2, 4}; // Gizmo::Move, Rotate, Scale
+					if (idx < 3) {
+						objectTool->SetGizmoMode(modes[idx]);
 					} else if (idx == 3) {
 						objectTool->CreateObject(*this);
 					}
@@ -1703,11 +1700,12 @@ namespace spades {
 			} else if (currentMode == EditorMode::Object) {
 				// Object mode: show transform modes and new object button
 				const char* modes[] = {"Move", "Rotate", "Scale", "New"};
+				static const int gizmoModes[] = {1, 2, 4}; // Gizmo::Move, Rotate, Scale
 				for (int i = 0; i < 4; i++) {
 					Toolbar::ToolbarButton btn;
 					btn.label = modes[i];
 					btn.enabled = true;
-					btn.active = (i < 3 && objectTool && objectTool->GetGizmoMode() == i);
+					btn.active = (i < 3 && objectTool && objectTool->GetGizmoMode() == gizmoModes[i]);
 					toolButtons.push_back(btn);
 				}
 			}
