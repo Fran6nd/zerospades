@@ -260,6 +260,44 @@ namespace spades {
 			return true;
 		}
 
+		std::vector<VoxelObject> KV6ScreenHelper::Load2KV6(const std::string& absPath) {
+			std::FILE* f = std::fopen(absPath.c_str(), "rb");
+			if (!f)
+				return {};
+			try {
+				StdStream stream(f, true);
+				return VoxelModel2KV6::Load(stream);
+			} catch (const std::exception&) {
+				return {};
+			}
+		}
+
+		bool KV6ScreenHelper::Save2KV6(const std::vector<VoxelObject>& scene, const std::string& absPath) {
+			if (scene.empty())
+				return false;
+			std::string tmpPath = absPath + ".savetmp";
+			std::FILE* f = std::fopen(tmpPath.c_str(), "wb");
+			if (!f)
+				return false;
+			try {
+				StdStream stream(f, true);
+				VoxelModel2KV6::Save(stream, scene);
+			} catch (const std::exception&) {
+				std::remove(tmpPath.c_str());
+				return false;
+			}
+#ifdef _WIN32
+			if (!MoveFileExA(tmpPath.c_str(), absPath.c_str(),
+			                 MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)) {
+#else
+			if (std::rename(tmpPath.c_str(), absPath.c_str()) != 0) {
+#endif
+				std::remove(tmpPath.c_str());
+				return false;
+			}
+			return true;
+		}
+
 		std::vector<VoxelObject> KV6ScreenHelper::NewScene2KV6(int sizeXYZ) {
 			std::vector<VoxelObject> scene;
 			VoxelObject root;

@@ -467,9 +467,36 @@ namespace spades {
 			}
 
 			if (is2KV6Load) {
-				// TODO: Load .2kv6 scene (not yet implemented)
-				NewModel(cubeSize, path);
-				SetStatus("Loading .2kv6 format not yet supported");
+				// Load .2kv6 scene
+				scene = io->Load2KV6(path);
+				if (scene.empty()) {
+					NewModel(cubeSize, path);
+					SetStatus("Could not load " + path);
+					return;
+				}
+
+				is2KV6 = true;
+				activeSceneRootIndex = 0;
+				activeChildIndex = SIZE_MAX;
+
+				// Set model to first child if it exists, otherwise use empty placeholder
+				if (activeSceneRootIndex < scene.size() &&
+				    !scene[activeSceneRootIndex].children.empty()) {
+					model = scene[activeSceneRootIndex].children[0].model;
+					if (!model)
+						model = Handle<VoxelModel>::New(cubeSize, cubeSize, cubeSize);
+					activeChildIndex = 0;
+				} else {
+					model = Handle<VoxelModel>::New(cubeSize, cubeSize, cubeSize);
+				}
+
+				voxelCount = CountSolids();
+				RebuildRenderModel();
+				filePath = path;
+				FrameCamera();
+				undo.Clear();
+				savedGeomId = undo.GeometryStateId();
+				SetStatus("Loaded " + path);
 				return;
 			}
 
@@ -520,8 +547,18 @@ namespace spades {
 				SetStatus("No file to save to");
 				return;
 			}
-			if (io->Save(&*model, filePath)) {
-				savedGeomId = undo.GeometryStateId(); // this geometry state is now clean
+
+			bool success = false;
+			if (is2KV6) {
+				// Save .2kv6 scene
+				success = io->Save2KV6(scene, filePath);
+			} else {
+				// Save .kv6 model
+				success = io->Save(&*model, filePath);
+			}
+
+			if (success) {
+				savedGeomId = undo.GeometryStateId();
 				SetStatus("Saved " + filePath);
 			} else {
 				SetStatus("Save failed");
