@@ -51,6 +51,7 @@ namespace spades {
 
 			std::unique_ptr<EditorMenu> editorMenu;
 			std::unique_ptr<SoftwareCursor> defaultCursor;
+			SoftwareCursor* cursor = nullptr;
 
 			// weak reference to the editor view
 			MapEditorView* editor;
@@ -86,6 +87,7 @@ namespace spades {
 
 			// Component accessors for MapEditorView
 			EditorMenu* GetEditorMenu() { return editorMenu.get(); }
+			SoftwareCursor* GetCursor() { return cursor; }
 		};
 	} // namespace gui
 } // namespace spades

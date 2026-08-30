@@ -57,7 +57,8 @@ namespace spades {
 			void TextInputEvent(const std::string&) override;
 			bool AcceptsTextInput() override;
 			AABB2 GetTextInputRect() override;
-			bool NeedsAbsoluteMouseCoordinate() override { return false; }
+			bool NeedsAbsoluteMouseCoordinate() override;
+			bool OnMenuEscape() override { return false; }
 
 			void RunFrame(float dt) override;
 			void RunFrameLate(float dt) override;

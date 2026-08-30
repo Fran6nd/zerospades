@@ -51,6 +51,7 @@ namespace spades {
 				defaultCursor = std::make_unique<SoftwareCursor>(*_renderer);
 				cursorToUse = defaultCursor.get();
 			}
+			this->cursor = cursorToUse;
 
 			try {
 				editorMenu = std::make_unique<EditorMenu>(*_editor, *_renderer, *_fontManager, *cursorToUse, _audioDevice);

@@ -27,6 +27,7 @@
 #include <Client/World.h>
 #include <Core/Exception.h>
 #include <Core/FileManager.h>
+#include <Core/Math.h>
 #include <Core/ServerAddress.h>
 #include <Core/Settings.h>
 #include <Gui/UI/Components/SoftwareCursor.h>
@@ -44,13 +45,28 @@ namespace spades {
 		MapEditorView::~MapEditorView() {
 		}
 
+		bool MapEditorView::NeedsAbsoluteMouseCoordinate() {
+			if (!ui)
+				return false;
+
+			EditorMenu* menu = ui->GetEditorMenu();
+			if (menu && menu->IsActive())
+				return true;
+
+			return false;
+		}
+
 		void MapEditorView::MouseEvent(float x, float y) {
 			if (!ui)
 				return;
 
 			EditorMenu* menu = ui->GetEditorMenu();
-			if (menu && menu->IsActive())
+			SoftwareCursor* cursor = ui->GetCursor();
+			if (menu && menu->IsActive()) {
+				if (cursor)
+					cursor->SetPosition(MakeVector2(x, y));
 				return;
+			}
 
 			if (client) {
 				client->MouseEvent(x, y);
@@ -184,6 +200,11 @@ namespace spades {
 				EditorMenu* menu = ui->GetEditorMenu();
 				if (menu)
 					menu->Draw();
+
+				// Draw cursor
+				SoftwareCursor* cursor = ui->GetCursor();
+				if (cursor)
+					cursor->Draw();
 			}
 		}
 
