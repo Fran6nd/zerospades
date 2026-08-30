@@ -63,7 +63,7 @@ namespace spades {
             float sh = renderer->ScreenHeight();
             float w = 260.0F;
             float x = (sw - w) * 0.5F;
-            float y = sh * 0.5F - 130.0F + 44.0F;
+            float y = sh * 0.5F - 132.0F + 44.0F;
             for (int i = 0; i < 5; i++) {
                 if (OverlayInRect(p, x, y, w, 36.0F))
                     return i;
@@ -79,7 +79,7 @@ namespace spades {
 
             float w = 260.0F;
             float x = (sw - w) * 0.5F;
-            float y = sh * 0.5F - 130.0F;
+            float y = sh * 0.5F - 132.0F;
 
             std::string title = host.GetMenuTitle();
             Vector2 sz = font.Measure(title);
