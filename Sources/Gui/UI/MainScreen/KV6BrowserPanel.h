@@ -32,18 +32,19 @@ namespace spades {
 	namespace gui {
 		class MainScreenHelper;
 
-		/** A modal dialog to select model type: KV6 (enabled) or Map VXL (disabled). */
+		/** A modal dialog to select model type: 2KV6, KV6, or Map VXL. */
 		class KV6ModelTypePrompt : public ui::UIElement {
 			ui::UIElement* owner;   // weak
 			ui::Button* vxlButton;  // weak; owned as a child
 
+			void On2KV6(ui::UIElement& sender);
 			void OnKV6(ui::UIElement& sender);
 			void OnVXL(ui::UIElement& sender);
 			void OnCancel(ui::UIElement& sender);
 
 		public:
 			ui::EventHandler closed;
-			int result = -1; // -1: cancelled, 0: KV6, 1: VXL
+			int result = -1; // -1: cancelled, 0: 2KV6, 1: KV6, 2: VXL
 
 			KV6ModelTypePrompt(ui::UIElement* owner);
 
@@ -92,6 +93,7 @@ namespace spades {
 			std::string dir;              // current folder (absolute)
 			std::string selected;         // selected entry name within `dir`
 			bool selectedIsFolder = false;
+			int newModelType = 0;         // 0=2KV6, 1=KV6 (for new model creation)
 
 			std::string Child(const std::string& name) const;
 			void Reload();

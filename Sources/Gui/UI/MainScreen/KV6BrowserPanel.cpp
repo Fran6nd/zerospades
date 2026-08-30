@@ -52,7 +52,7 @@ namespace spades {
 			float sw = manager->screenWidth;
 			float sh = manager->screenHeight;
 			float w = std::min(sw - 16.0F, 500.0F);
-			float h = 160.0F;
+			float h = 200.0F;
 			float x = (sw - w) * 0.5F;
 			float y = (sh - h) * 0.5F;
 
@@ -71,8 +71,15 @@ namespace spades {
 			}
 			{
 				Handle<Button> btn = Handle<Button>::New(manager);
-				btn->caption = _Tr("MainScreen", "KV6");
-				btn->SetBounds(AABB2(x + (w - 150.0F) * 0.5F, y + 70.0F, 150.0F, 30.0F));
+				btn->caption = _Tr("MainScreen", "Scene (2KV6) - Recommended");
+				btn->SetBounds(AABB2(x + (w - 220.0F) * 0.5F, y + 70.0F, 220.0F, 30.0F));
+				btn->activated = [this](UIElement& s) { On2KV6(s); };
+				AddChild(btn.GetPointerOrNull());
+			}
+			{
+				Handle<Button> btn = Handle<Button>::New(manager);
+				btn->caption = _Tr("MainScreen", "Single Model (KV6)");
+				btn->SetBounds(AABB2(x + (w - 220.0F) * 0.5F, y + 110.0F, 220.0F, 30.0F));
 				btn->activated = [this](UIElement& s) { OnKV6(s); };
 				AddChild(btn.GetPointerOrNull());
 			}
@@ -80,20 +87,25 @@ namespace spades {
 				Handle<Button> btn = Handle<Button>::New(manager);
 				btn->caption = _Tr("MainScreen", "Map VXL");
 				vxlButton = btn.GetPointerOrNull();
-				btn->SetBounds(AABB2(x + (w - 150.0F) * 0.5F, y + 110.0F, 150.0F, 30.0F));
+				btn->SetBounds(AABB2(x + (w - 220.0F) * 0.5F, y + 150.0F, 220.0F, 30.0F));
 				btn->activated = [this](UIElement& s) { OnVXL(s); };
 				btn->enable = false; // Disabled until supported
 				AddChild(btn.GetPointerOrNull());
 			}
 		}
 
-		void KV6ModelTypePrompt::OnKV6(UIElement&) {
+		void KV6ModelTypePrompt::On2KV6(UIElement&) {
 			result = 0;
 			Close();
 		}
 
-		void KV6ModelTypePrompt::OnVXL(UIElement&) {
+		void KV6ModelTypePrompt::OnKV6(UIElement&) {
 			result = 1;
+			Close();
+		}
+
+		void KV6ModelTypePrompt::OnVXL(UIElement&) {
+			result = 2;
 			Close();
 		}
 
@@ -421,16 +433,23 @@ namespace spades {
 			if (!p)
 				return;
 
-			if (p->result == 0) { // KV6 selected
+			if (p->result == 0) { // 2KV6 selected
 				Handle<KV6NamePrompt> namePrompt = Handle<KV6NamePrompt>::New(
-				    modalOwner, _Tr("MainScreen", "New KV6 Model"), "untitled");
+				    modalOwner, _Tr("MainScreen", "New 2KV6 Scene"), "untitled");
+				newModelType = 0; // Store the type for use in OnNewModelNameClosed
 				namePrompt->closed = [this](UIElement& s) { OnNewModelNameClosed(s); };
 				namePrompt->Run();
-			} else if (p->result == 1) { // VXL selected
+			} else if (p->result == 1) { // KV6 selected
+				Handle<KV6NamePrompt> namePrompt = Handle<KV6NamePrompt>::New(
+				    modalOwner, _Tr("MainScreen", "New KV6 Model"), "untitled");
+				newModelType = 1; // Store the type for use in OnNewModelNameClosed
+				namePrompt->closed = [this](UIElement& s) { OnNewModelNameClosed(s); };
+				namePrompt->Run();
+			} else if (p->result == 2) { // VXL selected
 				Handle<AlertScreen> al = Handle<AlertScreen>::New(
 				    modalOwner,
 				    _Tr("MainScreen",
-				        "Map VXL support is not yet implemented. Please use KV6 models."),
+				        "Map VXL support is not yet implemented. Please use 2KV6 or KV6 models."),
 				    120.0F);
 				al->Run();
 			}
@@ -441,8 +460,14 @@ namespace spades {
 			if (!p || !p->result || p->text.empty())
 				return;
 			std::string name = p->text;
-			if (!EditorIsEditable(name))
-				name += ".kv6";
+			// Add extension based on selected type (0=2KV6, 1=KV6)
+			if (newModelType == 0) {
+				if (!EditorIsEditable(name))
+					name += ".2kv6";
+			} else {
+				if (!EditorIsEditable(name))
+					name += ".kv6";
+			}
 			OpenModel(Child(name), true);
 		}
 
