@@ -33,7 +33,10 @@ namespace spades {
 				};
 			}
 
-			ButtonBase::~ButtonBase() { repeatTimer->Stop(); }
+			ButtonBase::~ButtonBase() {
+				if (repeatTimer)
+					repeatTimer->Stop();
+			}
 
 			void ButtonBase::PlayMouseEnterSound() {
 				GetManager().PlaySound("Sounds/Feedback/Limbo/Hover.opus");
@@ -120,7 +123,7 @@ namespace spades {
 						lastActivatePosition = clientPosition;
 					}
 
-					if (repeat && hover)
+					if (repeat)
 						repeatTimer->Stop();
 				}
 			}
