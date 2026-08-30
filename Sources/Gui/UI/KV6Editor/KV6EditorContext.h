@@ -156,6 +156,10 @@ namespace spades {
 
 			// --- Object rendering ---
 			virtual void DrawObjectOutline(size_t objectIndex, const Vector4& color) = 0;
+
+			// --- Object selection ---
+			// Raycast from camera through cursor; returns true if an object was hit and selected
+			virtual bool SelectObjectAtCursor() = 0;
 		};
 	} // namespace gui
 } // namespace spades

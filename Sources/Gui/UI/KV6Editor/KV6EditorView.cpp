@@ -257,6 +257,14 @@ namespace spades {
 					activeTool = idx;
 				} else if (currentMode == EditorMode::Object && is2KV6) {
 					activeObjectModeToolIndex = idx;
+					// Activate the tool (triggers OnActivate)
+					if (activeObjectModeToolIndex >= 0 && activeObjectModeToolIndex < int(objectModeTools.size())) {
+						objectModeTools[activeObjectModeToolIndex]->OnActivate(*this);
+						// Auto-revert one-shot tools back to Transform
+						if (objectModeTools[activeObjectModeToolIndex]->ShouldAutoRevert()) {
+							activeObjectModeToolIndex = 1; // 1 = Transform tool
+						}
+					}
 				}
 			};
 			ui->GetToolbar()->OnUndoClicked = [this]() { Undo(); };
@@ -2260,6 +2268,46 @@ namespace spades {
 			IntVector3 lo = MakeIntVector3(0, 0, 0);
 			IntVector3 hi = MakeIntVector3(w - 1, h - 1, d - 1);
 			DrawBoxOutline(lo, hi, color);
+		}
+
+		bool KV6EditorView::SelectObjectAtCursor() {
+			if (!is2KV6 || scene.empty())
+				return false;
+
+			DoPick();
+			if (!HasPick())
+				return false;
+
+			// Check which object contains the picked voxel
+			IntVector3 picked = PickSolid();
+
+			// Try each object to see if it contains this voxel
+			for (size_t i = 0; i < scene.size(); i++) {
+				const VoxelObject& obj = scene[i];
+				if (!obj.model)
+					continue;
+
+				// Check if the voxel is within this object's bounds
+				int w = obj.model->GetWidth();
+				int h = obj.model->GetHeight();
+				int d = obj.model->GetDepth();
+
+				// Account for object position
+				IntVector3 localPos = picked - MakeIntVector3(
+					int(obj.position.x), int(obj.position.y), int(obj.position.z));
+
+				if (localPos.x >= 0 && localPos.x < w &&
+					localPos.y >= 0 && localPos.y < h &&
+					localPos.z >= 0 && localPos.z < d) {
+					// Check if this voxel is solid in this object
+					if (obj.model->IsSolid(localPos.x, localPos.y, localPos.z)) {
+						SetActiveObjectIndex(i);
+						return true;
+					}
+				}
+			}
+
+			return false;
 		}
 	} // namespace gui
 } // namespace spades

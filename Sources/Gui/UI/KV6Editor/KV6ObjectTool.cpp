@@ -129,6 +129,11 @@ namespace spades {
 					gizmoDragStartCursor = ctx.CursorPos();
 					gizmoDragStartOrigin = selectedObjectOrigin;
 					ctx.SetStatus("Moving object axis " + std::to_string(gizmoAxis));
+				} else {
+					// No gizmo hit - try to select an object by clicking on it
+					if (ctx.SelectObjectAtCursor()) {
+						ctx.SetStatus("Selected object");
+					}
 				}
 			} else if (input.IsDrag()) {
 				if (gizmoAxis < 0)
@@ -309,6 +314,11 @@ namespace spades {
 					gizmoDragStartCursor = ctx.CursorPos();
 					gizmoDragStartRotation = ctx.GetObjectRotation();
 					ctx.SetStatus("Rotating object axis " + std::to_string(gizmoAxis));
+				} else {
+					// No gizmo hit - try to select an object by clicking on it
+					if (ctx.SelectObjectAtCursor()) {
+						ctx.SetStatus("Selected object");
+					}
 				}
 			} else if (input.IsDrag()) {
 				if (gizmoAxis < 0)
@@ -496,6 +506,11 @@ namespace spades {
 					gizmoDragStartCursor = ctx.CursorPos();
 					gizmoDragStartScale = ctx.GetObjectScale();
 					ctx.SetStatus("Scaling object axis " + std::to_string(gizmoAxis));
+				} else {
+					// No gizmo hit - try to select an object by clicking on it
+					if (ctx.SelectObjectAtCursor()) {
+						ctx.SetStatus("Selected object");
+					}
 				}
 			} else if (input.IsDrag()) {
 				if (gizmoAxis < 0)
@@ -581,6 +596,7 @@ namespace spades {
 		public:
 			const char* Label() const override { return "New"; }
 			void OnActivate(IEditorContext& ctx) override;
+			bool ShouldAutoRevert() const override { return true; }
 		};
 
 		void ObjectNewTool::OnActivate(IEditorContext& ctx) {
@@ -595,6 +611,7 @@ namespace spades {
 		public:
 			const char* Label() const override { return "Delete"; }
 			void OnActivate(IEditorContext& ctx) override;
+			bool ShouldAutoRevert() const override { return true; }
 		};
 
 		void ObjectDeleteTool::OnActivate(IEditorContext& ctx) {

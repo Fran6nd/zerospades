@@ -72,6 +72,10 @@ namespace spades {
 			virtual int ActiveSubTool() const { return 0; }
 			virtual void SetSubTool(IEditorContext&, int) {}
 
+			// Return true if this tool should auto-revert to a previous tool after activation
+			// (used for one-shot actions like New/Delete)
+			virtual bool ShouldAutoRevert() const { return false; }
+
 			// All pointer activity (press, release, move, drag) arrives here; the
 			// phase and button live on the event.
 			virtual void OnPointer(IEditorContext&, const PointerInput&) {}

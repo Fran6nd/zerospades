@@ -142,6 +142,7 @@ namespace spades {
 			void SetObjectScale(const Vector3& scale) override;
 			void PreviewObjectScale(const Vector3& scale) override;
 			void DrawObjectOutline(size_t objectIndex, const Vector4& color) override;
+			bool SelectObjectAtCursor() override;
 			void PlaceCube() override;
 			void DeleteCube() override;
 			void Eyedropper() override;
