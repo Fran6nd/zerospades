@@ -242,11 +242,22 @@ namespace spades {
 					// Regular .kv6: buttons are [Edit=0, Animation=1], map to enum
 					newMode = EditorMode(idx + 1);
 				}
-				// Prevent entering Edit mode in .2kv6 without any children
+				// Handle Edit mode entry in .2kv6: ensure an object is selected
 				if (is2KV6 && newMode == EditorMode::Edit) {
 					if (activeSceneRootIndex >= scene.size() || scene[activeSceneRootIndex].children.empty()) {
 						SetStatus("Cannot enter Edit mode: no objects in scene");
 						return;
+					}
+					// If no object is selected, auto-select the first one
+					if (activeChildIndex >= scene[activeSceneRootIndex].children.size()) {
+						SetActiveObjectIndex(0);
+						SetStatus("Auto-selected first object");
+					}
+					// Ensure model points to the active child for editing
+					if (activeChildIndex < scene[activeSceneRootIndex].children.size()) {
+						model = scene[activeSceneRootIndex].children[activeChildIndex].model;
+						if (model)
+							RebuildRenderModel();
 					}
 				}
 				if (newMode != currentMode) {
@@ -2123,9 +2134,9 @@ namespace spades {
 
 			renderer->StartScene(sceneDef);
 
-			// In .2kv6 mode, render all child objects with their respective transforms
-			// If there are no children, don't render anything (even the root)
-			if (is2KV6 && activeSceneRootIndex < scene.size()) {
+			// In .2kv6 Object mode, render all child objects with their respective transforms
+			// In .2kv6 Edit mode, render ONLY the active object (treat as standalone .kv6)
+			if (is2KV6 && currentMode == EditorMode::Object && activeSceneRootIndex < scene.size()) {
 				const VoxelObject& root = scene[activeSceneRootIndex];
 				if (!root.children.empty()) {
 					for (size_t i = 0; i < root.children.size(); i++) {
@@ -2155,9 +2166,9 @@ namespace spades {
 						renderModel = savedRenderModel;
 					}
 				}
-				// In .2kv6 mode with no children, renderModel should be empty
+				// In .2kv6 Object mode with no children, renderModel should be empty
 			} else if (renderModel) {
-				// Regular .kv6 mode: render single model with origin pivot
+				// .2kv6 Edit mode or regular .kv6 mode: render active model with origin pivot
 				client::ModelRenderParam param;
 				param.matrix = Matrix4::Translate(model->GetOrigin() * -1.0F);
 				renderer->RenderModel(*renderModel, param);
@@ -2237,6 +2248,7 @@ namespace spades {
 			if (scene[activeSceneRootIndex].children[activeChildIndex].model) {
 				model = scene[activeSceneRootIndex].children[activeChildIndex].model;
 				RebuildRenderModel();
+				voxelCount = CountSolids();
 			}
 
 			SetStatus("Created object " + std::to_string(activeChildIndex));
@@ -2271,9 +2283,11 @@ namespace spades {
 			if (activeChildIndex < root.children.size() && root.children[activeChildIndex].model) {
 				model = root.children[activeChildIndex].model;
 				RebuildRenderModel();
+				voxelCount = CountSolids();
 			} else {
 				// No children left; model should point to root (even though Edit mode should be disabled)
 				model = root.model;
+				voxelCount = 0;
 			}
 
 			SetStatus("Deleted object");
@@ -2289,6 +2303,7 @@ namespace spades {
 				if (scene[activeSceneRootIndex].children[index].model) {
 					model = scene[activeSceneRootIndex].children[index].model;
 					RebuildRenderModel();
+					voxelCount = CountSolids();
 				}
 			}
 		}
