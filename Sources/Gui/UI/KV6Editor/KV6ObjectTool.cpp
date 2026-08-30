@@ -43,6 +43,11 @@ namespace spades {
 			if (!ctx.IsScene2KV6())
 				return;
 
+			if (!gizmo)
+				gizmo = std::make_unique<Gizmo>();
+
+			Vector3 selectedObjectOrigin = ctx.GetPivot();
+
 			if (input.IsDrag()) {
 				if (gizmoAxis >= 0) {
 					// Drag in progress: apply transformation
@@ -67,7 +72,7 @@ namespace spades {
 			} else if (input.IsDown() && input.IsLeft()) {
 				// Click: start drag if over gizmo
 				gizmoDragStart = input.pos;
-				gizmoAxis = gizmo->HitTest(ctx, MakeVector3(0, 0, 0), (Gizmo::Mode)gizmoMode);
+				gizmoAxis = gizmo->HitTest(ctx, selectedObjectOrigin, (Gizmo::Mode)gizmoMode);
 				if (gizmoAxis >= 0) {
 					ctx.SetStatus("Gizmo axis " + std::to_string(gizmoAxis) + " selected");
 				}
@@ -129,16 +134,12 @@ namespace spades {
 			// Read current space mode from options
 			useGlobalSpace = options.Count() > 0 ? !options.At(0).bvalue : true;
 
-			// Draw gizmo at selected object's origin
-			// Future: get actual object origin from scene[selectedObjectIndex]
-			Vector3 selectedObjectOrigin = MakeVector3(0, 0, 0);
+			// Draw gizmo at the pivot point (represents current object's origin)
+			Vector3 selectedObjectOrigin = ctx.GetPivot();
 			Vector4 selectedObjectRotation = MakeVector4(0, 0, 0, 1); // Identity
 
-			// Draw the gizmo with highlights for the selected object
-			Vector4 highlightColor = MakeVector4(1.0F, 1.0F, 0.3F, 1.0F); // Yellow highlight
-			ctx.DrawCellOutline(0, 0, 0, highlightColor);
-
-			gizmo->Draw(ctx, selectedObjectOrigin, gizmoMode,
+			// Draw all gizmo modes together
+			gizmo->Draw(ctx, selectedObjectOrigin, Gizmo::All,
 			            useGlobalSpace ? nullptr : &selectedObjectRotation);
 
 			// Status: show selected object info
