@@ -63,7 +63,7 @@ if(APPLE AND CMAKE_SYSTEM_PROCESSOR MATCHES "arm64|aarch64")
                 set(ANGELSCRIPT_SOURCE ${ANGELSCRIPT_SOURCE} ../../source/as_callfunc_arm64.cpp ../../source/as_callfunc_arm64_xcode.S)
                 message(STATUS "Building AngelScript with ARM64 support for macOS")
         else()
-                message(WARNING "macOS ARM64 assembler not found; building without ARM64 ASM optimizations")
+                message(FATAL_ERROR "macOS ARM64 target requires a working assembler")
         endif()
 endif()
 
