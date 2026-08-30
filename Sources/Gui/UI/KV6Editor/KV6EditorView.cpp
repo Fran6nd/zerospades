@@ -242,6 +242,11 @@ namespace spades {
 					// Regular .kv6: buttons are [Edit=0, Animation=1], map to enum
 					newMode = EditorMode(idx + 1);
 				}
+				// Prevent entering Edit mode in .2kv6 without a selected object
+				if (is2KV6 && newMode == EditorMode::Edit && scene.empty()) {
+					SetStatus("Cannot enter Edit mode: no objects in scene");
+					return;
+				}
 				if (newMode != currentMode) {
 					// Deactivate current tool
 					if (EditorTool* t = ActiveTool())
@@ -336,6 +341,14 @@ namespace spades {
 				NewModel(cubeSize, path);
 			else
 				LoadModel(path);
+
+			// Set default mode based on file type
+			// .2kv6 files default to Object mode, regular .kv6 files default to Edit mode
+			if (is2KV6) {
+				currentMode = EditorMode::Object;
+			} else {
+				currentMode = EditorMode::Edit;
+			}
 		}
 
 		KV6EditorView::~KV6EditorView() { SPADES_MARK_FUNCTION(); }
