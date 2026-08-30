@@ -24,6 +24,7 @@
 #include <Client/Client.h>
 #include <Client/EditorNetClient.h>
 #include <Client/Fonts.h>
+#include <Client/World.h>
 #include <Core/Exception.h>
 #include <Core/FileManager.h>
 #include <Core/ServerAddress.h>
