@@ -197,7 +197,11 @@ namespace spades {
 		}
 
 		void ObjectMoveSubTool::DrawScene(IEditorContext& ctx) {
+			// Only draw gizmo if we have objects and a valid active selection
 			if (!ctx.IsScene2KV6() || ctx.GetObjectCount() == 0)
+				return;
+			// Verify active object actually exists (not just count)
+			if (ctx.GetActiveObjectIndex() >= ctx.GetObjectCount())
 				return;
 
 			Vector3 origin = ctx.GetPivot();
@@ -400,7 +404,11 @@ namespace spades {
 		}
 
 		void ObjectRotateSubTool::DrawScene(IEditorContext& ctx) {
+			// Only draw gizmo if we have objects and a valid active selection
 			if (!ctx.IsScene2KV6() || ctx.GetObjectCount() == 0)
+				return;
+			// Verify active object actually exists (not just count)
+			if (ctx.GetActiveObjectIndex() >= ctx.GetObjectCount())
 				return;
 
 			Vector3 origin = ctx.GetPivot();
@@ -571,7 +579,11 @@ namespace spades {
 		}
 
 		void ObjectScaleSubTool::DrawScene(IEditorContext& ctx) {
+			// Only draw gizmo if we have objects and a valid active selection
 			if (!ctx.IsScene2KV6() || ctx.GetObjectCount() == 0)
+				return;
+			// Verify active object actually exists (not just count)
+			if (ctx.GetActiveObjectIndex() >= ctx.GetObjectCount())
 				return;
 
 			Vector3 origin = ctx.GetPivot();
