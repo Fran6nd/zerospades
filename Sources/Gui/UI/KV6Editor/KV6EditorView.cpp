@@ -21,6 +21,7 @@
 #include "EditorUI.h"
 #include "KV6EditorView.h"
 #include "KV6EditorTool.h"
+#include "KV6ObjectTool.h"
 #include "KV6ScreenHelper.h"
 #include "KV6ToolRegistry.h"
 #include <Gui/UI/Components/ColorPicker.h>
@@ -235,24 +236,20 @@ namespace spades {
 			ui->GetToolbar()->OnModeClicked = [this](int idx) {
 				EditorMode newMode = EditorMode(idx);
 				if (newMode != currentMode) {
-					// Deactivate current tool in Edit mode
-					if (currentMode == EditorMode::Edit) {
-						if (EditorTool* t = ActiveTool())
-							t->OnDeactivate(*this);
-					}
-					// Switch mode and activate new tool if in Edit mode
+					// Deactivate current tool
+					if (EditorTool* t = ActiveTool())
+						t->OnDeactivate(*this);
+					// Switch mode and activate new tool
 					currentMode = newMode;
-					if (currentMode == EditorMode::Edit) {
-						if (EditorTool* t = ActiveTool())
-							t->OnActivate(*this);
-					}
+					if (EditorTool* t = ActiveTool())
+						t->OnActivate(*this);
 				}
 			};
 			ui->GetToolbar()->OnToolClicked = [this](int idx) {
 				if (currentMode == EditorMode::Edit) {
 					activeTool = idx;
 				}
-				// Object mode buttons don't have active tool, just update status
+				// Object mode buttons don't map to tools, toolbar buttons just change visual state
 			};
 			ui->GetToolbar()->OnUndoClicked = [this]() { Undo(); };
 			ui->GetToolbar()->OnRedoClicked = [this]() { Redo(); };
@@ -312,6 +309,9 @@ namespace spades {
 					break;
 				}
 			}
+
+			// Object mode tool
+			objectTool = std::make_unique<ObjectTool>();
 
 			if (isNew || path.empty())
 				NewModel(cubeSize, path);
@@ -1641,6 +1641,8 @@ namespace spades {
 		}
 
 		EditorTool* KV6EditorView::ActiveTool() {
+			if (currentMode == EditorMode::Object && objectTool)
+				return objectTool.get();
 			if (currentMode == EditorMode::Edit && activeTool >= 0 && activeTool < int(tools.size()))
 				return tools[activeTool].get();
 			return nullptr;

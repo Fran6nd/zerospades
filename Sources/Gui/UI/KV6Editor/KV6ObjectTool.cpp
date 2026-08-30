@@ -48,36 +48,38 @@ namespace spades {
 
 			Vector3 selectedObjectOrigin = ctx.GetPivot();
 
-			if (input.IsDrag()) {
-				if (gizmoAxis >= 0) {
-					// Drag in progress: apply transformation
-					Vector2 delta = input.pos - gizmoDragStart;
+			if (!input.IsLeft())
+				return;
 
-					if (gizmoMode == Gizmo::Move) {
-						Vector3 movement = gizmo->ApplyMove(ctx, gizmoAxis, delta);
-						// Future: apply movement to active object
-						ctx.SetStatus("Move: " + std::to_string(gizmoAxis));
-					} else if (gizmoMode == Gizmo::Rotate) {
-						Vector4 rotation = gizmo->ApplyRotate(ctx, gizmoAxis, delta);
-						// Future: apply rotation to active object
-						ctx.SetStatus("Rotate: " + std::to_string(gizmoAxis));
-					} else if (gizmoMode == Gizmo::Scale) {
-						Vector3 scale = gizmo->ApplyScale(ctx, gizmoAxis, delta);
-						// Future: apply scale to active object
-						ctx.SetStatus("Scale: " + std::to_string(gizmoAxis));
-					}
-
-					gizmoDragStart = input.pos;
-				}
-			} else if (input.IsDown() && input.IsLeft()) {
-				// Click: start drag if over gizmo
-				gizmoDragStart = input.pos;
+			if (input.IsDown()) {
+				// Click: check if over gizmo axis
 				gizmoAxis = gizmo->HitTest(ctx, selectedObjectOrigin, (Gizmo::Mode)gizmoMode);
 				if (gizmoAxis >= 0) {
-					ctx.SetStatus("Gizmo axis " + std::to_string(gizmoAxis) + " selected");
+					gizmoDragStart = input.pos;
+					gizmoDragOrigin = selectedObjectOrigin;
+					ctx.SetStatus("Dragging axis " + std::to_string(gizmoAxis));
 				}
-			} else if (input.IsUp() && input.IsLeft()) {
-				// Release: end drag
+			} else if (input.IsDrag()) {
+				if (gizmoAxis < 0)
+					return;
+
+				// Drag: compute movement along the selected axis
+				Vector2 delta = input.pos - gizmoDragStart;
+
+				if (gizmoMode == Gizmo::Move) {
+					Vector3 movement = gizmo->ApplyMove(ctx, gizmoAxis, delta);
+					// Preview the moved position
+					ctx.SetStatus("Move: " + std::to_string(gizmoAxis) + " (" + std::to_string(movement.x) + ", " +
+					              std::to_string(movement.y) + ", " + std::to_string(movement.z) + ")");
+				} else if (gizmoMode == Gizmo::Rotate) {
+					Vector4 rotation = gizmo->ApplyRotate(ctx, gizmoAxis, delta);
+					ctx.SetStatus("Rotate: " + std::to_string(gizmoAxis));
+				} else if (gizmoMode == Gizmo::Scale) {
+					Vector3 scale = gizmo->ApplyScale(ctx, gizmoAxis, delta);
+					ctx.SetStatus("Scale: " + std::to_string(gizmoAxis));
+				}
+			} else if (input.IsUp()) {
+				// Release: finish drag
 				if (gizmoAxis >= 0) {
 					ctx.SetStatus("");
 				}

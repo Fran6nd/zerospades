@@ -57,6 +57,7 @@ namespace spades {
 			int gizmoMode = Gizmo::Move; // Current mode displayed
 			int gizmoAxis = -1; // Axis being dragged (-1 = none)
 			Vector2 gizmoDragStart;
+			Vector3 gizmoDragOrigin;
 			bool useGlobalSpace = true; // Toggle: true=global, false=local
 			size_t selectedObjectIndex = 0; // Currently selected object for editing
 
