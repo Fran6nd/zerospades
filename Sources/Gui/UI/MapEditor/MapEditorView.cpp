@@ -195,16 +195,19 @@ namespace spades {
 				}
 			}
 
-			// Draw menu overlay
+			// Draw menu overlay and cursor (only visible when menu is open)
 			if (ui) {
 				EditorMenu* menu = ui->GetEditorMenu();
-				if (menu)
+				if (menu) {
 					menu->Draw();
 
-				// Draw cursor
-				SoftwareCursor* cursor = ui->GetCursor();
-				if (cursor)
-					cursor->Draw();
+					// Draw cursor only when menu is active
+					if (menu->IsActive()) {
+						SoftwareCursor* cursor = ui->GetCursor();
+						if (cursor)
+							cursor->Draw();
+					}
+				}
 			}
 		}
 
