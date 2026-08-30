@@ -20,6 +20,7 @@
 
 #include "KV6ObjectTool.h"
 #include "KV6EditorContext.h"
+#include "KV6Gizmo.h"
 
 #include <cmath>
 #include <string>
@@ -41,21 +42,35 @@ namespace spades {
 			const float kHitDist = 14.0F;
 		}
 
-		ObjectTool::ObjectTool() {
-			// Transform space toggle: global (world-aligned) vs local (object-aligned)
-			options.AddBool("space.global", "Global", "Transform Space");
-		}
+		// --- ObjectMoveSubTool ---
+		class ObjectMoveSubTool : public EditorTool {
+		public:
+			const char* Label() const override { return "Move"; }
+			void OnActivate(IEditorContext& ctx) override;
+			void OnPointer(IEditorContext& ctx, const PointerInput& input) override;
+			bool OnEscape(IEditorContext& ctx) override;
+			void DrawScene(IEditorContext& ctx) override;
+			void DrawOverlay(IEditorContext& ctx) override;
+			void SetObjectTool(ObjectTool* tool) { objectTool = tool; }
 
-		void ObjectTool::OnActivate(IEditorContext& ctx) {
+		private:
+			ObjectTool* objectTool = nullptr;
+			std::unique_ptr<Gizmo> gizmo;
+			int gizmoAxis = -1;
+			Vector2 gizmoDragStartCursor;
+			Vector3 gizmoDragStartOrigin;
+
+			int HitAxis(IEditorContext& ctx, const Vector3& origin) const;
+			float OffsetAlong(IEditorContext& ctx, const Vector3& origin, int axis) const;
+		};
+
+		void ObjectMoveSubTool::OnActivate(IEditorContext& ctx) {
 			if (!gizmo)
 				gizmo = std::make_unique<Gizmo>();
-			gizmoMode = Gizmo::Move;
 			gizmoAxis = -1;
-			// Read the space toggle from options (default: global)
-			useGlobalSpace = options.Count() > 0 ? options.At(0).bvalue : true;
 		}
 
-		int ObjectTool::HitAxis(IEditorContext& ctx, const Vector3& origin) const {
+		int ObjectMoveSubTool::HitAxis(IEditorContext& ctx, const Vector3& origin) const {
 			bool ok0;
 			Vector2 s0 = ctx.WorldToScreen(origin, ok0);
 			if (!ok0)
@@ -77,7 +92,7 @@ namespace spades {
 			return best;
 		}
 
-		float ObjectTool::OffsetAlong(IEditorContext& ctx, const Vector3& origin, int axis) const {
+		float ObjectMoveSubTool::OffsetAlong(IEditorContext& ctx, const Vector3& origin, int axis) const {
 			bool ok1, ok2;
 			Vector2 s0 = ctx.WorldToScreen(origin, ok1);
 			Vector2 sa = ctx.WorldToScreen(origin + AxisUnit(axis), ok2);
@@ -89,10 +104,10 @@ namespace spades {
 				return 0.0F;
 			Vector2 m = ctx.CursorPos() - gizmoDragStartCursor;
 			float raw = Vector2::Dot(m, da) / (dl * dl);
-			return std::round(raw * 10.0F) / 10.0F; // snap to 0.1
+			return std::round(raw * 10.0F) / 10.0F;
 		}
 
-		void ObjectTool::OnPointer(IEditorContext& ctx, const PointerInput& input) {
+		void ObjectMoveSubTool::OnPointer(IEditorContext& ctx, const PointerInput& input) {
 			if (!ctx.IsScene2KV6())
 				return;
 
@@ -105,7 +120,6 @@ namespace spades {
 				return;
 
 			if (input.IsDown()) {
-				// Click: check if over gizmo axis
 				int best = HitAxis(ctx, selectedObjectOrigin);
 				if (best >= 0) {
 					gizmoAxis = best;
@@ -117,28 +131,17 @@ namespace spades {
 				if (gizmoAxis < 0)
 					return;
 
-				// Drag: compute movement along the selected axis
 				float offset = OffsetAlong(ctx, gizmoDragStartOrigin, gizmoAxis);
-
-				if (gizmoMode == Gizmo::Move) {
-					// Apply movement to object by updating pivot (live preview like PivotGizmoSubTool)
-					Vector3 newOrigin = gizmoDragStartOrigin + AxisUnit(gizmoAxis) * offset;
-					ctx.PreviewPivot(newOrigin);
-					ctx.SetStatus("Move axis " + std::to_string(gizmoAxis) + " offset: " + std::to_string(offset));
-				} else if (gizmoMode == Gizmo::Rotate) {
-					ctx.SetStatus("Rotate axis " + std::to_string(gizmoAxis));
-				} else if (gizmoMode == Gizmo::Scale) {
-					ctx.SetStatus("Scale axis " + std::to_string(gizmoAxis));
-				}
+				Vector3 newOrigin = gizmoDragStartOrigin + AxisUnit(gizmoAxis) * offset;
+				ctx.PreviewPivot(newOrigin);
+				ctx.SetStatus("Move axis " + std::to_string(gizmoAxis) + " offset: " + std::to_string(offset));
 			} else if (input.IsUp()) {
-				// Release: finish drag
 				if (gizmoAxis >= 0) {
 					float offset = OffsetAlong(ctx, gizmoDragStartOrigin, gizmoAxis);
-					if (gizmoMode == Gizmo::Move && offset != 0.0F) {
-						// Finalize the move
+					if (offset != 0.0F) {
 						Vector3 newOrigin = gizmoDragStartOrigin + AxisUnit(gizmoAxis) * offset;
-						ctx.PreviewPivot(gizmoDragStartOrigin); // rewind preview
-						ctx.SetPivot(newOrigin); // apply as single undo step
+						ctx.PreviewPivot(gizmoDragStartOrigin);
+						ctx.SetPivot(newOrigin);
 					}
 					ctx.SetStatus("");
 				}
@@ -146,71 +149,32 @@ namespace spades {
 			}
 		}
 
-		bool ObjectTool::OnEscape(IEditorContext& ctx) {
+		bool ObjectMoveSubTool::OnEscape(IEditorContext& ctx) {
 			if (gizmoAxis < 0)
 				return false;
 			gizmoAxis = -1;
 			return true;
 		}
 
-		void ObjectTool::OnKey(IEditorContext& ctx, const KeyInput& input) {
-			if (!input.IsDown())
-				return;
-
+		void ObjectMoveSubTool::DrawScene(IEditorContext& ctx) {
 			if (!ctx.IsScene2KV6())
 				return;
-
-			// Gizmo mode selection (industry standard)
-			if (input.key == "g") {
-				gizmoMode = Gizmo::Move;
-				ctx.SetStatus("Move mode (G)");
-			} else if (input.key == "r") {
-				gizmoMode = Gizmo::Rotate;
-				ctx.SetStatus("Rotate mode (R)");
-			} else if (input.key == "s") {
-				gizmoMode = Gizmo::Scale;
-				ctx.SetStatus("Scale mode (S)");
-			}
-			// Object creation / deletion
-			else if (input.key == "n" && input.shift) {
-				CreateNewObject(ctx, "");
-			} else if (input.key == "Delete" || input.key == "Backspace") {
-				DeleteActiveObject(ctx);
-			}
-			// Object selection / editing
-			else if (input.key == "Tab" && input.shift) {
-				SelectPreviousObject(ctx);
-			} else if (input.key == "Tab") {
-				SelectNextObject(ctx);
-			} else if (input.key == "e" || input.key == "Return") {
-				EnterEditMode(ctx);
-			}
-		}
-
-		void ObjectTool::DrawScene(IEditorContext& ctx) {
-			if (!ctx.IsScene2KV6())
-				return;
-
-			// Read current space mode from options
-			useGlobalSpace = options.Count() > 0 ? options.At(0).bvalue : true;
 
 			Vector3 origin = ctx.GetPivot();
 
-			// Highlight the origin cell
-			Vector4 highlightColor = MakeVector4(1.0F, 1.0F, 0.3F, 1.0F);
-			ctx.DrawCellOutline(int(origin.x), int(origin.y), int(origin.z), highlightColor);
+			// Draw object outline
+			Vector4 outlineColor = MakeVector4(1.0F, 1.0F, 0.3F, 1.0F);
+			ctx.DrawObjectOutline(ctx.GetActiveObjectIndex(), outlineColor);
 
-			// Draw axis lines (like PivotGizmoSubTool)
+			// Draw axis lines
 			const Vector4 kAxisCol[3] = {
-				MakeVector4(1.0F, 0.35F, 0.35F, 1.0F),  // X - red
-				MakeVector4(0.4F, 1.0F, 0.4F, 1.0F),    // Y - green
-				MakeVector4(0.45F, 0.6F, 1.0F, 1.0F)    // Z - blue
+				MakeVector4(1.0F, 0.35F, 0.35F, 1.0F),
+				MakeVector4(0.4F, 1.0F, 0.4F, 1.0F),
+				MakeVector4(0.45F, 0.6F, 1.0F, 1.0F)
 			};
 
-			// Check which axis is hovered
 			int hover = (gizmoAxis < 0) ? HitAxis(ctx, origin) : -1;
 
-			// Draw each axis
 			for (int a = 0; a < 3; a++) {
 				bool active = (gizmoAxis == a) || (hover == a);
 				Vector4 col = active ? MakeVector4(1, 1, 1, 1) : kAxisCol[a];
@@ -219,13 +183,12 @@ namespace spades {
 			}
 		}
 
-		void ObjectTool::DrawOverlay(IEditorContext& ctx) {
+		void ObjectMoveSubTool::DrawOverlay(IEditorContext& ctx) {
 			if (!ctx.IsScene2KV6())
 				return;
 
 			Vector3 origin = ctx.GetPivot();
 
-			// Draw solid cube handles at axis tips (like PivotGizmoSubTool)
 			const Vector4 kAxisCol[3] = {
 				MakeVector4(1.0F, 0.35F, 0.35F, 1.0F),
 				MakeVector4(0.4F, 1.0F, 0.4F, 1.0F),
@@ -240,6 +203,393 @@ namespace spades {
 				Vector3 handle = origin + AxisUnit(a) * kGizLen;
 				float size = active ? 1.05F : 0.8F;
 				ctx.DrawSolidCube(handle, size, col);
+			}
+		}
+
+		// --- ObjectRotateSubTool ---
+		class ObjectRotateSubTool : public EditorTool {
+		public:
+			const char* Label() const override { return "Rotate"; }
+			void OnActivate(IEditorContext& ctx) override;
+			void OnPointer(IEditorContext& ctx, const PointerInput& input) override;
+			bool OnEscape(IEditorContext& ctx) override;
+			void DrawScene(IEditorContext& ctx) override;
+			void DrawOverlay(IEditorContext& ctx) override;
+			void SetObjectTool(ObjectTool* tool) { objectTool = tool; }
+
+		private:
+			ObjectTool* objectTool = nullptr;
+			std::unique_ptr<Gizmo> gizmo;
+			int gizmoAxis = -1;
+			Vector2 gizmoDragStartCursor;
+			Vector4 gizmoDragStartRotation;
+
+			int HitAxis(IEditorContext& ctx, const Vector3& origin) const;
+		};
+
+		void ObjectRotateSubTool::OnActivate(IEditorContext& ctx) {
+			if (!gizmo)
+				gizmo = std::make_unique<Gizmo>();
+			gizmoAxis = -1;
+		}
+
+		int ObjectRotateSubTool::HitAxis(IEditorContext& ctx, const Vector3& origin) const {
+			bool ok0;
+			Vector2 s0 = ctx.WorldToScreen(origin, ok0);
+			if (!ok0)
+				return -1;
+			Vector2 cur = ctx.CursorPos();
+			int best = -1;
+			float bestDist = kHitDist * 1.5F;
+			for (int a = 0; a < 3; a++) {
+				bool ok1;
+				Vector2 tip = ctx.WorldToScreen(origin + AxisUnit(a) * kGizLen, ok1);
+				if (!ok1)
+					continue;
+				float d = std::min(DistToSeg(cur, s0, tip), (cur - tip).GetLength());
+				if (d < bestDist) {
+					bestDist = d;
+					best = a;
+				}
+			}
+			return best;
+		}
+
+		void ObjectRotateSubTool::OnPointer(IEditorContext& ctx, const PointerInput& input) {
+			if (!ctx.IsScene2KV6())
+				return;
+
+			if (!gizmo)
+				gizmo = std::make_unique<Gizmo>();
+
+			Vector3 origin = ctx.GetPivot();
+
+			if (!input.IsLeft())
+				return;
+
+			if (input.IsDown()) {
+				int best = HitAxis(ctx, origin);
+				if (best >= 0) {
+					gizmoAxis = best;
+					gizmoDragStartCursor = ctx.CursorPos();
+					gizmoDragStartRotation = ctx.GetObjectRotation();
+					ctx.SetStatus("Rotating object axis " + std::to_string(gizmoAxis));
+				}
+			} else if (input.IsDrag()) {
+				if (gizmoAxis < 0)
+					return;
+
+				// Compute rotation based on cursor movement
+				bool ok1, ok2;
+				Vector2 s0 = ctx.WorldToScreen(origin, ok1);
+				Vector2 sa = ctx.WorldToScreen(origin + AxisUnit(gizmoAxis), ok2);
+				if (!ok1 || !ok2)
+					return;
+
+				Vector2 da = sa - s0;
+				float dl = da.GetLength();
+				if (dl < 0.5F)
+					return;
+
+				Vector2 m = ctx.CursorPos() - gizmoDragStartCursor;
+				float angle = Vector2::Dot(m, da) / (dl * dl) * 0.1F;
+
+				// Create a quaternion rotation around the axis
+				Vector3 axis = AxisUnit(gizmoAxis);
+				float halfAngle = angle * 0.5F;
+				Vector4 deltaQuat = MakeVector4(
+					axis.x * std::sin(halfAngle),
+					axis.y * std::sin(halfAngle),
+					axis.z * std::sin(halfAngle),
+					std::cos(halfAngle)
+				);
+
+				// Multiply quaternions: newQuat = deltaQuat * startQuat
+				Quaternion start(gizmoDragStartRotation);
+				Quaternion delta(deltaQuat);
+				Quaternion result = delta * start;
+
+				ctx.PreviewObjectRotation(result.v);
+				ctx.SetStatus("Rotate axis " + std::to_string(gizmoAxis));
+			} else if (input.IsUp()) {
+				if (gizmoAxis >= 0) {
+					Vector4 currentRot = ctx.GetObjectRotation();
+					if (currentRot != gizmoDragStartRotation) {
+						ctx.SetObjectRotation(currentRot);
+					}
+					ctx.SetStatus("");
+				}
+				gizmoAxis = -1;
+			}
+		}
+
+		bool ObjectRotateSubTool::OnEscape(IEditorContext& ctx) {
+			if (gizmoAxis < 0)
+				return false;
+			// Revert rotation to start value
+			ctx.PreviewObjectRotation(gizmoDragStartRotation);
+			gizmoAxis = -1;
+			return true;
+		}
+
+		void ObjectRotateSubTool::DrawScene(IEditorContext& ctx) {
+			if (!ctx.IsScene2KV6())
+				return;
+
+			Vector3 origin = ctx.GetPivot();
+
+			// Draw object outline
+			Vector4 outlineColor = MakeVector4(1.0F, 1.0F, 0.3F, 1.0F);
+			ctx.DrawObjectOutline(ctx.GetActiveObjectIndex(), outlineColor);
+
+			// Draw gizmo with rotation
+			Vector4 rotation = ctx.GetObjectRotation();
+			if (gizmo)
+				gizmo->Draw(ctx, origin, Gizmo::Rotate, &rotation);
+		}
+
+		void ObjectRotateSubTool::DrawOverlay(IEditorContext& ctx) {
+			if (!ctx.IsScene2KV6())
+				return;
+
+			Vector3 origin = ctx.GetPivot();
+			int hover = (gizmoAxis < 0) ? HitAxis(ctx, origin) : -1;
+
+			const Vector4 kAxisCol[3] = {
+				MakeVector4(1.0F, 0.35F, 0.35F, 1.0F),
+				MakeVector4(0.4F, 1.0F, 0.4F, 1.0F),
+				MakeVector4(0.45F, 0.6F, 1.0F, 1.0F)
+			};
+
+			for (int a = 0; a < 3; a++) {
+				bool active = (gizmoAxis == a) || (hover == a);
+				Vector4 col = active ? MakeVector4(1, 1, 1, 1) : kAxisCol[a];
+				Vector3 handle = origin + AxisUnit(a) * kGizLen;
+				float size = active ? 1.05F : 0.8F;
+				ctx.DrawSolidCube(handle, size, col);
+			}
+		}
+
+		// --- ObjectScaleSubTool ---
+		class ObjectScaleSubTool : public EditorTool {
+		public:
+			const char* Label() const override { return "Scale"; }
+			void OnActivate(IEditorContext& ctx) override;
+			void OnPointer(IEditorContext& ctx, const PointerInput& input) override;
+			bool OnEscape(IEditorContext& ctx) override;
+			void DrawScene(IEditorContext& ctx) override;
+			void DrawOverlay(IEditorContext& ctx) override;
+			void SetObjectTool(ObjectTool* tool) { objectTool = tool; }
+
+		private:
+			ObjectTool* objectTool = nullptr;
+			std::unique_ptr<Gizmo> gizmo;
+			int gizmoAxis = -1;
+			Vector2 gizmoDragStartCursor;
+			Vector3 gizmoDragStartScale;
+
+			int HitAxis(IEditorContext& ctx, const Vector3& origin) const;
+			float OffsetAlong(IEditorContext& ctx, const Vector3& origin, int axis) const;
+		};
+
+		void ObjectScaleSubTool::OnActivate(IEditorContext& ctx) {
+			if (!gizmo)
+				gizmo = std::make_unique<Gizmo>();
+			gizmoAxis = -1;
+		}
+
+		int ObjectScaleSubTool::HitAxis(IEditorContext& ctx, const Vector3& origin) const {
+			bool ok0;
+			Vector2 s0 = ctx.WorldToScreen(origin, ok0);
+			if (!ok0)
+				return -1;
+			Vector2 cur = ctx.CursorPos();
+			int best = -1;
+			float bestDist = kHitDist;
+			for (int a = 0; a < 3; a++) {
+				bool ok1;
+				Vector2 tip = ctx.WorldToScreen(origin + AxisUnit(a) * kGizLen, ok1);
+				if (!ok1)
+					continue;
+				float d = std::min(DistToSeg(cur, s0, tip), (cur - tip).GetLength());
+				if (d < bestDist) {
+					bestDist = d;
+					best = a;
+				}
+			}
+			return best;
+		}
+
+		float ObjectScaleSubTool::OffsetAlong(IEditorContext& ctx, const Vector3& origin, int axis) const {
+			bool ok1, ok2;
+			Vector2 s0 = ctx.WorldToScreen(origin, ok1);
+			Vector2 sa = ctx.WorldToScreen(origin + AxisUnit(axis), ok2);
+			if (!ok1 || !ok2)
+				return 0.0F;
+			Vector2 da = sa - s0;
+			float dl = da.GetLength();
+			if (dl < 0.5F)
+				return 0.0F;
+			Vector2 m = ctx.CursorPos() - gizmoDragStartCursor;
+			float raw = Vector2::Dot(m, da) / (dl * dl);
+			return std::round(raw * 10.0F) / 10.0F;
+		}
+
+		void ObjectScaleSubTool::OnPointer(IEditorContext& ctx, const PointerInput& input) {
+			if (!ctx.IsScene2KV6())
+				return;
+
+			if (!gizmo)
+				gizmo = std::make_unique<Gizmo>();
+
+			Vector3 origin = ctx.GetPivot();
+
+			if (!input.IsLeft())
+				return;
+
+			if (input.IsDown()) {
+				int best = HitAxis(ctx, origin);
+				if (best >= 0) {
+					gizmoAxis = best;
+					gizmoDragStartCursor = ctx.CursorPos();
+					gizmoDragStartScale = ctx.GetObjectScale();
+					ctx.SetStatus("Scaling object axis " + std::to_string(gizmoAxis));
+				}
+			} else if (input.IsDrag()) {
+				if (gizmoAxis < 0)
+					return;
+
+				float offset = OffsetAlong(ctx, origin, gizmoAxis);
+				Vector3 newScale = gizmoDragStartScale;
+				newScale.x = gizmoAxis == 0 ? gizmoDragStartScale.x + offset : gizmoDragStartScale.x;
+				newScale.y = gizmoAxis == 1 ? gizmoDragStartScale.y + offset : gizmoDragStartScale.y;
+				newScale.z = gizmoAxis == 2 ? gizmoDragStartScale.z + offset : gizmoDragStartScale.z;
+
+				// Clamp to minimum scale
+				newScale.x = std::max(0.1F, newScale.x);
+				newScale.y = std::max(0.1F, newScale.y);
+				newScale.z = std::max(0.1F, newScale.z);
+
+				ctx.PreviewObjectScale(newScale);
+				ctx.SetStatus("Scale axis " + std::to_string(gizmoAxis) + " offset: " + std::to_string(offset));
+			} else if (input.IsUp()) {
+				if (gizmoAxis >= 0) {
+					Vector3 currentScale = ctx.GetObjectScale();
+					if (currentScale != gizmoDragStartScale) {
+						ctx.SetObjectScale(currentScale);
+					}
+					ctx.SetStatus("");
+				}
+				gizmoAxis = -1;
+			}
+		}
+
+		bool ObjectScaleSubTool::OnEscape(IEditorContext& ctx) {
+			if (gizmoAxis < 0)
+				return false;
+			ctx.PreviewObjectScale(gizmoDragStartScale);
+			gizmoAxis = -1;
+			return true;
+		}
+
+		void ObjectScaleSubTool::DrawScene(IEditorContext& ctx) {
+			if (!ctx.IsScene2KV6())
+				return;
+
+			Vector3 origin = ctx.GetPivot();
+
+			// Draw object outline
+			Vector4 outlineColor = MakeVector4(1.0F, 1.0F, 0.3F, 1.0F);
+			ctx.DrawObjectOutline(ctx.GetActiveObjectIndex(), outlineColor);
+
+			// Draw gizmo with rotation
+			Vector4 rotation = ctx.GetObjectRotation();
+			if (gizmo)
+				gizmo->Draw(ctx, origin, Gizmo::Scale, &rotation);
+		}
+
+		void ObjectScaleSubTool::DrawOverlay(IEditorContext& ctx) {
+			if (!ctx.IsScene2KV6())
+				return;
+
+			Vector3 origin = ctx.GetPivot();
+			int hover = (gizmoAxis < 0) ? HitAxis(ctx, origin) : -1;
+
+			const Vector4 kAxisCol[3] = {
+				MakeVector4(1.0F, 0.35F, 0.35F, 1.0F),
+				MakeVector4(0.4F, 1.0F, 0.4F, 1.0F),
+				MakeVector4(0.45F, 0.6F, 1.0F, 1.0F)
+			};
+
+			for (int a = 0; a < 3; a++) {
+				bool active = (gizmoAxis == a) || (hover == a);
+				Vector4 col = active ? MakeVector4(1, 1, 1, 1) : kAxisCol[a];
+				Vector3 handle = origin + AxisUnit(a) * kGizLen;
+				float size = active ? 1.05F : 0.8F;
+				ctx.DrawSolidCube(handle, size, col);
+			}
+		}
+
+		// --- ObjectTool (Container) ---
+		ObjectTool::ObjectTool() {
+			options.AddBool("space.global", "Global", "Transform Space");
+
+			// Create subtools
+			auto moveTool = std::make_unique<ObjectMoveSubTool>();
+			auto rotateTool = std::make_unique<ObjectRotateSubTool>();
+			auto scaleTool = std::make_unique<ObjectScaleSubTool>();
+
+			moveTool->SetObjectTool(this);
+			rotateTool->SetObjectTool(this);
+			scaleTool->SetObjectTool(this);
+
+			subs.push_back(std::move(moveTool));
+			subs.push_back(std::move(rotateTool));
+			subs.push_back(std::move(scaleTool));
+
+			active = 0; // Default to Move
+		}
+
+		void ObjectTool::OnKey(IEditorContext& ctx, const KeyInput& input) {
+			if (!input.IsDown())
+				return;
+
+			if (!ctx.IsScene2KV6()) {
+				ContainerTool::OnKey(ctx, input);
+				return;
+			}
+
+			// Gizmo mode selection
+			if (input.key == "g") {
+				SetSubTool(ctx, 0);
+				ctx.SetStatus("Move mode (G)");
+			} else if (input.key == "r") {
+				SetSubTool(ctx, 1);
+				ctx.SetStatus("Rotate mode (R)");
+			} else if (input.key == "s") {
+				SetSubTool(ctx, 2);
+				ctx.SetStatus("Scale mode (S)");
+			}
+			// Object creation / deletion
+			else if (input.key == "n" && input.shift) {
+				CreateNewObject(ctx, "");
+			} else if (input.key == "Delete" || input.key == "Backspace") {
+				DeleteActiveObject(ctx);
+			}
+			// Object selection
+			else if (input.key == "Tab" && input.shift) {
+				SelectPreviousObject(ctx);
+			} else if (input.key == "Tab") {
+				SelectNextObject(ctx);
+			}
+			// Space toggle for global/local transform
+			else if (input.key == " ") {
+				useGlobalSpace = !useGlobalSpace;
+				ctx.SetStatus(useGlobalSpace ? "Global transform space" : "Local transform space");
+				if (options.Count() > 0)
+					options.At(0).bvalue = useGlobalSpace;
+			} else {
+				ContainerTool::OnKey(ctx, input);
 			}
 		}
 
@@ -267,29 +617,26 @@ namespace spades {
 			if (!ctx.IsScene2KV6())
 				return;
 
-			// Future: cycle through root objects
-			// selectedObjectIndex = (selectedObjectIndex + 1) % scene.size();
-			ctx.SetStatus("Select next object (Tab)");
+			size_t currentIndex = ctx.GetActiveObjectIndex();
+			size_t count = ctx.GetObjectCount();
+			if (count > 0) {
+				size_t nextIndex = (currentIndex + 1) % count;
+				ctx.SetActiveObjectIndex(nextIndex);
+				ctx.SetStatus("Selected object " + std::to_string(nextIndex));
+			}
 		}
 
 		void ObjectTool::SelectPreviousObject(IEditorContext& ctx) {
 			if (!ctx.IsScene2KV6())
 				return;
 
-			// Future: cycle backward through root objects
-			// selectedObjectIndex = (selectedObjectIndex == 0) ? scene.size() - 1 : selectedObjectIndex - 1;
-			ctx.SetStatus("Select previous object (Shift+Tab)");
-		}
-
-		void ObjectTool::EnterEditMode(IEditorContext& ctx) {
-			if (!ctx.IsScene2KV6()) {
-				ctx.SetStatus("Not in .2kv6 mode");
-				return;
+			size_t currentIndex = ctx.GetActiveObjectIndex();
+			size_t count = ctx.GetObjectCount();
+			if (count > 0) {
+				size_t prevIndex = (currentIndex == 0) ? count - 1 : currentIndex - 1;
+				ctx.SetActiveObjectIndex(prevIndex);
+				ctx.SetStatus("Selected object " + std::to_string(prevIndex));
 			}
-
-			// Future: switch to Draw mode to edit the selected object's voxels
-			// The Draw tool will operate on scene[selectedObjectIndex].model
-			ctx.SetStatus("Enter edit mode (E) - switch to Draw tool");
 		}
 	} // namespace gui
 } // namespace spades
