@@ -25,6 +25,7 @@
 #include <vector>
 
 #include <Core/RefCountedObject.h>
+#include <Core/VoxelModel2KV6.h>
 
 namespace spades {
 	class VoxelModel;
