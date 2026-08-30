@@ -203,7 +203,7 @@ namespace spades {
 					return;
 				}
 
-				map->Save(stream);
+				map->Save(stream.get());
 				SPLog("Saved map to %s", path.c_str());
 			} catch (const Exception& ex) {
 				SPLog("Save failed: %s", ex.GetShortMessage().c_str());
