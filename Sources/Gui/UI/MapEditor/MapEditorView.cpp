@@ -81,7 +81,11 @@ namespace spades {
 
 			if (down && key == "Escape") {
 				if (menu) {
-					menu->Open();
+					if (menu->IsActive()) {
+						menu->Close();
+					} else {
+						menu->Open();
+					}
 				}
 				return;
 			}
