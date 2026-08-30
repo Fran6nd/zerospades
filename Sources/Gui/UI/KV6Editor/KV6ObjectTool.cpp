@@ -21,10 +21,26 @@
 #include "KV6ObjectTool.h"
 #include "KV6EditorContext.h"
 
+#include <cmath>
 #include <string>
 
 namespace spades {
 	namespace gui {
+		namespace {
+			Vector3 AxisUnit(int a) {
+				return MakeVector3(a == 0 ? 1.0F : 0.0F, a == 1 ? 1.0F : 0.0F, a == 2 ? 1.0F : 0.0F);
+			}
+			float DistToSeg(const Vector2& p, const Vector2& a, const Vector2& b) {
+				Vector2 ab = b - a;
+				float l2 = Vector2::Dot(ab, ab);
+				float t = (l2 < 1.0e-6F) ? 0.0F : Vector2::Dot(p - a, ab) / l2;
+				t = std::max(0.0F, std::min(1.0F, t));
+				return (p - (a + ab * t)).GetLength();
+			}
+			const float kGizLen = 12.0F;
+			const float kHitDist = 14.0F;
+		}
+
 		ObjectTool::ObjectTool() {
 			// Transform space toggle: global (world-aligned) vs local (object-aligned)
 			options.AddBool("space.global", "Global", "Transform Space");
@@ -37,6 +53,43 @@ namespace spades {
 			gizmoAxis = -1;
 			// Read the space toggle from options (default: global)
 			useGlobalSpace = options.Count() > 0 ? !options.At(0).bvalue : true;
+		}
+
+		int ObjectTool::HitAxis(IEditorContext& ctx, const Vector3& origin) const {
+			bool ok0;
+			Vector2 s0 = ctx.WorldToScreen(origin, ok0);
+			if (!ok0)
+				return -1;
+			Vector2 cur = ctx.CursorPos();
+			int best = -1;
+			float bestDist = kHitDist;
+			for (int a = 0; a < 3; a++) {
+				bool ok1;
+				Vector2 tip = ctx.WorldToScreen(origin + AxisUnit(a) * kGizLen, ok1);
+				if (!ok1)
+					continue;
+				float d = std::min(DistToSeg(cur, s0, tip), (cur - tip).GetLength());
+				if (d < bestDist) {
+					bestDist = d;
+					best = a;
+				}
+			}
+			return best;
+		}
+
+		float ObjectTool::OffsetAlong(IEditorContext& ctx, const Vector3& origin, int axis) const {
+			bool ok1, ok2;
+			Vector2 s0 = ctx.WorldToScreen(origin, ok1);
+			Vector2 sa = ctx.WorldToScreen(origin + AxisUnit(axis), ok2);
+			if (!ok1 || !ok2)
+				return 0.0F;
+			Vector2 da = sa - s0;
+			float dl = da.GetLength();
+			if (dl < 0.5F)
+				return 0.0F;
+			Vector2 m = ctx.CursorPos() - gizmoDragStartCursor;
+			float raw = Vector2::Dot(m, da) / (dl * dl);
+			return std::round(raw * 10.0F) / 10.0F; // snap to 0.1
 		}
 
 		void ObjectTool::OnPointer(IEditorContext& ctx, const PointerInput& input) {
@@ -53,30 +106,27 @@ namespace spades {
 
 			if (input.IsDown()) {
 				// Click: check if over gizmo axis
-				gizmoAxis = gizmo->HitTest(ctx, selectedObjectOrigin, (Gizmo::Mode)gizmoMode);
-				if (gizmoAxis >= 0) {
-					gizmoDragStart = input.pos;
-					gizmoDragOrigin = selectedObjectOrigin;
-					ctx.SetStatus("Dragging axis " + std::to_string(gizmoAxis));
+				int best = HitAxis(ctx, selectedObjectOrigin);
+				if (best >= 0) {
+					gizmoAxis = best;
+					gizmoDragStartCursor = ctx.CursorPos();
+					gizmoDragStartOrigin = selectedObjectOrigin;
+					ctx.SetStatus("Moving object axis " + std::to_string(gizmoAxis));
 				}
 			} else if (input.IsDrag()) {
 				if (gizmoAxis < 0)
 					return;
 
 				// Drag: compute movement along the selected axis
-				Vector2 delta = input.pos - gizmoDragStart;
+				float offset = OffsetAlong(ctx, gizmoDragStartOrigin, gizmoAxis);
 
 				if (gizmoMode == Gizmo::Move) {
-					Vector3 movement = gizmo->ApplyMove(ctx, gizmoAxis, delta);
-					// Preview the moved position
-					ctx.SetStatus("Move: " + std::to_string(gizmoAxis) + " (" + std::to_string(movement.x) + ", " +
-					              std::to_string(movement.y) + ", " + std::to_string(movement.z) + ")");
+					// Preview position during drag
+					ctx.SetStatus("Move axis " + std::to_string(gizmoAxis) + " offset: " + std::to_string(offset));
 				} else if (gizmoMode == Gizmo::Rotate) {
-					Vector4 rotation = gizmo->ApplyRotate(ctx, gizmoAxis, delta);
-					ctx.SetStatus("Rotate: " + std::to_string(gizmoAxis));
+					ctx.SetStatus("Rotate axis " + std::to_string(gizmoAxis));
 				} else if (gizmoMode == Gizmo::Scale) {
-					Vector3 scale = gizmo->ApplyScale(ctx, gizmoAxis, delta);
-					ctx.SetStatus("Scale: " + std::to_string(gizmoAxis));
+					ctx.SetStatus("Scale axis " + std::to_string(gizmoAxis));
 				}
 			} else if (input.IsUp()) {
 				// Release: finish drag
@@ -85,6 +135,13 @@ namespace spades {
 				}
 				gizmoAxis = -1;
 			}
+		}
+
+		bool ObjectTool::OnEscape(IEditorContext& ctx) {
+			if (gizmoAxis < 0)
+				return false;
+			gizmoAxis = -1;
+			return true;
 		}
 
 		void ObjectTool::OnKey(IEditorContext& ctx, const KeyInput& input) {
@@ -119,11 +176,6 @@ namespace spades {
 			} else if (input.key == "e" || input.key == "Return") {
 				EnterEditMode(ctx);
 			}
-		}
-
-		bool ObjectTool::OnEscape(IEditorContext& ctx) {
-			gizmoAxis = -1;
-			return false;
 		}
 
 		void ObjectTool::DrawScene(IEditorContext& ctx) {

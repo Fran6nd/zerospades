@@ -51,13 +51,16 @@ namespace spades {
 			void SetGizmoMode(int mode) { gizmoMode = mode; }
 			void CreateObject(IEditorContext& ctx) { CreateNewObject(ctx, ""); }
 
+			int HitAxis(IEditorContext& ctx, const Vector3& origin) const;
+			float OffsetAlong(IEditorContext& ctx, const Vector3& origin, int axis) const;
+
 		private:
 			ToolOptions options;
 			std::unique_ptr<Gizmo> gizmo;
 			int gizmoMode = Gizmo::Move; // Current mode displayed
 			int gizmoAxis = -1; // Axis being dragged (-1 = none)
-			Vector2 gizmoDragStart;
-			Vector3 gizmoDragOrigin;
+			Vector2 gizmoDragStartCursor;
+			Vector3 gizmoDragStartOrigin;
 			bool useGlobalSpace = true; // Toggle: true=global, false=local
 			size_t selectedObjectIndex = 0; // Currently selected object for editing
 
