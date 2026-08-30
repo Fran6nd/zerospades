@@ -36,8 +36,7 @@ namespace spades {
 		MapEditorView::MapEditorView(client::IRenderer* r, client::IAudioDevice* dev,
 		                             client::FontManager* fm, SoftwareCursor* cursor,
 		                             const std::string& path)
-		    : renderer(r), audioDevice(dev), fontManager(fm), softwareCursor(cursor),
-		      filePath(path) {
+		    : renderer(r), audioDevice(dev), fontManager(fm), filePath(path) {
 			ui = Handle<MapEditorUI>::New(r, dev, fm, this, cursor);
 		}
 

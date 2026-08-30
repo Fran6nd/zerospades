@@ -23,6 +23,7 @@
 #include <string>
 
 #include <Gui/View.h>
+#include <Gui/UI/Components/EditorMenu.h>
 #include <Client/Client.h>
 #include <Client/EditorNetClient.h>
 #include <Core/Math.h>
@@ -78,7 +79,6 @@ namespace spades {
 			Handle<client::IAudioDevice> audioDevice;
 			Handle<client::FontManager> fontManager;
 			Handle<client::Client> client;
-			Handle<SoftwareCursor> softwareCursor;
 			Handle<MapEditorUI> ui;
 			std::string filePath;
 			bool wantsClose = false;
