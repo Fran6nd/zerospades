@@ -712,7 +712,8 @@ namespace spades {
 			size_t currentIndex = ctx.GetActiveObjectIndex();
 			size_t count = ctx.GetObjectCount();
 			if (count > 0) {
-				size_t nextIndex = (currentIndex + 1) % count;
+				// If no object is currently selected (currentIndex >= count), start from 0
+				size_t nextIndex = (currentIndex < count) ? (currentIndex + 1) % count : 0;
 				ctx.SetActiveObjectIndex(nextIndex);
 				ctx.SetStatus("Selected object " + std::to_string(nextIndex));
 			}
@@ -725,7 +726,15 @@ namespace spades {
 			size_t currentIndex = ctx.GetActiveObjectIndex();
 			size_t count = ctx.GetObjectCount();
 			if (count > 0) {
-				size_t prevIndex = (currentIndex == 0) ? count - 1 : currentIndex - 1;
+				// If no object is currently selected (currentIndex >= count), start from end
+				size_t prevIndex;
+				if (currentIndex >= count) {
+					prevIndex = count - 1;  // Start from last object
+				} else if (currentIndex == 0) {
+					prevIndex = count - 1;  // Wrap to last
+				} else {
+					prevIndex = currentIndex - 1;
+				}
 				ctx.SetActiveObjectIndex(prevIndex);
 				ctx.SetStatus("Selected object " + std::to_string(prevIndex));
 			}
