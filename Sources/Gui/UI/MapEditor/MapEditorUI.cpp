@@ -43,13 +43,14 @@ namespace spades {
 				throw std::invalid_argument("FontManager cannot be null");
 			if (!_editor)
 				throw std::invalid_argument("MapEditorView cannot be null");
-			if (!cursor)
-				throw std::invalid_argument("SoftwareCursor cannot be null");
-			try {
-				editorMenu = std::make_unique<EditorMenu>(*_editor, *_renderer, *_fontManager, *cursor, _audioDevice);
-			} catch (const std::exception& ex) {
-				SPLog("[!] Failed to initialize map editor UI: %s", ex.what());
-				throw;
+
+			if (cursor) {
+				try {
+					editorMenu = std::make_unique<EditorMenu>(*_editor, *_renderer, *_fontManager, *cursor, _audioDevice);
+				} catch (const std::exception& ex) {
+					SPLog("[!] Failed to initialize map editor UI: %s", ex.what());
+					throw;
+				}
 			}
 		}
 
