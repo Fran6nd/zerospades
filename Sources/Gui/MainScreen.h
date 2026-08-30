@@ -25,6 +25,7 @@
 #include <Client/IRenderer.h>
 #include <Core/RefCountedObject.h>
 #include <Core/ServerAddress.h>
+#include <memory>
 
 namespace spades {
 	namespace client {
@@ -44,6 +45,7 @@ namespace spades {
 
 			Handle<MainScreenHelper> helper;
 			Handle<MainScreenUI> ui;
+			std::unique_ptr<SoftwareCursor> cursor;
 
 			void DrawStartupScreen();
 			void DoInit();
@@ -64,6 +66,7 @@ namespace spades {
 
 			client::IRenderer *GetRenderer() { return &*renderer; }
 			client::IAudioDevice *GetAudioDevice() { return &*audioDevice; }
+			SoftwareCursor *GetCursor() { return cursor.get(); }
 
 			void MouseEvent(float x, float y) override;
 			void KeyEvent(const std::string &, bool down) override;

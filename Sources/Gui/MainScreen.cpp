@@ -29,6 +29,7 @@
 #include <Core/Exception.h>
 #include <Core/Settings.h>
 #include <Core/Strings.h>
+#include <Gui/UI/Components/SoftwareCursor.h>
 #include <Gui/UI/MainScreen/MainScreenUI.h>
 #include <ScriptBindings/ScriptManager.h>
 
@@ -50,6 +51,7 @@ namespace spades {
 			if (!fontManager)
 				SPInvalidArgument("fontManager");
 
+			cursor = std::make_unique<SoftwareCursor>(*renderer);
 			helper = new MainScreenHelper(this);
 
 			// first call to RunFrame tends to have larger dt value.
@@ -72,8 +74,9 @@ namespace spades {
 		std::string MainScreen::OpenKV6Editor(const std::string& path, bool isNew,
 		                                      SoftwareCursor* cursor) {
 			try {
+				SoftwareCursor* cursorToUse = cursor ? cursor : this->cursor.get();
 				subview = Handle<KV6EditorView>::New(&*renderer, &*audioDevice, &*fontManager,
-				                                     cursor, path, isNew)
+				                                     cursorToUse, path, isNew)
 				            .Cast<View>();
 			} catch (const std::exception& ex) {
 				SPLog("[!] Error while opening the KV6 editor: %s", ex.what());
@@ -84,8 +87,9 @@ namespace spades {
 
 		std::string MainScreen::OpenMapEditor(const std::string& path, SoftwareCursor* cursor) {
 			try {
+				SoftwareCursor* cursorToUse = cursor ? cursor : this->cursor.get();
 				subview = Handle<MapEditorView>::New(&*renderer, &*audioDevice, &*fontManager,
-				                                     cursor, path)
+				                                     cursorToUse, path)
 				            .Cast<View>();
 			} catch (const std::exception& ex) {
 				SPLog("[!] Error while opening the map editor: %s", ex.what());

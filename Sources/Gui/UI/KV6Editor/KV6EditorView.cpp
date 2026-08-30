@@ -219,12 +219,8 @@ namespace spades {
 		                             const std::string& path, bool isNew)
 		    : renderer(r), audioDevice(dev), fontManager(fm) {
 			SPADES_MARK_FUNCTION();
-			if (c) {
-				softwareCursor = c;
-			} else {
-				ownedCursor = std::make_unique<SoftwareCursor>(*renderer);
-				softwareCursor = ownedCursor.get();
-			}
+			SPAssert(c != nullptr);
+			softwareCursor = c;
 			io = Handle<KV6ScreenHelper>::New();
 
 			// Initialize UI manager

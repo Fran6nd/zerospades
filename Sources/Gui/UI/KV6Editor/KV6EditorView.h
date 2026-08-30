@@ -273,7 +273,6 @@ namespace spades {
 
 			// --- Cursor / status ----------------------------------------------
 			SoftwareCursor* softwareCursor = nullptr;
-			std::unique_ptr<SoftwareCursor> ownedCursor; // if no cursor was provided
 			std::string statusMessage;
 			float statusTimer = 0.0F;
 

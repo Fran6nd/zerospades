@@ -50,7 +50,6 @@ namespace spades {
 			Handle<ui::UIManager> uiManager;
 
 			std::unique_ptr<EditorMenu> editorMenu;
-			std::unique_ptr<SoftwareCursor> defaultCursor;
 			SoftwareCursor* cursor = nullptr;
 
 			// weak reference to the editor view
