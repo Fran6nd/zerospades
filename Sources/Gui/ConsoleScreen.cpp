@@ -24,10 +24,10 @@
 #include <Core/TMPUtils.h>
 
 #include "ConfigConsoleResponder.h"
-#include "ConsoleCommand.h"
 #include "ConsoleHelper.h"
 #include "ConsoleScreen.h"
 #include <Gui/UI/Console/ConsoleUI.h>
+#include <Gui/Utils/ConsoleCommand.h>
 
 namespace spades {
 	namespace gui {
