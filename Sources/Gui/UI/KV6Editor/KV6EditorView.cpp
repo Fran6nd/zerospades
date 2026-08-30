@@ -392,14 +392,17 @@ namespace spades {
 					scene.push_back(root);
 				}
 
-				// Set model to root or active child if it exists
+				// Set model to active child if it exists, otherwise to empty placeholder
 				if (activeSceneRootIndex < scene.size() &&
 				    activeChildIndex < scene[activeSceneRootIndex].children.size()) {
+					// Active child exists
 					model = scene[activeSceneRootIndex].children[activeChildIndex].model;
-				} else if (activeSceneRootIndex < scene.size()) {
-					model = scene[activeSceneRootIndex].model;
+				} else if (activeSceneRootIndex < scene.size() &&
+				           !scene[activeSceneRootIndex].children.empty()) {
+					// No active child, but children exist - use first child as placeholder
+					model = scene[activeSceneRootIndex].children[0].model;
 				} else {
-					// Shouldn't reach here, but create a fallback model
+					// No children exist - use empty placeholder model
 					model = Handle<VoxelModel>::New(n, n, n);
 				}
 				voxelCount = 1;
@@ -2115,34 +2118,38 @@ namespace spades {
 			renderer->StartScene(sceneDef);
 
 			// In .2kv6 mode, render all child objects with their respective transforms
+			// If there are no children, don't render anything (even the root)
 			if (is2KV6 && activeSceneRootIndex < scene.size()) {
 				const VoxelObject& root = scene[activeSceneRootIndex];
-				for (size_t i = 0; i < root.children.size(); i++) {
-					const VoxelObject& obj = root.children[i];
-					if (!obj.model)
-						continue;
+				if (!root.children.empty()) {
+					for (size_t i = 0; i < root.children.size(); i++) {
+						const VoxelObject& obj = root.children[i];
+						if (!obj.model)
+							continue;
 
-					// Create a render model for this child if needed
-					// (for now, we temporarily switch the model pointer to render each child)
-					Handle<VoxelModel> savedModel = model;
-					Handle<client::IModel> savedRenderModel = renderModel;
+						// Create a render model for this child if needed
+						// (for now, we temporarily switch the model pointer to render each child)
+						Handle<VoxelModel> savedModel = model;
+						Handle<client::IModel> savedRenderModel = renderModel;
 
-					model = obj.model;
-					RebuildRenderModel();
+						model = obj.model;
+						RebuildRenderModel();
 
-					if (renderModel) {
-						client::ModelRenderParam param;
-						// Build transform: translate * rotate * scale
-						Matrix4 scale = Matrix4::Scale(obj.scale);
-						Matrix4 rotate = Quaternion(obj.rotation).ToRotationMatrix();
-						Matrix4 translate = Matrix4::Translate(obj.position);
-						param.matrix = translate * rotate * scale;
-						renderer->RenderModel(*renderModel, param);
+						if (renderModel) {
+							client::ModelRenderParam param;
+							// Build transform: translate * rotate * scale
+							Matrix4 scale = Matrix4::Scale(obj.scale);
+							Matrix4 rotate = Quaternion(obj.rotation).ToRotationMatrix();
+							Matrix4 translate = Matrix4::Translate(obj.position);
+							param.matrix = translate * rotate * scale;
+							renderer->RenderModel(*renderModel, param);
+						}
+
+						model = savedModel;
+						renderModel = savedRenderModel;
 					}
-
-					model = savedModel;
-					renderModel = savedRenderModel;
 				}
+				// In .2kv6 mode with no children, renderModel should be empty
 			} else if (renderModel) {
 				// Regular .kv6 mode: render single model with origin pivot
 				client::ModelRenderParam param;
