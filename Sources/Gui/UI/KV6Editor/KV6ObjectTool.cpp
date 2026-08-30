@@ -84,6 +84,9 @@ namespace spades {
 			if (!input.IsDown())
 				return;
 
+			if (!ctx.IsScene2KV6())
+				return;
+
 			// Gizmo mode selection (industry standard)
 			if (input.key == "g") {
 				gizmoMode = Gizmo::Move;
@@ -101,6 +104,14 @@ namespace spades {
 			} else if (input.key == "Delete" || input.key == "Backspace") {
 				DeleteActiveObject(ctx);
 			}
+			// Object selection / editing
+			else if (input.key == "Tab") {
+				SelectNextObject(ctx);
+			} else if (input.key == "Tab" && input.shift) {
+				SelectPreviousObject(ctx);
+			} else if (input.key == "e" || input.key == "Return") {
+				EnterEditMode(ctx);
+			}
 		}
 
 		bool ObjectTool::OnEscape(IEditorContext& ctx) {
@@ -109,17 +120,29 @@ namespace spades {
 		}
 
 		void ObjectTool::DrawScene(IEditorContext& ctx) {
+			if (!ctx.IsScene2KV6())
+				return;
+
 			if (!gizmo)
 				gizmo = std::make_unique<Gizmo>();
 
 			// Read current space mode from options
 			useGlobalSpace = options.Count() > 0 ? !options.At(0).bvalue : true;
 
-			// Future: Draw gizmo at active object's origin with proper rotation
-			// Vector3 activeObjectOrigin = ...;
-			// Vector4 activeObjectRotation = useGlobalSpace ? nullptr : ...;
-			// gizmo->Draw(ctx, activeObjectOrigin, gizmoMode,
-			//             useGlobalSpace ? nullptr : &activeObjectRotation);
+			// Draw gizmo at selected object's origin
+			// Future: get actual object origin from scene[selectedObjectIndex]
+			Vector3 selectedObjectOrigin = MakeVector3(0, 0, 0);
+			Vector4 selectedObjectRotation = MakeVector4(0, 0, 0, 1); // Identity
+
+			// Draw the gizmo with highlights for the selected object
+			Vector4 highlightColor = MakeVector4(1.0F, 1.0F, 0.3F, 1.0F); // Yellow highlight
+			ctx.DrawCellOutline(0, 0, 0, highlightColor);
+
+			gizmo->Draw(ctx, selectedObjectOrigin, gizmoMode,
+			            useGlobalSpace ? nullptr : &selectedObjectRotation);
+
+			// Status: show selected object info
+			ctx.SetStatus("Object 0 selected | Tab=cycle, E=edit, Shift+N=new, Del=delete");
 		}
 
 		void ObjectTool::DrawOverlay(IEditorContext& ctx) {
@@ -144,6 +167,35 @@ namespace spades {
 			if (ctx.DeleteActiveSceneObject()) {
 				ctx.SetStatus("Deleted object");
 			}
+		}
+
+		void ObjectTool::SelectNextObject(IEditorContext& ctx) {
+			if (!ctx.IsScene2KV6())
+				return;
+
+			// Future: cycle through root objects
+			// selectedObjectIndex = (selectedObjectIndex + 1) % scene.size();
+			ctx.SetStatus("Select next object (Tab)");
+		}
+
+		void ObjectTool::SelectPreviousObject(IEditorContext& ctx) {
+			if (!ctx.IsScene2KV6())
+				return;
+
+			// Future: cycle backward through root objects
+			// selectedObjectIndex = (selectedObjectIndex == 0) ? scene.size() - 1 : selectedObjectIndex - 1;
+			ctx.SetStatus("Select previous object (Shift+Tab)");
+		}
+
+		void ObjectTool::EnterEditMode(IEditorContext& ctx) {
+			if (!ctx.IsScene2KV6()) {
+				ctx.SetStatus("Not in .2kv6 mode");
+				return;
+			}
+
+			// Future: switch to Draw mode to edit the selected object's voxels
+			// The Draw tool will operate on scene[selectedObjectIndex].model
+			ctx.SetStatus("Enter edit mode (E) - switch to Draw tool");
 		}
 	} // namespace gui
 } // namespace spades

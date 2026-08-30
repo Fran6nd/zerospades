@@ -54,9 +54,13 @@ namespace spades {
 			int gizmoAxis = -1; // Axis being dragged (-1 = none)
 			Vector2 gizmoDragStart;
 			bool useGlobalSpace = true; // Toggle: true=global, false=local
+			size_t selectedObjectIndex = 0; // Currently selected object for editing
 
 			void CreateNewObject(IEditorContext& ctx, const std::string& name);
 			void DeleteActiveObject(IEditorContext& ctx);
+			void SelectNextObject(IEditorContext& ctx);
+			void SelectPreviousObject(IEditorContext& ctx);
+			void EnterEditMode(IEditorContext& ctx);
 		};
 	} // namespace gui
 } // namespace spades
