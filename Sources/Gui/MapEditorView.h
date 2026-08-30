@@ -23,6 +23,8 @@
 #include <string>
 
 #include "View.h"
+#include <Client/Client.h>
+#include <Client/EditorNetClient.h>
 #include <Client/GameMap.h>
 #include <Client/IAudioDevice.h>
 #include <Client/IRenderer.h>
@@ -33,13 +35,9 @@ namespace spades {
 	namespace client {
 		class FontManager;
 		class Client;
+		class EditorNetClient;
 	}
 	namespace gui {
-		namespace client {
-			class Client;
-			class EditorNetClient;
-		}
-
 		/**
 		 * Map editor view for .vxl files.
 		 *
