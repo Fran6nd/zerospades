@@ -337,7 +337,7 @@ namespace spades {
 			std::string msg;
 			if (EditorIsMapFile(absPath)) {
 				SPLog("KV6BrowserPanel: Detected as map file, opening MapEditor");
-				msg = helper->OpenMapEditor(absPath);
+				msg = helper->OpenMapEditor(absPath, nullptr);
 			} else {
 				msg = helper->OpenKV6Editor(absPath, isNew);
 			}
