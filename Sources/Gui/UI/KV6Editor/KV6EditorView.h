@@ -132,6 +132,16 @@ namespace spades {
 			bool IsScene2KV6() const override { return is2KV6; }
 			bool CreateSceneObject(const std::string& name) override;
 			bool DeleteActiveSceneObject() override;
+			size_t GetActiveObjectIndex() const override { return activeObjectIndex; }
+			void SetActiveObjectIndex(size_t index) override;
+			size_t GetObjectCount() const override;
+			Vector4 GetObjectRotation() const override;
+			void SetObjectRotation(const Vector4& quat) override;
+			void PreviewObjectRotation(const Vector4& quat) override;
+			Vector3 GetObjectScale() const override;
+			void SetObjectScale(const Vector3& scale) override;
+			void PreviewObjectScale(const Vector3& scale) override;
+			void DrawObjectOutline(size_t objectIndex, const Vector4& color) override;
 			void PlaceCube() override;
 			void DeleteCube() override;
 			void Eyedropper() override;

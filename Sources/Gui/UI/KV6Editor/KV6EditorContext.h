@@ -142,6 +142,20 @@ namespace spades {
 			virtual bool IsScene2KV6() const = 0;
 			virtual bool CreateSceneObject(const std::string& name) = 0;
 			virtual bool DeleteActiveSceneObject() = 0;
+
+			// --- Object transform (for .2kv6 editor tools) ---
+			virtual size_t GetActiveObjectIndex() const = 0;
+			virtual void SetActiveObjectIndex(size_t index) = 0;
+			virtual size_t GetObjectCount() const = 0;
+			virtual Vector4 GetObjectRotation() const = 0;
+			virtual void SetObjectRotation(const Vector4& quat) = 0;
+			virtual void PreviewObjectRotation(const Vector4& quat) = 0;
+			virtual Vector3 GetObjectScale() const = 0;
+			virtual void SetObjectScale(const Vector3& scale) = 0;
+			virtual void PreviewObjectScale(const Vector3& scale) = 0;
+
+			// --- Object rendering ---
+			virtual void DrawObjectOutline(size_t objectIndex, const Vector4& color) = 0;
 		};
 	} // namespace gui
 } // namespace spades

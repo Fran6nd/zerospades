@@ -2167,5 +2167,80 @@ namespace spades {
 
 			return false;
 		}
+
+		void KV6EditorView::SetActiveObjectIndex(size_t index) {
+			if (!is2KV6 || index >= scene.size())
+				return;
+			activeObjectIndex = index;
+			// Update the working model to the new active object's model
+			if (index < scene.size() && scene[index].model) {
+				model = scene[index].model;
+				RebuildRenderModel();
+			}
+		}
+
+		size_t KV6EditorView::GetObjectCount() const {
+			if (!is2KV6)
+				return 1;
+			return scene.size();
+		}
+
+		Vector4 KV6EditorView::GetObjectRotation() const {
+			if (!is2KV6 || activeObjectIndex >= scene.size())
+				return MakeVector4(0.0F, 0.0F, 0.0F, 1.0F);
+			return scene[activeObjectIndex].rotation;
+		}
+
+		void KV6EditorView::SetObjectRotation(const Vector4& quat) {
+			if (!is2KV6 || activeObjectIndex >= scene.size())
+				return;
+			BeginUndoGroup("Set Object Rotation");
+			scene[activeObjectIndex].rotation = quat;
+			EndUndoGroup();
+		}
+
+		void KV6EditorView::PreviewObjectRotation(const Vector4& quat) {
+			if (!is2KV6 || activeObjectIndex >= scene.size())
+				return;
+			scene[activeObjectIndex].rotation = quat;
+		}
+
+		Vector3 KV6EditorView::GetObjectScale() const {
+			if (!is2KV6 || activeObjectIndex >= scene.size())
+				return MakeVector3(1.0F, 1.0F, 1.0F);
+			return scene[activeObjectIndex].scale;
+		}
+
+		void KV6EditorView::SetObjectScale(const Vector3& scale) {
+			if (!is2KV6 || activeObjectIndex >= scene.size())
+				return;
+			BeginUndoGroup("Set Object Scale");
+			scene[activeObjectIndex].scale = scale;
+			EndUndoGroup();
+		}
+
+		void KV6EditorView::PreviewObjectScale(const Vector3& scale) {
+			if (!is2KV6 || activeObjectIndex >= scene.size())
+				return;
+			scene[activeObjectIndex].scale = scale;
+		}
+
+		void KV6EditorView::DrawObjectOutline(size_t objectIndex, const Vector4& color) {
+			if (!is2KV6 || objectIndex >= scene.size())
+				return;
+
+			const VoxelObject& obj = scene[objectIndex];
+			if (!obj.model)
+				return;
+
+			// Draw bounding box of the object's model
+			int w = obj.model->GetWidth();
+			int h = obj.model->GetHeight();
+			int d = obj.model->GetDepth();
+
+			IntVector3 lo = MakeIntVector3(0, 0, 0);
+			IntVector3 hi = MakeIntVector3(w - 1, h - 1, d - 1);
+			DrawBoxOutline(lo, hi, color);
+		}
 	} // namespace gui
 } // namespace spades
