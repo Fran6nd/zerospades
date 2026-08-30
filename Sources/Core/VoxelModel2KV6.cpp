@@ -190,24 +190,21 @@ namespace spades {
 	std::vector<VoxelObject> VoxelModel2KV6::Load(IStream& stream) {
 		SPADES_MARK_FUNCTION();
 
-		// Read and verify magic
-		std::string magic = stream.Read(4);
-		if (magic != MAGIC)
-			SPRaise("Invalid .2kv6 magic: expected '2kv6', got '%s'", magic.c_str());
+		// Read and verify file header (8 bytes total)
+		KV6FileHeader header;
+		if (stream.Read(&header, sizeof(header)) < sizeof(header))
+			SPRaise(".2kv6 file truncated: failed to read header (need 8 bytes)");
 
-		// Read version
-		uint16_t version;
-		if (stream.Read(&version, sizeof(version)) < sizeof(version))
-			SPRaise(".2kv6 file truncated: failed to read version");
+		// Verify magic signature
+		if (std::strncmp(header.magic, MAGIC, 4) != 0)
+			SPRaise("Invalid .2kv6 file: magic signature mismatch (not a .2kv6 file)");
 
-		if (version != FORMAT_VERSION)
-			SPRaise("Unsupported .2kv6 format version: %u (expected %u)", version,
-			        FORMAT_VERSION);
+		// Check version compatibility
+		if (header.version != FORMAT_VERSION)
+			SPRaise("Unsupported .2kv6 format version: %u (this reader supports version %u)",
+			        header.version, FORMAT_VERSION);
 
-		// Read number of root objects
-		uint16_t numRootObjects;
-		if (stream.Read(&numRootObjects, sizeof(numRootObjects)) < sizeof(numRootObjects))
-			SPRaise(".2kv6 file truncated: failed to read root object count");
+		uint16_t numRootObjects = header.numRootObjects;
 
 		std::vector<VoxelObject> objects;
 		objects.reserve(numRootObjects);
@@ -229,16 +226,12 @@ namespace spades {
 			SPRaise("Too many root objects in .2kv6 scene: %zu (max %u)", objects.size(),
 			        UINT16_MAX);
 
-		// Write magic
-		stream.Write(MAGIC, 4);
-
-		// Write version
-		uint16_t version = FORMAT_VERSION;
-		stream.Write(&version, sizeof(version));
-
-		// Write number of root objects
-		uint16_t numRootObjects = static_cast<uint16_t>(objects.size());
-		stream.Write(&numRootObjects, sizeof(numRootObjects));
+		// Write file header (8 bytes total)
+		KV6FileHeader header;
+		std::strncpy(header.magic, MAGIC, 4);
+		header.version = FORMAT_VERSION;
+		header.numRootObjects = static_cast<uint16_t>(objects.size());
+		stream.Write(&header, sizeof(header));
 
 		// Recursively write objects
 		for (const VoxelObject& obj : objects) {

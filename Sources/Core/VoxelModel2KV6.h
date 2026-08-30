@@ -42,11 +42,25 @@ namespace spades {
 	 * Represents a single keyframe of transform animation.
 	 * Animates position, rotation (quaternion), and scale independently.
 	 */
+	/**
+	 * Single keyframe of transform animation.
+	 * Animates position, rotation (quaternion), and scale independently.
+	 */
 	struct TransformKeyframe {
 		float time; ///< Keyframe time in seconds
 		Vector3 position;
 		Vector4 rotation; ///< Quaternion (x, y, z, w)
 		Vector3 scale;
+	};
+
+	/**
+	 * .2kv6 file header (8 bytes).
+	 * Must appear at offset 0 of every .2kv6 file.
+	 */
+	struct KV6FileHeader {
+		char magic[4]; // "2kv6" (bytes 0-3)
+		uint16_t version; // Current: 1 (bytes 4-5)
+		uint16_t numRootObjects; // Number of root objects in scene (bytes 6-7)
 	};
 
 	/**
@@ -81,27 +95,28 @@ namespace spades {
 	 * Supports nested objects forming a scene graph tree. Transforms are LOCAL
 	 * (relative to parent); world transforms are computed by composing up the hierarchy.
 	 *
-	 * Layout (recursive):
-	 *   Magic: "2kv6" (4 bytes)
-	 *   Version: uint16 (current: 1)
-	 *   NumRootObjects: uint16
-	 *   [For each object, recursively]:
-	 *     NameLength: uint16
-	 *     Name: char[NameLength]
-	 *     Position: float[3] (local)
-	 *     Rotation: float[4] (quaternion, local)
-	 *     Scale: float[3] (local)
-	 *     HasModel: uint8 (0 = group node, 1 = has KV6 data)
-	 *     [If HasModel == 1]:
-	 *       KV6Data: embedded KV6 (header + blocks + indices, no magic)
-	 *     NumKeyframes: uint16
-	 *     For each keyframe:
-	 *       Time: float
-	 *       Position: float[3] (local)
-	 *       Rotation: float[4] (quaternion, local)
-	 *       Scale: float[3]
-	 *     NumChildren: uint16
-	 *     [For each child, recurse to "NameLength"...]
+	 * FILE FORMAT SPECIFICATION:
+	 * ===========================
+	 * All multi-byte integers are little-endian.
+	 *
+	 * HEADER (8 bytes total):
+	 *   Offset  Type      Field
+	 *   0       char[4]   Magic signature ("2kv6")
+	 *   4       uint16    Version (current: 1)
+	 *   6       uint16    NumRootObjects
+	 *
+	 * OBJECT (recursive structure):
+	 *   NameLength: uint16
+	 *   Name: char[NameLength]
+	 *   Position: float[3] (local transform)
+	 *   Rotation: float[4] (quaternion x,y,z,w; local transform)
+	 *   Scale: float[3] (local transform)
+	 *   HasModel: uint8 (0=group node, 1=has KV6 voxel data)
+	 *   [If HasModel==1]: Embedded KV6 data (no magic, just header+blocks+indices)
+	 *   NumKeyframes: uint16
+	 *   [Keyframes]: Time float, Position float[3], Rotation float[4], Scale float[3]
+	 *   NumChildren: uint16
+	 *   [Recursively]: child objects
 	 */
 	class VoxelModel2KV6 {
 	public:
