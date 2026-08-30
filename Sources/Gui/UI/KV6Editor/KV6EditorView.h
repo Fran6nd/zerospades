@@ -37,6 +37,7 @@
 #include <Client/SceneDefinition.h>
 #include <Core/Math.h>
 #include <Core/RefCountedObject.h>
+#include <Core/VoxelModel2KV6.h>
 
 namespace spades {
 	class VoxelModel;
@@ -167,7 +168,7 @@ namespace spades {
 			Handle<KV6ScreenHelper> io;
 
 			// --- Document -----------------------------------------------------
-			Handle<VoxelModel> model;
+			Handle<VoxelModel> model; // working model (may be from scene[activeObjectIndex])
 			Handle<client::IModel> renderModel; // rebuilt on edit
 			int cubeSize = 32;
 			std::string filePath;
@@ -175,6 +176,11 @@ namespace spades {
 			float globalTime = 0.0F;
 			bool wantsClose = false;
 			bool wantScreenShot = false; // set by the screenshot key, served at end of frame
+
+			// .2kv6 scene support (for hierarchical multi-object editing)
+			bool is2KV6 = false; // true if editing a .2kv6 scene, false if single .kv6
+			std::vector<VoxelObject> scene; // root objects (only used if is2KV6)
+			size_t activeObjectIndex = 0; // which root object in scene is being edited
 
 			// --- Undo / redo --------------------------------------------------
 			// The stack drives the model back and forth through the Sink interface

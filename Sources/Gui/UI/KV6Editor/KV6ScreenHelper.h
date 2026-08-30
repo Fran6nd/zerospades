@@ -64,6 +64,12 @@ namespace spades {
 			VoxelModel* Load(const std::string& absPath);
 			bool Save(VoxelModel* model, const std::string& absPath);
 
+			// Create a new .2kv6 scene with a single unnamed root object containing an empty KV6
+			std::vector<VoxelObject> NewScene2KV6(int sizeXYZ);
+
+			// Load a .kv6 file as a VoxelObject (wraps KV6 data in a named container)
+			VoxelObject LoadKV6AsObject(const std::string& absPath, const std::string& name = "");
+
 		protected:
 			~KV6ScreenHelper();
 

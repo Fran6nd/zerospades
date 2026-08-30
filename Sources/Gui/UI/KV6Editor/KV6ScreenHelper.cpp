@@ -260,5 +260,25 @@ namespace spades {
 			return true;
 		}
 
+		std::vector<VoxelObject> KV6ScreenHelper::NewScene2KV6(int sizeXYZ) {
+			std::vector<VoxelObject> scene;
+			VoxelObject root;
+			root.name = "";
+			root.model = Handle<VoxelModel>::New(sizeXYZ, sizeXYZ, sizeXYZ);
+			root.model->SetSolid(sizeXYZ / 2, sizeXYZ / 2, sizeXYZ / 2, 0xFFFFFF);
+			float c = float(sizeXYZ / 2);
+			root.model->SetOrigin(MakeVector3(-c, -c, -c));
+			scene.push_back(root);
+			return scene;
+		}
+
+		VoxelObject KV6ScreenHelper::LoadKV6AsObject(const std::string& absPath,
+		                                               const std::string& name) {
+			VoxelObject obj;
+			obj.name = name;
+			obj.model = Handle<VoxelModel>(Load(absPath), false);
+			return obj;
+		}
+
 	} // namespace gui
 } // namespace spades

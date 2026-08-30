@@ -314,13 +314,34 @@ namespace spades {
 
 		void KV6EditorView::NewModel(int n, const std::string& path) {
 			cubeSize = n;
-			model = Handle<VoxelModel>::New(n, n, n);
-			model->SetSolid(n / 2, n / 2, n / 2, currentColor);
-			// Anchor the pivot on the seed voxel so mirroring (which reflects across
-			// the pivot) is symmetric about it from the start.
-			float c = float(n / 2);
-			model->SetOrigin(MakeVector3(-c, -c, -c));
-			voxelCount = 1;
+
+			// Detect format from file extension if provided
+			bool create2KV6 = false;
+			if (!path.empty()) {
+				size_t dotPos = path.rfind('.');
+				if (dotPos != std::string::npos) {
+					std::string ext = path.substr(dotPos);
+					create2KV6 = (ext == ".2kv6" || ext == ".2KV6");
+				}
+			}
+
+			if (create2KV6) {
+				is2KV6 = true;
+				scene = io->NewScene2KV6(n);
+				activeObjectIndex = 0;
+				model = scene[activeObjectIndex].model;
+				voxelCount = 1;
+			} else {
+				is2KV6 = false;
+				model = Handle<VoxelModel>::New(n, n, n);
+				model->SetSolid(n / 2, n / 2, n / 2, currentColor);
+				// Anchor the pivot on the seed voxel so mirroring (which reflects across
+				// the pivot) is symmetric about it from the start.
+				float c = float(n / 2);
+				model->SetOrigin(MakeVector3(-c, -c, -c));
+				voxelCount = 1;
+			}
+
 			RebuildRenderModel();
 			filePath = path;
 			FrameCamera();
@@ -329,15 +350,33 @@ namespace spades {
 		}
 
 		void KV6EditorView::LoadModel(const std::string& path) {
+			// Detect format from extension
+			bool is2KV6Load = false;
+			size_t dotPos = path.rfind('.');
+			if (dotPos != std::string::npos) {
+				std::string ext = path.substr(dotPos);
+				is2KV6Load = (ext == ".2kv6" || ext == ".2KV6");
+			}
+
+			if (is2KV6Load) {
+				// TODO: Load .2kv6 scene (not yet implemented)
+				NewModel(cubeSize, path);
+				SetStatus("Loading .2kv6 format not yet supported");
+				return;
+			}
+
+			// Load .kv6 file
 			VoxelModel* loaded = io->Load(path);
 			if (!loaded) {
 				NewModel(cubeSize, path);
 				SetStatus("Could not load " + path);
 				return;
 			}
+
 			model = Handle<VoxelModel>(loaded, false); // adopt (Load returns a ref)
 			cubeSize = std::max(model->GetWidth(), std::max(model->GetHeight(), model->GetDepth()));
 			voxelCount = CountSolids();
+			is2KV6 = false; // loaded KV6 is treated as a single-model document
 			RebuildRenderModel();
 			filePath = path;
 			FrameCamera();
