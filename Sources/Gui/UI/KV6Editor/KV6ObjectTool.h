@@ -47,6 +47,10 @@ namespace spades {
 			void DrawScene(IEditorContext&) override;
 			void DrawOverlay(IEditorContext&) override;
 
+			int GetGizmoMode() const { return gizmoMode; }
+			void SetGizmoMode(int mode) { gizmoMode = mode; }
+			void CreateObject(IEditorContext& ctx) { CreateNewObject(ctx, ""); }
+
 		private:
 			ToolOptions options;
 			std::unique_ptr<Gizmo> gizmo;

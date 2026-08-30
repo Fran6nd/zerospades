@@ -21,6 +21,7 @@
 #include "EditorUI.h"
 #include "KV6EditorView.h"
 #include "KV6EditorTool.h"
+#include "KV6ObjectTool.h"
 #include "KV6ScreenHelper.h"
 #include "KV6ToolRegistry.h"
 #include <Gui/UI/Components/ColorPicker.h>
@@ -232,8 +233,34 @@ namespace spades {
 			                           &*fontManager, this, softwareCursor);
 
 			// Wire up toolbar callbacks
-			ui->GetToolbar()->OnModeClicked = [this](int idx) { currentMode = EditorMode(idx); };
-			ui->GetToolbar()->OnToolClicked = [this](int idx) { activeTool = idx; };
+			ui->GetToolbar()->OnModeClicked = [this](int idx) {
+				EditorMode newMode = EditorMode(idx);
+				if (newMode != currentMode) {
+					// Deactivate current tool
+					if (EditorTool* t = ActiveTool())
+						t->OnDeactivate(*this);
+					// Switch mode and activate new tool
+					currentMode = newMode;
+					if (EditorTool* t = ActiveTool())
+						t->OnActivate(*this);
+				}
+			};
+			ui->GetToolbar()->OnToolClicked = [this](int idx) {
+				if (currentMode == EditorMode::Edit) {
+					activeTool = idx;
+				} else if (currentMode == EditorMode::Object && objectTool) {
+					// Object mode button clicks: Move/Rotate/Scale/New
+					if (idx == 0) {
+						objectTool->SetGizmoMode(0); // Gizmo::Move
+					} else if (idx == 1) {
+						objectTool->SetGizmoMode(1); // Gizmo::Rotate
+					} else if (idx == 2) {
+						objectTool->SetGizmoMode(2); // Gizmo::Scale
+					} else if (idx == 3) {
+						objectTool->CreateObject(*this);
+					}
+				}
+			};
 			ui->GetToolbar()->OnUndoClicked = [this]() { Undo(); };
 			ui->GetToolbar()->OnRedoClicked = [this]() { Redo(); };
 
@@ -292,6 +319,9 @@ namespace spades {
 					break;
 				}
 			}
+
+			// Object mode tool
+			objectTool = std::make_unique<ObjectTool>();
 
 			if (isNew || path.empty())
 				NewModel(cubeSize, path);
@@ -1621,6 +1651,8 @@ namespace spades {
 		}
 
 		EditorTool* KV6EditorView::ActiveTool() {
+			if (currentMode == EditorMode::Object && objectTool)
+				return objectTool.get();
 			if (currentMode == EditorMode::Edit && activeTool >= 0 && activeTool < int(tools.size()))
 				return tools[activeTool].get();
 			return nullptr;
@@ -1659,14 +1691,25 @@ namespace spades {
 			ui->GetToolbar()->SetActiveModeButton(int(currentMode));
 
 			// Set up tool buttons
-			int toolCount = (currentMode == EditorMode::Edit) ? int(tools.size()) : 0;
 			std::vector<Toolbar::ToolbarButton> toolButtons;
-			for (int i = 0; i < toolCount; i++) {
-				Toolbar::ToolbarButton btn;
-				btn.label = tools[i]->Label();
-				btn.enabled = true;
-				btn.active = (activeTool == i);
-				toolButtons.push_back(btn);
+			if (currentMode == EditorMode::Edit) {
+				for (int i = 0; i < int(tools.size()); i++) {
+					Toolbar::ToolbarButton btn;
+					btn.label = tools[i]->Label();
+					btn.enabled = true;
+					btn.active = (activeTool == i);
+					toolButtons.push_back(btn);
+				}
+			} else if (currentMode == EditorMode::Object) {
+				// Object mode: show transform modes and new object button
+				const char* modes[] = {"Move", "Rotate", "Scale", "New"};
+				for (int i = 0; i < 4; i++) {
+					Toolbar::ToolbarButton btn;
+					btn.label = modes[i];
+					btn.enabled = true;
+					btn.active = (i < 3 && objectTool && objectTool->GetGizmoMode() == i);
+					toolButtons.push_back(btn);
+				}
 			}
 			ui->GetToolbar()->SetToolButtons(toolButtons);
 

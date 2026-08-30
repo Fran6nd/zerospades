@@ -131,9 +131,10 @@ namespace spades {
 				SPRaise("Object hierarchy too deep (max 64 levels)");
 
 			// Write object name
-			uint16_t nameLen = static_cast<uint16_t>(obj.name.length());
-			if (nameLen > UINT16_MAX)
-				SPRaise("Object name too long: %zu characters", obj.name.length());
+			size_t nameLength = obj.name.length();
+			if (nameLength > UINT16_MAX)
+				SPRaise("Object name too long: %zu characters", nameLength);
+			uint16_t nameLen = static_cast<uint16_t>(nameLength);
 
 			stream.Write(&nameLen, sizeof(nameLen));
 			if (nameLen > 0)

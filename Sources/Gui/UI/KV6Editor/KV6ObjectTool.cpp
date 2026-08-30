@@ -105,10 +105,10 @@ namespace spades {
 				DeleteActiveObject(ctx);
 			}
 			// Object selection / editing
-			else if (input.key == "Tab") {
-				SelectNextObject(ctx);
-			} else if (input.key == "Tab" && input.shift) {
+			else if (input.key == "Tab" && input.shift) {
 				SelectPreviousObject(ctx);
+			} else if (input.key == "Tab") {
+				SelectNextObject(ctx);
 			} else if (input.key == "e" || input.key == "Return") {
 				EnterEditMode(ctx);
 			}
