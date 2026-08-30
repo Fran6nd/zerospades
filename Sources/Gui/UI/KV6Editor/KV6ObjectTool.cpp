@@ -21,6 +21,8 @@
 #include "KV6ObjectTool.h"
 #include "KV6EditorContext.h"
 
+#include <string>
+
 namespace spades {
 	namespace gui {
 		ObjectTool::ObjectTool() {
@@ -38,19 +40,42 @@ namespace spades {
 		}
 
 		void ObjectTool::OnPointer(IEditorContext& ctx, const PointerInput& input) {
-			// Object tool is only functional in .2kv6 mode (checked by toolbar at render time)
-			// Drag gizmo to transform active object
+			if (!ctx.IsScene2KV6())
+				return;
+
 			if (input.IsDrag()) {
 				if (gizmoAxis >= 0) {
 					// Drag in progress: apply transformation
-					// Future: apply the input.delta to transform active object
+					Vector2 delta = input.pos - gizmoDragStart;
+
+					if (gizmoMode == Gizmo::Move) {
+						Vector3 movement = gizmo->ApplyMove(ctx, gizmoAxis, delta);
+						// Future: apply movement to active object
+						ctx.SetStatus("Move: " + std::to_string(gizmoAxis));
+					} else if (gizmoMode == Gizmo::Rotate) {
+						Vector4 rotation = gizmo->ApplyRotate(ctx, gizmoAxis, delta);
+						// Future: apply rotation to active object
+						ctx.SetStatus("Rotate: " + std::to_string(gizmoAxis));
+					} else if (gizmoMode == Gizmo::Scale) {
+						Vector3 scale = gizmo->ApplyScale(ctx, gizmoAxis, delta);
+						// Future: apply scale to active object
+						ctx.SetStatus("Scale: " + std::to_string(gizmoAxis));
+					}
+
+					gizmoDragStart = input.pos;
 				}
 			} else if (input.IsDown() && input.IsLeft()) {
 				// Click: start drag if over gizmo
 				gizmoDragStart = input.pos;
-				// gizmoAxis = gizmo->HitTest(ctx, objectOrigin, (Gizmo::Mode)gizmoMode);
+				gizmoAxis = gizmo->HitTest(ctx, MakeVector3(0, 0, 0), (Gizmo::Mode)gizmoMode);
+				if (gizmoAxis >= 0) {
+					ctx.SetStatus("Gizmo axis " + std::to_string(gizmoAxis) + " selected");
+				}
 			} else if (input.IsUp() && input.IsLeft()) {
 				// Release: end drag
+				if (gizmoAxis >= 0) {
+					ctx.SetStatus("");
+				}
 				gizmoAxis = -1;
 			}
 		}

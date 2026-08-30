@@ -29,7 +29,8 @@ namespace spades {
 
 		Gizmo::Gizmo() {}
 
-		void Gizmo::Draw(IEditorContext& ctx, const Vector3& origin, int visibleModes) {
+		void Gizmo::Draw(IEditorContext& ctx, const Vector3& origin, int visibleModes,
+		                 const Vector4* localRotation) {
 			// Axis colors: X=red, Y=green, Z=blue
 			Vector4 colors[3] = {
 				MakeVector4(1.0F, 0.2F, 0.2F, 1.0F), // Red (X)
@@ -101,23 +102,87 @@ namespace spades {
 		}
 
 		int Gizmo::HitTest(IEditorContext& ctx, const Vector3& origin, Mode mode) {
-			// Future: raycast-based hit testing against gizmo geometry
-			return -1; // No hit for now
+			// Screen-space ray casting against gizmo axes
+			bool ok;
+			Vector2 screenPos = ctx.CursorPos();
+
+			const float hitThreshold = 20.0F; // Screen pixels
+			float closestDist = hitThreshold;
+			int closestAxis = -1;
+
+			for (int axis = 0; axis < 3; axis++) {
+				Vector3 axisDir = MakeVector3(axis == 0 ? 1.0F : 0.0F, axis == 1 ? 1.0F : 0.0F,
+				                              axis == 2 ? 1.0F : 0.0F);
+				Vector3 axisEnd = origin + axisDir * kArrowLength;
+
+				Vector2 startScreen = ctx.WorldToScreen(origin, ok);
+				if (!ok) continue;
+				Vector2 endScreen = ctx.WorldToScreen(axisEnd, ok);
+				if (!ok) continue;
+
+				Vector2 axisScreenVec = endScreen - startScreen;
+				float axisScreenLen = sqrtf(axisScreenVec.x * axisScreenVec.x + axisScreenVec.y * axisScreenVec.y);
+				if (axisScreenLen < 0.01F) continue;
+
+				Vector2 toCursor = MakeVector2(screenPos.x - startScreen.x, screenPos.y - startScreen.y);
+				float dotProd = toCursor.x * axisScreenVec.x + toCursor.y * axisScreenVec.y;
+				float t = dotProd / (axisScreenLen * axisScreenLen);
+				t = (t < 0.0F) ? 0.0F : (t > 1.0F) ? 1.0F : t;
+
+				Vector2 closest = MakeVector2(startScreen.x + axisScreenVec.x * t,
+				                              startScreen.y + axisScreenVec.y * t);
+				Vector2 diff = MakeVector2(screenPos.x - closest.x, screenPos.y - closest.y);
+				float dist = sqrtf(diff.x * diff.x + diff.y * diff.y);
+
+				if (dist < closestDist) {
+					closestDist = dist;
+					closestAxis = axis;
+				}
+			}
+
+			return closestAxis;
 		}
 
 		Vector3 Gizmo::ApplyMove(IEditorContext& ctx, int axis, const Vector2& delta) {
-			// Future: compute movement along the constrained axis
-			return MakeVector3(0, 0, 0);
+			if (axis < 0 || axis > 2)
+				return MakeVector3(0, 0, 0);
+
+			const float moveSpeed = 0.01F;
+			float dx = (axis == 0) ? delta.x * moveSpeed : 0.0F;
+			float dy = (axis == 1) ? delta.x * moveSpeed : 0.0F;
+			float dz = (axis == 2) ? delta.x * moveSpeed : 0.0F;
+			return MakeVector3(dx, dy, dz);
 		}
 
 		Vector4 Gizmo::ApplyRotate(IEditorContext& ctx, int axis, const Vector2& delta) {
-			// Future: compute quaternion rotation
-			return MakeVector4(0, 0, 0, 1); // Identity
+			if (axis < 0 || axis > 2)
+				return MakeVector4(0, 0, 0, 1);
+
+			const float rotSpeed = 0.01F;
+			float angle = delta.x * rotSpeed;
+			float halfAngle = angle * 0.5F;
+			float sinHalf = std::sin(halfAngle);
+			float cosHalf = std::cos(halfAngle);
+
+			Vector3 axisVec = MakeVector3(axis == 0 ? 1.0F : 0.0F, axis == 1 ? 1.0F : 0.0F,
+			                              axis == 2 ? 1.0F : 0.0F);
+
+			return MakeVector4(axisVec.x * sinHalf, axisVec.y * sinHalf, axisVec.z * sinHalf,
+			                   cosHalf);
 		}
 
 		Vector3 Gizmo::ApplyScale(IEditorContext& ctx, int axis, const Vector2& delta) {
-			// Future: compute scale change
-			return MakeVector3(1, 1, 1);
+			if (axis < 0 || axis > 2)
+				return MakeVector3(1, 1, 1);
+
+			const float scaleSpeed = 0.01F;
+			float scaleFactor = 1.0F + (delta.x * scaleSpeed);
+			scaleFactor = (scaleFactor < 0.1F) ? 0.1F : (scaleFactor > 10.0F) ? 10.0F : scaleFactor;
+
+			float sx = (axis == 0) ? scaleFactor : 1.0F;
+			float sy = (axis == 1) ? scaleFactor : 1.0F;
+			float sz = (axis == 2) ? scaleFactor : 1.0F;
+			return MakeVector3(sx, sy, sz);
 		}
 	} // namespace gui
 } // namespace spades
