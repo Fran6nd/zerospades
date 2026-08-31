@@ -55,19 +55,17 @@ namespace spades {
 
 			isActive = true;
 
-			client::World* w = host->GetWorld();
-			bool hasLocalPlayer = host->HasLocalPlayer();
-			int playerTeam = hasLocalPlayer ? host->GetLocalPlayerTeam() : 2;
-			bool shouldPreselect = hasLocalPlayer && playerTeam < 2;
+			int preselectedTeam = host->GetPreselectedTeam();
+			bool shouldPreselect = preselectedTeam >= 0;
 
 			items.push_back(MenuItem(MenuItemType::Team1,
 				AABB2(cachedLayout.teamX, cachedLayout.firstY, cachedLayout.menuWidth, cachedLayout.menuHeight),
-				w ? w->GetTeamName(0) : "Team 1"));
+				host->GetTeamName(0)));
 			items.back().visible = !shouldPreselect;
 
 			items.push_back(MenuItem(MenuItemType::Team2,
 				AABB2(cachedLayout.teamX, cachedLayout.firstY + cachedLayout.rowHeight, cachedLayout.menuWidth, cachedLayout.menuHeight),
-				w ? w->GetTeamName(1) : "Team 2"));
+				host->GetTeamName(1)));
 			items.back().visible = !shouldPreselect;
 
 			items.push_back(MenuItem(MenuItemType::TeamSpectator,

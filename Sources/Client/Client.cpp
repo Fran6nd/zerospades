@@ -171,16 +171,23 @@ namespace spades {
 				void OnWeaponSelected(WeaponType weapon) override { client->OnWeaponSelected(weapon); }
 				void OnSpawnPressed() override { client->OnSpawnPressed(); }
 				void OnClosePressed() override { client->OnClosePressed(); }
-				bool HasLocalPlayer() override { return client->HasLocalPlayer(); }
-				int GetLocalPlayerTeam() override {
-					if (!client->GetWorld())
-						return 2;
-					auto playerOpt = client->GetWorld()->GetLocalPlayer();
-					return playerOpt ? playerOpt->GetTeamId() : 2;
-				}
-				client::World* GetWorld() override { return client->GetWorld(); }
 				int GetSelectedTeam() override { return client->limbo->GetSelectedTeam(); }
 				WeaponType GetSelectedWeapon() override { return client->limbo->GetSelectedWeapon(); }
+				std::string GetTeamName(int teamId) override {
+					if (teamId == 2)
+						return _Tr("Client", "Spectator");
+					if (teamId >= 0 && teamId < 2 && client->GetWorld())
+						return client->GetWorld()->GetTeamName(teamId);
+					return teamId == 0 ? "Team 1" : (teamId == 1 ? "Team 2" : "");
+				}
+				int GetPreselectedTeam() override {
+					if (!client->HasLocalPlayer())
+						return -1;
+					int team = client->GetWorld() ?
+						(client->GetWorld()->GetLocalPlayer() ?
+							client->GetWorld()->GetLocalPlayer()->GetTeamId() : 2) : 2;
+					return team < 2 ? team : -1;
+				}
 			};
 
 			auto hostAdapter = Handle<ClientLimboHost>::New(this);

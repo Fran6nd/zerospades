@@ -39,11 +39,10 @@ namespace spades {
 			virtual void OnWeaponSelected(WeaponType weapon) = 0;
 			virtual void OnSpawnPressed() = 0;
 			virtual void OnClosePressed() = 0;
-			virtual bool HasLocalPlayer() = 0;
-			virtual int GetLocalPlayerTeam() = 0;
-			virtual client::World* GetWorld() = 0;
 			virtual int GetSelectedTeam() = 0;
 			virtual WeaponType GetSelectedWeapon() = 0;
+			virtual std::string GetTeamName(int teamId) = 0;
+			virtual int GetPreselectedTeam() = 0;
 		};
 	} // namespace gui
 } // namespace spades
