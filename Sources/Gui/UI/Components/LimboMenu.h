@@ -53,10 +53,6 @@ namespace spades {
 			bool AcceptsTextInput() const override { return false; }
 			void Draw() override;
 
-			// State accessors
-			int GetSelectedTeam() const { return selectedTeam; }
-			WeaponType GetSelectedWeapon() const { return selectedWeapon; }
-
 			// Input handlers
 			void Update(float dt);
 			void MouseEvent(float x, float y);
@@ -69,8 +65,6 @@ namespace spades {
 			Handle<client::IAudioDevice> audioDevice;
 
 			bool isActive = false;
-			int selectedTeam = 2;
-			WeaponType selectedWeapon = RIFLE_WEAPON;
 			int prevSelectedItem = -1;
 
 			std::vector<MenuItem> items;

@@ -42,6 +42,8 @@ namespace spades {
 			virtual bool HasLocalPlayer() = 0;
 			virtual int GetLocalPlayerTeam() = 0;
 			virtual client::World* GetWorld() = 0;
+			virtual int GetSelectedTeam() = 0;
+			virtual WeaponType GetSelectedWeapon() = 0;
 		};
 	} // namespace gui
 } // namespace spades

@@ -179,6 +179,8 @@ namespace spades {
 					return playerOpt ? playerOpt->GetTeamId() : 2;
 				}
 				client::World* GetWorld() override { return client->GetWorld(); }
+				int GetSelectedTeam() override { return client->limbo->GetSelectedTeam(); }
+				WeaponType GetSelectedWeapon() override { return client->limbo->GetSelectedWeapon(); }
 			};
 
 			auto hostAdapter = Handle<ClientLimboHost>::New(this);

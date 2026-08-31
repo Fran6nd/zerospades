@@ -60,9 +60,6 @@ namespace spades {
 			int playerTeam = hasLocalPlayer ? host->GetLocalPlayerTeam() : 2;
 			bool shouldPreselect = hasLocalPlayer && playerTeam < 2;
 
-			selectedTeam = playerTeam;
-			selectedWeapon = RIFLE_WEAPON;
-
 			items.push_back(MenuItem(MenuItemType::Team1,
 				AABB2(cachedLayout.teamX, cachedLayout.firstY, cachedLayout.menuWidth, cachedLayout.menuHeight),
 				w ? w->GetTeamName(0) : "Team 1"));
@@ -145,30 +142,25 @@ namespace spades {
 
 			// Keyboard shortcuts
 			if (key == "1") {
-				if (selectedTeam >= 2) {
-					selectedTeam = 0;
+				if (host->GetSelectedTeam() >= 2) {
 					host->OnTeamSelected(0);
 				} else {
-					selectedWeapon = RIFLE_WEAPON;
 					host->OnWeaponSelected(RIFLE_WEAPON);
 					host->OnSpawnPressed();
 				}
 				host->PlaySelectSound();
 				return true;
 			} else if (key == "2") {
-				if (selectedTeam >= 2) {
-					selectedTeam = 1;
+				if (host->GetSelectedTeam() >= 2) {
 					host->OnTeamSelected(1);
 				} else {
-					selectedWeapon = SMG_WEAPON;
 					host->OnWeaponSelected(SMG_WEAPON);
 					host->OnSpawnPressed();
 				}
 				host->PlaySelectSound();
 				return true;
 			} else if (key == "3") {
-				if (selectedTeam < 2) {
-					selectedWeapon = SHOTGUN_WEAPON;
+				if (host->GetSelectedTeam() < 2) {
 					host->OnWeaponSelected(SHOTGUN_WEAPON);
 				}
 				host->PlaySelectSound();
@@ -221,7 +213,7 @@ namespace spades {
 			}
 
 			// Draw "Select Weapon:" label (only for teams, not spectators)
-			if (selectedTeam < 2) {
+			if (host->GetSelectedTeam() < 2) {
 				auto str = _Tr("Client", "Select Weapon:");
 				Vector2 pos = {cachedLayout.weapX, cachedLayout.top + 10.0F};
 				font.DrawShadow(str, pos, 1.0F, color, shadowColor);
@@ -237,6 +229,8 @@ namespace spades {
 				int hotkey = 0;
 
 				// Determine if button is selected and its hotkey
+				int selectedTeam = host->GetSelectedTeam();
+				WeaponType selectedWeapon = host->GetSelectedWeapon();
 				switch (type) {
 					case MenuItemType::Team1:
 						selected = (selectedTeam == 0);
@@ -320,10 +314,8 @@ namespace spades {
 			if (!isActive)
 				return;
 
-			if (selectedTeam > 2)
-				selectedTeam = 2;
-
 			Vector2 cursorPos = cursor.GetPosition();
+			int selectedTeam = host->GetSelectedTeam();
 
 			for (size_t i = 0; i < items.size(); i++) {
 				MenuItem& item = items[i];
@@ -375,27 +367,21 @@ namespace spades {
 		void LimboMenu::HandleMenuItemSelection(MenuItemType type) {
 			switch (type) {
 				case MenuItemType::Team1:
-					selectedTeam = 0;
 					host->OnTeamSelected(0);
 					break;
 				case MenuItemType::Team2:
-					selectedTeam = 1;
 					host->OnTeamSelected(1);
 					break;
 				case MenuItemType::TeamSpectator:
-					selectedTeam = 2;
 					host->OnTeamSelected(2);
 					break;
 				case MenuItemType::WeaponRifle:
-					selectedWeapon = RIFLE_WEAPON;
 					host->OnWeaponSelected(RIFLE_WEAPON);
 					break;
 				case MenuItemType::WeaponSMG:
-					selectedWeapon = SMG_WEAPON;
 					host->OnWeaponSelected(SMG_WEAPON);
 					break;
 				case MenuItemType::WeaponShotgun:
-					selectedWeapon = SHOTGUN_WEAPON;
 					host->OnWeaponSelected(SHOTGUN_WEAPON);
 					break;
 				case MenuItemType::Spawn:
