@@ -122,6 +122,42 @@ namespace spades {
 			cachedLayout.isValid = true;
 		}
 
+		void LimboMenu::RecalculateItemRects() {
+			float yPos = cachedLayout.firstY;
+			for (size_t i = 0; i < items.size(); i++) {
+				MenuItem& item = items[i];
+				switch (item.type) {
+					case MenuItemType::Team1:
+						item.rect = AABB2(cachedLayout.teamX, yPos, cachedLayout.menuWidth, cachedLayout.menuHeight);
+						yPos += cachedLayout.rowHeight;
+						break;
+					case MenuItemType::Team2:
+						item.rect = AABB2(cachedLayout.teamX, yPos, cachedLayout.menuWidth, cachedLayout.menuHeight);
+						yPos += cachedLayout.rowHeight;
+						break;
+					case MenuItemType::TeamSpectator:
+						item.rect = AABB2(cachedLayout.teamX, yPos, cachedLayout.menuWidth, cachedLayout.menuHeight);
+						yPos += cachedLayout.rowHeight;
+						break;
+					case MenuItemType::WeaponRifle:
+						item.rect = AABB2(cachedLayout.weapX, cachedLayout.firstY, cachedLayout.menuWidth, cachedLayout.menuHeight);
+						break;
+					case MenuItemType::WeaponSMG:
+						item.rect = AABB2(cachedLayout.weapX, cachedLayout.firstY + cachedLayout.rowHeight, cachedLayout.menuWidth, cachedLayout.menuHeight);
+						break;
+					case MenuItemType::WeaponShotgun:
+						item.rect = AABB2(cachedLayout.weapX, cachedLayout.firstY + cachedLayout.rowHeight * 2.0F, cachedLayout.menuWidth, cachedLayout.menuHeight);
+						break;
+					case MenuItemType::Spawn:
+						item.rect = AABB2(cachedLayout.left + cachedLayout.contentsWidth - 166.0F, cachedLayout.firstY + 4.0F, 156.0F, 64.0F);
+						break;
+					case MenuItemType::Close:
+						item.rect = AABB2(cachedLayout.left + cachedLayout.contentsWidth - 24.0F, cachedLayout.top, 24.0F, 24.0F);
+						break;
+				}
+			}
+		}
+
 		bool LimboMenu::KeyEvent(const std::string& key, bool down) {
 			if (!isActive)
 				return false;
@@ -186,9 +222,11 @@ namespace spades {
 			float currentScreenWidth = renderer->ScreenWidth();
 			float currentScreenHeight = renderer->ScreenHeight();
 
-			if (!cachedLayout.isValid || cachedLayout.screenWidth != currentScreenWidth ||
-				cachedLayout.screenHeight != currentScreenHeight) {
+			bool layoutChanged = !cachedLayout.isValid || cachedLayout.screenWidth != currentScreenWidth ||
+				cachedLayout.screenHeight != currentScreenHeight;
+			if (layoutChanged) {
 				RecalculateLayout();
+				RecalculateItemRects();
 			}
 
 			if (!cachedLayout.isValid)

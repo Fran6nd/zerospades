@@ -85,6 +85,7 @@ namespace spades {
 			} cachedLayout;
 
 			void RecalculateLayout();
+			void RecalculateItemRects();
 			int MenuButtonAt(const Vector2& p) const;
 			void HandleMenuItemSelection(MenuItemType type);
 		};
