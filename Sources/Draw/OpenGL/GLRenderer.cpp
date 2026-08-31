@@ -75,12 +75,16 @@ namespace spades {
 		SPADES_SETTING(r_dayTime);
 
 		namespace {
+			constexpr float MinSunIntensity = 0.01F;  // 1% at midnight
+			constexpr float MaxSunIntensity = 1.0F;   // 100% at noon
+
 			float GetSunIntensityForRenderer(float dayTime) {
 				dayTime = fmodf(dayTime, 24.0F);
 				if (dayTime < 0.0F) dayTime += 24.0F;
 				float angle = (dayTime - 12.0F) * (M_PI_F / 12.0F);
 				float intensity = cosf(angle);
-				intensity = std::max(0.1F, intensity);
+				intensity = std::max(MinSunIntensity, intensity);
+				intensity = std::min(MaxSunIntensity, intensity);
 				return intensity;
 			}
 		}

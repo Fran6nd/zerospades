@@ -39,23 +39,27 @@
 SPADES_SETTING(r_dayTime);
 
 namespace {
+	constexpr int NoiseTexSize = 128;
+	constexpr float MinSunIntensity = 0.01F;  // 1% at midnight - nearly complete darkness
+	constexpr float MaxSunIntensity = 1.0F;   // 100% at noon
+
 	// Calculate sun intensity based on time of day (0-23)
-	// 0 = midnight (0.0), 6 = sunrise (0.2), 12 = noon (1.0), 18 = sunset (0.2), 23 = almost midnight (0.0)
+	// 0 = midnight (~1%), 6 = sunrise (~20%), 12 = noon (100%), 18 = sunset (~20%), 23 = late evening (~1%)
 	float GetSunIntensity(float dayTime) {
 		// Clamp to 0-24 range
 		dayTime = fmodf(dayTime, 24.0F);
 		if (dayTime < 0.0F) dayTime += 24.0F;
 
-		// Intensity curve: peaks at noon (12), low at midnight
+		// Intensity curve: peaks at noon (12), near-zero at midnight
 		// Using cosine wave: max at 12, min at 0 and 24
 		float angle = (dayTime - 12.0F) * (M_PI_F / 12.0F);
 		float intensity = cosf(angle);
 
-		// Clamp to 0.1 - 1.0 range (never completely black during the day cycle)
-		intensity = std::max(0.1F, intensity);
+		// Clamp to MinSunIntensity - MaxSunIntensity range
+		intensity = std::max(MinSunIntensity, intensity);
+		intensity = std::min(MaxSunIntensity, intensity);
 		return intensity;
 	}
-	constexpr int NoiseTexSize = 128;
 }
 
 namespace spades {
