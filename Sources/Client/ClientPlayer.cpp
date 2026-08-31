@@ -669,8 +669,9 @@ namespace spades {
 			sandboxedRenderer->SetClipBox(clip);
 			sandboxedRenderer->SetAllowDepthHack(true); // allow depthhack
 
-			// no flashlight if spectating other players while dead
-			bool shouldRenderFlashlight = cg_everyoneFlashlight || (client.flashlightOn && p.IsLocalPlayer());
+			// Remote players: always on when cg_everyoneFlashlight enabled
+			// Local player: can toggle normally with F key
+			bool shouldRenderFlashlight = (cg_everyoneFlashlight && !p.IsLocalPlayer()) || (client.flashlightOn && p.IsLocalPlayer());
 			if (shouldRenderFlashlight) {
 				float brightness;
 				if (cg_everyoneFlashlight && !p.IsLocalPlayer()) {
@@ -1260,8 +1261,9 @@ namespace spades {
 				}
 			}
 
-			// add flashlight for all players in third-person view
-			bool shouldRenderFlashlight = cg_everyoneFlashlight || (client.flashlightOn && p.IsLocalPlayer());
+			// Flashlight in third-person: remote players always on when cg_everyoneFlashlight enabled
+			// Local player: can toggle normally with F key
+			bool shouldRenderFlashlight = (cg_everyoneFlashlight && !p.IsLocalPlayer()) || (client.flashlightOn && p.IsLocalPlayer());
 			if (shouldRenderFlashlight) {
 				float brightness;
 				if (cg_everyoneFlashlight && !p.IsLocalPlayer()) {
