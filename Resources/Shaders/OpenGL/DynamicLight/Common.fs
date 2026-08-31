@@ -45,8 +45,15 @@ varying vec3 lightNormal;
 varying vec3 lightTexCoord;
 
 vec3 EvaluateDynamicLightNoBump() {
-	if (lightTexCoord.z < 0.0 || any(lessThan(lightTexCoord.xy, vec2(0.0))) ||
-	    any(greaterThan(lightTexCoord.xy, vec2(lightTexCoord.z))))
+	// Soft cone edge instead of hard discard
+	float coneFalloff = 1.0;
+	if (lightTexCoord.z > 0.0) {
+		vec2 coneCoord = lightTexCoord.xy / lightTexCoord.z;
+		float coneDistance = length(coneCoord);
+		// Smooth falloff at cone edge (0.8 to 1.0 normalized)
+		coneFalloff = smoothstep(1.1, 0.8, coneDistance);
+	}
+	if (coneFalloff <= 0.0)
 		discard;
 
 	// diffuse lighting
@@ -62,7 +69,7 @@ vec3 EvaluateDynamicLightNoBump() {
 	float attenuation = distance * distance;
 
 	// apply attenuation
-	intensity *= attenuation;
+	intensity *= attenuation * coneFalloff;
 
 	vec3 texValue = texture2DProj(dynamicLightProjectionTexture, lightTexCoord).xyz;
 

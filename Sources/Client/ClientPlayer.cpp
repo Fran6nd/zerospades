@@ -682,23 +682,42 @@ namespace spades {
 				}
 				brightness *= r_hdr ? 3.0F : 1.5F;
 
-				// add flash light
-				DynamicLightParam light;
-				light.type = DynamicLightTypeSpotlight;
-				light.origin = eyeMatrix.GetOrigin();
-				light.radius = 60.0F;
-				light.color = MakeVector3(1.0F, 0.7F, 0.5F) * brightness;
-				light.spotAngle = DEG2RAD(90);
-				light.spotAxis = GetFlashlightAxes();
-				Handle<IImage> img = renderer.RegisterImage("Gfx/Spotlight.jpg");
-				light.image = img.GetPointerOrNull();
-				renderer.AddLight(light);
+				// Check if flashlight is occluded by walls using ray casting
+				Vector3 lightOrigin = eyeMatrix.GetOrigin();
+				Vector3 lightDir = GetFlashlightAxes()[2];  // forward direction
+				bool isOccluded = false;
 
-				light.type = DynamicLightTypePoint;
-				light.radius = 10.0F;
-				light.color *= 0.3F;
-				light.image = nullptr;
-				renderer.AddLight(light);
+				if (client.GetWorld() && client.GetWorld()->GetMap()) {
+					GameMap* map = client.GetWorld()->GetMap().GetPointerOrNull();
+					if (map) {
+						// Ray cast up to 5 units forward to check for occlusion
+						GameMap::RayCastResult result = map->CastRay2(lightOrigin, lightDir, 5);
+						if (result.hit && result.hitPos.GetSquaredLength() < 25.0F) {
+							isOccluded = true;  // Wall is blocking the light origin
+						}
+					}
+				}
+
+				// Only render flashlight if not occluded
+				if (!isOccluded) {
+					// add flash light
+					DynamicLightParam light;
+					light.type = DynamicLightTypeSpotlight;
+					light.origin = lightOrigin;
+					light.radius = 60.0F;
+					light.color = MakeVector3(1.0F, 0.7F, 0.5F) * brightness;
+					light.spotAngle = DEG2RAD(90);
+					light.spotAxis = GetFlashlightAxes();
+					Handle<IImage> img = renderer.RegisterImage("Gfx/Spotlight.jpg");
+					light.image = img.GetPointerOrNull();
+					renderer.AddLight(light);
+
+					light.type = DynamicLightTypePoint;
+					light.radius = 10.0F;
+					light.color *= 0.3F;
+					light.image = nullptr;
+					renderer.AddLight(light);
+				}
 			}
 
 			Vector3 leftHand, rightHand;
@@ -1275,23 +1294,37 @@ namespace spades {
 				brightness *= r_hdr ? 3.0F : 1.5F;
 
 				Vector3 lightOrigin = origin + Vector3(0.0F, 0.0F, -0.3F);
+				Vector3 lightDir = GetFlashlightAxes()[2];
+				bool isOccluded = false;
 
-				DynamicLightParam light;
-				light.type = DynamicLightTypeSpotlight;
-				light.origin = lightOrigin;
-				light.radius = 60.0F;
-				light.color = MakeVector3(1.0F, 0.7F, 0.5F) * brightness;
-				light.spotAngle = DEG2RAD(90);
-				light.spotAxis = GetFlashlightAxes();
-				Handle<IImage> img = renderer.RegisterImage("Gfx/Spotlight.jpg");
-				light.image = img.GetPointerOrNull();
-				renderer.AddLight(light);
+				if (client.GetWorld() && client.GetWorld()->GetMap()) {
+					GameMap* map = client.GetWorld()->GetMap().GetPointerOrNull();
+					if (map) {
+						GameMap::RayCastResult result = map->CastRay2(lightOrigin, lightDir, 5);
+						if (result.hit && result.hitPos.GetSquaredLength() < 25.0F) {
+							isOccluded = true;
+						}
+					}
+				}
 
-				light.type = DynamicLightTypePoint;
-				light.radius = 10.0F;
-				light.color *= 0.3F;
-				light.image = nullptr;
-				renderer.AddLight(light);
+				if (!isOccluded) {
+					DynamicLightParam light;
+					light.type = DynamicLightTypeSpotlight;
+					light.origin = lightOrigin;
+					light.radius = 60.0F;
+					light.color = MakeVector3(1.0F, 0.7F, 0.5F) * brightness;
+					light.spotAngle = DEG2RAD(90);
+					light.spotAxis = GetFlashlightAxes();
+					Handle<IImage> img = renderer.RegisterImage("Gfx/Spotlight.jpg");
+					light.image = img.GetPointerOrNull();
+					renderer.AddLight(light);
+
+					light.type = DynamicLightTypePoint;
+					light.radius = 10.0F;
+					light.color *= 0.3F;
+					light.image = nullptr;
+					renderer.AddLight(light);
+				}
 			}
 
 			// third person player rendering, done
