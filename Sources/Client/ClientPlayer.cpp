@@ -669,17 +669,10 @@ namespace spades {
 			sandboxedRenderer->SetClipBox(clip);
 			sandboxedRenderer->SetAllowDepthHack(true); // allow depthhack
 
-			// Remote players: always on when cg_everyoneFlashlight enabled
-			// Local player: can toggle normally with F key
-			bool shouldRenderFlashlight = (cg_everyoneFlashlight && !p.IsLocalPlayer()) || (client.flashlightOn && p.IsLocalPlayer());
-			if (shouldRenderFlashlight) {
-				float brightness;
-				if (cg_everyoneFlashlight && !p.IsLocalPlayer()) {
-					brightness = 1.0F;
-				} else {
-					brightness = client.time - client.flashlightOnTime;
-					brightness = 1.0F - expf(-brightness * 5.0F);
-				}
+			// Flashlight only for local player in first-person view
+			if (client.flashlightOn && p.IsLocalPlayer()) {
+				float brightness = client.time - client.flashlightOnTime;
+				brightness = 1.0F - expf(-brightness * 5.0F);
 				brightness *= r_hdr ? 3.0F : 1.5F;
 
 				// Check if flashlight is occluded by walls using ray casting
