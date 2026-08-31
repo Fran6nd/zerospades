@@ -45,6 +45,10 @@ varying vec3 lightNormal;
 varying vec3 lightTexCoord;
 
 vec3 EvaluateDynamicLightNoBump() {
+	// Discard fragments behind the light source
+	if (lightTexCoord.z <= 0.0)
+		discard;
+
 	// Soft cone edge instead of hard discard
 	float coneFalloff = 1.0;
 	if (lightTexCoord.z > 0.0) {
