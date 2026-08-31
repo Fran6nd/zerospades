@@ -35,8 +35,33 @@
 #include <Core/Math.h>
 #include <Core/Settings.h>
 
+SPADES_SETTING(r_dayTime);
+
 namespace spades {
 	namespace draw {
+		namespace {
+			Vector3 GetSunDirection(float dayTime) {
+				dayTime = fmodf(dayTime, 24.0F);
+				if (dayTime < 0.0F) dayTime += 24.0F;
+
+				// Azimuth: sun moves from east (dayTime=6) through south (12) to west (18)
+				float azimuth = (dayTime - 6.0F) * (M_PI_F / 12.0F);
+
+				// Altitude: peaks at noon (12), low at sunrise/sunset (6/18), below horizon at night
+				float altAngle = (dayTime - 12.0F) * (M_PI_F / 12.0F);
+				float altitude = cosf(altAngle);
+
+				// Convert spherical to cartesian coordinates
+				// X = east, Y = north, Z = up
+				float cosAlt = cosf(acosf(std::max(-1.0F, std::min(1.0F, altitude))));
+				Vector3 sunDir;
+				sunDir.x = sinf(azimuth) * cosAlt;  // East component
+				sunDir.y = cosf(azimuth) * cosAlt;  // North component
+				sunDir.z = altitude;                 // Up component
+
+				return sunDir.Normalize();
+			}
+		}
 		GLLensFlareFilter::GLLensFlareFilter(GLRenderer& renderer) : renderer(renderer) {
 			blurProgram = renderer.RegisterProgram("Shaders/OpenGL/PostFilters/Gauss1D.program");
 			scannerProgram = renderer.RegisterProgram("Shaders/OpenGL/LensFlare/Scanner.program");
@@ -93,8 +118,6 @@ namespace spades {
 
 		void GLLensFlareFilter::Draw() {
 			// Apply day/night cycle to sun lens flare
-			SPADES_SETTING(r_dayTime);
-
 			constexpr float MinSunIntensity = 0.01F;
 			constexpr float MaxSunIntensity = 1.0F;
 
@@ -108,7 +131,7 @@ namespace spades {
 			sunIntensity = std::min(MaxSunIntensity, sunIntensity);
 
 			auto sunCol = MakeVector3(1.0F, 0.9F, 0.8F) * sunIntensity;
-			auto sunDir = MakeVector3(0.0F, -1.0F, -1.0F);
+			Vector3 sunDir = GetSunDirection(dayTime);
 			Draw(sunDir, true, sunCol, true);
 		}
 

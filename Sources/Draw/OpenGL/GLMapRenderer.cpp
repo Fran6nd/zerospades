@@ -34,8 +34,33 @@
 #include <Core/Debug.h>
 #include <Core/Settings.h>
 
+SPADES_SETTING(r_dayTime);
+
 namespace spades {
 	namespace draw {
+		namespace {
+			Vector3 GetSunDirection(float dayTime) {
+				dayTime = fmodf(dayTime, 24.0F);
+				if (dayTime < 0.0F) dayTime += 24.0F;
+
+				// Azimuth: sun moves from east (dayTime=6) through south (12) to west (18)
+				float azimuth = (dayTime - 6.0F) * (M_PI_F / 12.0F);
+
+				// Altitude: peaks at noon (12), low at sunrise/sunset (6/18), below horizon at night
+				float altAngle = (dayTime - 12.0F) * (M_PI_F / 12.0F);
+				float altitude = cosf(altAngle);
+
+				// Convert spherical to cartesian coordinates
+				// X = east, Y = north, Z = up
+				float cosAlt = cosf(acosf(std::max(-1.0F, std::min(1.0F, altitude))));
+				Vector3 sunDir;
+				sunDir.x = sinf(azimuth) * cosAlt;  // East component
+				sunDir.y = cosf(azimuth) * cosAlt;  // North component
+				sunDir.z = altitude;                 // Up component
+
+				return sunDir.Normalize();
+			}
+		}
 		void GLMapRenderer::PreloadShaders(GLRenderer& renderer) {
 			if (renderer.GetSettings().r_physicalLighting)
 				renderer.RegisterProgram("Shaders/OpenGL/BasicBlockPhys.program");
@@ -246,15 +271,16 @@ namespace spades {
 			Matrix4 viewMatrix = renderer.GetViewMatrix();
 			viewMatrixU.SetValue(viewMatrix);
 
+			float dayTime = static_cast<float>(r_dayTime);
+			Vector3 sunPos = GetSunDirection(dayTime);
+
 			static GLProgramUniform viewSpaceLight("viewSpaceLight");
 			viewSpaceLight(basicProgram);
-			Vector3 vspLight = (viewMatrix * MakeVector4(0, -1, -1, 0)).GetXYZ();
+			Vector3 vspLight = (viewMatrix * MakeVector4(sunPos.x, sunPos.y, sunPos.z, 0)).GetXYZ();
 			viewSpaceLight.SetValue(vspLight.x, vspLight.y, vspLight.z);
 
 			static GLProgramUniform sunLightDirection("sunLightDirection");
 			sunLightDirection(basicProgram);
-			Vector3 sunPos = MakeVector3(0, -1, -1);
-			sunPos = sunPos.Normalize();
 			sunLightDirection.SetValue(sunPos.x, sunPos.y, sunPos.z);
 
 			static GLProgramUniform viewOriginVector("viewOriginVector");
