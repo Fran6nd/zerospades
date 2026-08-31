@@ -19,6 +19,7 @@
  */
 
 #include <vector>
+#include <cmath>
 
 #include "GLImage.h"
 #include "GLLensFlareFilter.h"
@@ -32,6 +33,7 @@
 #include "IGLDevice.h"
 #include <Core/Debug.h>
 #include <Core/Math.h>
+#include <Core/Settings.h>
 
 namespace spades {
 	namespace draw {
@@ -90,7 +92,22 @@ namespace spades {
 		}
 
 		void GLLensFlareFilter::Draw() {
-			auto sunCol = MakeVector3(1.0F, 0.9F, 0.8F);
+			// Apply day/night cycle to sun lens flare
+			SPADES_SETTING(r_dayTime);
+
+			constexpr float MinSunIntensity = 0.01F;
+			constexpr float MaxSunIntensity = 1.0F;
+
+			float dayTime = static_cast<float>(r_dayTime);
+			dayTime = fmodf(dayTime, 24.0F);
+			if (dayTime < 0.0F) dayTime += 24.0F;
+
+			float angle = (dayTime - 12.0F) * (M_PI_F / 12.0F);
+			float sunIntensity = cosf(angle);
+			sunIntensity = std::max(MinSunIntensity, sunIntensity);
+			sunIntensity = std::min(MaxSunIntensity, sunIntensity);
+
+			auto sunCol = MakeVector3(1.0F, 0.9F, 0.8F) * sunIntensity;
 			auto sunDir = MakeVector3(0.0F, -1.0F, -1.0F);
 			Draw(sunDir, true, sunCol, true);
 		}
