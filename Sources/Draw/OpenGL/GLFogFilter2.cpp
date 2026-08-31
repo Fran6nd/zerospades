@@ -34,8 +34,27 @@
 #include "IGLDevice.h"
 #include <Core/Debug.h>
 #include <Core/Math.h>
+#include <Core/Settings.h>
+
+SPADES_SETTING(r_dayTime);
 
 namespace {
+	// Calculate sun intensity based on time of day (0-23)
+	// 0 = midnight (0.0), 6 = sunrise (0.2), 12 = noon (1.0), 18 = sunset (0.2), 23 = almost midnight (0.0)
+	float GetSunIntensity(float dayTime) {
+		// Clamp to 0-24 range
+		dayTime = fmodf(dayTime, 24.0F);
+		if (dayTime < 0.0F) dayTime += 24.0F;
+
+		// Intensity curve: peaks at noon (12), low at midnight
+		// Using cosine wave: max at 12, min at 0 and 24
+		float angle = (dayTime - 12.0F) * (M_PI_F / 12.0F);
+		float intensity = cosf(angle);
+
+		// Clamp to 0.1 - 1.0 range (never completely black during the day cycle)
+		intensity = std::max(0.1F, intensity);
+		return intensity;
+	}
 	constexpr int NoiseTexSize = 128;
 }
 
@@ -152,10 +171,13 @@ namespace spades {
 			Vector3 fogCol = renderer.GetFogColor();
 			fogCol *= fogCol; // linearize
 
-			float sunlightBrightness = 0.6F; // Sun -> Fog -> Eye
-			float ambientBrightness = 1.0F;  // Sun -> Fog -> Fog -> Eye
-			float radiosityBrightness = 1.0F;
-			float radiosityOffset = 0.2F;
+			float dayTime = static_cast<float>(r_dayTime);
+			float sunIntensity = GetSunIntensity(dayTime);
+
+			float sunlightBrightness = 0.6F * sunIntensity; // Sun -> Fog -> Eye
+			float ambientBrightness = 1.0F * sunIntensity;  // Sun -> Fog -> Fog -> Eye
+			float radiosityBrightness = 1.0F * sunIntensity;
+			float radiosityOffset = 0.2F * sunIntensity;
 			// Let's say the fog modulates the incoming light with some factor
 			// we call `fogTransmission`. When there are no occluding objects,
 			// we see this color:

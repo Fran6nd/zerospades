@@ -25,6 +25,8 @@ uniform sampler2D ssaoTexture;
 uniform vec2 ssaoTextureUVScale;
 #endif
 
+uniform float sunIntensity;
+
 float EvaluateMapShadow();
 float EvaluteModelShadow();
 vec3 EvaluateRadiosity(float detailAmbientOcclusion, float ssao);
@@ -35,7 +37,7 @@ float VisibilityOfSunLight() {
 }
 
 vec3 EvaluateSunLight() {
-	return vec3(0.6) * VisibilityOfSunLight();
+	return vec3(0.6 * sunIntensity) * VisibilityOfSunLight();
 }
 
 vec3 EvaluateAmbientLight(float detailAmbientOcclusion) {

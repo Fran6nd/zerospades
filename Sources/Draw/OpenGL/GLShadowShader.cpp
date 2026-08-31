@@ -30,6 +30,20 @@
 #include <Core/Debug.h>
 #include <Core/Exception.h>
 #include <Core/Settings.h>
+#include <cmath>
+
+SPADES_SETTING(r_dayTime);
+
+namespace {
+	float GetSunIntensity(float dayTime) {
+		dayTime = fmodf(dayTime, 24.0F);
+		if (dayTime < 0.0F) dayTime += 24.0F;
+		float angle = (dayTime - 12.0F) * (M_PI_F / 12.0F);
+		float intensity = cosf(angle);
+		intensity = std::max(0.1F, intensity);
+		return intensity;
+	}
+}
 
 namespace spades {
 	namespace draw {
@@ -56,7 +70,8 @@ namespace spades {
 		      minLod("minLod"),
 		      shadowMapSizeInv("shadowMapSizeInv"),
 		      ssaoTexture("ssaoTexture"),
-		      ssaoTextureUVScale("ssaoTextureUVScale") {}
+		      ssaoTextureUVScale("ssaoTextureUVScale"),
+		      sunIntensity("sunIntensity") {}
 
 		std::vector<GLShader*> GLShadowShader::RegisterShader(spades::draw::GLProgramManager* r,
 		                                                      GLSettings& settings, bool variance,
@@ -105,10 +120,14 @@ namespace spades {
 			spades::draw::GLProgram* program, int texStage) {
 			mapShadowTexture(program);
 			fogColor(program);
+			sunIntensity(program);
 
 			Vector3 fc = renderer->GetFogColorForSolidPass();
 			fc *= fc; // linearize
 			fogColor.SetValue(fc.x, fc.y, fc.z);
+
+			float dayTime = static_cast<float>(r_dayTime);
+			sunIntensity.SetValue(GetSunIntensity(dayTime));
 
 			IGLDevice* dev = program->GetDevice();
 			dev->ActiveTexture(texStage);

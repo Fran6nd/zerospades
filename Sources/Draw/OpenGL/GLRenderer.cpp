@@ -72,6 +72,19 @@
 
 namespace spades {
 	namespace draw {
+		SPADES_SETTING(r_dayTime);
+
+		namespace {
+			float GetSunIntensityForRenderer(float dayTime) {
+				dayTime = fmodf(dayTime, 24.0F);
+				if (dayTime < 0.0F) dayTime += 24.0F;
+				float angle = (dayTime - 12.0F) * (M_PI_F / 12.0F);
+				float intensity = cosf(angle);
+				intensity = std::max(0.1F, intensity);
+				return intensity;
+			}
+		}
+
 		// TODO: raise error for any calls after Shutdown().
 
 		GLRenderer::GLRenderer(Handle<IGLDevice> _device)
@@ -356,10 +369,15 @@ namespace spades {
 		}
 
 		Vector3 GLRenderer::GetFogColorForSolidPass() {
+			Vector3 col;
 			if (settings.r_fogShadow && mapShadowRenderer)
-				return MakeVector3(0, 0, 0);
+				col = MakeVector3(0, 0, 0);
 			else
-				return GetFogColor();
+				col = GetFogColor();
+
+			float dayTime = static_cast<float>(r_dayTime);
+			float sunIntensity = GetSunIntensityForRenderer(dayTime);
+			return col * sunIntensity;
 		}
 
 #pragma mark - Resource Manager

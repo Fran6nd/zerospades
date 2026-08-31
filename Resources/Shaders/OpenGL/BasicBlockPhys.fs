@@ -44,7 +44,7 @@ void main() {
 
 	float ao = texture2D(ambientOcclusionTexture, ambientOcclusionCoord).x;
 	vec3 diffuseShading = EvaluateAmbientLight(ao);
-	float shadowing = VisibilityOfSunLight() * 0.6;
+	float shadowing = VisibilityOfSunLight() * (0.6 * sunIntensity);
 
 	vec3 eyeVec = -normalize(viewSpaceCoord);
 	vec3 normal = normalize(viewSpaceNormal);
