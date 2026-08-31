@@ -19,10 +19,11 @@
  */
 
 uniform vec3 fogColor;
+uniform float sunIntensity;
 varying float hemisphereLighting;
 
 vec3 EvaluateRadiosity(float detailAmbientOcclusion, float ssao) {
-	return mix(fogColor, vec3(1.0), 0.5) * (0.5 * detailAmbientOcclusion * hemisphereLighting * ssao);
+	return mix(fogColor, vec3(1.0), 0.5) * (0.5 * detailAmbientOcclusion * hemisphereLighting * ssao) * sunIntensity;
 }
 
 vec3 EvaluateSoftReflections(float detailAmbientOcclusion, vec3 direction, float ssao) {

@@ -30,6 +30,7 @@ varying vec3 ambientShadowTextureCoord;
 varying vec3 normalVarying;
 uniform vec3 ambientColor;
 uniform vec3 fogColor;
+uniform float sunIntensity;
 
 vec3 DecodeRadiosityValue(vec3 val) {
 	// reverse bias
@@ -64,7 +65,7 @@ vec3 EvaluateRadiosity(float detailAmbientOcclusion, float ssao) {
 	amb *= 0.8 - normalVarying.z * 0.2;
 	col += amb * ambientColor;
 
-	return col;
+	return col * sunIntensity;
 }
 
 vec3 EvaluateSoftReflections(float detailAmbientOcclusion, vec3 direction, float ssao) {
