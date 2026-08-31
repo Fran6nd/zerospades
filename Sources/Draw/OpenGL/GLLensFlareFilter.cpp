@@ -128,7 +128,11 @@ namespace spades {
 
 			float angle = (dayTime - 12.0F) * (M_PI_F / 12.0F);
 			float sunIntensity = cosf(angle);
-			sunIntensity = std::max(MinSunIntensity, sunIntensity);
+			if (sunIntensity < 0.0F) {
+				sunIntensity = 0.0F;  // Sun below horizon - completely invisible
+			} else {
+				sunIntensity = std::max(MinSunIntensity, sunIntensity);
+			}
 			sunIntensity = std::min(MaxSunIntensity, sunIntensity);
 
 			auto sunCol = MakeVector3(1.0F, 0.9F, 0.8F) * sunIntensity;
