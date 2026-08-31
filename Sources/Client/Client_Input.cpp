@@ -96,6 +96,8 @@ DEFINE_SPADES_SETTING(cg_switchToolByWheel, "1");
 DEFINE_SPADES_SETTING(cg_debugCorpse, "0");
 DEFINE_SPADES_SETTING(cg_keySpawnCorpse, "p");
 
+DEFINE_SPADES_SETTING(cg_everyoneFlashlight, "0");
+
 DEFINE_SPADES_SETTING(cg_keyPieMenu, "MiddleMouseButton");
 
 SPADES_SETTING(cg_manualFocus);

@@ -53,6 +53,7 @@
 SPADES_SETTING(cg_ragdoll);
 DEFINE_SPADES_SETTING(cg_animations, "1");
 SPADES_SETTING(cg_shake);
+SPADES_SETTING(cg_everyoneFlashlight);
 SPADES_SETTING(r_hdr);
 DEFINE_SPADES_SETTING(cg_environmentalAudio, "1");
 DEFINE_SPADES_SETTING(cg_classicPlayerModels, "0");
@@ -525,15 +526,13 @@ namespace spades {
 					}
 				}
 
-				// Smooth the flashlight's movement
-				if (client.flashlightOn && isLocalPlayer) {
-					Vector3 diff = front - flashlightOrientation;
-					float dist = diff.GetLength();
-					if (dist > 0.1F)
-						flashlightOrientation += diff.Normalize() * (dist - 0.1F);
-					flashlightOrientation = Mix(flashlightOrientation, front, 1.0F - powf(1.0E-6F, dt));
-					flashlightOrientation = flashlightOrientation.Normalize();
-				}
+				// Smooth the flashlight's movement (for all players)
+				Vector3 diff = front - flashlightOrientation;
+				float dist = diff.GetLength();
+				if (dist > 0.1F)
+					flashlightOrientation += diff.Normalize() * (dist - 0.1F);
+				flashlightOrientation = Mix(flashlightOrientation, front, 1.0F - powf(1.0E-6F, dt));
+				flashlightOrientation = flashlightOrientation.Normalize();
 			}
 
 			// FIXME: should do for non-active skins?
@@ -670,9 +669,15 @@ namespace spades {
 			sandboxedRenderer->SetAllowDepthHack(true); // allow depthhack
 
 			// no flashlight if spectating other players while dead
-			if (client.flashlightOn && p.IsLocalPlayer()) {
-				float brightness = client.time - client.flashlightOnTime;
-				brightness = 1.0F - expf(-brightness * 5.0F);
+			bool shouldRenderFlashlight = cg_everyoneFlashlight || (client.flashlightOn && p.IsLocalPlayer());
+			if (shouldRenderFlashlight) {
+				float brightness;
+				if (cg_everyoneFlashlight && !p.IsLocalPlayer()) {
+					brightness = 1.0F;
+				} else {
+					brightness = client.time - client.flashlightOnTime;
+					brightness = 1.0F - expf(-brightness * 5.0F);
+				}
 				brightness *= r_hdr ? 3.0F : 1.5F;
 
 				// add flash light
@@ -1252,6 +1257,38 @@ namespace spades {
 					param.matrix = briefcase * scaler;
 					renderer.RenderModel(*model, param);
 				}
+			}
+
+			// add flashlight for all players in third-person view
+			bool shouldRenderFlashlight = cg_everyoneFlashlight || (client.flashlightOn && p.IsLocalPlayer());
+			if (shouldRenderFlashlight) {
+				float brightness;
+				if (cg_everyoneFlashlight && !p.IsLocalPlayer()) {
+					brightness = 1.0F;
+				} else {
+					brightness = client.time - client.flashlightOnTime;
+					brightness = 1.0F - expf(-brightness * 5.0F);
+				}
+				brightness *= r_hdr ? 3.0F : 1.5F;
+
+				Vector3 lightOrigin = origin + Vector3(0.0F, 0.0F, -0.3F);
+
+				DynamicLightParam light;
+				light.type = DynamicLightTypeSpotlight;
+				light.origin = lightOrigin;
+				light.radius = 60.0F;
+				light.color = MakeVector3(1.0F, 0.7F, 0.5F) * brightness;
+				light.spotAngle = DEG2RAD(90);
+				light.spotAxis = GetFlashlightAxes();
+				Handle<IImage> img = renderer.RegisterImage("Gfx/Spotlight.jpg");
+				light.image = img.GetPointerOrNull();
+				renderer.AddLight(light);
+
+				light.type = DynamicLightTypePoint;
+				light.radius = 10.0F;
+				light.color *= 0.3F;
+				light.image = nullptr;
+				renderer.AddLight(light);
 			}
 
 			// third person player rendering, done
