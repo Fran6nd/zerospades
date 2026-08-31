@@ -465,8 +465,9 @@ namespace spades {
 				}
 			}
 
+			Vector3 front = player.GetFront();
+
 			if (!isThirdPerson) {
-				Vector3 front = player.GetFront();
 				Vector3 right = player.GetRight();
 				Vector3 up = player.GetUp();
 
@@ -525,15 +526,15 @@ namespace spades {
 						softLimitFunc(viewWeaponOffset.z, 0, limitY);
 					}
 				}
-
-				// Smooth the flashlight's movement (for all players)
-				Vector3 diff = front - flashlightOrientation;
-				float dist = diff.GetLength();
-				if (dist > 0.1F)
-					flashlightOrientation += diff.Normalize() * (dist - 0.1F);
-				flashlightOrientation = Mix(flashlightOrientation, front, 1.0F - powf(1.0E-6F, dt));
-				flashlightOrientation = flashlightOrientation.Normalize();
 			}
+
+			// Smooth the flashlight's movement (for all players)
+			Vector3 diff = front - flashlightOrientation;
+			float dist = diff.GetLength();
+			if (dist > 0.1F)
+				flashlightOrientation += diff.Normalize() * (dist - 0.1F);
+			flashlightOrientation = Mix(flashlightOrientation, front, 1.0F - powf(1.0E-6F, dt));
+			flashlightOrientation = flashlightOrientation.Normalize();
 
 			// FIXME: should do for non-active skins?
 			asIScriptObject* curSkin = GetCurrentSkin(!isThirdPerson);
