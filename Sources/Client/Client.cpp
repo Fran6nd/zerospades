@@ -49,6 +49,7 @@
 
 #include "BloodMarks.h"
 #include <Gui/UI/Components/SoftwareCursor.h>
+#include <Gui/UI/Components/LimboMenu.h>
 #include "Corpse.h"
 #include "SmokeSpriteEntity.h"
 
@@ -157,6 +158,33 @@ namespace spades {
 				&fontManager->GetHeadingFont());
 			tcView = stmp::make_unique<TCProgressView>(*this);
 			cursor = stmp::make_unique<gui::SoftwareCursor>(*renderer);
+
+			// Create LimboMenu host adapter
+			class ClientLimboHost : public gui::ILimboMenuHost {
+				Client* client;
+			public:
+				explicit ClientLimboHost(Client* c) : client(c) {}
+				client::IAudioDevice* GetAudioDevice() override { return &client->GetAudioDevice(); }
+				void PlayHoverSound() override { client->PlayHoverSound(); }
+				void PlaySelectSound() override { client->PlaySelectSound(); }
+				void OnTeamSelected(int team) override { client->OnTeamSelected(team); }
+				void OnWeaponSelected(WeaponType weapon) override { client->OnWeaponSelected(weapon); }
+				void OnSpawnPressed() override { client->OnSpawnPressed(); }
+				void OnClosePressed() override { client->OnClosePressed(); }
+				bool HasLocalPlayer() override { return client->HasLocalPlayer(); }
+				int GetLocalPlayerTeam() override {
+					if (!client->GetWorld())
+						return 2;
+					auto playerOpt = client->GetWorld()->GetLocalPlayer();
+					return playerOpt ? playerOpt->GetTeamId() : 2;
+				}
+				client::World* GetWorld() override { return client->GetWorld(); }
+			};
+
+			auto hostAdapter = Handle<ClientLimboHost>::New(this);
+			limboMenu = stmp::make_unique<gui::LimboMenu>(
+				Handle<gui::ILimboMenuHost>(hostAdapter.GetPointerOrNull()), *renderer,
+				*fontManager, *cursor, audioDev.GetPointerOrNull());
 			scriptedUI = Handle<ClientUI>::New(renderer.GetPointerOrNull(),
 				audioDev.GetPointerOrNull(), fontManager.GetPointerOrNull(), this);
 
@@ -735,7 +763,11 @@ namespace spades {
 
 			chatWindow->Update(dt);
 			killfeedWindow->Update(dt);
-			limbo->Update(dt);
+			limboMenu->Update(dt);
+
+			// Auto-open limboMenu when entering limbo state
+			if (IsLimboViewActive() && !limboMenu->IsActive())
+				limboMenu->Open();
 
 			// The loading screen
 			NetClientStatus currentStatus = activeNet->GetStatus();
@@ -876,6 +908,18 @@ namespace spades {
 			if (!IsLimboViewActive())
 				return;
 			inGameLimbo = false;
+			limboMenu->Close();
+		}
+
+		void Client::ToggleLimboView() {
+			if (!world || !world->GetLocalPlayer())
+				return;
+
+			inGameLimbo = !inGameLimbo;
+			if (inGameLimbo && !limboMenu->IsActive())
+				limboMenu->Open();
+			else if (!inGameLimbo && limboMenu->IsActive())
+				limboMenu->Close();
 		}
 
 		void Client::SpawnPressed() {
@@ -952,6 +996,32 @@ namespace spades {
 		void Client::PlayScreenshotSound() {
 			Handle<IAudioChunk> c = audioDevice->RegisterSound("Sounds/Misc/SwitchMapZoom.opus");
 			audioDevice->PlayLocal(c.GetPointerOrNull(), AudioParam());
+		}
+
+		void Client::PlayHoverSound() {
+			Handle<IAudioChunk> c = audioDevice->RegisterSound("Sounds/Feedback/Limbo/Hover.opus");
+			audioDevice->PlayLocal(c.GetPointerOrNull(), AudioParam());
+		}
+
+		void Client::PlaySelectSound() {
+			Handle<IAudioChunk> c = audioDevice->RegisterSound("Sounds/Feedback/Limbo/Select.opus");
+			audioDevice->PlayLocal(c.GetPointerOrNull(), AudioParam());
+		}
+
+		void Client::OnTeamSelected(int team) {
+			limbo->SetSelectedTeam(team);
+		}
+
+		void Client::OnWeaponSelected(WeaponType weapon) {
+			limbo->SetSelectedWeapon(weapon);
+		}
+
+		void Client::OnSpawnPressed() {
+			SpawnPressed();
+		}
+
+		void Client::OnClosePressed() {
+			CloseLimboView();
 		}
 
 		void Client::LoadKillSounds() {

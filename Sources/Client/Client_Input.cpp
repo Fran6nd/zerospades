@@ -156,7 +156,7 @@ namespace spades {
 			}
 
 			if (IsLimboViewActive()) {
-				limbo->MouseEvent(x, y);
+				limboMenu->MouseEvent(x, y);
 				return;
 			}
 
@@ -406,8 +406,7 @@ namespace spades {
 						inGameLimbo = false;
 						return;
 					}
-					if (down)
-						limbo->KeyEvent(name);
+					limboMenu->KeyEvent(name, down);
 					return;
 				}
 
@@ -1013,6 +1012,7 @@ namespace spades {
 					audioDevice->PlayLocal(c.GetPointerOrNull(), AudioParam());
 				} else if (CheckKey(cg_keyLimbo, name) && down) {
 					inGameLimbo = true;
+					limboMenu->Open();
 				} else if (CheckKey(cg_keySceneshot, name) && down) {
 					TakeScreenShot(true);
 				} else if (CheckKey(cg_keyScreenshot, name) && down) {

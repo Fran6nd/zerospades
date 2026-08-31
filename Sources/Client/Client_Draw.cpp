@@ -2009,11 +2009,7 @@ namespace spades {
 
 			// draw limbo view (above everything)
 			if (IsLimboViewActive() && !scriptedUI->NeedsInput())
-				limbo->Draw();
-
-			// draw cursor for limbo
-			if (cursor && IsLimboViewActive())
-				cursor->Draw();
+				limboMenu->Draw();
 		}
 
 		void Client::Draw2DWithoutWorld() {

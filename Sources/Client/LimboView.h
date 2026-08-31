@@ -65,15 +65,11 @@ namespace spades {
 			~LimboView();
 
 			void Update(float dt);
-			void MouseEvent(float x, float y);
-			void KeyEvent(const std::string&);
 
 			int GetSelectedTeam() { return selectedTeam; }
 			WeaponType GetSelectedWeapon() { return selectedWeapon; }
 			void SetSelectedTeam(int team) { selectedTeam = team; }
 			void SetSelectedWeapon(WeaponType type) { selectedWeapon = type; }
-
-			void Draw();
 		};
 	} // namespace client
 } // namespace spades
