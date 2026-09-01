@@ -81,7 +81,6 @@ namespace spades {
 
 		class Client : public IWorldListener, public gui::View {
 			friend class ScoreboardView;
-			friend class LimboView;
 			friend class MapView;
 			friend class FallingBlock;
 			friend class PaletteView;

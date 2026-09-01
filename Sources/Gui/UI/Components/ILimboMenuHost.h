@@ -32,7 +32,6 @@ namespace spades {
 		class ILimboMenuHost : public RefCountedObject {
 		public:
 			virtual ~ILimboMenuHost() = default;
-			virtual client::IAudioDevice* GetAudioDevice() = 0;
 			virtual void PlayHoverSound() = 0;
 			virtual void PlaySelectSound() = 0;
 			virtual void OnTeamSelected(int team) = 0;
@@ -42,7 +41,8 @@ namespace spades {
 			virtual int GetSelectedTeam() = 0;
 			virtual WeaponType GetSelectedWeapon() = 0;
 			virtual std::string GetTeamName(int teamId) = 0;
-			virtual int GetPreselectedTeam() = 0;
+			/** False until the first spawn, which is when the menu has nothing to close back to. */
+			virtual bool HasLocalPlayer() = 0;
 		};
 	} // namespace gui
 } // namespace spades

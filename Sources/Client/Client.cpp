@@ -152,7 +152,7 @@ namespace spades {
 			mapView = stmp::make_unique<MapView>(this, false);
 			largeMapView = stmp::make_unique<MapView>(this, true);
 			scoreboard = stmp::make_unique<ScoreboardView>(this);
-			limbo = stmp::make_unique<LimboView>(this);
+			limbo = stmp::make_unique<LimboView>();
 			paletteView = stmp::make_unique<PaletteView>(this);
 			pieMenuView = stmp::make_unique<PieMenuView>(this, chatFont,
 				&fontManager->GetHeadingFont());
@@ -164,7 +164,6 @@ namespace spades {
 				Client* client;
 			public:
 				explicit ClientLimboHost(Client* c) : client(c) {}
-				client::IAudioDevice* GetAudioDevice() override { return &client->GetAudioDevice(); }
 				void PlayHoverSound() override { client->PlayHoverSound(); }
 				void PlaySelectSound() override { client->PlaySelectSound(); }
 				void OnTeamSelected(int team) override { client->OnTeamSelected(team); }
@@ -180,20 +179,13 @@ namespace spades {
 						return client->GetWorld()->GetTeamName(teamId);
 					return teamId == 0 ? "Team 1" : (teamId == 1 ? "Team 2" : "");
 				}
-				int GetPreselectedTeam() override {
-					if (!client->HasLocalPlayer())
-						return -1;
-					int team = client->GetWorld() ?
-						(client->GetWorld()->GetLocalPlayer() ?
-							client->GetWorld()->GetLocalPlayer()->GetTeamId() : 2) : 2;
-					return team < 2 ? team : -1;
-				}
+				bool HasLocalPlayer() override { return client->HasLocalPlayer(); }
 			};
 
 			auto hostAdapter = Handle<ClientLimboHost>::New(this);
 			limboMenu = stmp::make_unique<gui::LimboMenu>(
 				Handle<gui::ILimboMenuHost>(hostAdapter.GetPointerOrNull()), *renderer,
-				*fontManager, *cursor, audioDev.GetPointerOrNull());
+				*fontManager, *cursor);
 			scriptedUI = Handle<ClientUI>::New(renderer.GetPointerOrNull(),
 				audioDev.GetPointerOrNull(), fontManager.GetPointerOrNull(), this);
 

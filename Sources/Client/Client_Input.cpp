@@ -376,6 +376,7 @@ namespace spades {
 				if (down) {
 					if (inGameLimbo) {
 						inGameLimbo = false;
+						limboMenu->Close();
 					} else {
 						if (GetWorld() == nullptr) {
 							// loading now, abort download, and quit the game immediately.
@@ -404,6 +405,7 @@ namespace spades {
 				if (IsLimboViewActive()) {
 					if ((CheckKey(cg_keyLimbo, name) && down) && maybePlayer) {
 						inGameLimbo = false;
+						limboMenu->Close();
 						return;
 					}
 					limboMenu->KeyEvent(name, down);

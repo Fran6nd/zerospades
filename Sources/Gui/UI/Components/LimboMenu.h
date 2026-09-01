@@ -32,7 +32,6 @@ namespace spades {
 	namespace client {
 		class IRenderer;
 		class FontManager;
-		class IAudioDevice;
 	} // namespace client
 	namespace gui {
 		class SoftwareCursor;
@@ -40,8 +39,7 @@ namespace spades {
 		class LimboMenu : public IModalMenu {
 		public:
 			LimboMenu(Handle<ILimboMenuHost> host, client::IRenderer& renderer,
-					  client::FontManager& fontManager, SoftwareCursor& cursor,
-					  client::IAudioDevice* audioDevice = nullptr);
+					  client::FontManager& fontManager, SoftwareCursor& cursor);
 			~LimboMenu();
 
 			// IModalMenu implementation
@@ -62,7 +60,6 @@ namespace spades {
 			Handle<client::IRenderer> renderer;
 			Handle<client::FontManager> fontManager;
 			SoftwareCursor& cursor;
-			Handle<client::IAudioDevice> audioDevice;
 
 			bool isActive = false;
 			int prevSelectedItem = -1;
@@ -86,6 +83,10 @@ namespace spades {
 
 			void RecalculateLayout();
 			void RecalculateItemRects();
+			/** Recomputes layout and rects if the screen extent moved since last time. */
+			void EnsureLayout();
+			void UpdateItemVisibility();
+			void UpdateHover();
 			int MenuButtonAt(const Vector2& p) const;
 			void HandleMenuItemSelection(MenuItemType type);
 		};
