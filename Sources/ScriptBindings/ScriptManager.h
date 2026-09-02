@@ -27,10 +27,10 @@
 #include <AngelScript/include/angelscript.h>
 
 // Calling convention configuration for ARM64
-// Windows ARM64 uses AS_MAX_PORTABILITY (only generic calling conventions available)
+// AS_MAX_PORTABILITY (set by CMake for Windows ARM64) uses only generic calling conventions
 // Other platforms (macOS, Linux ARM64, x86/x64) use native calling conventions
-#ifdef _M_ARM64
-	// Windows ARM64: AS_MAX_PORTABILITY is enabled, only generic calling convention works
+#ifdef AS_MAX_PORTABILITY
+	// AS_MAX_PORTABILITY is enabled, only generic calling convention works
 	#define SPADES_ASCC_CDECL asCALL_GENERIC
 	#define SPADES_ASCC_THISCALL asCALL_GENERIC
 	#define SPADES_ASCC_CDECL_OBJLAST asCALL_GENERIC
