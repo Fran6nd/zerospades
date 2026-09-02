@@ -8,6 +8,23 @@
 #ifndef ANGELSCRIPT_H
 // Avoid having to inform include path if header is already include before
 #include <angelscript.h>
+// Calling convention support for AS_MAX_PORTABILITY on ARM64 Windows
+#ifdef AS_MAX_PORTABILITY
+	#define ADDON_CC_CDECL asCALL_GENERIC
+	#define ADDON_CC_THISCALL asCALL_GENERIC
+	#define ADDON_CC_CDECL_OBJLAST asCALL_GENERIC
+	#define ADDON_CC_CDECL_OBJFIRST asCALL_GENERIC
+	#define ADDON_CC_THISCALL_OBJLAST asCALL_GENERIC
+	#define ADDON_CC_THISCALL_OBJFIRST asCALL_GENERIC
+#else
+	#define ADDON_CC_CDECL asCALL_CDECL
+	#define ADDON_CC_THISCALL asCALL_THISCALL
+	#define ADDON_CC_CDECL_OBJLAST asCALL_CDECL_OBJLAST
+	#define ADDON_CC_CDECL_OBJFIRST asCALL_CDECL_OBJFIRST
+	#define ADDON_CC_THISCALL_OBJLAST asCALL_THISCALL_OBJLAST
+	#define ADDON_CC_THISCALL_OBJFIRST asCALL_THISCALL_OBJFIRST
+#endif
+
 #endif
 
 // By default the CScriptDictionary use the std::string for the keys.

@@ -95,6 +95,19 @@ execute_process(
 
 target_compile_definitions(ZeroSpades PRIVATE GIT_COMMIT_HASH="${GIT_COMMIT_HASH}")
 
+# Windows ARM64: Ensure script bindings are compiled with AS_MAX_PORTABILITY
+# This must match AngelScript's compilation flags to avoid calling convention mismatches
+message(STATUS "[Sources] CMAKE_VS_PLATFORM_NAME=${CMAKE_VS_PLATFORM_NAME}")
+message(STATUS "[Sources] MSVC_CXX_ARCHITECTURE_ID=${MSVC_CXX_ARCHITECTURE_ID}")
+if(MSVC)
+	string(TOUPPER "${CMAKE_VS_PLATFORM_NAME}" _plat_upper)
+	string(TOUPPER "${MSVC_CXX_ARCHITECTURE_ID}" _arch_upper)
+	if(_plat_upper STREQUAL "ARM64" OR _arch_upper STREQUAL "ARM64")
+		message(STATUS "[Sources] Adding AS_MAX_PORTABILITY to ZeroSpades")
+		target_compile_definitions(ZeroSpades PRIVATE AS_MAX_PORTABILITY)
+	endif()
+endif()
+
 if(APPLE OR WIN32)
 	# This value is reflected to the macOS application bundle's name, so use
 	# the correct capitalization.

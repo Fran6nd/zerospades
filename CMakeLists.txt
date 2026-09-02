@@ -122,6 +122,15 @@ if(USE_INTERNAL_OPENAL)
 	option(ALSOFT_INSTALL_AMBDEC_PRESETS "Install AmbiDec preset files" OFF)
 	option(ALSOFT_INSTALL_EXAMPLES "Install example programs (alplay, alstream, ...)" OFF)
 	option(ALSOFT_INSTALL_UTILS "Install utility programs (openal-info, alsoft-config, ...)" OFF)
+
+	# Disable x86-specific optimizations for ARM64
+	if(CMAKE_SYSTEM_PROCESSOR MATCHES "ARM64|aarch64" OR MSVC_C_ARCHITECTURE_ID MATCHES "ARM64")
+		set(ALSOFT_CPUEXT_SSE OFF CACHE BOOL "")
+		set(ALSOFT_CPUEXT_SSE2 OFF CACHE BOOL "")
+		set(ALSOFT_CPUEXT_SSE3 OFF CACHE BOOL "")
+		set(ALSOFT_CPUEXT_SSE4_1 OFF CACHE BOOL "")
+	endif()
+
 	add_subdirectory(openal-soft)
 	if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang" OR CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
 		foreach(OPENAL_TARGET OpenAL alsoft.common alsoft.fmt)
@@ -138,6 +147,57 @@ if(USE_INTERNAL_OPENAL)
 else()
 	# Use system OpenAL
 	find_package(OpenAL REQUIRED)
+endif()
+
+# Windows ARM64: Enable AS_MAX_PORTABILITY for all sources (propagate to script bindings)
+# This flag is also set in AngelScript/projects/cmake/CMakeLists.txt for the AngelScript library.
+# We must detect ARM64 here to ensure script bindings use the same calling conventions as AngelScript.
+if(MSVC)
+	set(IS_ARM64 FALSE)
+
+	# Method 1: CMAKE_VS_PLATFORM_NAME (Visual Studio generator, most reliable)
+	string(TOUPPER "${CMAKE_VS_PLATFORM_NAME}" _platform_upper)
+	if(_platform_upper STREQUAL "ARM64")
+		set(IS_ARM64 TRUE)
+		message(STATUS "ARM64 detected via CMAKE_VS_PLATFORM_NAME")
+	endif()
+
+	# Method 2: MSVC_CXX_ARCHITECTURE_ID (MSVC toolchain detection)
+	if(NOT IS_ARM64)
+		string(TOUPPER "${MSVC_CXX_ARCHITECTURE_ID}" _arch_upper)
+		if(_arch_upper STREQUAL "ARM64")
+			set(IS_ARM64 TRUE)
+			message(STATUS "ARM64 detected via MSVC_CXX_ARCHITECTURE_ID")
+		endif()
+	endif()
+
+	# Method 3: CMAKE_SYSTEM_PROCESSOR (system-level detection)
+	if(NOT IS_ARM64)
+		string(TOUPPER "${CMAKE_SYSTEM_PROCESSOR}" _proc_upper)
+		if(_proc_upper MATCHES "ARM64|AARCH64")
+			set(IS_ARM64 TRUE)
+			message(STATUS "ARM64 detected via CMAKE_SYSTEM_PROCESSOR")
+		endif()
+	endif()
+
+	# Method 4: Negative detection - if building for known non-ARM64, don't assume ARM64
+	if(NOT IS_ARM64)
+		string(TOUPPER "${MSVC_CXX_ARCHITECTURE_ID}" _arch_upper)
+		string(TOUPPER "${CMAKE_GENERATOR_PLATFORM}" _gen_upper)
+		# Only assume ARM64 if we're not explicitly x86/x64
+		if(NOT _arch_upper MATCHES "X86|X64|IA64" AND
+		   NOT _gen_upper MATCHES "WIN32|X64")
+			set(IS_ARM64 TRUE)
+			message(STATUS "ARM64 assumed (not x86/x64)")
+		endif()
+	endif()
+
+	if(IS_ARM64)
+		add_definitions(-DAS_MAX_PORTABILITY)
+		message(STATUS "Enabling AS_MAX_PORTABILITY for Windows ARM64")
+	else()
+		message(STATUS "Not ARM64 (CMAKE_VS_PLATFORM_NAME=${CMAKE_VS_PLATFORM_NAME}, MSVC_CXX_ARCHITECTURE_ID=${MSVC_CXX_ARCHITECTURE_ID})")
+	endif()
 endif()
 
 if(CMAKE_COMPILER_IS_GNUCXX)

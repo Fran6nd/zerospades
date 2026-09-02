@@ -25,6 +25,21 @@
 #define AS_USE_ACCESSORS 1
 
 #include <AngelScript/include/angelscript.h>
+
+// Calling convention configuration for ARM64
+// Windows ARM64 uses AS_MAX_PORTABILITY (only generic calling conventions available)
+// Other platforms (macOS, Linux ARM64, x86/x64) use native calling conventions
+#ifdef _M_ARM64
+	// Windows ARM64: AS_MAX_PORTABILITY is enabled, only generic calling convention works
+	#define SPADES_ASCC_CDECL asCALL_GENERIC
+	#define SPADES_ASCC_THISCALL asCALL_GENERIC
+	#define SPADES_ASCC_CDECL_OBJLAST asCALL_GENERIC
+#else
+	// All other platforms: use native calling conventions for optimal performance
+	#define SPADES_ASCC_CDECL asCALL_CDECL
+	#define SPADES_ASCC_THISCALL asCALL_THISCALL
+	#define SPADES_ASCC_CDECL_OBJLAST asCALL_CDECL_OBJLAST
+#endif
 #include <AngelScript/addons/scriptany.h>
 #include <AngelScript/addons/scriptarray.h>
 #include <AngelScript/addons/scriptbuilder.h>
