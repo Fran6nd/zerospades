@@ -173,8 +173,13 @@ set(LIBRARY_OUTPUT_PATH ${CMAKE_BINARY_DIR}/lib)
 find_package(Threads)
 target_link_libraries(Angelscript ${CMAKE_THREAD_LIBS_INIT})
 
+# /MP is a cl.exe switch. A target-wide COMPILE_FLAGS is emitted into every compile
+# item, including the assembler ones, and armasm64.exe aborts on an unrecognised
+# argument (error A2029). Scope it to the C/C++ sources so the assembly stays clean.
 if(MSVC)
-        set_target_properties(Angelscript PROPERTIES COMPILE_FLAGS "/MP")
+        set(ANGELSCRIPT_CL_SOURCE ${ANGELSCRIPT_SOURCE})
+        list(FILTER ANGELSCRIPT_CL_SOURCE EXCLUDE REGEX "\\.(asm|S)$")
+        set_source_files_properties(${ANGELSCRIPT_CL_SOURCE} PROPERTIES COMPILE_FLAGS "/MP")
 endif(MSVC)
 
 set(RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/../../bin)
