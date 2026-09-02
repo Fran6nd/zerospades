@@ -53,6 +53,7 @@
 SPADES_SETTING(cg_ragdoll);
 DEFINE_SPADES_SETTING(cg_animations, "1");
 SPADES_SETTING(cg_shake);
+SPADES_SETTING(cg_everyoneFlashlight);
 SPADES_SETTING(r_hdr);
 DEFINE_SPADES_SETTING(cg_environmentalAudio, "1");
 DEFINE_SPADES_SETTING(cg_classicPlayerModels, "0");
@@ -647,6 +648,47 @@ namespace spades {
 			return axes;
 		}
 
+		void ClientPlayer::AddFlashlightToScene(const Vector3& lightOrigin) {
+			Player& p = player;
+			IRenderer& renderer = client.GetRenderer();
+
+			// Remote players are lit whenever cg_everyoneFlashlight is set; the local
+			// player keeps the manual toggle.
+			const bool isRemote = !p.IsLocalPlayer();
+			if (isRemote ? !cg_everyoneFlashlight : !client.flashlightOn)
+				return;
+
+			float brightness = 1.0F;
+			if (!isRemote) { // fade in when the local player turns it on
+				brightness = client.time - client.flashlightOnTime;
+				brightness = 1.0F - expf(-brightness * 5.0F);
+			}
+			brightness *= r_hdr ? 3.0F : 1.5F;
+
+			const std::array<Vector3, 3> axes = GetFlashlightAxes();
+
+			// A lamp buried in geometry would light the far side of the block it
+			// sits in, since spotlights aren't shadowed.
+			if (World* world = client.GetWorld()) {
+				if (GameMap* map = world->GetMap().GetPointerOrNull()) {
+					IntVector3 block = lightOrigin.Floor();
+					if (map->IsSolidWrapped(block.x, block.y, block.z))
+						return;
+				}
+			}
+
+			DynamicLightParam light;
+			light.type = DynamicLightTypeSpotlight;
+			light.origin = lightOrigin;
+			light.radius = 60.0F;
+			light.color = MakeVector3(1.0F, 0.7F, 0.5F) * brightness;
+			light.spotAngle = DEG2RAD(90);
+			light.spotAxis = axes;
+			Handle<IImage> img = renderer.RegisterImage("Gfx/Spotlight.jpg");
+			light.image = img.GetPointerOrNull();
+			renderer.AddLight(light);
+		}
+
 		void ClientPlayer::AddToSceneFirstPersonView() {
 			Player& p = player;
 			Weapon& w = p.GetWeapon();
@@ -668,24 +710,8 @@ namespace spades {
 			sandboxedRenderer->SetClipBox(clip);
 			sandboxedRenderer->SetAllowDepthHack(true); // allow depthhack
 
-			// no flashlight if spectating other players while dead
-			if (client.flashlightOn && p.IsLocalPlayer()) {
-				float brightness = client.time - client.flashlightOnTime;
-				brightness = 1.0F - expf(-brightness * 5.0F);
-				brightness *= r_hdr ? 3.0F : 1.5F;
-
-				// add flash light
-				DynamicLightParam light;
-				light.type = DynamicLightTypeSpotlight;
-				light.origin = eyeMatrix.GetOrigin();
-				light.radius = 60.0F;
-				light.color = MakeVector3(1.0F, 0.7F, 0.5F) * brightness;
-				light.spotAngle = DEG2RAD(90);
-				light.spotAxis = GetFlashlightAxes();
-				Handle<IImage> img = renderer.RegisterImage("Gfx/Spotlight.jpg");
-				light.image = img.GetPointerOrNull();
-				renderer.AddLight(light);
-			}
+			// This path also runs for a remote player the camera is following.
+			AddFlashlightToScene(eyeMatrix.GetOrigin());
 
 			Vector3 leftHand, rightHand;
 			leftHand = MakeVector3(0, 0, 0);
@@ -1246,6 +1272,9 @@ namespace spades {
 					renderer.RenderModel(*model, param);
 				}
 			}
+
+			// Roughly head height, so the lamp isn't buried in the torso.
+			AddFlashlightToScene(origin + Vector3(0.0F, 0.0F, -0.3F));
 
 			// third person player rendering, done
 		}

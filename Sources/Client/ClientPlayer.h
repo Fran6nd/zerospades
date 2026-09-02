@@ -76,6 +76,14 @@ namespace spades {
 			Handle<SandboxedRenderer> sandboxedRenderer;
 
 			std::array<Vector3, 3> GetFlashlightAxes();
+
+			/**
+			 * Emit this player's flashlight from `lightOrigin`, if it should be lit
+			 * at all. Shared by the first- and third-person paths, which differ only
+			 * in where the lamp sits.
+			 */
+			void AddFlashlightToScene(const Vector3& lightOrigin);
+
 			void AddToSceneThirdPersonView();
 			void AddToSceneFirstPersonView();
 
