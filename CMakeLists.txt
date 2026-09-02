@@ -150,15 +150,6 @@ else()
 	find_package(OpenAL REQUIRED)
 endif()
 
-# Windows ARM64: Enable AS_MAX_PORTABILITY for all sources (propagate to script bindings)
-# This flag is also set in AngelScript/projects/cmake/CMakeLists.txt for the AngelScript library.
-# We must detect ARM64 here to ensure script bindings use the same calling conventions as AngelScript.
-include(cmake/DetectARM64.cmake)
-if(IS_ARM64)
-	add_definitions(-DAS_MAX_PORTABILITY)
-	message(STATUS "Enabling AS_MAX_PORTABILITY for Windows ARM64")
-endif()
-
 if(CMAKE_COMPILER_IS_GNUCXX)
 	message(STATUS "C++17 activated.")
 

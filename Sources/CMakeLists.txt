@@ -95,13 +95,6 @@ execute_process(
 
 target_compile_definitions(ZeroSpades PRIVATE GIT_COMMIT_HASH="${GIT_COMMIT_HASH}")
 
-# Windows ARM64: Ensure script bindings are compiled with AS_MAX_PORTABILITY
-# This must match AngelScript's compilation flags to avoid calling convention mismatches
-include(${CMAKE_SOURCE_DIR}/cmake/DetectARM64.cmake)
-if(IS_ARM64)
-	target_compile_definitions(ZeroSpades PRIVATE AS_MAX_PORTABILITY)
-endif()
-
 if(APPLE OR WIN32)
 	# This value is reflected to the macOS application bundle's name, so use
 	# the correct capitalization.

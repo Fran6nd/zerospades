@@ -1,11 +1,14 @@
-# Detect Windows ARM64 and enable AS_MAX_PORTABILITY if needed.
-# This module provides a consistent ARM64 detection across all CMake build files.
+# Detect a Windows ARM64 (MSVC) build and expose the result as IS_ARM64.
+# This module provides consistent ARM64 detection across all CMake build files;
+# include it rather than re-implementing the checks.
 #
 # Usage:
-#   include(${CMAKE_CURRENT_SOURCE_DIR}/../../cmake/DetectARM64.cmake)
+#   include(${CMAKE_SOURCE_DIR}/cmake/DetectARM64.cmake)
 #   if(IS_ARM64)
-#       target_compile_definitions(MyTarget PRIVATE AS_MAX_PORTABILITY)
+#       # ARM64-specific configuration
 #   endif()
+#
+# IS_ARM64 is always defined (FALSE on non-MSVC toolchains).
 
 if(MSVC)
 	if(NOT DEFINED IS_ARM64)

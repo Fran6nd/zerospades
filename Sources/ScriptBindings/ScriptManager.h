@@ -26,20 +26,20 @@
 
 #include <AngelScript/include/angelscript.h>
 
-// Calling convention configuration for ARM64
-// AS_MAX_PORTABILITY (set by CMake for Windows ARM64) uses only generic calling conventions
-// Other platforms (macOS, Linux ARM64, x86/x64) use native calling conventions
-#ifdef AS_MAX_PORTABILITY
-	// AS_MAX_PORTABILITY is enabled, only generic calling convention works
-	#define SPADES_ASCC_CDECL asCALL_GENERIC
-	#define SPADES_ASCC_THISCALL asCALL_GENERIC
-	#define SPADES_ASCC_CDECL_OBJLAST asCALL_GENERIC
-#else
-	// All other platforms: use native calling conventions for optimal performance
-	#define SPADES_ASCC_CDECL asCALL_CDECL
-	#define SPADES_ASCC_THISCALL asCALL_THISCALL
-	#define SPADES_ASCC_CDECL_OBJLAST asCALL_CDECL_OBJLAST
-#endif
+// Calling conventions used by every binding registration below.
+//
+// Every target we build (x86/x64, macOS/Linux/Windows ARM64) provides AngelScript's
+// native calling conventions, so these map straight onto them.
+//
+// These must stay native as long as registrations pass asFUNCTION()/asMETHOD():
+// DetectCallingConvention() (as_callfunc.cpp) rejects a plain function pointer or a
+// class-method pointer combined with asCALL_GENERIC and returns asWRONG_CALLING_CONV.
+// A genuine AS_MAX_PORTABILITY build would additionally have to route every
+// registration through the WRAP_FN/WRAP_MFN macros in addons/aswrappedcall.h, which
+// emit real void(asIScriptGeneric*) thunks.
+#define SPADES_ASCC_CDECL asCALL_CDECL
+#define SPADES_ASCC_THISCALL asCALL_THISCALL
+#define SPADES_ASCC_CDECL_OBJLAST asCALL_CDECL_OBJLAST
 #include <AngelScript/addons/scriptany.h>
 #include <AngelScript/addons/scriptarray.h>
 #include <AngelScript/addons/scriptbuilder.h>

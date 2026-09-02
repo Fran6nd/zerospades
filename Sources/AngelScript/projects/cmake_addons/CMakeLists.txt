@@ -38,13 +38,6 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../include)
 # This is required for compatibility with ZeroSpades scripts
 add_definitions("-D_CRT_SECURE_NO_WARNINGS -DANGELSCRIPT_EXPORT -D_LIB -DAS_USE_ACCESSORS=1")
 
-# Windows ARM64: Enable AS_MAX_PORTABILITY for addon compilation
-# Must match AngelScript and script bindings to ensure consistent calling conventions
-include(${CMAKE_SOURCE_DIR}/cmake/DetectARM64.cmake)
-if(IS_ARM64)
-	add_definitions(-DAS_MAX_PORTABILITY)
-endif()
-
 # Fix x64 issues on Linux
 if("${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "x86_64" AND NOT APPLE)
         add_definitions(-fPIC)

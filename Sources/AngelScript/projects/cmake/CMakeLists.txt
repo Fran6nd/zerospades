@@ -82,18 +82,33 @@ if(UNIX AND NOT APPLE AND NOT ANDROID AND CMAKE_SYSTEM_PROCESSOR MATCHES "arm64|
         endif()
 endif()
 
-# ARM64 Windows: Hybrid generic calling convention approach
-# The as_callfunc_arm64.cpp requires as_callfunc_arm64_msvc.asm assembly (armasm64.exe compiler).
-# Since armasm64.exe is not available in standard CMake + MSVC setups, we use a hybrid approach:
-# 1. AngelScript: Enable AS_MAX_PORTABILITY for internal generic calling convention support
-# 2. Script Bindings: Use SPADES_ASCC_* macros to select asCALL_GENERIC on ARM64
-# This combination avoids the "Not supported" error that AS_MAX_PORTABILITY alone causes,
-# because script functions explicitly use the generic calling convention.
-# Performance impact: ~5-10% slower than native calling conventions on ARM64.
+# Add ARM64 support for Windows (MSVC)
+# as_config.h defines AS_ARM64 whenever _M_ARM64 is set, so AngelScript expects the
+# native ARM64 implementation to be present. That implementation is
+# as_callfunc_arm64.cpp plus as_callfunc_arm64_msvc.asm, which is assembled by
+# armasm64.exe (CMake exposes it as the ASM_MARMASM language, available since 3.26).
+#
+# Do NOT substitute AS_MAX_PORTABILITY here: it compiles as_callfunc_arm64.cpp out
+# (the file is guarded by #ifndef AS_MAX_PORTABILITY) and restricts the engine to
+# asCALL_GENERIC, which every asFUNCTION()/asMETHOD() registration rejects with
+# asWRONG_CALLING_CONV in DetectCallingConvention() (as_callfunc.cpp).
 include(${CMAKE_SOURCE_DIR}/cmake/DetectARM64.cmake)
 if(IS_ARM64)
-	add_definitions(-DAS_MAX_PORTABILITY)
-	message(STATUS "[AngelScript] Enabling AS_MAX_PORTABILITY for Windows ARM64")
+	if(CMAKE_VERSION VERSION_LESS 3.26)
+		message(FATAL_ERROR
+			"Windows ARM64 requires CMake 3.26 or newer for ASM_MARMASM (armasm64) support. "
+			"Detected CMake ${CMAKE_VERSION}.")
+	endif()
+
+	enable_language(ASM_MARMASM)
+	if(NOT CMAKE_ASM_MARMASM_COMPILER_WORKS)
+		message(FATAL_ERROR "Windows ARM64 target requires a working armasm64 assembler")
+	endif()
+
+	set(ANGELSCRIPT_SOURCE ${ANGELSCRIPT_SOURCE}
+		../../source/as_callfunc_arm64.cpp
+		../../source/as_callfunc_arm64_msvc.asm)
+	message(STATUS "[AngelScript] Building with native ARM64 support for Windows")
 endif()
 
 if(CMAKE_SYSTEM_PROCESSOR MATCHES "riscv64")
