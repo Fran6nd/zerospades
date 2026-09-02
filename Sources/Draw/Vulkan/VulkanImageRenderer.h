@@ -126,6 +126,17 @@ namespace spades {
 			void Add(float dx1, float dy1, float dx2, float dy2, float dx3, float dy3, float dx4,
 			         float dy4, float sx1, float sy1, float sx2, float sy2, float sx3, float sy3,
 			         float sx4, float sy4, float r, float g, float b, float a);
+			// Flat-shaded triangle. Texture coordinates are pinned to (0, 0) because
+			// the only caller draws with the white image.
+			void AddTriangle(float dx1, float dy1, float dx2, float dy2, float dx3, float dy3,
+			                 float r, float g, float b, float a);
+			// Quad with a two-colour gradient. `horizontal` fades left-to-right
+			// instead of top-to-bottom; vertices are in TL, TR, BR, BL order.
+			void AddGradient(float dx1, float dy1, float dx2, float dy2, float dx3, float dy3,
+			                 float dx4, float dy4, float sx1, float sy1, float sx2, float sy2,
+			                 float sx3, float sy3, float sx4, float sy4, float r0, float g0,
+			                 float b0, float a0, float r1, float g1, float b1, float a1,
+			                 bool horizontal);
 		};
 	} // namespace draw
 } // namespace spades
