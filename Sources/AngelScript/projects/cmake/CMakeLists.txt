@@ -90,51 +90,10 @@ endif()
 # This combination avoids the "Not supported" error that AS_MAX_PORTABILITY alone causes,
 # because script functions explicitly use the generic calling convention.
 # Performance impact: ~5-10% slower than native calling conventions on ARM64.
-if(MSVC)
-	set(IS_ARM64 FALSE)
-
-	# Method 1: CMAKE_VS_PLATFORM_NAME (Visual Studio generator, most reliable)
-	string(TOUPPER "${CMAKE_VS_PLATFORM_NAME}" _platform_upper)
-	if(_platform_upper STREQUAL "ARM64")
-		set(IS_ARM64 TRUE)
-		message(STATUS "[AngelScript] ARM64 detected via CMAKE_VS_PLATFORM_NAME")
-	endif()
-
-	# Method 2: MSVC_CXX_ARCHITECTURE_ID (MSVC toolchain detection)
-	if(NOT IS_ARM64)
-		string(TOUPPER "${MSVC_CXX_ARCHITECTURE_ID}" _arch_upper)
-		if(_arch_upper STREQUAL "ARM64")
-			set(IS_ARM64 TRUE)
-			message(STATUS "[AngelScript] ARM64 detected via MSVC_CXX_ARCHITECTURE_ID")
-		endif()
-	endif()
-
-	# Method 3: CMAKE_SYSTEM_PROCESSOR (system-level detection)
-	if(NOT IS_ARM64)
-		string(TOUPPER "${CMAKE_SYSTEM_PROCESSOR}" _proc_upper)
-		if(_proc_upper MATCHES "ARM64|AARCH64")
-			set(IS_ARM64 TRUE)
-			message(STATUS "[AngelScript] ARM64 detected via CMAKE_SYSTEM_PROCESSOR")
-		endif()
-	endif()
-
-	# Method 4: Negative detection
-	if(NOT IS_ARM64)
-		string(TOUPPER "${MSVC_CXX_ARCHITECTURE_ID}" _arch_upper)
-		string(TOUPPER "${CMAKE_GENERATOR_PLATFORM}" _gen_upper)
-		if(NOT _arch_upper MATCHES "X86|X64|IA64" AND
-		   NOT _gen_upper MATCHES "WIN32|X64")
-			set(IS_ARM64 TRUE)
-			message(STATUS "[AngelScript] ARM64 assumed (not x86/x64)")
-		endif()
-	endif()
-
-	if(IS_ARM64)
-		add_definitions(-DAS_MAX_PORTABILITY)
-		message(STATUS "[AngelScript] Enabling AS_MAX_PORTABILITY for Windows ARM64")
-	else()
-		message(STATUS "[AngelScript] Not ARM64 (CMAKE_VS_PLATFORM_NAME=${CMAKE_VS_PLATFORM_NAME}, MSVC_CXX_ARCHITECTURE_ID=${MSVC_CXX_ARCHITECTURE_ID})")
-	endif()
+include(${CMAKE_SOURCE_DIR}/cmake/DetectARM64.cmake)
+if(IS_ARM64)
+	add_definitions(-DAS_MAX_PORTABILITY)
+	message(STATUS "[AngelScript] Enabling AS_MAX_PORTABILITY for Windows ARM64")
 endif()
 
 if(CMAKE_SYSTEM_PROCESSOR MATCHES "riscv64")
