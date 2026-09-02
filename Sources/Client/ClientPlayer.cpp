@@ -686,12 +686,6 @@ namespace spades {
 				Handle<IImage> img = renderer.RegisterImage("Gfx/Spotlight.jpg");
 				light.image = img.GetPointerOrNull();
 				renderer.AddLight(light);
-
-				light.type = DynamicLightTypePoint;
-				light.radius = 10.0F;
-				light.color *= 0.3F;
-				light.image = nullptr;
-				renderer.AddLight(light);
 			}
 
 			Vector3 leftHand, rightHand;
