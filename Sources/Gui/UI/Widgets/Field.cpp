@@ -38,7 +38,8 @@ namespace spades {
 
 				Handle<client::IImage> img = GetManager().GetRenderer().RegisterImage("Gfx/UI/IBeam.png");
 				Handle<Cursor> ibeam =
-				    Handle<Cursor>::New(&GetManager(), img.GetPointerOrNull(), MakeVector2(16, 16));
+				  Handle<Cursor>::New(GetManager().GetRenderer(), img.GetPointerOrNull(),
+				                      MakeVector2(16, 16));
 				SetCursor(ibeam.GetPointerOrNull());
 			}
 

@@ -22,24 +22,33 @@
 
 #include <Core/Math.h>
 #include <Core/RefCountedObject.h>
+#include <Gui/UI/Framework/Cursor.h>
 
 namespace spades {
     namespace client {
         class IRenderer;
-        class IImage;
     } // namespace client
     namespace gui {
+        /**
+         * The pointer driven by relative mouse motion and drawn by the in-game
+         * overlays, which have no `ui::UIManager` to host one. It owns the pointer
+         * position and the clock behind the cursor animation; the look itself comes
+         * from `ui::Cursor`, shared with the rest of the UI.
+         */
         class SoftwareCursor {
         public:
             explicit SoftwareCursor(client::IRenderer& renderer);
+            /** Advances the cursor animation. Call once per frame. */
+            void Update(float dt);
             void Accumulate(float dx, float dy);
             void SetPosition(const Vector2& p);
             const Vector2& GetPosition() const { return position; }
             void Draw() const;
         private:
             Handle<client::IRenderer> renderer;
-            Handle<client::IImage> cursorImg;
+            Handle<ui::Cursor> cursor;
             Vector2 position;
+            float time = 0.0F;
         };
     } // namespace gui
 } // namespace spades

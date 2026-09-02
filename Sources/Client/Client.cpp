@@ -765,6 +765,9 @@ namespace spades {
 			chatWindow->Update(dt);
 			killfeedWindow->Update(dt);
 			limboMenu->Update(dt);
+			// the cursor keeps its own clock so it also animates for overlays that
+			// run outside this client, such as the editor menu
+			cursor->Update(dt);
 
 			// Auto-open limboMenu when entering limbo state
 			if (IsLimboViewActive() && !limboMenu->IsActive())
