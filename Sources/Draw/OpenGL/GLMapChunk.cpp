@@ -499,11 +499,11 @@ namespace spades {
 			device.BindBuffer(IGLDevice::ArrayBuffer, 0);
 			device.BindBuffer(IGLDevice::ElementArrayBuffer, iBuffer);
 			for (const auto& light : lights) {
-				static GLDynamicLightShader lightShader;
-				lightShader(&renderer.renderer, program, light, 1);
-
 				if (!light.Cull(bx))
 					continue;
+
+				static GLDynamicLightShader lightShader;
+				lightShader(&renderer.renderer, program, light, 1);
 
 				device.DrawElements(IGLDevice::Triangles,
 				                    static_cast<IGLDevice::Sizei>(indices.size()),
