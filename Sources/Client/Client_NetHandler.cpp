@@ -430,6 +430,12 @@ namespace spades {
 		}
 
 		void Client::PlayerSpawned(Player& p) {
+			// An ESP Mark with CLEAR_ON_RESPAWN ends here rather than at the death, so
+			// any Create Player for the id ends it and a mark on a player who stays dead
+			// lasts until they come back. Without the flag it survives death and respawn,
+			// so a punishment mark need not be re-sent on every kill.
+			ExtendedTeamplayPlayerSpawned(p.GetId());
+
 			bool isArena = activeNet && activeNet->GetStatus() == NetClientStatusConnected &&
 			               activeNet->GetGameProperties()->isGameModeArena;
 			if (isArena || cg_corpseClearOnRespawn)

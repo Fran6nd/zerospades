@@ -1178,10 +1178,6 @@ namespace spades {
 			const int victimId = victim.GetId();
 			const int killerId = killer.GetId();
 
-			// An ESP Mark with CLEAR_ON_DEATH ends here. Without the flag it survives
-			// death and respawn, so a punishment mark need not be re-sent on every kill.
-			teamplay->PlayerDied(victimId);
-
 			bool isRevengeKill = false;
 			if (killerId != victimId && (killer.IsLocalPlayer() || victim.IsLocalPlayer())) {
 				// check if the victim was dominating before dying

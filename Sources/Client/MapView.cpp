@@ -928,7 +928,7 @@ namespace spades {
 				// Match the world marker's fade so a ping does not linger on the minimap
 				// after it has gone from the view, or the other way round.
 				constexpr float kFadeOutTime = 0.75F;
-				float alpha = Clamp(ping.timeLeft / kFadeOutTime, 0.0F, 1.0F) * mapAlpha;
+				float alpha = ping.GetFadeAlpha(kFadeOutTime) * mapAlpha;
 				if (alpha <= 0.0F)
 					continue;
 
@@ -944,9 +944,7 @@ namespace spades {
 				// eye and an old one does not compete with the player icons.
 				constexpr float kOuterRadius = 7.0F;
 				constexpr float kInnerRadius = 2.5F;
-				float age = 1.0F - Clamp(ping.timeLeft / ExtendedTeamplay::kPingLifetime,
-										 0.0F, 1.0F);
-				float radius = Mix(kOuterRadius, kInnerRadius, age);
+				float radius = Mix(kOuterRadius, kInnerRadius, ping.GetAgeFraction());
 
 				// The map is flat, so a ping's height plays no part in where it lands.
 				const Vector2 pingPos = ping.position.GetXY();

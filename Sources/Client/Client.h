@@ -568,15 +568,16 @@ namespace spades {
 			 * one the server sent in State Data, not the player's block colour. */
 			Vector4 GetTeamplayTeamColor(Player&, float alpha);
 
-			/** A chevron above a player's head, with their name and class weapon, and
-			 * `note` above the name when there is one. Used for the team overlay, which
-			 * the extension leaves to the client. */
+			/** A chevron above a player's head, with their class weapon, their name when
+			 * `showName`, and `note` above it when there is one. Used for the team
+			 * overlay, which the extension leaves to the client. */
 			void DrawPlayerChevron(Player&, const Vector4& color, bool showWeapon,
+								   bool showName = true,
 								   const std::string& note = std::string());
 
 			/** Whether a player's name is already drawn by a teamplay chevron, so the
 			 * ordinary name label must not draw it a second time lower down. */
-			bool HasTeamplayChevron(Player&);
+			bool HasTeamplayChevronName(Player&);
 
 			/**
 			 * Whether this player is currently revealed through walls, and in what
@@ -711,12 +712,17 @@ namespace spades {
 			// ── Extended Teamplay, called by the net client ─────────────────
 			/** The server announced which of the extension's features it permits. */
 			void ExtendedTeamplayConfigured(uint8_t features);
-			/** A ping was relayed to us. `playerId` is `255` for a server-origin ping. */
-			void ExtendedTeamplayPingReceived(int playerId, Vector3 position,
+			/** A ping was relayed to us. `playerId` is `255` for a server-origin ping,
+			 * and a `duration` of `0` removes that player's ping. */
+			void ExtendedTeamplayPingReceived(int playerId, Vector3 position, float duration,
 											  std::string reason);
 			/** The server marked (or, with a `0` duration, unmarked) a player. */
-			void ExtendedTeamplayMarkReceived(int playerId, uint8_t duration, uint8_t flags,
+			void ExtendedTeamplayMarkReceived(int playerId, float duration, uint8_t flags,
 											  std::string reason);
+			/** A player spawned, which ends a mark that was flagged to end there. Split
+			 * out of `PlayerSpawned` because a demo seek skips the rest of that work but
+			 * still has to rebuild the marks in force at the destination. */
+			void ExtendedTeamplayPlayerSpawned(int playerId);
 
 			void PlayerCapturedIntel(Player&);
 			void PlayerPickedIntel(Player&);

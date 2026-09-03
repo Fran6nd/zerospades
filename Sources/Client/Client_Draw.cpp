@@ -729,7 +729,7 @@ namespace spades {
 			auto hottracked = HotTrackedPlayer();
 			if (hottracked) {
 				Player& player = std::get<0>(*hottracked);
-				if (HasTeamplayChevron(player))
+				if (HasTeamplayChevronName(player))
 					return; // the chevron already names them, higher up
 				DrawPlayerName(player, MakeVector4(1, 1, 1, 1));
 			}
@@ -825,7 +825,7 @@ namespace spades {
 				const auto& color = GetPlayerColor(p);
 				if (staffSpectating)
 					DrawPlayerBox(p, color);
-				if (spectatorPlayerNames && !HasTeamplayChevron(p))
+				if (spectatorPlayerNames && !HasTeamplayChevronName(p))
 					DrawPlayerName(p, color);
 			}
 		}
@@ -863,7 +863,7 @@ namespace spades {
 			return color;
 		}
 
-		bool Client::HasTeamplayChevron(Player& p) {
+		bool Client::HasTeamplayChevronName(Player& p) {
 			SPADES_MARK_FUNCTION();
 
 			if (!world || !p.IsAlive() || p.IsSpectator())
@@ -877,8 +877,11 @@ namespace spades {
 			if (&p == &local)
 				return false;
 
-			if (teamplay->GetMark(p.GetId()))
-				return true; // DrawEspMarks draws the chevron
+			// DrawEspMarks draws the chevron, but names the player only when the server
+			// asked for it; with SHOW_NAME clear the ordinary label is left to do its
+			// own job, since it is the client's feature and not the mark speaking.
+			if (auto mark = teamplay->GetMark(p.GetId()))
+				return mark->showName;
 
 			// DrawTeamOverlay draws one for every teammate while the key is held.
 			return teamplay->IsTeamESPEnabled() && teamOverlayAlpha > 0.0F &&
@@ -886,7 +889,7 @@ namespace spades {
 		}
 
 		void Client::DrawPlayerChevron(Player& p, const Vector4& color, bool showWeapon,
-									   const std::string& note) {
+									   bool showName, const std::string& note) {
 			SPADES_MARK_FUNCTION();
 
 			float alpha = color.w;
@@ -964,18 +967,25 @@ namespace spades {
 				stackBottom = iconPos.y;
 			}
 
-			const std::string& name = p.GetName();
-			Vector2 nameSize = font.Measure(name);
-			Vector2 namePos = MakeVector2(floorf(scrPos.x - nameSize.x * 0.5F),
-										  floorf(stackBottom - nameSize.y - 1.0F));
-			font.DrawShadow(name, namePos, 1.0F, nameCol, textShadow);
+			// Whether the name goes with a mark is the server's decision, carried by the
+			// SHOW_NAME flag: the outline says where the player is, and the name would
+			// hand over who they are, which is not always what the server is revealing.
+			if (showName) {
+				const std::string& name = p.GetName();
+				Vector2 nameSize = font.Measure(name);
+				Vector2 namePos = MakeVector2(floorf(scrPos.x - nameSize.x * 0.5F),
+											  floorf(stackBottom - nameSize.y - 1.0F));
+				font.DrawShadow(name, namePos, 1.0F, nameCol, textShadow);
+
+				stackBottom = namePos.y;
+			}
 
 			// Everything this marker has to say stays in one stack above the head, so
 			// it never collides with the ordinary name label lower down.
 			if (!note.empty()) {
 				Vector2 noteSize = font.Measure(note);
 				Vector2 notePos = MakeVector2(floorf(scrPos.x - noteSize.x * 0.5F),
-											  floorf(namePos.y - noteSize.y - 1.0F));
+											  floorf(stackBottom - noteSize.y - 1.0F));
 				font.DrawShadow(note, notePos, 1.0F, nameCol, textShadow);
 			}
 		}
@@ -1055,7 +1065,9 @@ namespace spades {
 				if (teamplay->GetMark(p.GetId()))
 					continue;
 
-				DrawPlayerChevron(p, GetTeamplayTeamColor(p, alpha), true);
+				// Showing the name alongside a TEAM_ESP highlight is recommended by the
+				// extension and left to the client, which is what this does.
+				DrawPlayerChevron(p, GetTeamplayTeamColor(p, alpha), true, true);
 			}
 		}
 
@@ -1098,7 +1110,7 @@ namespace spades {
 				// received: the extension assigns no reason values.
 				// The body-and-weapon contour is the renderer's job now, driven by
 				// ShouldRevealPlayer; here only the name and reason are drawn.
-				DrawPlayerChevron(p, color, false, mark->reason);
+				DrawPlayerChevron(p, color, false, mark->showName, mark->reason);
 			}
 		}
 
@@ -1150,10 +1162,11 @@ namespace spades {
 			for (const auto& entry : teamplay->GetPings()) {
 				const ExtendedTeamplay::Ping& ping = entry.second;
 
-				// Fade out over the last stretch of the fixed 5 second lifetime rather
-				// than blinking out of existence.
+				// Fade out over the last stretch of whatever lifetime the server gave
+				// it, rather than blinking out of existence. A ping the server keeps
+				// until it removes it never fades.
 				constexpr float kFadeOutTime = 0.75F;
-				float alpha = Clamp(ping.timeLeft / kFadeOutTime, 0.0F, 1.0F);
+				float alpha = ping.GetFadeAlpha(kFadeOutTime);
 
 				Vector3 rel = ping.position - lastSceneDef.viewOrigin;
 				float forward = Vector3::Dot(rel, lastSceneDef.viewAxis[2]);

@@ -1153,40 +1153,47 @@ namespace spades {
 			NetLog("Extended Teamplay features: 0x%02x", (unsigned int)teamplay->GetFeatures());
 		}
 
-		void Client::ExtendedTeamplayPingReceived(int playerId, Vector3 position,
+		void Client::ExtendedTeamplayPingReceived(int playerId, Vector3 position, float duration,
 												  std::string reason) {
 			SPADES_MARK_FUNCTION();
 
 			// With both ping bits clear the client renders nothing, so there is no point
-			// keeping the ping alive. The server should not have relayed it either.
-			if (!teamplay->IsWorldPingEnabled() && !teamplay->IsMinimapPingEnabled())
+			// keeping the ping alive. The server should not have relayed it either — but
+			// a removal still runs, so a policy change cannot strand a ping on screen.
+			if (duration != 0.0F && !teamplay->IsWorldPingEnabled() &&
+				!teamplay->IsMinimapPingEnabled())
 				return;
 
 			std::string who = (playerId == ExtendedTeamplay::kServerPlayerId)
 				? _Tr("Client", "The server")
 				: world ? world->GetPlayerName(playerId) : std::string();
 
-			NetLog("[Ping] %s @ (%.1f, %.1f, %.1f): %s", who.c_str(),
-				   position.x, position.y, position.z, reason.c_str());
+			NetLog("[Ping] %s @ (%.1f, %.1f, %.1f) for %.1fs: %s", who.c_str(),
+				   position.x, position.y, position.z, duration, reason.c_str());
 
-			teamplay->AddPing(playerId, position, std::move(reason));
+			teamplay->SetPing(playerId, position, duration, std::move(reason));
 
 			// A ping is a callout: it has to register even when the player is looking
-			// somewhere else, so it gets an audible cue as well as a marker.
-			if (!IsMuted()) {
+			// somewhere else, so it gets an audible cue as well as a marker. Taking one
+			// away is not a callout and stays silent.
+			if (duration != 0.0F && !IsMuted()) {
 				Handle<IAudioChunk> c = audioDevice->RegisterSound("Sounds/Feedback/Beep1.opus");
 				audioDevice->PlayLocal(c.GetPointerOrNull(), AudioParam());
 			}
 		}
 
-		void Client::ExtendedTeamplayMarkReceived(int playerId, uint8_t duration, uint8_t flags,
+		void Client::ExtendedTeamplayMarkReceived(int playerId, float duration, uint8_t flags,
 												  std::string reason) {
 			SPADES_MARK_FUNCTION();
 
-			NetLog("[ESP Mark] player %d, duration %u, flags 0x%02x: %s", playerId,
-				   (unsigned int)duration, (unsigned int)flags, reason.c_str());
+			NetLog("[ESP Mark] player %d, duration %.1f, flags 0x%02x: %s", playerId,
+				   duration, (unsigned int)flags, reason.c_str());
 
 			teamplay->SetMark(playerId, duration, flags, std::move(reason));
+		}
+
+		void Client::ExtendedTeamplayPlayerSpawned(int playerId) {
+			teamplay->PlayerSpawned(playerId);
 		}
 
 		bool Client::ResolveCrosshairWorldPos(Vector3& out) {
@@ -1216,6 +1223,15 @@ namespace spades {
 			SPADES_MARK_FUNCTION();
 
 			if (!teamplay->CanSendPing())
+				return false;
+
+			// A dead player does not ping: waiting to respawn is not a vantage point,
+			// and a corpse pointing at things the living cannot see is a way of
+			// spectating the enemy. The server drops such a ping anyway.
+			if (!world)
+				return false;
+			auto maybePlayer = world->GetLocalPlayer();
+			if (!maybePlayer || !maybePlayer.value().IsAlive())
 				return false;
 
 			// Rate-limited on the client too. The server is expected to rate-limit as
