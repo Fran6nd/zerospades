@@ -652,17 +652,17 @@ namespace spades {
 			Player& p = player;
 			IRenderer& renderer = client.GetRenderer();
 
-			// Remote players are lit whenever cg_everyoneFlashlight is set; the local
-			// player keeps the manual toggle.
-			const bool isRemote = !p.IsLocalPlayer();
-			if (isRemote ? !cg_everyoneFlashlight : !client.flashlightOn)
+			// Every player is lit from the same per-player state, which only the local
+			// player can toggle until the synchronous flashlight extension lands.
+			// cg_everyoneFlashlight overrides it for remote players, so the extension
+			// can be previewed without a server that speaks it.
+			const bool forced = cg_everyoneFlashlight && !p.IsLocalPlayer();
+			if (!p.IsFlashlightOn() && !forced)
 				return;
 
-			float brightness = 1.0F;
-			if (!isRemote) { // fade in when the local player turns it on
-				brightness = client.time - client.flashlightOnTime;
-				brightness = 1.0F - expf(-brightness * 5.0F);
-			}
+			// Fade in when the flashlight is switched on.
+			float brightness = p.GetWorld().GetTime() - p.GetFlashlightOnTime();
+			brightness = 1.0F - expf(-brightness * 5.0F);
 			brightness *= r_hdr ? 3.0F : 1.5F;
 
 			const std::array<Vector3, 3> axes = GetFlashlightAxes();
