@@ -49,7 +49,6 @@
 #include "GLProgramAttribute.h"
 #include "GLProgramManager.h"
 #include "GLProgramUniform.h"
-#include "GLQuadRenderer.h"
 #include "GLRadiosityRenderer.h"
 #include "GLRenderer.h"
 #include "GLResampleBicubicFilter.h"
@@ -74,6 +73,19 @@
 namespace spades {
 	namespace draw {
 		// TODO: raise error for any calls after Shutdown().
+
+		namespace {
+			/**
+			 * Stencil bit the world's own pixels are stamped with while the scene is
+			 * drawn, so the x-ray pass can tell "hidden behind the world" apart from
+			 * "hidden behind another model".
+			 *
+			 * The scene's stencil buffer is cleared with the colour and depth buffers
+			 * and used by nothing else, so this bit is the whole allocation. The 2D
+			 * clipping stencil runs after the scene and clears the buffer for itself.
+			 */
+			constexpr int kStencilBitWorld = 1 << 0;
+		} // namespace
 
 		GLRenderer::GLRenderer(Handle<IGLDevice> _device)
 			: device(std::move(_device)),
@@ -641,8 +653,25 @@ namespace spades {
 				GLProfiler::Context p(*profiler, "Sunlight Pass");
 
 				device->DepthFunc(IGLDevice::LessOrEqual);
-				if (!sceneDef.skipWorld && mapRenderer)
+
+				// Stamp the world's own pixels with the stencil bit that RenderXRayPass
+				// reads: a model is revealed where the world is in front of it, and this
+				// is what marks where the world actually ended up on screen.
+				if (!sceneDef.skipWorld && mapRenderer) {
+					device->Enable(IGLDevice::StencilTest, true);
+					device->StencilMask(kStencilBitWorld);
+					device->StencilFunc(IGLDevice::Always, kStencilBitWorld, 0xFF);
+					device->StencilOp(IGLDevice::Keep, IGLDevice::Keep, IGLDevice::Replace);
+
 					mapRenderer->RenderSunlightPass();
+
+					// Back to the open mask this renderer rests at: with the test off
+					// nothing writes to the stencil buffer anyway, and a mask left
+					// closed would silently swallow the next clear of it.
+					device->Enable(IGLDevice::StencilTest, false);
+					device->StencilMask(0xFF);
+				}
+
 				modelRenderer->RenderSunlightPass(false);
 			}
 
@@ -699,84 +728,40 @@ namespace spades {
 				device->PolygonOffset(0.0F, 0.0F);
 				device->LineWidth(1.0F);
 			}
-
-			// A silhouette reveals a player the viewer cannot see, which has no meaning
-			// in a mirror's reflection of them.
-			if (!mirror && modelRenderer->HasSilhouettes())
-				RenderSilhouettes();
 		}
 
-		void GLRenderer::RenderSilhouettes() {
+		void GLRenderer::RenderXRayPass() {
 			SPADES_MARK_FUNCTION();
 
-			GLProfiler::Context p(*profiler, "Silhouette Pass");
+			GLProfiler::Context p(*profiler, "X-Ray Pass");
 
-			// Under MSAA the models draw into the multisampled depth buffer while the
-			// mask shader samples the single-sample depth texture, so resolve it first
-			// — the same reason the SSAO pass above does.
-			GetFramebufferManager()->ResolveDepth();
+			// `Greater` keeps exactly the fragments something else is already in front
+			// of, and the stencil narrows that to the fragments hidden by the world
+			// itself, so a model is not revealed through another model.
+			device->Enable(IGLDevice::StencilTest, true);
+			device->StencilMask(0x0);
+			device->StencilFunc(IGLDevice::Equal, kStencilBitWorld, kStencilBitWorld);
+			device->StencilOp(IGLDevice::Keep, IGLDevice::Keep, IGLDevice::Keep);
 
-			GLColorBuffer mask = GetFramebufferManager()->CreateBufferHandle(-1, -1, true);
-
-			// Pass 1: the shapes, keeping only what the viewer cannot already see.
-			device->BindFramebuffer(IGLDevice::Framebuffer, mask.GetFramebuffer());
-			device->Viewport(0, 0, mask.GetWidth(), mask.GetHeight());
-			device->ClearColor(0.0F, 0.0F, 0.0F, 0.0F);
-			device->Clear(IGLDevice::ColorBufferBit);
-
-			// Depth testing is off because the shader does the comparison itself: it
-			// needs to know that a fragment is occluded, which a depth test would have
-			// thrown away before the shader ever ran.
-			device->Enable(IGLDevice::DepthTest, false);
+			// Depth writes stay off: this is a second look at models the scene has
+			// already drawn, and it must not push the depth buffer around.
+			device->Enable(IGLDevice::DepthTest, true);
+			device->DepthFunc(IGLDevice::Greater);
 			device->DepthMask(false);
-			device->Enable(IGLDevice::Blend, false);
+
 			device->Enable(IGLDevice::CullFace, true);
-
-			modelRenderer->RenderSilhouettePass();
-
-			// Pass 2: the contour of that mask, composited onto the scene.
-			GetFramebufferManager()->PrepareSceneRendering();
-
-			device->Enable(IGLDevice::CullFace, false);
 			device->Enable(IGLDevice::Blend, true);
 			device->BlendFunc(IGLDevice::SrcAlpha, IGLDevice::OneMinusSrcAlpha,
 							  IGLDevice::Zero, IGLDevice::One);
 
-			GLProgram* edgeProgram =
-			  RegisterProgram("Shaders/OpenGL/PostFilters/SilhouetteEdge.program");
-			edgeProgram->Use();
+			modelRenderer->RenderXRayPass();
 
-			static GLProgramAttribute positionAttribute("positionAttribute");
-			static GLProgramUniform maskTexture("maskTexture");
-			static GLProgramUniform texelSize("texelSize");
-			static GLProgramUniform thickness("thickness");
-
-			positionAttribute(edgeProgram);
-			maskTexture(edgeProgram);
-			texelSize(edgeProgram);
-			thickness(edgeProgram);
-
-			maskTexture.SetValue(0);
-			texelSize.SetValue(1.0F / (float)mask.GetWidth(), 1.0F / (float)mask.GetHeight());
-
-			// Scaled with the render height so the line keeps its weight on a
-			// high-resolution display instead of thinning away. The edge shader's
-			// sampling window bounds this at 3 texels.
-			float lineWidth = Clamp((float)mask.GetHeight() / 480.0F, 1.0F, 3.0F);
-			thickness.SetValue(lineWidth);
-
-			device->ActiveTexture(0);
-			device->BindTexture(IGLDevice::Texture2D, mask.GetTexture());
-
-			GLQuadRenderer quadRenderer(*device);
-			quadRenderer.SetCoordAttributeIndex(positionAttribute());
-			quadRenderer.Draw();
-
-			device->BindTexture(IGLDevice::Texture2D, 0);
-
-			device->Enable(IGLDevice::Blend, false);
-			device->Enable(IGLDevice::DepthTest, true);
+			device->Enable(IGLDevice::StencilTest, false);
+			device->StencilMask(0xFF);
+			device->DepthFunc(IGLDevice::Less);
 			device->DepthMask(true);
+			device->Enable(IGLDevice::Blend, false);
+			device->Enable(IGLDevice::CullFace, false);
 		}
 
 		void GLRenderer::RenderGhosts() {
@@ -894,7 +879,8 @@ namespace spades {
 
 						device->ClearColor(bgCol.x, bgCol.y, bgCol.z, 1.0F);
 						device->Clear(
-						  (IGLDevice::Enum)(IGLDevice::ColorBufferBit | IGLDevice::DepthBufferBit));
+						  (IGLDevice::Enum)(IGLDevice::ColorBufferBit | IGLDevice::DepthBufferBit |
+											IGLDevice::StencilBufferBit));
 					}
 
 					device->FrontFace(IGLDevice::CCW);
@@ -947,7 +933,8 @@ namespace spades {
 
 				device->ClearColor(bgCol.x, bgCol.y, bgCol.z, 1.0F);
 				device->Clear(
-				  (IGLDevice::Enum)(IGLDevice::ColorBufferBit | IGLDevice::DepthBufferBit));
+				  (IGLDevice::Enum)(IGLDevice::ColorBufferBit | IGLDevice::DepthBufferBit |
+									IGLDevice::StencilBufferBit));
 			}
 
 			device->FrontFace(IGLDevice::CW);
@@ -974,6 +961,12 @@ namespace spades {
 				RenderDebugLines();
 				device->Enable(IGLDevice::Blend, false);
 			}
+
+			// Revealing a player has no meaning in a mirror's reflection of them, so
+			// this runs on the real scene alone, once everything that can hide them has
+			// been drawn.
+			if (sceneDef.allowPlayerXRay)
+				RenderXRayPass();
 
 			{
 				GLProfiler::Context p(*profiler, "Ghosts");

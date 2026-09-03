@@ -65,21 +65,17 @@ namespace spades {
 			float opacity = 1.0F;
 
 			/**
-			 * Draws the contour of the model where it is hidden from the camera — behind
-			 * world geometry, or lost in the fog — and nothing at all where it is in
+			 * Draws the model again where it is hidden from the camera — behind world
+			 * geometry — as a lit, tinted shape, and leaves it alone where it is in
 			 * plain sight. Used to reveal a player through walls.
-			 *
-			 * The contour follows the model's own shape, so every model flagged this way
-			 * in a frame contributes: a player's body parts and the weapon in their
-			 * hands come out as one outline rather than several.
 			 *
 			 * This is drawn in addition to the model's normal appearance, not instead of
 			 * it. Backends that do not implement it ignore the flag.
 			 */
-			bool silhouette = false;
+			bool xray = false;
 
-			/** The colour of the contour drawn by `silhouette`. */
-			Vector3 silhouetteColor = MakeVector3(1, 1, 1);
+			/** The colour the model is tinted with where `xray` reveals it. */
+			Vector3 xrayColor = MakeVector3(1, 1, 1);
 		};
 
 		enum DynamicLightType {
