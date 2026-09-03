@@ -145,10 +145,10 @@ namespace spades {
 			void RenderObjects(bool mirror = false);
 			void RenderGhosts();
 
-			/** Draws the contour of every model flagged `silhouette`, where it is
-			 * hidden behind the world or lost in the fog. Renders the shapes into an
-			 * offscreen mask, then composites that mask's edge onto the scene. */
-			void RenderSilhouettes();
+			/** Draws every model flagged `xray` again where the world hides it, in the
+			 * colour the model asked for. The world marks the stencil buffer as it is
+			 * drawn, which is what tells this pass where "behind the world" is. */
+			void RenderXRayPass();
 
 			void EnsureInitialized();
 			void EnsureSceneStarted();

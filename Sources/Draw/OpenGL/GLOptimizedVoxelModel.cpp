@@ -46,7 +46,7 @@ namespace spades {
 			renderer.RegisterProgram("Shaders/OpenGL/OptimizedVoxelModelDynamicLit.program");
 			renderer.RegisterProgram("Shaders/OpenGL/OptimizedVoxelModelShadowMap.program");
 			renderer.RegisterProgram("Shaders/OpenGL/OptimizedVoxelModelOutlines.program");
-			renderer.RegisterProgram("Shaders/OpenGL/OptimizedVoxelModelSilhouette.program");
+			renderer.RegisterProgram("Shaders/OpenGL/OptimizedVoxelModelXRay.program");
 			renderer.RegisterImage("Gfx/AmbientOcclusion.png");
 		}
 		GLOptimizedVoxelModel::GLOptimizedVoxelModel(VoxelModel* m, GLRenderer& r)
@@ -63,7 +63,7 @@ namespace spades {
 			dlightProgram = renderer.RegisterProgram("Shaders/OpenGL/OptimizedVoxelModelDynamicLit.program");
 			shadowMapProgram = renderer.RegisterProgram("Shaders/OpenGL/OptimizedVoxelModelShadowMap.program");
 			outlinesProgram = renderer.RegisterProgram("Shaders/OpenGL/OptimizedVoxelModelOutlines.program");
-			silhouetteProgram = renderer.RegisterProgram("Shaders/OpenGL/OptimizedVoxelModelSilhouette.program");
+			xrayProgram = renderer.RegisterProgram("Shaders/OpenGL/OptimizedVoxelModelXRay.program");
 			aoImage = renderer.RegisterImage("Gfx/AmbientOcclusion.png").Cast<GLImage>();
 
 			buffer = device.GenBuffer();
@@ -1018,59 +1018,90 @@ namespace spades {
 			device.EnableVertexAttribArray(positionAttribute(), false);
 		}
 
-		void GLOptimizedVoxelModel::RenderSilhouettePass(
+		void GLOptimizedVoxelModel::RenderXRayPass(
 			std::vector<client::ModelRenderParam> params) {
 			SPADES_MARK_FUNCTION();
 
+			// The pass runs for every model type in the scene, but only a handful of
+			// them are ever revealed, so leave before touching any state when none of
+			// this type's instances asked for it.
+			bool anyXRay = false;
+			for (const auto& param : params) {
+				if (param.xray) {
+					anyXRay = true;
+					break;
+				}
+			}
+			if (!anyXRay)
+				return;
+
 			const auto& viewOrigin = renderer.GetSceneDef().viewOrigin;
+			const auto& viewMatrix = renderer.GetViewMatrix();
 			const auto& pvMat = renderer.GetProjectionViewMatrix();
 
-			// The scene depth decides, per fragment, whether this model is hidden
-			// behind the world. Bound here rather than by the caller because the
-			// program's sampler unit is this pass's business.
 			device.ActiveTexture(0);
-			device.BindTexture(IGLDevice::Texture2D,
-				renderer.GetFramebufferManager()->GetDepthTexture());
+			image->Bind(IGLDevice::Texture2D);
+			device.TexParamater(IGLDevice::Texture2D,
+				IGLDevice::TextureMinFilter, IGLDevice::Nearest);
+			device.TexParamater(IGLDevice::Texture2D,
+				IGLDevice::TextureMagFilter, IGLDevice::Nearest);
 
-			silhouetteProgram->Use();
+			xrayProgram->Use();
 
 			static GLProgramUniform fogDistance("fogDistance");
-			fogDistance(silhouetteProgram);
+			fogDistance(xrayProgram);
 			fogDistance.SetValue(renderer.GetFogDistance());
 
 			static GLProgramUniform modelOrigin("modelOrigin");
-			modelOrigin(silhouetteProgram);
+			modelOrigin(xrayProgram);
 			modelOrigin.SetValue(origin.x, origin.y, origin.z);
 
+			static GLProgramUniform modelTexture("modelTexture");
+			modelTexture(xrayProgram);
+			modelTexture.SetValue(0);
+
+			static GLProgramUniform texScale("texScale");
+			texScale(xrayProgram);
+			texScale.SetValue(1.0F / image->GetWidth(), 1.0F / image->GetHeight());
+
 			static GLProgramUniform viewOriginVector("viewOriginVector");
-			viewOriginVector(silhouetteProgram);
+			viewOriginVector(xrayProgram);
 			viewOriginVector.SetValue(viewOrigin.x, viewOrigin.y, viewOrigin.z);
 
-			static GLProgramUniform sceneDepthTexture("sceneDepthTexture");
-			sceneDepthTexture(silhouetteProgram);
-			sceneDepthTexture.SetValue(0);
+			static GLProgramUniform viewMatrixU("viewMatrix");
+			viewMatrixU(xrayProgram);
+			viewMatrixU.SetValue(viewMatrix);
 
-			static GLProgramUniform inverseScreenSize("inverseScreenSize");
-			inverseScreenSize(silhouetteProgram);
-			inverseScreenSize.SetValue(1.0F / (float)device.ScreenWidth(),
-									   1.0F / (float)device.ScreenHeight());
+			static GLProgramUniform viewSpaceLight("viewSpaceLight");
+			viewSpaceLight(xrayProgram);
+			Vector3 vspLight = (viewMatrix * MakeVector4(0, -1, -1, 0)).GetXYZ();
+			viewSpaceLight.SetValue(vspLight.x, vspLight.y, vspLight.z);
 
-			static GLProgramUniform silhouetteColor("silhouetteColor");
-			silhouetteColor(silhouetteProgram);
-
+			// setup attributes
 			static GLProgramAttribute positionAttribute("positionAttribute");
-			positionAttribute(silhouetteProgram);
+			static GLProgramAttribute textureCoordAttribute("textureCoordAttribute");
+			static GLProgramAttribute normalAttribute("normalAttribute");
+			positionAttribute(xrayProgram);
+			textureCoordAttribute(xrayProgram);
+			normalAttribute(xrayProgram);
 
 			device.BindBuffer(IGLDevice::ArrayBuffer, buffer);
 			device.VertexAttribPointer(positionAttribute(), 4,
 				IGLDevice::UnsignedByte, false, sizeof(Vertex), (void*)0);
+			device.VertexAttribPointer(textureCoordAttribute(), 2,
+				IGLDevice::UnsignedShort, false, sizeof(Vertex), (void*)4);
+			device.VertexAttribPointer(normalAttribute(), 3,
+				IGLDevice::Byte, false, sizeof(Vertex), (void*)8);
 			device.BindBuffer(IGLDevice::ArrayBuffer, 0);
 
 			device.EnableVertexAttribArray(positionAttribute(), true);
+			device.EnableVertexAttribArray(textureCoordAttribute(), true);
+			device.EnableVertexAttribArray(normalAttribute(), true);
+
 			device.BindBuffer(IGLDevice::ElementArrayBuffer, idxBuffer);
 
 			for (const auto& param : params) {
-				if (!param.silhouette)
+				if (!param.xray)
 					continue;
 
 				const auto& modelMatrix = param.matrix;
@@ -1085,29 +1116,52 @@ namespace spades {
 					continue;
 
 				static GLProgramUniform projectionViewModelMatrix("projectionViewModelMatrix");
-				projectionViewModelMatrix(silhouetteProgram);
+				projectionViewModelMatrix(xrayProgram);
 				projectionViewModelMatrix.SetValue(pvMat * modelMatrix);
 
 				static GLProgramUniform modelMatrixU("modelMatrix");
-				modelMatrixU(silhouetteProgram);
+				modelMatrixU(xrayProgram);
 				modelMatrixU.SetValue(modelMatrix);
 
-				silhouetteColor.SetValue(param.silhouetteColor.x, param.silhouetteColor.y,
-										 param.silhouetteColor.z);
+				static GLProgramUniform viewModelMatrixU("viewModelMatrix");
+				viewModelMatrixU(xrayProgram);
+				viewModelMatrixU.SetValue(viewMatrix * modelMatrix);
+
+				static GLProgramUniform xrayColor("xrayColor");
+				xrayColor(xrayProgram);
+				xrayColor.SetValue(param.xrayColor.x, param.xrayColor.y, param.xrayColor.z);
+
+				// The shader falls back to this where the model's own texture is black,
+				// which is how a player's team colour reaches their block-coloured parts.
+				static GLProgramUniform customColor("customColor");
+				customColor(xrayProgram);
+				customColor.SetValue(param.customColor.x, param.customColor.y,
+									 param.customColor.z);
 
 				bool isMirrored = Vector3::Dot(Vector3::Cross(axisX, axisY), axisZ) < 0.0F;
 				if (isMirrored)
 					device.FrontFace(IGLDevice::CCW);
 
+				if (param.depthHack)
+					device.DepthRange(0.0F, 0.1F);
+
 				device.DrawElements(IGLDevice::Triangles,
 					numIndices, IGLDevice::UnsignedInt, (void*)0);
+
+				if (param.depthHack)
+					device.DepthRange(0.0F, 1.0F);
 
 				if (isMirrored)
 					device.FrontFace(IGLDevice::CW);
 			}
 
 			device.BindBuffer(IGLDevice::ElementArrayBuffer, 0);
+
 			device.EnableVertexAttribArray(positionAttribute(), false);
+			device.EnableVertexAttribArray(textureCoordAttribute(), false);
+			device.EnableVertexAttribArray(normalAttribute(), false);
+
+			device.ActiveTexture(0);
 			device.BindTexture(IGLDevice::Texture2D, 0);
 		}
 	} // namespace draw

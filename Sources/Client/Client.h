@@ -582,10 +582,14 @@ namespace spades {
 			/**
 			 * Whether this player is currently revealed through walls, and in what
 			 * colour. Called by `ClientPlayer` as it submits the player's models, so the
-			 * renderer draws the contour of their body and weapon where the world hides
-			 * them. The extension requires that shape for an ESP Mark.
+			 * renderer draws their body and weapon where the world hides them. The
+			 * extension requires the body shape itself for an ESP Mark.
 			 */
 			bool ShouldRevealPlayer(Player&, Vector3& outColor);
+
+			/** Whether anything at all could be revealed this frame, asked of the same
+			 * two sources as `ShouldRevealPlayer` before any player is examined. */
+			bool HasRevealedPlayers();
 
 			/** Teammates revealed through `TEAM_ESP`, while the overlay key is held. */
 			void DrawTeamOverlay();

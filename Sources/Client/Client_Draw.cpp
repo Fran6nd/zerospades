@@ -1025,6 +1025,17 @@ namespace spades {
 			return true;
 		}
 
+		bool Client::HasRevealedPlayers() {
+			SPADES_MARK_FUNCTION();
+
+			// A mark reveals its player whatever the feature bits say, so it counts on
+			// its own; the team overlay only reveals anybody while it is on screen.
+			if (teamplay->HasMarks())
+				return true;
+
+			return teamplay->IsTeamESPEnabled() && teamOverlayAlpha > 0.0F;
+		}
+
 		void Client::DrawTeamOverlay() {
 			SPADES_MARK_FUNCTION();
 
