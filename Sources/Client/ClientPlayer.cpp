@@ -465,9 +465,8 @@ namespace spades {
 				}
 			}
 
-			Vector3 front = player.GetFront();
-
 			if (!isThirdPerson) {
+				Vector3 front = player.GetFront();
 				Vector3 right = player.GetRight();
 				Vector3 up = player.GetUp();
 
@@ -528,12 +527,16 @@ namespace spades {
 				}
 			}
 
-			// Smooth the flashlight's movement (for all players)
-			Vector3 diff = front - flashlightOrientation;
+			// Smooth the flashlight's movement (for all players). Follow the same
+			// interpolated orientation the head is rendered from, so a remote player's
+			// cone doesn't lead their head and snap on every network update.
+			// `GetFront` returns the raw orientation for the local player either way.
+			Vector3 lightFront = player.GetFront(cg_orientationSmoothing);
+			Vector3 diff = lightFront - flashlightOrientation;
 			float dist = diff.GetLength();
 			if (dist > 0.1F)
 				flashlightOrientation += diff.Normalize() * (dist - 0.1F);
-			flashlightOrientation = Mix(flashlightOrientation, front, 1.0F - powf(1.0E-6F, dt));
+			flashlightOrientation = Mix(flashlightOrientation, lightFront, 1.0F - powf(1.0E-6F, dt));
 			flashlightOrientation = flashlightOrientation.Normalize();
 
 			// FIXME: should do for non-active skins?
@@ -641,9 +644,18 @@ namespace spades {
 		}
 
 		std::array<Vector3, 3> ClientPlayer::GetFlashlightAxes() {
+			// Roll the cone around its own direction rather than around the player's
+			// raw up vector: the two are equivalent while the player faces the way the
+			// lamp points, but the raw one snaps with every network update and is
+			// undefined when looking straight up or down.
+			static const Vector3 worldUp = MakeVector3(0, 0, -1);
+
 			std::array<Vector3, 3> axes;
 			axes[2] = flashlightOrientation;
-			axes[0] = Vector3::Cross(axes[2], player.GetUp()).Normalize();
+			axes[0] = Vector3::Cross(axes[2], worldUp);
+			if (axes[0].GetSquaredLength() < 1.0E-6F) // pointing straight up or down
+				axes[0] = Vector3::Cross(axes[2], MakeVector3(0, 1, 0));
+			axes[0] = axes[0].Normalize();
 			axes[1] = Vector3::Cross(axes[0], axes[2]);
 			return axes;
 		}
