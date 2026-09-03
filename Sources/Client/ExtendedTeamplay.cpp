@@ -18,6 +18,7 @@
 
  */
 
+#include <cmath>
 #include <utility>
 
 #include "ExtendedTeamplay.h"
@@ -34,13 +35,95 @@ namespace spades {
 			  ExtendedTeamplay::FeaturePingMinimap;
 
 			/** Likewise for the ESP Mark flags. */
-			constexpr uint8_t kKnownMarkFlags = ExtendedTeamplay::MarkFlagClearOnDeath;
+			constexpr uint8_t kKnownMarkFlags =
+			  ExtendedTeamplay::MarkFlagClearOnRespawn | ExtendedTeamplay::MarkFlagShowName;
 
 			bool IsUTF8Continuation(char c) { return (static_cast<unsigned char>(c) & 0xC0) == 0x80; }
+
+			/**
+			 * Copies `s` without the byte sequences that are not well-formed UTF-8.
+			 *
+			 * The reason arrives as raw bytes from a stranger, and everything downstream
+			 * — measuring the label, laying it out, drawing it — assumes valid UTF-8.
+			 * Rejecting the whole string over one bad byte would lose a reason that is
+			 * otherwise readable, so the bad bytes are dropped and the rest kept.
+			 */
+			std::string DropIllFormedUTF8(const std::string& s) {
+				std::string out;
+				out.reserve(s.size());
+
+				for (size_t i = 0; i < s.size();) {
+					auto lead = static_cast<unsigned char>(s[i]);
+
+					size_t len;
+					uint32_t cp;
+					if (lead < 0x80) {
+						len = 1;
+						cp = lead;
+					} else if ((lead & 0xE0) == 0xC0) {
+						len = 2;
+						cp = lead & 0x1F;
+					} else if ((lead & 0xF0) == 0xE0) {
+						len = 3;
+						cp = lead & 0x0F;
+					} else if ((lead & 0xF8) == 0xF0) {
+						len = 4;
+						cp = lead & 0x07;
+					} else { // a continuation byte on its own, or a 5+ byte lead
+						i++;
+						continue;
+					}
+
+					if (i + len > s.size())
+						break; // truncated at the end of the string
+
+					bool ok = true;
+					for (size_t j = 1; j < len; j++) {
+						if (!IsUTF8Continuation(s[i + j])) {
+							ok = false;
+							break;
+						}
+						cp = (cp << 6) | (static_cast<unsigned char>(s[i + j]) & 0x3F);
+					}
+
+					// An overlong encoding, a surrogate half or a codepoint past the end
+					// of Unicode is ill-formed even when every byte is in the right shape.
+					if (ok) {
+						static const uint32_t kMinimum[5] = {0, 0, 0x80, 0x800, 0x10000};
+						ok = cp >= kMinimum[len] && cp <= 0x10FFFF &&
+							 !(cp >= 0xD800 && cp <= 0xDFFF);
+					}
+
+					if (ok)
+						out.append(s, i, len);
+
+					i += ok ? len : 1;
+				}
+
+				return out;
+			}
 		} // namespace
 
+		bool ExtendedTeamplay::IsValidDuration(float duration) {
+			return !std::isnan(duration) && duration >= 0.0F;
+		}
+
+		bool ExtendedTeamplay::IsEndlessDuration(float duration) { return std::isinf(duration); }
+
+		float ExtendedTeamplay::Ping::GetAgeFraction() const {
+			if (endless || duration <= 0.0F)
+				return 0.0F;
+			return Clamp(1.0F - timeLeft / duration, 0.0F, 1.0F);
+		}
+
+		float ExtendedTeamplay::Ping::GetFadeAlpha(float fadeTime) const {
+			if (endless || fadeTime <= 0.0F)
+				return 1.0F;
+			return Clamp(timeLeft / fadeTime, 0.0F, 1.0F);
+		}
+
 		std::string ExtendedTeamplay::SanitizeReason(std::string reason) {
-			reason = TrimSpaces(StripNewlines(reason));
+			reason = TrimSpaces(StripNewlines(DropIllFormedUTF8(reason)));
 
 			if (reason.size() > kMaxReasonBytes) {
 				// Back off to the start of the codepoint that straddles the cap, so the
@@ -70,31 +153,43 @@ namespace spades {
 			// dropping live ones would make a policy change look like a glitch.
 		}
 
-		void ExtendedTeamplay::AddPing(int playerId, const Vector3& position,
+		void ExtendedTeamplay::SetPing(int playerId, const Vector3& position, float duration,
 		                               std::string reason) {
 			SPADES_MARK_FUNCTION();
+
+			if (duration == 0.0F) { // removes the player's ping without placing another
+				pings.erase(playerId);
+				return;
+			}
 
 			Ping& ping = pings[playerId];
 			ping.playerId = playerId;
 			ping.position = position;
 			ping.reason = std::move(reason);
-			ping.timeLeft = kPingLifetime;
+			ping.endless = IsEndlessDuration(duration);
+			ping.duration = ping.endless ? 0.0F : duration;
+			ping.timeLeft = ping.duration;
 		}
 
-		void ExtendedTeamplay::SetMark(int playerId, uint8_t duration, uint8_t flags,
+		void ExtendedTeamplay::SetMark(int playerId, float duration, uint8_t flags,
 		                               std::string reason) {
 			SPADES_MARK_FUNCTION();
 
-			if (duration == 0) { // clears the mark
+			if (duration == 0.0F) { // clears the mark
 				marks.erase(playerId);
 				return;
 			}
 
+			// Reserved flag bits are masked off here, so no other code has to know which
+			// of them are defined.
+			flags &= kKnownMarkFlags;
+
 			Mark& mark = marks[playerId];
 			mark.reason = std::move(reason);
-			mark.untilCleared = (duration == kMarkDurationUntilCleared);
-			mark.timeLeft = mark.untilCleared ? 0.0F : static_cast<float>(duration);
-			mark.clearOnDeath = ((flags & kKnownMarkFlags) & MarkFlagClearOnDeath) != 0;
+			mark.endless = IsEndlessDuration(duration);
+			mark.timeLeft = mark.endless ? 0.0F : duration;
+			mark.clearOnRespawn = (flags & MarkFlagClearOnRespawn) != 0;
+			mark.showName = (flags & MarkFlagShowName) != 0;
 		}
 
 		stmp::optional<const ExtendedTeamplay::Mark&>
@@ -105,9 +200,12 @@ namespace spades {
 			return it->second;
 		}
 
-		void ExtendedTeamplay::PlayerDied(int playerId) {
+		void ExtendedTeamplay::PlayerSpawned(int playerId) {
+			// Keyed to the spawn rather than to the death, so any Create Player for the
+			// id ends the mark — killed, changed team, changed weapon or moved by a
+			// script — and this class needs no death bookkeeping of its own.
 			auto it = marks.find(playerId);
-			if (it != marks.end() && it->second.clearOnDeath)
+			if (it != marks.end() && it->second.clearOnRespawn)
 				marks.erase(it);
 		}
 
@@ -120,6 +218,11 @@ namespace spades {
 			SPADES_MARK_FUNCTION();
 
 			for (auto it = pings.begin(); it != pings.end();) {
+				if (it->second.endless) {
+					++it;
+					continue;
+				}
+
 				it->second.timeLeft -= dt;
 				if (it->second.timeLeft <= 0.0F)
 					it = pings.erase(it);
@@ -128,7 +231,7 @@ namespace spades {
 			}
 
 			for (auto it = marks.begin(); it != marks.end();) {
-				if (it->second.untilCleared) {
+				if (it->second.endless) {
 					++it;
 					continue;
 				}

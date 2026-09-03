@@ -42,7 +42,8 @@ namespace spades {
 		 * feeds it, `Client` ticks it, and the draw code reads it.
 		 *
 		 * Both the ping lifetime and the mark lifetime are expired here rather than by the
-		 * server: the protocol has no removal sub-packet other than a Duration `0` mark.
+		 * server: the protocol makes expiry the client's job and gives the server a
+		 * Duration of `0` to take something away before its time.
 		 */
 		class ExtendedTeamplay {
 		public:
@@ -57,45 +58,71 @@ namespace spades {
 				FeaturePingMinimap = 1 << 2,
 			};
 
-			/** Flag bits carried by the ESP Mark sub-packet. */
+			/** Flag bits carried by the ESP Mark sub-packet. Bits 2-7 are reserved. */
 			enum MarkFlag : uint8_t {
-				/** The mark ends when the marked player dies. */
-				MarkFlagClearOnDeath = 1 << 0,
+				/** The mark ends the next time the marked player spawns. */
+				MarkFlagClearOnRespawn = 1 << 0,
+				/** The client shows the marked player's name. Clear, it must not. */
+				MarkFlagShowName = 1 << 1,
 			};
 
 			/** Player ID a Ping carries when the server originated it itself. */
 			static constexpr int kServerPlayerId = 255;
 
-			/** How long a received Ping stays on screen. Fixed at 5 seconds by the
-			 * specification, so it is deliberately not a setting. */
-			static constexpr float kPingLifetime = 5.0F;
-
-			/** Duration value that marks a player until the server clears the mark. */
-			static constexpr uint8_t kMarkDurationUntilCleared = 255;
+			/** The only Message ID version 1 of the extension defines. The byte is
+			 * reserved for a later version that names a label instead of spelling it,
+			 * and a receiver drops a packet carrying anything else. */
+			static constexpr uint8_t kReservedMessageId = 0;
 
 			/** The reason strings are free-form UTF-8 and the protocol assigns no fixed
-			 * values, so a server may send anything. Both caps only bound what this
+			 * values, so a server may send anything. The cap only bounds what this
 			 * client is willing to keep; longer strings are truncated on a codepoint
 			 * boundary rather than rejected. */
 			static constexpr size_t kMaxReasonBytes = 64;
+
+			/**
+			 * A Duration field, which both the Ping and the ESP Mark carry as an
+			 * `LE float32` number of seconds: `0` removes what the packet refers to, a
+			 * positive finite value is a lifetime the client counts down itself, and
+			 * `+inf` lasts until the server takes it away. Negative and NaN are invalid
+			 * and the packet carrying one is dropped.
+			 */
+			static bool IsValidDuration(float duration);
+
+			/** Whether a valid Duration means "until the server removes it". */
+			static bool IsEndlessDuration(float duration);
 
 			struct Ping {
 				/** The player who pinged, or `kServerPlayerId` for a server-origin ping. */
 				int playerId;
 				Vector3 position;
 				std::string reason;
-				/** Seconds until the ping disappears. */
+				/** The lifetime the server gave it. Meaningless when `endless`. */
+				float duration;
+				/** Seconds until the ping disappears. Meaningless when `endless`. */
 				float timeLeft;
+				/** The ping stays until the server removes it (Duration `+inf`). */
+				bool endless;
+
+				/** `0` while fresh and `1` as it is about to go, for a marker that
+				 * animates over its life. An endless ping never ages. */
+				float GetAgeFraction() const;
+
+				/** Opacity for a marker that fades over its last `fadeTime` seconds
+				 * rather than blinking out. An endless ping never fades. */
+				float GetFadeAlpha(float fadeTime) const;
 			};
 
 			struct Mark {
 				std::string reason;
-				/** Seconds until the mark expires. Meaningless when `untilCleared`. */
+				/** Seconds until the mark expires. Meaningless when `endless`. */
 				float timeLeft;
-				/** The mark lasts until the server clears it (Duration `255`). */
-				bool untilCleared;
-				/** The mark ends when the marked player dies. */
-				bool clearOnDeath;
+				/** The mark lasts until the server clears it (Duration `+inf`). */
+				bool endless;
+				/** The mark ends the next time the marked player spawns. */
+				bool clearOnRespawn;
+				/** The server permits the marked player's name to be shown. */
+				bool showName;
 			};
 
 			/** Pings currently on screen, keyed by the player who originated them: the
@@ -118,13 +145,15 @@ namespace spades {
 			 * client must not send any, and the server would drop them anyway. */
 			bool CanSendPing() const { return IsWorldPingEnabled() || IsMinimapPingEnabled(); }
 
-			/** Records a relayed Ping, replacing any live ping from the same player and
-			 * restarting its timer. */
-			void AddPing(int playerId, const Vector3& position, std::string reason);
+			/** Applies a relayed Ping. A Duration of `0` removes the player's ping; any
+			 * other value replaces it and restarts its lifetime. The caller is expected
+			 * to have rejected an invalid Duration with the rest of the packet. */
+			void SetPing(int playerId, const Vector3& position, float duration,
+						 std::string reason);
 
 			/** Applies an ESP Mark sub-packet. A Duration of `0` clears the player's mark;
 			 * any other value replaces the previous mark and restarts its timer. */
-			void SetMark(int playerId, uint8_t duration, uint8_t flags, std::string reason);
+			void SetMark(int playerId, float duration, uint8_t flags, std::string reason);
 
 			/** The mark in force for `playerId`, or empty when the player is not marked. */
 			stmp::optional<const Mark&> GetMark(int playerId) const;
@@ -133,9 +162,9 @@ namespace spades {
 			bool HasPings() const { return !pings.empty(); }
 			bool HasMarks() const { return !marks.empty(); }
 
-			/** Drops the marks of a player who just died and had `CLEAR_ON_DEATH` set.
-			 * A mark without that flag survives death and respawn. */
-			void PlayerDied(int playerId);
+			/** Drops the mark of a player who just spawned and had `CLEAR_ON_RESPAWN`
+			 * set. A mark without that flag survives death and respawn. */
+			void PlayerSpawned(int playerId);
 
 			/** Drops everything belonging to a player who left the server. */
 			void PlayerLeft(int playerId);
@@ -157,9 +186,10 @@ namespace spades {
 			 * Makes a reason string safe to draw and to send.
 			 *
 			 * A reason is free-form UTF-8 chosen by whoever sent it, so it arrives
-			 * unvetted: newlines would break out of the one line the marker gives it,
-			 * and padding would push the label off centre. Strips both, then caps the
-			 * length on a UTF-8 codepoint boundary.
+			 * unvetted: ill-formed UTF-8 would reach the font as bytes it cannot read,
+			 * newlines would break out of the one line the marker gives it, and padding
+			 * would push the label off centre. Drops the first, strips the rest, then
+			 * caps the length on a UTF-8 codepoint boundary.
 			 *
 			 * A reason that was nothing but whitespace comes back **empty**, which is a
 			 * value the protocol allows in its own right — a neutral marker with no

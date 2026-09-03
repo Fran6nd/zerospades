@@ -485,6 +485,10 @@ namespace spades {
 
 					if (!seekingMode)
 						client->PlayerSpawned(pRef);
+					else
+						// A seek replays the marks to rebuild what was in force at the
+						// destination, so it has to replay what ends them too.
+						client->ExtendedTeamplayPlayerSpawned(pId);
 				} break;
 				case PacketTypeBlockAction: {
 					stmp::optional<Player&> p = GetPlayerOrNull(r.ReadByte());
@@ -852,24 +856,33 @@ namespace spades {
 						case ExtendedTeamplaySubPing: {
 							int pId = r.ReadByte();
 							Vector3 pos = r.ReadVector3();
-							std::string reason = r.GetNumRemainingBytes()
-								? ExtendedTeamplay::SanitizeReason(r.ReadRemainingString())
-								: std::string();
+							float duration = r.ReadFloat();
+							uint8_t messageId = r.ReadByte();
+							std::string reason =
+							  ExtendedTeamplay::SanitizeReason(r.ReadRemainingData());
 
-							// A ping is a momentary event with a 5 second life, so
-							// replaying the whole demo to reach a seek target would
-							// otherwise pop every ping ever sent at the destination.
-							if (!seekingMode)
-								client->ExtendedTeamplayPingReceived(pId, pos,
+							if (messageId != ExtendedTeamplay::kReservedMessageId ||
+								!ExtendedTeamplay::IsValidDuration(duration))
+								break; // recorded from a newer version, or malformed
+
+							// A ping is a momentary event, so replaying the whole demo to
+							// reach a seek target would otherwise pop every ping ever sent
+							// at the destination. A removal is state and is kept.
+							if (!seekingMode || duration == 0.0F)
+								client->ExtendedTeamplayPingReceived(pId, pos, duration,
 																	 std::move(reason));
 						} break;
 						case ExtendedTeamplaySubESPMark: {
 							int pId = r.ReadByte();
-							uint8_t duration = r.ReadByte();
+							float duration = r.ReadFloat();
 							uint8_t flags = r.ReadByte();
-							std::string reason = r.GetNumRemainingBytes()
-								? ExtendedTeamplay::SanitizeReason(r.ReadRemainingString())
-								: std::string();
+							uint8_t messageId = r.ReadByte();
+							std::string reason =
+							  ExtendedTeamplay::SanitizeReason(r.ReadRemainingData());
+
+							if (messageId != ExtendedTeamplay::kReservedMessageId ||
+								!ExtendedTeamplay::IsValidDuration(duration))
+								break; // recorded from a newer version, or malformed
 
 							// Marks are state rather than events, so they are replayed
 							// during a seek to rebuild what was in force. Their timers

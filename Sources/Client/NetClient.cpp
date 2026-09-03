@@ -179,6 +179,12 @@ namespace spades {
 				data.insert(data.end(), str.begin(), str.end());
 			}
 
+			/** Writes the bytes as they are, for a field the protocol defines as UTF-8
+			 * text rather than as the base protocol's Code Page 437 with a UTF-8 escape. */
+			void WriteRawString(const std::string& str) {
+				data.insert(data.end(), str.begin(), str.end());
+			}
+
 			void WriteString(const std::string& str, size_t fillLen) {
 				WriteString(str.substr(0, fillLen));
 				size_t sz = str.size();
@@ -691,30 +697,57 @@ namespace spades {
 				case ExtendedTeamplaySubPing: {
 					int pId = r.ReadByte();
 					Vector3 pos = r.ReadVector3();
+					float duration = r.ReadFloat();
+					uint8_t messageId = r.ReadByte();
 
-					// The Reason occupies the rest of the packet and may be empty.
-					std::string reason = r.GetNumRemainingBytes()
-						? ExtendedTeamplay::SanitizeReason(r.ReadRemainingString())
-						: std::string();
+					// The Reason occupies the rest of the packet, is plain UTF-8 rather
+					// than the base protocol's Code Page 437, and may be empty.
+					std::string reason =
+					  ExtendedTeamplay::SanitizeReason(r.ReadRemainingData());
+
+					// A Message ID this version does not define belongs to a later one,
+					// which would give the Reason a meaning we cannot read.
+					if (messageId != ExtendedTeamplay::kReservedMessageId) {
+						SPLog("Dropped an Extended Teamplay ping with message id %u",
+							  (unsigned int)messageId);
+						break;
+					}
+
+					if (!ExtendedTeamplay::IsValidDuration(duration)) {
+						SPLog("Dropped an Extended Teamplay ping with an invalid duration");
+						break;
+					}
 
 					// The server is authoritative on placement, but a NaN or a wildly
 					// out-of-bounds position would corrupt the projection maths, so it
-					// is rejected rather than drawn.
-					if (pos.IsNaN() || !IsInsideMapBounds(pos)) {
+					// is rejected rather than drawn. A removal carries no place to check.
+					if (duration != 0.0F && (pos.IsNaN() || !IsInsideMapBounds(pos))) {
 						SPLog("Dropped an Extended Teamplay ping at an invalid position");
 						break;
 					}
 
-					client->ExtendedTeamplayPingReceived(pId, pos, std::move(reason));
+					client->ExtendedTeamplayPingReceived(pId, pos, duration,
+														 std::move(reason));
 				} break;
 				case ExtendedTeamplaySubESPMark: {
 					int pId = r.ReadByte();
-					uint8_t duration = r.ReadByte();
+					float duration = r.ReadFloat();
 					uint8_t flags = r.ReadByte();
+					uint8_t messageId = r.ReadByte();
 
-					std::string reason = r.GetNumRemainingBytes()
-						? ExtendedTeamplay::SanitizeReason(r.ReadRemainingString())
-						: std::string();
+					std::string reason =
+					  ExtendedTeamplay::SanitizeReason(r.ReadRemainingData());
+
+					if (messageId != ExtendedTeamplay::kReservedMessageId) {
+						SPLog("Dropped an Extended Teamplay mark with message id %u",
+							  (unsigned int)messageId);
+						break;
+					}
+
+					if (!ExtendedTeamplay::IsValidDuration(duration)) {
+						SPLog("Dropped an Extended Teamplay mark with an invalid duration");
+						break;
+					}
 
 					client->ExtendedTeamplayMarkReceived(pId, duration, flags,
 														 std::move(reason));
@@ -1729,7 +1762,16 @@ namespace spades {
 			w.WriteByte((uint8_t)ExtendedTeamplay::kServerPlayerId);
 
 			w.WriteVector3(position);
-			w.WriteString(ExtendedTeamplay::SanitizeReason(reason));
+
+			// How long the ping lasts is the server's call alone, so a client sends `0`
+			// and the server fills in what it thinks the ping is worth.
+			w.WriteFloat(0.0F);
+
+			w.WriteByte(ExtendedTeamplay::kReservedMessageId);
+
+			// The Reason is UTF-8 text, not the base protocol's Code Page 437, so the
+			// bytes go out as they are.
+			w.WriteRawString(ExtendedTeamplay::SanitizeReason(reason));
 
 			enet_peer_send(peer, 0, w.CreatePacket());
 		}
