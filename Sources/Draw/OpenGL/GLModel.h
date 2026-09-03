@@ -37,21 +37,21 @@ namespace spades {
 			GLModel();
 
 			/** Renders for shadow map */
-			virtual void RenderShadowMapPass(std::vector<client::ModelRenderParam> params) = 0;
+			virtual void RenderShadowMapPass(const std::vector<client::ModelRenderParam>& params) = 0;
 
 			/** Renders only in depth buffer (optional) */
-			virtual void Prerender(std::vector<client::ModelRenderParam> params,
+			virtual void Prerender(const std::vector<client::ModelRenderParam>& params,
 			                       bool ghostPass) = 0;
 
 			/** Renders sunlighted solid geometry */
-			virtual void RenderSunlightPass(std::vector<client::ModelRenderParam> params,
+			virtual void RenderSunlightPass(const std::vector<client::ModelRenderParam>& params,
 			                                bool ghostPass) = 0;
 
 			/** Adds dynamic light */
-			virtual void RenderDynamicLightPass(std::vector<client::ModelRenderParam> params,
-			                                    std::vector<GLDynamicLight> lights) = 0;
+			virtual void RenderDynamicLightPass(const std::vector<client::ModelRenderParam>& params,
+			                                    const std::vector<GLDynamicLight>& lights) = 0;
 
-			virtual void RenderOutlinePass(std::vector<client::ModelRenderParam> params) = 0;
+			virtual void RenderOutlinePass(const std::vector<client::ModelRenderParam>& params) = 0;
 
 		private:
 			// members used when rendering by GLModelRenderer
