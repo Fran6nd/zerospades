@@ -1296,24 +1296,39 @@ namespace spades {
 
 			// Display private messages in green
 			if (msg.substr(0, 8) == "PM from ") {
-				if (cg_ignorePrivateMessages)
-					return;
-
-				// play chat sound
-				if (!IsMuted()) {
-					Handle<IAudioChunk> c = audioDevice->RegisterSound("Sounds/Feedback/Chat.opus");
-					AudioParam params;
-					params.volume = (float)cg_chatBeep;
-					audioDevice->PlayLocal(c.GetPointerOrNull(), params);
-				}
-
-				std::string s = _Tr("Client", "[PM] ");
-				s += ChatWindow::ColoredMessage(msg.substr(8), MsgColorGreen);
-				chatWindow->AddMessage(s);
+				AddPrivateMessage(msg.substr(8));
 				return;
 			}
 
 			chatWindow->AddMessage(msg);
+		}
+
+		void Client::ServerSentDirectMessage(const std::string& sender,
+											 const std::string& msg) {
+			NetLog("[Direct] %s: %s", sender.empty() ? "The server" : sender.c_str(),
+				   msg.c_str());
+			scriptedUI->RecordChatLog(msg);
+
+			// The extension asks for nothing new here: a direct line lands where this
+			// client already puts a private one, sender first when there is one.
+			AddPrivateMessage(sender.empty() ? msg : sender + ": " + msg);
+		}
+
+		void Client::AddPrivateMessage(const std::string& text) {
+			if (cg_ignorePrivateMessages)
+				return;
+
+			// play chat sound
+			if (!IsMuted()) {
+				Handle<IAudioChunk> c = audioDevice->RegisterSound("Sounds/Feedback/Chat.opus");
+				AudioParam params;
+				params.volume = (float)cg_chatBeep;
+				audioDevice->PlayLocal(c.GetPointerOrNull(), params);
+			}
+
+			std::string s = _Tr("Client", "[PM] ");
+			s += ChatWindow::ColoredMessage(text, MsgColorGreen);
+			chatWindow->AddMessage(s);
 		}
 
 #pragma mark - Follow / Spectate

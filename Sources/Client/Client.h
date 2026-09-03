@@ -709,6 +709,16 @@ namespace spades {
 			void PlayerSentChatMessage(Player&, bool global, const std::string&);
 			void ServerSentMessage(bool system, const std::string&);
 
+			/** Adds a line to the chat as a private message: green, tagged, and with the
+			 * chat beep, unless the player asked to ignore private messages. */
+			void AddPrivateMessage(const std::string&);
+
+			/** A line the server sent to this client alone, through the *Extended
+			 * Teamplay* extension's `CHAT_DIRECT` type. `sender` is empty when the
+			 * server itself is speaking. Rendered where a private message already goes,
+			 * which is all the extension asks of a client. */
+			void ServerSentDirectMessage(const std::string& sender, const std::string&);
+
 			// ── Extended Teamplay, called by the net client ─────────────────
 			/** The server announced which of the extension's features it permits. */
 			void ExtendedTeamplayConfigured(uint8_t features);

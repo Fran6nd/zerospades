@@ -1213,6 +1213,12 @@ namespace spades {
 						client->ServerSentMessage(false, CHATPREFIX_WARNING + msg);
 					} else if (type == ChatTypeError) {
 						client->ServerSentMessage(false, CHATPREFIX_ERROR + msg);
+					} else if (type == ChatTypeDirect &&
+							   HasExtension(ExtensionTypeExtendedTeamplay)) {
+						// The packet needs no field for the recipient — it is us — and
+						// carries the sender in its own player id, 255 for the server.
+						stmp::optional<Player&> p = GetPlayerOrNull(playerId);
+						client->ServerSentDirectMessage(p ? (*p).GetName() : std::string(), msg);
 					}
 				} break;
 				case PacketTypeMapStart: {
