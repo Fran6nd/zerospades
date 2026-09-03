@@ -660,6 +660,19 @@ namespace spades {
 			return axes;
 		}
 
+		bool ClientPlayer::IsLampBuried(const Vector3& lightOrigin) {
+			World* world = client.GetWorld();
+			if (!world)
+				return false;
+
+			GameMap* map = world->GetMap().GetPointerOrNull();
+			if (!map)
+				return false;
+
+			IntVector3 block = lightOrigin.Floor();
+			return map->IsSolidWrapped(block.x, block.y, block.z);
+		}
+
 		void ClientPlayer::AddFlashlightToScene(const Vector3& lightOrigin) {
 			Player& p = player;
 			IRenderer& renderer = client.GetRenderer();
@@ -677,25 +690,13 @@ namespace spades {
 			brightness = 1.0F - expf(-brightness * 5.0F);
 			brightness *= r_hdr ? 3.0F : 1.5F;
 
-			const std::array<Vector3, 3> axes = GetFlashlightAxes();
-
-			// A lamp buried in geometry would light the far side of the block it
-			// sits in, since spotlights aren't shadowed.
-			if (World* world = client.GetWorld()) {
-				if (GameMap* map = world->GetMap().GetPointerOrNull()) {
-					IntVector3 block = lightOrigin.Floor();
-					if (map->IsSolidWrapped(block.x, block.y, block.z))
-						return;
-				}
-			}
-
 			DynamicLightParam light;
 			light.type = DynamicLightTypeSpotlight;
 			light.origin = lightOrigin;
 			light.radius = 60.0F;
 			light.color = MakeVector3(1.0F, 0.7F, 0.5F) * brightness;
 			light.spotAngle = DEG2RAD(90);
-			light.spotAxis = axes;
+			light.spotAxis = GetFlashlightAxes();
 			Handle<IImage> img = renderer.RegisterImage("Gfx/Spotlight.jpg");
 			light.image = img.GetPointerOrNull();
 			renderer.AddLight(light);
@@ -1285,8 +1286,10 @@ namespace spades {
 				}
 			}
 
-			// Roughly head height, so the lamp isn't buried in the torso.
-			AddFlashlightToScene(origin + Vector3(0.0F, 0.0F, -0.3F));
+			// Emit from the eye, so the lamp matches the first-person one and doesn't
+			// shift when the observer changes camera mode or the player crouches.
+			if (!IsLampBuried(p.GetEye()))
+				AddFlashlightToScene(p.GetEye());
 
 			// third person player rendering, done
 		}

@@ -78,6 +78,13 @@ namespace spades {
 			std::array<Vector3, 3> GetFlashlightAxes();
 
 			/**
+			 * Whether a lamp at `lightOrigin` sits inside a solid voxel, in which case
+			 * it would light the far side of that block, since spotlights aren't
+			 * shadowed. Only meaningful for a lamp the camera isn't standing at.
+			 */
+			bool IsLampBuried(const Vector3& lightOrigin);
+
+			/**
 			 * Emit this player's flashlight from `lightOrigin`, if it should be lit
 			 * at all. Shared by the first- and third-person paths, which differ only
 			 * in where the lamp sits.
