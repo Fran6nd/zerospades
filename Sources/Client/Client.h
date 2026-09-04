@@ -591,6 +591,10 @@ namespace spades {
 			 * two sources as `ShouldRevealPlayer` before any player is examined. */
 			bool HasRevealedPlayers();
 
+			/** Which half of the blink a marked teammate is in, so the outline and its
+			 * label alternate together. */
+			bool IsMarkBlinkPhase() const;
+
 			/** Teammates revealed through `TEAM_ESP`, while the overlay key is held. */
 			void DrawTeamOverlay();
 			/** Players the server marked, which are drawn whatever `TEAM_ESP` says. */
@@ -729,9 +733,10 @@ namespace spades {
 			/** A ping was relayed to us. `playerId` is `255` for a server-origin ping,
 			 * and a `duration` of `0` removes that player's ping. */
 			void ExtendedTeamplayPingReceived(int playerId, Vector3 position, float duration,
-											  std::string reason);
+											  uint8_t surfaces, std::string reason);
 			/** The server marked (or, with a `0` duration, unmarked) a player. */
-			void ExtendedTeamplayMarkReceived(int playerId, float duration, uint8_t flags,
+			void ExtendedTeamplayMarkReceived(int playerId, float duration, uint8_t surfaces,
+											  uint8_t flags, const IntVector3& color,
 											  std::string reason);
 			/** A player spawned, which ends a mark that was flagged to end there. Split
 			 * out of `PlayerSpawned` because a demo seek skips the rest of that work but

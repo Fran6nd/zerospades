@@ -1154,16 +1154,11 @@ namespace spades {
 		}
 
 		void Client::ExtendedTeamplayPingReceived(int playerId, Vector3 position, float duration,
-												  std::string reason) {
+												  uint8_t surfaces, std::string reason) {
 			SPADES_MARK_FUNCTION();
 
-			// With both ping bits clear the client renders nothing, so there is no point
-			// keeping the ping alive. The server should not have relayed it either — but
-			// a removal still runs, so a policy change cannot strand a ping on screen.
-			if (duration != 0.0F && !teamplay->IsWorldPingEnabled() &&
-				!teamplay->IsMinimapPingEnabled())
-				return;
-
+			// No feature bit gates this: a relayed ping is drawn on the surfaces the
+			// packet names, and a server that wants one unseen does not send it.
 			std::string who = (playerId == ExtendedTeamplay::kServerPlayerId)
 				? _Tr("Client", "The server")
 				: world ? world->GetPlayerName(playerId) : std::string();
@@ -1171,7 +1166,7 @@ namespace spades {
 			NetLog("[Ping] %s @ (%.1f, %.1f, %.1f) for %.1fs: %s", who.c_str(),
 				   position.x, position.y, position.z, duration, reason.c_str());
 
-			teamplay->SetPing(playerId, position, duration, std::move(reason));
+			teamplay->SetPing(playerId, position, duration, surfaces, std::move(reason));
 
 			// A ping is a callout: it has to register even when the player is looking
 			// somewhere else, so it gets an audible cue as well as a marker. Taking one
@@ -1182,14 +1177,16 @@ namespace spades {
 			}
 		}
 
-		void Client::ExtendedTeamplayMarkReceived(int playerId, float duration, uint8_t flags,
+		void Client::ExtendedTeamplayMarkReceived(int playerId, float duration, uint8_t surfaces,
+												  uint8_t flags, const IntVector3& color,
 												  std::string reason) {
 			SPADES_MARK_FUNCTION();
 
-			NetLog("[ESP Mark] player %d, duration %.1f, flags 0x%02x: %s", playerId,
-				   duration, (unsigned int)flags, reason.c_str());
+			NetLog("[ESP Mark] player %d, duration %.1f, surfaces 0x%02x, flags 0x%02x, "
+				   "colour (%d, %d, %d): %s", playerId, duration, (unsigned int)surfaces,
+				   (unsigned int)flags, color.x, color.y, color.z, reason.c_str());
 
-			teamplay->SetMark(playerId, duration, flags, std::move(reason));
+			teamplay->SetMark(playerId, duration, surfaces, flags, color, std::move(reason));
 		}
 
 		void Client::ExtendedTeamplayPlayerSpawned(int playerId) {

@@ -90,10 +90,10 @@ DEFINE_SPADES_SETTING(cg_hudColorB, "255");
 DEFINE_SPADES_SETTING(cg_hudAmmoStyle, "0");
 DEFINE_SPADES_SETTING(cg_hudSafezoneX, "1");
 DEFINE_SPADES_SETTING(cg_hudSafezoneY, "1");
+DEFINE_SPADES_SETTING(cg_hudCompassBar, "0");
 DEFINE_SPADES_SETTING(cg_hudPlayerCount, "0");
 DEFINE_SPADES_SETTING(cg_hudHealthBar, "1");
 DEFINE_SPADES_SETTING(cg_hudHealthAnimation, "1");
-DEFINE_SPADES_SETTING(cg_hudCompassBar, "0");
 DEFINE_SPADES_SETTING(cg_playerNames, "2");
 DEFINE_SPADES_SETTING(cg_playerNameX, "0");
 DEFINE_SPADES_SETTING(cg_playerNameY, "0");
@@ -990,6 +990,12 @@ namespace spades {
 			}
 		}
 
+		bool Client::IsMarkBlinkPhase() const {
+			// Slow enough to read both colours, fast enough that a glance catches both.
+			constexpr float kBlinkPeriod = 1.0F;
+			return fmodf(time, kBlinkPeriod) < kBlinkPeriod * 0.5F;
+		}
+
 		bool Client::ShouldRevealPlayer(Player& p, Vector3& outColor) {
 			SPADES_MARK_FUNCTION();
 
@@ -997,30 +1003,43 @@ namespace spades {
 				return false;
 
 			// Never the player whose eyes we are looking through: they are not hidden
-			// from themselves, and their own contour would frame the whole screen.
+			// from themselves, and their own outline would frame the whole screen.
 			auto maybeLocal = world->GetLocalPlayer();
 			if (maybeLocal && &p == &maybeLocal.value())
 				return false;
 
-			// A mark is an instruction from the server and outranks the team overlay,
-			// including its colour, which is what tells the two apart.
-			if (teamplay->GetMark(p.GetId())) {
-				outColor = MakeVector3(1.0F, 0.75F, 0.15F);
+			// TEAM_ESP reveals the client's own teammates, in their team's colour, and
+			// only while the overlay key spends that permission.
+			bool teamRevealed = teamplay->IsTeamESPEnabled() && teamOverlayAlpha > 0.0F &&
+								maybeLocal && !maybeLocal.value().IsSpectator() &&
+								maybeLocal.value().IsTeammate(p);
+
+			Vector4 teamColor = GetTeamplayTeamColor(p, 1.0F);
+
+			// A mark is an instruction from the server, so it is drawn whatever the
+			// TEAM_ESP bit says — but only on the surfaces the packet named.
+			auto mark = teamplay->GetMark(p.GetId());
+			if (mark && (mark->surfaces & ExtendedTeamplay::SurfaceWorld)) {
+				Vector3 markColor =
+				  mark->ResolveColor(MakeVector3(teamColor.x, teamColor.y, teamColor.z));
+
+				// Both colours are true at once on a marked teammate the client is
+				// already revealing: the team colour says they are yours, the mark
+				// colour says what the server is telling you about them. Drawing one
+				// over the other would throw the other away, so the outline alternates
+				// between them. A mark that asked for the team colour has no second
+				// colour to alternate with.
+				if (teamRevealed && !mark->UsesTeamColor() && !IsMarkBlinkPhase())
+					outColor = MakeVector3(teamColor.x, teamColor.y, teamColor.z);
+				else
+					outColor = markColor;
+
 				return true;
 			}
 
-			if (!teamplay->IsTeamESPEnabled() || teamOverlayAlpha <= 0.0F)
-				return false;
-			if (!maybeLocal)
+			if (!teamRevealed)
 				return false;
 
-			Player& local = maybeLocal.value();
-			if (local.IsSpectator() || !local.IsTeammate(p))
-				return false;
-
-			// The extension mandates the team colour the server sent in State Data for a
-			// TEAM_ESP highlight.
-			Vector4 teamColor = GetTeamplayTeamColor(p, 1.0F);
 			outColor = MakeVector3(teamColor.x, teamColor.y, teamColor.z);
 			return true;
 		}
@@ -1028,11 +1047,14 @@ namespace spades {
 		bool Client::HasRevealedPlayers() {
 			SPADES_MARK_FUNCTION();
 
-			// A mark reveals its player whatever the feature bits say, so it counts on
-			// its own; the team overlay only reveals anybody while it is on screen.
-			if (teamplay->HasMarks())
-				return true;
+			// A mark reveals its player whatever the feature bits say, but only one that
+			// asked for the world surface puts anything through a wall.
+			for (const auto& entry : teamplay->GetMarks()) {
+				if (entry.second.surfaces & ExtendedTeamplay::SurfaceWorld)
+					return true;
+			}
 
+			// The team overlay only reveals anybody while it is on screen.
 			return teamplay->IsTeamESPEnabled() && teamOverlayAlpha > 0.0F;
 		}
 
@@ -1105,21 +1127,31 @@ namespace spades {
 				if (!maybePlayer)
 					continue;
 
+				// A mark that did not name the world surface says nothing here; it is
+				// on the minimap or the compass instead.
+				if (!(mark->surfaces & ExtendedTeamplay::SurfaceWorld))
+					continue;
+
 				Player& p = maybePlayer.value();
 				if (p.IsSpectator() || !p.IsAlive())
 					continue;
 				if (p.GetFront().GetSquaredLength() < 0.01F)
 					continue; // invalid state
 
-				// The extension leaves a mark's colour to the client precisely so it can
-				// be told apart from a plain teammate highlight, which is team-coloured.
+				// The same colour the outline is drawn in, blink and all, so the label
+				// never contradicts the shape it belongs to.
+				Vector3 revealColor;
+				if (!ShouldRevealPlayer(p, revealColor))
+					continue;
+
 				constexpr float kMarkOpacity = 0.95F;
-				Vector4 color = MakeVector4(1.0F, 0.75F, 0.15F, kMarkOpacity);
+				Vector4 color = MakeVector4(revealColor.x, revealColor.y, revealColor.z,
+											kMarkOpacity);
 
 				// The Reason, when the server sent one, rides above the name so the
 				// audience knows why this player and not another. It is rendered as
 				// received: the extension assigns no reason values.
-				// The body-and-weapon contour is the renderer's job now, driven by
+				// The body-and-weapon outline is the renderer's job, driven by
 				// ShouldRevealPlayer; here only the name and reason are drawn.
 				DrawPlayerChevron(p, color, false, mark->showName, mark->reason);
 			}
@@ -1146,19 +1178,28 @@ namespace spades {
 			if (!mark->reason.empty())
 				str += " — " + mark->reason;
 
+			// In the colour the server chose, so the notice says the same thing to its
+			// subject as the outline says to everybody else.
+			auto maybeLocal = world->GetLocalPlayer();
+			Vector4 teamColor = maybeLocal
+				? GetTeamplayTeamColor(maybeLocal.value(), 1.0F)
+				: MakeVector4(1, 1, 1, 1);
+			Vector3 col =
+			  mark->ResolveColor(MakeVector3(teamColor.x, teamColor.y, teamColor.z));
+
 			IFont& font = fontManager->GetGuiFont();
 			Vector2 size = font.Measure(str);
 			Vector2 pos = MakeVector2(floorf((renderer->ScreenWidth() - size.x) * 0.5F),
 									  floorf(renderer->ScreenHeight() * 0.16F));
 
-			font.DrawShadow(str, pos, 1.0F, MakeVector4(1.0F, 0.75F, 0.15F, 1.0F),
+			font.DrawShadow(str, pos, 1.0F, MakeVector4(col.x, col.y, col.z, 1.0F),
 							MakeVector4(0, 0, 0, 0.8F));
 		}
 
 		void Client::DrawTeamplayPings() {
 			SPADES_MARK_FUNCTION();
 
-			if (!teamplay->IsWorldPingEnabled() || !teamplay->HasPings())
+			if (!teamplay->HasPings())
 				return;
 
 			IFont& font = fontManager->GetSmallFont();
@@ -1172,6 +1213,10 @@ namespace spades {
 
 			for (const auto& entry : teamplay->GetPings()) {
 				const ExtendedTeamplay::Ping& ping = entry.second;
+
+				// The packet decides where it is shown; this is the world.
+				if (!(ping.surfaces & ExtendedTeamplay::SurfaceWorld))
+					continue;
 
 				// Fade out over the last stretch of whatever lifetime the server gave
 				// it, rather than blinking out of existence. A ping the server keeps
@@ -2313,6 +2358,65 @@ namespace spades {
 					if (!otherTeam.hasIntel)
 						drawIcon(intelIcon, team.flagPos, color);
 				}
+			}
+
+			// The objectives above are on the compass by default; everything below is
+			// here because a ping or a mark asked for it. A bearing carries no distance
+			// and no position, only which way to turn, which is why a callout known by
+			// direction alone belongs on this surface.
+			auto drawBearing = [&](Vector3 targetPos, const Vector3& col, float alpha) {
+				Vector2 delta = targetPos.GetXY() - pos2D;
+				float angle = toAngle(delta.y, delta.x);
+				float yawDelta = std::remainderf(angle - roundf(yawDeg), 360.0F);
+				if (fabsf(yawDelta) > range * 0.5F)
+					return;
+
+				float px = roundf(barX + barW * 0.5F + (yawDelta / range) * barW);
+				float fade = 1.0F - Clamp((fabsf(yawDelta) - range * 0.42F) / (range * 0.06F),
+										  0.0F, 1.0F);
+				fade *= alpha;
+				if (fade <= 0.0F)
+					return;
+
+				// A full-height stripe rather than an icon: it reads as a direction, not
+				// as a thing sitting at a place.
+				const float w = 2.0F;
+				renderer->SetColorAlphaPremultiplied(shadowP * fade);
+				renderer->DrawFilledRect(px, barY + 1.0F, px + w + 1.0F, barY + barH);
+				renderer->SetColorAlphaPremultiplied(
+				  MakeVector4(col.x * fade, col.y * fade, col.z * fade, fade));
+				renderer->DrawFilledRect(px, barY, px + w, barY + barH - 1.0F);
+			};
+
+			for (const auto& entry : teamplay->GetPings()) {
+				const ExtendedTeamplay::Ping& ping = entry.second;
+				if (!(ping.surfaces & ExtendedTeamplay::SurfaceCompass))
+					continue;
+
+				constexpr float kFadeOutTime = 0.75F;
+				Vector3 pingCol = (ping.playerId == ExtendedTeamplay::kServerPlayerId)
+					? MakeVector3(1.0F, 0.85F, 0.3F)
+					: MakeVector3(1.0F, 1.0F, 1.0F);
+				drawBearing(ping.position, pingCol, ping.GetFadeAlpha(kFadeOutTime));
+			}
+
+			for (const auto& entry : teamplay->GetMarks()) {
+				const ExtendedTeamplay::Mark& mark = entry.second;
+				if (!(mark.surfaces & ExtendedTeamplay::SurfaceCompass))
+					continue;
+
+				auto maybeMarked = world->GetPlayer(static_cast<unsigned int>(entry.first));
+				if (!maybeMarked)
+					continue;
+
+				Player& marked = maybeMarked.value();
+				if (marked.IsSpectator() || !marked.IsAlive())
+					continue;
+
+				Vector4 teamColor = GetTeamplayTeamColor(marked, 1.0F);
+				Vector3 markCol =
+				  mark.ResolveColor(MakeVector3(teamColor.x, teamColor.y, teamColor.z));
+				drawBearing(marked.GetPosition(), markCol, 1.0F);
 			}
 		}
 

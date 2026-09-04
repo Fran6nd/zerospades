@@ -864,6 +864,7 @@ namespace spades {
 							int pId = r.ReadByte();
 							Vector3 pos = r.ReadVector3();
 							float duration = r.ReadFloat();
+							uint8_t surfaces = r.ReadByte();
 							uint8_t messageId = r.ReadByte();
 							std::string reason =
 							  ExtendedTeamplay::SanitizeReason(r.ReadRemainingData());
@@ -877,12 +878,14 @@ namespace spades {
 							// at the destination. A removal is state and is kept.
 							if (!seekingMode || duration == 0.0F)
 								client->ExtendedTeamplayPingReceived(pId, pos, duration,
-																	 std::move(reason));
+																	 surfaces, std::move(reason));
 						} break;
 						case ExtendedTeamplaySubESPMark: {
 							int pId = r.ReadByte();
 							float duration = r.ReadFloat();
+							uint8_t surfaces = r.ReadByte();
 							uint8_t flags = r.ReadByte();
+							IntVector3 color = r.ReadIntColor();
 							uint8_t messageId = r.ReadByte();
 							std::string reason =
 							  ExtendedTeamplay::SanitizeReason(r.ReadRemainingData());
@@ -894,8 +897,8 @@ namespace spades {
 							// Marks are state rather than events, so they are replayed
 							// during a seek to rebuild what was in force. Their timers
 							// restart from the seek, which a fast replay cannot avoid.
-							client->ExtendedTeamplayMarkReceived(pId, duration, flags,
-																 std::move(reason));
+							client->ExtendedTeamplayMarkReceived(pId, duration, surfaces, flags,
+																 color, std::move(reason));
 						} break;
 						default: break; // a sub packet from a newer extension version
 					}

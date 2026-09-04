@@ -911,11 +911,12 @@ namespace spades {
 			}
 
 			DrawTeamplayPings(largeMapAlpha);
+			DrawTeamplayMarks(largeMapAlpha);
 		}
 
 		void MapView::DrawTeamplayPings(float mapAlpha) {
 			const ExtendedTeamplay& teamplay = *client->teamplay;
-			if (!teamplay.IsMinimapPingEnabled() || !teamplay.HasPings())
+			if (!teamplay.HasPings())
 				return;
 
 			World* world = client->GetWorld();
@@ -924,6 +925,10 @@ namespace spades {
 
 			for (const auto& entry : teamplay.GetPings()) {
 				const ExtendedTeamplay::Ping& ping = entry.second;
+
+				// The packet decides where it is shown; this is the minimap.
+				if (!(ping.surfaces & ExtendedTeamplay::SurfaceMinimap))
+					continue;
 
 				// Match the world marker's fade so a ping does not linger on the minimap
 				// after it has gone from the view, or the other way round.
@@ -950,6 +955,41 @@ namespace spades {
 				const Vector2 pingPos = ping.position.GetXY();
 				DrawMapCircle(pingPos, color, radius, 1.5F);
 				DrawMapCircle(pingPos, color, kInnerRadius * 0.5F, 1.5F);
+			}
+		}
+
+		void MapView::DrawTeamplayMarks(float mapAlpha) {
+			const ExtendedTeamplay& teamplay = *client->teamplay;
+			if (!teamplay.HasMarks())
+				return;
+
+			World* world = client->GetWorld();
+			if (!world)
+				return;
+
+			for (const auto& entry : teamplay.GetMarks()) {
+				const ExtendedTeamplay::Mark& mark = entry.second;
+				if (!(mark.surfaces & ExtendedTeamplay::SurfaceMinimap))
+					continue;
+
+				auto maybePlayer = world->GetPlayer(static_cast<unsigned int>(entry.first));
+				if (!maybePlayer)
+					continue;
+
+				Player& p = maybePlayer.value();
+				if (p.IsSpectator() || !p.IsAlive())
+					continue;
+
+				// A mark on the minimap is a dot at the player, in the mark's colour —
+				// the same colour the outline uses, so the two read as one thing.
+				Vector3 teamCol = ConvertColorRGB(world->GetTeamColor(p.GetTeamId()));
+				Vector3 col = mark.ResolveColor(teamCol);
+
+				Vector4 color = MakeVector4(col.x * mapAlpha, col.y * mapAlpha,
+											col.z * mapAlpha, mapAlpha);
+
+				constexpr float kRadius = 4.0F;
+				DrawMapCircle(p.GetPosition().GetXY(), color, kRadius, 1.5F);
 			}
 		}
 
