@@ -591,9 +591,24 @@ namespace spades {
 			 * two sources as `ShouldRevealPlayer` before any player is examined. */
 			bool HasRevealedPlayers();
 
-			/** Which half of the blink a marked teammate is in, so the outline and its
-			 * label alternate together. */
+			/** Which half of the blink a marked teammate is in, so every surface
+			 * alternates together. */
 			bool IsMarkBlinkPhase() const;
+
+			/** Whether `TEAM_ESP` is revealing this player to the local player right
+			 * now, which is the permission the overlay key spends. */
+			bool IsTeamESPRevealing(Player&);
+
+			/**
+			 * The colour a mark on this player is drawn in this frame, on every surface
+			 * it named: the colour the server chose, alternating with the team colour
+			 * while `TEAM_ESP` is revealing the same player.
+			 *
+			 * Both colours are true at once on a marked teammate — one says they are
+			 * yours, the other says what the server is telling you about them — so the
+			 * mark blinks between them instead of throwing either away.
+			 */
+			Vector3 ResolveMarkColor(Player&, const IntVector3& markColor);
 
 			/** Teammates revealed through `TEAM_ESP`, while the overlay key is held. */
 			void DrawTeamOverlay();
@@ -733,7 +748,8 @@ namespace spades {
 			/** A ping was relayed to us. `playerId` is `255` for a server-origin ping,
 			 * and a `duration` of `0` removes that player's ping. */
 			void ExtendedTeamplayPingReceived(int playerId, Vector3 position, float duration,
-											  uint8_t surfaces, std::string reason);
+											  uint8_t surfaces, const IntVector3& color,
+											  std::string reason);
 			/** The server marked (or, with a `0` duration, unmarked) a player. */
 			void ExtendedTeamplayMarkReceived(int playerId, float duration, uint8_t surfaces,
 											  uint8_t flags, const IntVector3& color,

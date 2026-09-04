@@ -127,6 +127,10 @@ namespace spades {
 				std::string reason;
 				/** Where the packet asked for it, as `Surface` bits. */
 				uint8_t surfaces;
+				/** The colour the server chose, as 0-255 per channel. Drawn as sent on
+				 * every surface the packet named; working out what colour a ping should
+				 * be is the server's job, not this client's. */
+				IntVector3 color;
 				/** The lifetime the server gave it. Meaningless when `endless`. */
 				float duration;
 				/** Seconds until the ping disappears. Meaningless when `endless`. */
@@ -147,13 +151,8 @@ namespace spades {
 				std::string reason;
 				/** Where the packet asked for it, as `Surface` bits. */
 				uint8_t surfaces;
-				/**
-				 * The colour the server chose for the outline, as 0-255 per channel.
-				 *
-				 * Black is not a colour here: it asks for the marked player's own team
-				 * colour, which is what `UsesTeamColor` reports. Every other value is
-				 * the server's instruction and is drawn as sent.
-				 */
+				/** The colour the server chose for the outline, as 0-255 per channel,
+				 * drawn as sent on every surface the packet named. */
 				IntVector3 color;
 				/** Seconds until the mark expires. Meaningless when `endless`. */
 				float timeLeft;
@@ -163,20 +162,6 @@ namespace spades {
 				bool clearOnRespawn;
 				/** The server permits the marked player's name to be shown. */
 				bool showName;
-
-				/** Whether the mark asked for the marked player's team colour. */
-				bool UsesTeamColor() const {
-					return color.x == 0 && color.y == 0 && color.z == 0;
-				}
-
-				/** The colour to draw this mark in, given the marked player's team
-				 * colour for the black case. Kept here so the outline, the label, the
-				 * minimap dot and the compass bearing cannot disagree. */
-				Vector3 ResolveColor(const Vector3& teamColor) const {
-					if (UsesTeamColor())
-						return teamColor;
-					return MakeVector3(color.x / 255.0F, color.y / 255.0F, color.z / 255.0F);
-				}
 			};
 
 			/** Pings currently on screen, keyed by the player who originated them: the
@@ -208,7 +193,7 @@ namespace spades {
 			 * other value replaces it and restarts its lifetime. The caller is expected
 			 * to have rejected an invalid Duration with the rest of the packet. */
 			void SetPing(int playerId, const Vector3& position, float duration,
-						 uint8_t surfaces, std::string reason);
+						 uint8_t surfaces, const IntVector3& color, std::string reason);
 
 			/** Applies an ESP Mark sub-packet. A Duration of `0` clears the player's mark;
 			 * any other value replaces the previous mark and restarts its timer. */
@@ -222,6 +207,13 @@ namespace spades {
 			const MarkMap& GetMarks() const { return marks; }
 			bool HasPings() const { return !pings.empty(); }
 			bool HasMarks() const { return !marks.empty(); }
+
+			/** A 0-255 colour triple as the renderer wants it. The packet's colour is
+			 * drawn as sent: the client is told which colour to use, never what it
+			 * stands for, so there is nothing here to interpret. */
+			static Vector3 ToRenderColor(const IntVector3& color) {
+				return MakeVector3(color.x / 255.0F, color.y / 255.0F, color.z / 255.0F);
+			}
 
 			/** Normalises a Surfaces byte: reserved bits are dropped, and a byte that
 			 * named nothing at all asks for this client's default placement. A byte that

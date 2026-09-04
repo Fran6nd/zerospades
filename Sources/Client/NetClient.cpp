@@ -699,6 +699,11 @@ namespace spades {
 					Vector3 pos = r.ReadVector3();
 					float duration = r.ReadFloat();
 					uint8_t surfaces = r.ReadByte();
+
+					// The marker colour, in the Blue-Green-Red order the base protocol
+					// already uses. The server chose it; the client draws it as sent.
+					IntVector3 color = r.ReadIntColor();
+
 					uint8_t messageId = r.ReadByte();
 
 					// The Reason occupies the rest of the packet, is plain UTF-8 rather
@@ -728,7 +733,7 @@ namespace spades {
 					}
 
 					client->ExtendedTeamplayPingReceived(pId, pos, duration, surfaces,
-														 std::move(reason));
+														 color, std::move(reason));
 				} break;
 				case ExtendedTeamplaySubESPMark: {
 					int pId = r.ReadByte();
@@ -1781,6 +1786,10 @@ namespace spades {
 			// shown is the server's call too, and `0` asks it to decide.
 			w.WriteFloat(0.0F);
 			w.WriteByte((uint8_t)0);
+
+			// Only the server sets a ping's colour, so these three go out empty and are
+			// ignored on arrival like the two fields above them.
+			w.WriteColor(MakeIntVector3(0, 0, 0));
 
 			w.WriteByte(ExtendedTeamplay::kReservedMessageId);
 

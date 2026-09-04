@@ -995,6 +995,27 @@ namespace spades {
 			return fmodf(time, kBlinkPeriod) < kBlinkPeriod * 0.5F;
 		}
 
+		bool Client::IsTeamESPRevealing(Player& p) {
+			if (!world || !teamplay->IsTeamESPEnabled() || teamOverlayAlpha <= 0.0F)
+				return false;
+
+			auto maybeLocal = world->GetLocalPlayer();
+			if (!maybeLocal)
+				return false;
+
+			Player& local = maybeLocal.value();
+			return &p != &local && !local.IsSpectator() && local.IsTeammate(p);
+		}
+
+		Vector3 Client::ResolveMarkColor(Player& p, const IntVector3& markColor) {
+			if (IsTeamESPRevealing(p) && !IsMarkBlinkPhase()) {
+				Vector4 teamColor = GetTeamplayTeamColor(p, 1.0F);
+				return MakeVector3(teamColor.x, teamColor.y, teamColor.z);
+			}
+
+			return ExtendedTeamplay::ToRenderColor(markColor);
+		}
+
 		bool Client::ShouldRevealPlayer(Player& p, Vector3& outColor) {
 			SPADES_MARK_FUNCTION();
 
@@ -1007,38 +1028,20 @@ namespace spades {
 			if (maybeLocal && &p == &maybeLocal.value())
 				return false;
 
-			// TEAM_ESP reveals the client's own teammates, in their team's colour, and
-			// only while the overlay key spends that permission.
-			bool teamRevealed = teamplay->IsTeamESPEnabled() && teamOverlayAlpha > 0.0F &&
-								maybeLocal && !maybeLocal.value().IsSpectator() &&
-								maybeLocal.value().IsTeammate(p);
-
-			Vector4 teamColor = GetTeamplayTeamColor(p, 1.0F);
-
 			// A mark is an instruction from the server, so it is drawn whatever the
 			// TEAM_ESP bit says — but only on the surfaces the packet named.
 			auto mark = teamplay->GetMark(p.GetId());
 			if (mark && (mark->surfaces & ExtendedTeamplay::SurfaceWorld)) {
-				Vector3 markColor =
-				  mark->ResolveColor(MakeVector3(teamColor.x, teamColor.y, teamColor.z));
-
-				// Both colours are true at once on a marked teammate the client is
-				// already revealing: the team colour says they are yours, the mark
-				// colour says what the server is telling you about them. Drawing one
-				// over the other would throw the other away, so the outline alternates
-				// between them. A mark that asked for the team colour has no second
-				// colour to alternate with.
-				if (teamRevealed && !mark->UsesTeamColor() && !IsMarkBlinkPhase())
-					outColor = MakeVector3(teamColor.x, teamColor.y, teamColor.z);
-				else
-					outColor = markColor;
-
+				outColor = ResolveMarkColor(p, mark->color);
 				return true;
 			}
 
-			if (!teamRevealed)
+			// TEAM_ESP reveals the client's own teammates, in their team's colour, and
+			// only while the overlay key spends that permission.
+			if (!IsTeamESPRevealing(p))
 				return false;
 
+			Vector4 teamColor = GetTeamplayTeamColor(p, 1.0F);
 			outColor = MakeVector3(teamColor.x, teamColor.y, teamColor.z);
 			return true;
 		}
@@ -1179,12 +1182,7 @@ namespace spades {
 
 			// In the colour the server chose, so the notice says the same thing to its
 			// subject as the outline says to everybody else.
-			auto maybeLocal = world->GetLocalPlayer();
-			Vector4 teamColor = maybeLocal
-				? GetTeamplayTeamColor(maybeLocal.value(), 1.0F)
-				: MakeVector4(1, 1, 1, 1);
-			Vector3 col =
-			  mark->ResolveColor(MakeVector3(teamColor.x, teamColor.y, teamColor.z));
+			Vector3 col = ExtendedTeamplay::ToRenderColor(mark->color);
 
 			IFont& font = fontManager->GetGuiFont();
 			Vector2 size = font.Measure(str);
@@ -1248,9 +1246,10 @@ namespace spades {
 				scrPos.x = floorf(scrPos.x) + 0.5F;
 				scrPos.y = floorf(scrPos.y) + 0.5F;
 
-				Vector4 color = (ping.playerId == ExtendedTeamplay::kServerPlayerId)
-					? MakeVector4(1.0F, 0.85F, 0.3F, alpha)
-					: MakeVector4(1.0F, 1.0F, 1.0F, alpha);
+				// The colour the server chose, drawn as sent: which colour a ping should
+				// be is its business, and this client is never told what one means.
+				Vector3 pingCol = ExtendedTeamplay::ToRenderColor(ping.color);
+				Vector4 color = MakeVector4(pingCol.x, pingCol.y, pingCol.z, alpha);
 
 				// A diamond, drawn as four strokes with a dark pass underneath.
 				Vector2 corners[4] = {
@@ -2395,10 +2394,8 @@ namespace spades {
 					continue;
 
 				constexpr float kFadeOutTime = 0.75F;
-				Vector3 pingCol = (ping.playerId == ExtendedTeamplay::kServerPlayerId)
-					? MakeVector3(1.0F, 0.85F, 0.3F)
-					: MakeVector3(1.0F, 1.0F, 1.0F);
-				drawBearing(ping.position, pingCol, ping.GetFadeAlpha(kFadeOutTime));
+				drawBearing(ping.position, ExtendedTeamplay::ToRenderColor(ping.color),
+							ping.GetFadeAlpha(kFadeOutTime));
 			}
 
 			for (const auto& entry : teamplay->GetMarks()) {
@@ -2414,10 +2411,8 @@ namespace spades {
 				if (marked.IsSpectator() || !marked.IsAlive())
 					continue;
 
-				Vector4 teamColor = GetTeamplayTeamColor(marked, 1.0F);
-				Vector3 markCol =
-				  mark.ResolveColor(MakeVector3(teamColor.x, teamColor.y, teamColor.z));
-				drawBearing(marked.GetPosition(), markCol, 1.0F);
+				// The blink runs on every surface the mark names, this one included.
+				drawBearing(marked.GetPosition(), ResolveMarkColor(marked, mark.color), 1.0F);
 			}
 		}
 

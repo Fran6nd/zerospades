@@ -865,6 +865,7 @@ namespace spades {
 							Vector3 pos = r.ReadVector3();
 							float duration = r.ReadFloat();
 							uint8_t surfaces = r.ReadByte();
+							IntVector3 color = r.ReadIntColor();
 							uint8_t messageId = r.ReadByte();
 							std::string reason =
 							  ExtendedTeamplay::SanitizeReason(r.ReadRemainingData());
@@ -877,8 +878,8 @@ namespace spades {
 							// reach a seek target would otherwise pop every ping ever sent
 							// at the destination. A removal is state and is kept.
 							if (!seekingMode || duration == 0.0F)
-								client->ExtendedTeamplayPingReceived(pId, pos, duration,
-																	 surfaces, std::move(reason));
+								client->ExtendedTeamplayPingReceived(pId, pos, duration, surfaces,
+																	 color, std::move(reason));
 						} break;
 						case ExtendedTeamplaySubESPMark: {
 							int pId = r.ReadByte();

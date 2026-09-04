@@ -1154,7 +1154,8 @@ namespace spades {
 		}
 
 		void Client::ExtendedTeamplayPingReceived(int playerId, Vector3 position, float duration,
-												  uint8_t surfaces, std::string reason) {
+												  uint8_t surfaces, const IntVector3& color,
+												  std::string reason) {
 			SPADES_MARK_FUNCTION();
 
 			// No feature bit gates this: a relayed ping is drawn on the surfaces the
@@ -1166,7 +1167,7 @@ namespace spades {
 			NetLog("[Ping] %s @ (%.1f, %.1f, %.1f) for %.1fs: %s", who.c_str(),
 				   position.x, position.y, position.z, duration, reason.c_str());
 
-			teamplay->SetPing(playerId, position, duration, surfaces, std::move(reason));
+			teamplay->SetPing(playerId, position, duration, surfaces, color, std::move(reason));
 
 			// A ping is a callout: it has to register even when the player is looking
 			// somewhere else, so it gets an audible cue as well as a marker. Taking one
