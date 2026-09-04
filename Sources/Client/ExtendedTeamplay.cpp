@@ -31,8 +31,13 @@ namespace spades {
 			 * remaining bits and requires unknown ones to be ignored, so masking here
 			 * means a future server can set them without changing behaviour. */
 			constexpr uint8_t kKnownFeatures =
-			  ExtendedTeamplay::FeatureTeamESP | ExtendedTeamplay::FeaturePingWorld |
-			  ExtendedTeamplay::FeaturePingMinimap;
+			  ExtendedTeamplay::FeatureTeamESP | ExtendedTeamplay::FeaturePing |
+			  ExtendedTeamplay::FeatureCompassHud;
+
+			/** Likewise for the Surfaces byte both the Ping and the ESP Mark carry. */
+			constexpr uint8_t kKnownSurfaces =
+			  ExtendedTeamplay::SurfaceWorld | ExtendedTeamplay::SurfaceMinimap |
+			  ExtendedTeamplay::SurfaceCompass;
 
 			/** Likewise for the ESP Mark flags. */
 			constexpr uint8_t kKnownMarkFlags =
@@ -110,6 +115,12 @@ namespace spades {
 
 		bool ExtendedTeamplay::IsEndlessDuration(float duration) { return std::isinf(duration); }
 
+		uint8_t ExtendedTeamplay::ResolveSurfaces(uint8_t surfaces) {
+			if (surfaces == 0) // named nothing: the client places it
+				return kDefaultSurfaces;
+			return surfaces & kKnownSurfaces;
+		}
+
 		float ExtendedTeamplay::Ping::GetAgeFraction() const {
 			if (endless || duration <= 0.0F)
 				return 0.0F;
@@ -154,7 +165,7 @@ namespace spades {
 		}
 
 		void ExtendedTeamplay::SetPing(int playerId, const Vector3& position, float duration,
-		                               std::string reason) {
+		                               uint8_t surfaces, std::string reason) {
 			SPADES_MARK_FUNCTION();
 
 			if (duration == 0.0F) { // removes the player's ping without placing another
@@ -166,12 +177,14 @@ namespace spades {
 			ping.playerId = playerId;
 			ping.position = position;
 			ping.reason = std::move(reason);
+			ping.surfaces = ResolveSurfaces(surfaces);
 			ping.endless = IsEndlessDuration(duration);
 			ping.duration = ping.endless ? 0.0F : duration;
 			ping.timeLeft = ping.duration;
 		}
 
-		void ExtendedTeamplay::SetMark(int playerId, float duration, uint8_t flags,
+		void ExtendedTeamplay::SetMark(int playerId, float duration, uint8_t surfaces,
+		                               uint8_t flags, const IntVector3& color,
 		                               std::string reason) {
 			SPADES_MARK_FUNCTION();
 
@@ -186,6 +199,8 @@ namespace spades {
 
 			Mark& mark = marks[playerId];
 			mark.reason = std::move(reason);
+			mark.surfaces = ResolveSurfaces(surfaces);
+			mark.color = color;
 			mark.endless = IsEndlessDuration(duration);
 			mark.timeLeft = mark.endless ? 0.0F : duration;
 			mark.clearOnRespawn = (flags & MarkFlagClearOnRespawn) != 0;

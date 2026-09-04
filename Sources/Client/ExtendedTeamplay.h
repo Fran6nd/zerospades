@@ -47,16 +47,44 @@ namespace spades {
 		 */
 		class ExtendedTeamplay {
 		public:
-			/** Feature bits carried by the Config sub-packet. Bits 3-7 are reserved and
-			 * must be ignored, so an unknown bit never enables anything. */
+			/**
+			 * Feature bits carried by the Config sub-packet. Bits 3-7 are reserved and
+			 * must be ignored, so an unknown bit never enables anything.
+			 *
+			 * Every one of them is a permission for something the client would otherwise
+			 * do on its own initiative. None of them governs what the server sends: a
+			 * ping or a mark is drawn where the packet says, not where a bit allows.
+			 */
 			enum Feature : uint8_t {
-				/** The client may render teammates through walls. */
+				/** The client may render its own teammates through walls. */
 				FeatureTeamESP = 1 << 0,
-				/** The client may render received pings as 3D markers in the world. */
-				FeaturePingWorld = 1 << 1,
-				/** The client may render received pings on the minimap. */
-				FeaturePingMinimap = 1 << 2,
+				/** The client may send Ping packets. */
+				FeaturePing = 1 << 1,
+				/** The client may draw a compass HUD at all. */
+				FeatureCompassHud = 1 << 2,
 			};
+
+			/**
+			 * Surface bits carried by both the Ping and the ESP Mark, saying where the
+			 * client is to show them. Bits 3-7 are reserved.
+			 *
+			 * The packet decides: the client draws it on exactly the surfaces named and
+			 * on no others. The compass is the one surface it may withhold, when the
+			 * server has not permitted a compass or this client has none to draw on.
+			 */
+			enum Surface : uint8_t {
+				/** In the world: a 3D marker, or the body outline of a mark. */
+				SurfaceWorld = 1 << 0,
+				/** On the minimap, at the position. */
+				SurfaceMinimap = 1 << 1,
+				/** On the compass HUD, as a bearing — the direction, not the place. */
+				SurfaceCompass = 1 << 2,
+			};
+
+			/** What a Surfaces of `0` asks for: this client's own default placement.
+			 * The compass is left out of it because it is off by default here, so a
+			 * server with no opinion gets the marker and the minimap dot. */
+			static constexpr uint8_t kDefaultSurfaces = SurfaceWorld | SurfaceMinimap;
 
 			/** Flag bits carried by the ESP Mark sub-packet. Bits 2-7 are reserved. */
 			enum MarkFlag : uint8_t {
@@ -97,6 +125,8 @@ namespace spades {
 				int playerId;
 				Vector3 position;
 				std::string reason;
+				/** Where the packet asked for it, as `Surface` bits. */
+				uint8_t surfaces;
 				/** The lifetime the server gave it. Meaningless when `endless`. */
 				float duration;
 				/** Seconds until the ping disappears. Meaningless when `endless`. */
@@ -115,6 +145,16 @@ namespace spades {
 
 			struct Mark {
 				std::string reason;
+				/** Where the packet asked for it, as `Surface` bits. */
+				uint8_t surfaces;
+				/**
+				 * The colour the server chose for the outline, as 0-255 per channel.
+				 *
+				 * Black is not a colour here: it asks for the marked player's own team
+				 * colour, which is what `UsesTeamColor` reports. Every other value is
+				 * the server's instruction and is drawn as sent.
+				 */
+				IntVector3 color;
 				/** Seconds until the mark expires. Meaningless when `endless`. */
 				float timeLeft;
 				/** The mark lasts until the server clears it (Duration `+inf`). */
@@ -123,12 +163,29 @@ namespace spades {
 				bool clearOnRespawn;
 				/** The server permits the marked player's name to be shown. */
 				bool showName;
+
+				/** Whether the mark asked for the marked player's team colour. */
+				bool UsesTeamColor() const {
+					return color.x == 0 && color.y == 0 && color.z == 0;
+				}
+
+				/** The colour to draw this mark in, given the marked player's team
+				 * colour for the black case. Kept here so the outline, the label, the
+				 * minimap dot and the compass bearing cannot disagree. */
+				Vector3 ResolveColor(const Vector3& teamColor) const {
+					if (UsesTeamColor())
+						return teamColor;
+					return MakeVector3(color.x / 255.0F, color.y / 255.0F, color.z / 255.0F);
+				}
 			};
 
 			/** Pings currently on screen, keyed by the player who originated them: the
 			 * specification allows one live ping per player, a newer one replacing it and
 			 * restarting its timer. */
 			using PingMap = std::unordered_map<int, Ping>;
+
+			/** Marks in force, keyed by the player they reveal, one apiece. */
+			using MarkMap = std::unordered_map<int, Mark>;
 
 			ExtendedTeamplay() = default;
 
@@ -138,29 +195,39 @@ namespace spades {
 			uint8_t GetFeatures() const { return features; }
 
 			bool IsTeamESPEnabled() const { return (features & FeatureTeamESP) != 0; }
-			bool IsWorldPingEnabled() const { return (features & FeaturePingWorld) != 0; }
-			bool IsMinimapPingEnabled() const { return (features & FeaturePingMinimap) != 0; }
 
-			/** Whether the client may send a Ping at all. With both ping bits clear the
-			 * client must not send any, and the server would drop them anyway. */
-			bool CanSendPing() const { return IsWorldPingEnabled() || IsMinimapPingEnabled(); }
+			/** Whether the client may send a Ping at all. With the bit clear it must not,
+			 * and the server would drop what it sent anyway. */
+			bool CanSendPing() const { return (features & FeaturePing) != 0; }
+
+			/** Whether the client may draw a compass HUD. The compass exists only where
+			 * the server allows it, so a client never turns one on by itself. */
+			bool IsCompassAllowed() const { return (features & FeatureCompassHud) != 0; }
 
 			/** Applies a relayed Ping. A Duration of `0` removes the player's ping; any
 			 * other value replaces it and restarts its lifetime. The caller is expected
 			 * to have rejected an invalid Duration with the rest of the packet. */
 			void SetPing(int playerId, const Vector3& position, float duration,
-						 std::string reason);
+						 uint8_t surfaces, std::string reason);
 
 			/** Applies an ESP Mark sub-packet. A Duration of `0` clears the player's mark;
 			 * any other value replaces the previous mark and restarts its timer. */
-			void SetMark(int playerId, float duration, uint8_t flags, std::string reason);
+			void SetMark(int playerId, float duration, uint8_t surfaces, uint8_t flags,
+						 const IntVector3& color, std::string reason);
 
 			/** The mark in force for `playerId`, or empty when the player is not marked. */
 			stmp::optional<const Mark&> GetMark(int playerId) const;
 
 			const PingMap& GetPings() const { return pings; }
+			const MarkMap& GetMarks() const { return marks; }
 			bool HasPings() const { return !pings.empty(); }
 			bool HasMarks() const { return !marks.empty(); }
+
+			/** Normalises a Surfaces byte: reserved bits are dropped, and a byte that
+			 * named nothing at all asks for this client's default placement. A byte that
+			 * named only surfaces this version does not know keeps naming nothing, since
+			 * it did make a choice and that choice was not the default. */
+			static uint8_t ResolveSurfaces(uint8_t surfaces);
 
 			/** Drops the mark of a player who just spawned and had `CLEAR_ON_RESPAWN`
 			 * set. A mark without that flag survives death and respawn. */
@@ -200,7 +267,7 @@ namespace spades {
 		private:
 			uint8_t features = 0;
 			PingMap pings;
-			std::unordered_map<int, Mark> marks;
+			MarkMap marks;
 		};
 
 	} // namespace client

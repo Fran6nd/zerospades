@@ -698,6 +698,7 @@ namespace spades {
 					int pId = r.ReadByte();
 					Vector3 pos = r.ReadVector3();
 					float duration = r.ReadFloat();
+					uint8_t surfaces = r.ReadByte();
 					uint8_t messageId = r.ReadByte();
 
 					// The Reason occupies the rest of the packet, is plain UTF-8 rather
@@ -726,13 +727,19 @@ namespace spades {
 						break;
 					}
 
-					client->ExtendedTeamplayPingReceived(pId, pos, duration,
+					client->ExtendedTeamplayPingReceived(pId, pos, duration, surfaces,
 														 std::move(reason));
 				} break;
 				case ExtendedTeamplaySubESPMark: {
 					int pId = r.ReadByte();
 					float duration = r.ReadFloat();
+					uint8_t surfaces = r.ReadByte();
 					uint8_t flags = r.ReadByte();
+
+					// The outline colour, in the Blue-Green-Red order the base protocol
+					// already uses. Black asks for the marked player's team colour.
+					IntVector3 color = r.ReadIntColor();
+
 					uint8_t messageId = r.ReadByte();
 
 					std::string reason =
@@ -749,8 +756,8 @@ namespace spades {
 						break;
 					}
 
-					client->ExtendedTeamplayMarkReceived(pId, duration, flags,
-														 std::move(reason));
+					client->ExtendedTeamplayMarkReceived(pId, duration, surfaces, flags,
+														 color, std::move(reason));
 				} break;
 				default:
 					// Sub packets are the extension's own versioning seam: an unknown one
@@ -1770,8 +1777,10 @@ namespace spades {
 			w.WriteVector3(position);
 
 			// How long the ping lasts is the server's call alone, so a client sends `0`
-			// and the server fills in what it thinks the ping is worth.
+			// and the server fills in what it thinks the ping is worth. Where it is
+			// shown is the server's call too, and `0` asks it to decide.
 			w.WriteFloat(0.0F);
+			w.WriteByte((uint8_t)0);
 
 			w.WriteByte(ExtendedTeamplay::kReservedMessageId);
 
