@@ -90,7 +90,6 @@ DEFINE_SPADES_SETTING(cg_hudColorB, "255");
 DEFINE_SPADES_SETTING(cg_hudAmmoStyle, "0");
 DEFINE_SPADES_SETTING(cg_hudSafezoneX, "1");
 DEFINE_SPADES_SETTING(cg_hudSafezoneY, "1");
-DEFINE_SPADES_SETTING(cg_hudCompassBar, "0");
 DEFINE_SPADES_SETTING(cg_hudPlayerCount, "0");
 DEFINE_SPADES_SETTING(cg_hudHealthBar, "1");
 DEFINE_SPADES_SETTING(cg_hudHealthAnimation, "1");
@@ -2075,7 +2074,9 @@ namespace spades {
 			Player& p = world->GetPlayer(focusedPlayerId).value();
 			clientPlayers[focusedPlayerId]->Draw2D();
 
-			if (cg_hudCompassBar)
+			// The compass exists only where the server allows it: it is a client-side
+			// feature the extension governs, and a client never turns one on by itself.
+			if (teamplay->IsCompassAllowed())
 				DrawCompassBar(p);
 
 			if (cg_debugAim && p.IsToolWeapon())
