@@ -711,12 +711,12 @@ namespace spades {
 					std::string reason =
 					  ExtendedTeamplay::SanitizeReason(r.ReadRemainingData());
 
-					// A Message ID this version does not define belongs to a later one,
-					// which would give the Reason a meaning we cannot read.
+					// The Message ID is reserved and unimplemented: a value from a later
+					// version is ignored rather than taken as a reason to drop a ping
+					// that is otherwise perfectly renderable.
 					if (messageId != ExtendedTeamplay::kReservedMessageId) {
-						SPLog("Dropped an Extended Teamplay ping with message id %u",
+						SPLog("Ignoring the message id %u on an Extended Teamplay ping",
 							  (unsigned int)messageId);
-						break;
 					}
 
 					if (!ExtendedTeamplay::IsValidDuration(duration)) {
@@ -750,10 +750,10 @@ namespace spades {
 					std::string reason =
 					  ExtendedTeamplay::SanitizeReason(r.ReadRemainingData());
 
+					// Reserved and unimplemented, as on the ping: ignored, not fatal.
 					if (messageId != ExtendedTeamplay::kReservedMessageId) {
-						SPLog("Dropped an Extended Teamplay mark with message id %u",
+						SPLog("Ignoring the message id %u on an Extended Teamplay mark",
 							  (unsigned int)messageId);
-						break;
 					}
 
 					if (!ExtendedTeamplay::IsValidDuration(duration)) {
