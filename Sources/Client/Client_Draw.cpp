@@ -1270,22 +1270,34 @@ namespace spades {
 						StrokeSegment(*renderer, corners[i], corners[(i + 1) % 4], thick, col);
 				}
 
-				// Who pinged, and what they said, under the marker. An off-screen ping
-				// also gets its distance, which is the only cue left once the marker is
-				// pinned to the edge.
-				std::string label = (ping.playerId == ExtendedTeamplay::kServerPlayerId)
-					? _Tr("Client", "Server")
-					: world->GetPlayerName(ping.playerId);
+				// Who pinged, and what they said, under the marker. A marker is never
+				// anonymous, so that a label is never read as coming from somebody who
+				// did not write it. An off-screen ping also gets its distance, which is
+				// the only cue left once the marker is pinned to the edge.
+				//
+				// Player ID 255 is the exception and shows no sender: there is no player
+				// behind it, and looking it up in the roster would put the marker under
+				// the name of whoever holds a nearby id.
+				std::string label;
+				if (ping.playerId != ExtendedTeamplay::kServerPlayerId)
+					label = world->GetPlayerName(ping.playerId);
+
 				// Rendered as received: the extension assigns no reason values, so
 				// anything the client substituted would be putting words in the
 				// sender's mouth.
 				if (!ping.reason.empty())
-					label += ": " + ping.reason;
+					label += label.empty() ? ping.reason : ": " + ping.reason;
 				if (!onScreen) {
 					char buf[32];
-					snprintf(buf, sizeof(buf), " [%.0f]", rel.GetLength());
+					snprintf(buf, sizeof(buf), label.empty() ? "[%.0f]" : " [%.0f]",
+							 rel.GetLength());
 					label += buf;
 				}
+
+				// A server ping with no label has nothing to say in words; the marker
+				// says it all.
+				if (label.empty())
+					continue;
 
 				Vector2 size = font.Measure(label);
 				Vector2 pos = MakeVector2(floorf(scrPos.x - size.x * 0.5F),
