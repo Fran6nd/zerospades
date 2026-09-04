@@ -937,10 +937,9 @@ namespace spades {
 				if (alpha <= 0.0F)
 					continue;
 
-				Vector4 color = (ping.playerId == ExtendedTeamplay::kServerPlayerId)
-					? MakeVector4(1.0F, 0.85F, 0.3F, 1.0F)
-					: MakeVector4(1.0F, 1.0F, 1.0F, 1.0F);
-				color.w = alpha;
+				// The colour the server chose, drawn as sent.
+				Vector3 pingCol = ExtendedTeamplay::ToRenderColor(ping.color);
+				Vector4 color = MakeVector4(pingCol.x, pingCol.y, pingCol.z, alpha);
 				color.x *= alpha;
 				color.y *= alpha;
 				color.z *= alpha;
@@ -981,9 +980,9 @@ namespace spades {
 					continue;
 
 				// A mark on the minimap is a dot at the player, in the mark's colour —
-				// the same colour the outline uses, so the two read as one thing.
-				Vector3 teamCol = ConvertColorRGB(world->GetTeamColor(p.GetTeamId()));
-				Vector3 col = mark.ResolveColor(teamCol);
+				// the same colour the outline uses, blink and all, so every surface the
+				// mark named says the same thing at the same moment.
+				Vector3 col = client->ResolveMarkColor(p, mark.color);
 
 				Vector4 color = MakeVector4(col.x * mapAlpha, col.y * mapAlpha,
 											col.z * mapAlpha, mapAlpha);

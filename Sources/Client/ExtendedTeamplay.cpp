@@ -165,7 +165,8 @@ namespace spades {
 		}
 
 		void ExtendedTeamplay::SetPing(int playerId, const Vector3& position, float duration,
-		                               uint8_t surfaces, std::string reason) {
+		                               uint8_t surfaces, const IntVector3& color,
+		                               std::string reason) {
 			SPADES_MARK_FUNCTION();
 
 			if (duration == 0.0F) { // removes the player's ping without placing another
@@ -178,6 +179,7 @@ namespace spades {
 			ping.position = position;
 			ping.reason = std::move(reason);
 			ping.surfaces = ResolveSurfaces(surfaces);
+			ping.color = color;
 			ping.endless = IsEndlessDuration(duration);
 			ping.duration = ping.endless ? 0.0F : duration;
 			ping.timeLeft = ping.duration;
