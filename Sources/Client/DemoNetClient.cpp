@@ -870,9 +870,11 @@ namespace spades {
 							std::string reason =
 							  ExtendedTeamplay::SanitizeReason(r.ReadRemainingData());
 
-							if (messageId != ExtendedTeamplay::kReservedMessageId ||
-								!ExtendedTeamplay::IsValidDuration(duration))
-								break; // recorded from a newer version, or malformed
+							// The message id is reserved and ignored, so only a malformed
+							// duration is a reason not to replay the ping.
+							(void)messageId;
+							if (!ExtendedTeamplay::IsValidDuration(duration))
+								break;
 
 							// A ping is a momentary event, so replaying the whole demo to
 							// reach a seek target would otherwise pop every ping ever sent
@@ -891,9 +893,9 @@ namespace spades {
 							std::string reason =
 							  ExtendedTeamplay::SanitizeReason(r.ReadRemainingData());
 
-							if (messageId != ExtendedTeamplay::kReservedMessageId ||
-								!ExtendedTeamplay::IsValidDuration(duration))
-								break; // recorded from a newer version, or malformed
+							(void)messageId; // reserved and ignored, as on the ping
+							if (!ExtendedTeamplay::IsValidDuration(duration))
+								break;
 
 							// Marks are state rather than events, so they are replayed
 							// during a seek to rebuild what was in force. Their timers
