@@ -153,6 +153,8 @@ namespace spades {
 				auto maybePlayer = world->GetPlayer(static_cast<unsigned int>(i));
 				if (!maybePlayer)
 					continue;
+				if (world->IsPlayerHiddenFrom(static_cast<int>(i), PresentationHideRoster))
+					continue;
 				Player& player = maybePlayer.value();
 
 				// count total players
@@ -293,6 +295,8 @@ namespace spades {
 				auto maybePlayer = world->GetPlayer(static_cast<unsigned int>(i));
 				if (!maybePlayer)
 					continue;
+				if (world->IsPlayerHiddenFrom(static_cast<int>(i), PresentationHideRoster))
+					continue;
 				Player& player = maybePlayer.value();
 				if (player.GetTeamId() != team)
 					continue;
@@ -396,6 +400,8 @@ namespace spades {
 			for (size_t i = 0; i < world->GetNumPlayerSlots(); i++) {
 				auto maybePlayer = world->GetPlayer(static_cast<unsigned int>(i));
 				if (!maybePlayer)
+					continue;
+				if (world->IsPlayerHiddenFrom(static_cast<int>(i), PresentationHideRoster))
 					continue;
 				Player& player = maybePlayer.value();
 				if (player.GetTeamId() != spectatorTeamId)

@@ -1290,6 +1290,8 @@ namespace spades {
 				stmp::optional<Player&> p = world->GetPlayer(nextId);
 				if (!p || p->IsSpectator())
 					continue; // Do not follow a non-existent player or spectator
+				if (world->IsPlayerHiddenFrom(nextId, PresentationHideRoster))
+					continue; // Do not follow a player kept out of the roster
 				if (!localPlayerIsSpectating && maybePlayer && !p->IsTeammate(maybePlayer.value()))
 					continue; // Skip enemies unless the local player is a spectator
 				if (skipDeadPlayers && !p->IsAlive())

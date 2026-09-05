@@ -492,6 +492,8 @@ namespace spades {
 				auto maybePlayer = world->GetPlayer(static_cast<unsigned int>(i));
 				if (!maybePlayer)
 					continue;
+				if (world->IsPlayerHiddenFrom(static_cast<int>(i), PresentationHideRoster))
+					continue;
 				Player& player = maybePlayer.value();
 				if (!player.IsAlive())
 					continue;
