@@ -80,7 +80,16 @@ namespace spades {
 
 			void ProcessPacket(const std::vector<char>& data);
 			void HandleGamePacket(class NetPacketReader& reader);
+			void HandleSilentPlayerPacket(class NetPacketReader& reader);
 			void MapLoaded();
+
+			/**
+			 * Spawns a player, shared by Create Player and its Silent Player
+			 * counterpart. The presentation mask of `pId` must already be set so
+			 * that nothing is reported about a spawn that should stay quiet.
+			 */
+			void CreatePlayer(int pId, int weapon, int team, Vector3 pos,
+			                  const std::string& name);
 
 			// Reset the world to initial map state and reset tracking variables
 			void ResetWorldForReplay();

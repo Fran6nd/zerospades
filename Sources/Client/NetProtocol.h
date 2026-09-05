@@ -77,7 +77,15 @@ namespace spades {
 			PacketTypeVersionGet = 33,     // S2C
 			PacketTypeVersionSend = 34,    // C2S
 			PacketTypeExtensionInfo = 60,
-			PacketTypePlayerProperties = 64,
+			// Extension packets: id 64 + extension id, see NetExtensionType
+			PacketTypePlayerProperties = 64, // S2C, extension 0
+			PacketTypeSilentPlayer = 67,     // S2C, extension 3
+		};
+
+		/** Sub packet ids of `PacketTypeSilentPlayer`. */
+		enum SilentPlayerSubPacketType {
+			SilentPlayerSubCreatePlayer = 0,
+			SilentPlayerSubSetFlags = 1,
 		};
 
 		inline PlayerInput ParsePlayerInput(uint8_t bits) {

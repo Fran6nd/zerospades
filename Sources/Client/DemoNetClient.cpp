@@ -456,34 +456,9 @@ namespace spades {
 						break;
 					}
 
-					WeaponType wType;
-					switch (weapon) {
-						case 0: wType = RIFLE_WEAPON; break;
-						case 1: wType = SMG_WEAPON; break;
-						case 2: wType = SHOTGUN_WEAPON; break;
-						default: SPRaise("Invalid weapon: %d", weapon);
-					}
-
-					auto p = stmp::make_unique<Player>(*GetWorld(), pId, wType, team);
-					pos.z -= 2.4F;
-					p->SetPosition(pos);
-
-					GetWorld()->SetPlayer(pId, std::move(p));
-
-					if (!name.empty())
-						GetWorld()->GetPlayerPersistent(pId).name = name;
-
-					Player& pRef = GetWorld()->GetPlayer(pId).value();
-
-					// In demo mode, user is always spectator - track all team changes
-					if (savedPlayerTeam.at(pId) != team) {
-						if (!seekingMode)
-							client->PlayerJoinedTeam(pRef);
-						savedPlayerTeam.at(pId) = team;
-					}
-
-					if (!seekingMode)
-						client->PlayerSpawned(pRef);
+					// A plain Create Player leaves the presentation mask of the id
+					// untouched, as the Silent Player extension requires.
+					CreatePlayer(pId, weapon, team, pos, name);
 				} break;
 				case PacketTypeBlockAction: {
 					stmp::optional<Player&> p = GetPlayerOrNull(r.ReadByte());
@@ -843,9 +818,84 @@ namespace spades {
 					w.Restock(clip, reserve);
 					GetWorld()->GetPlayerPersistent(pId).score = score;
 				} break;
+				case PacketTypeSilentPlayer: HandleSilentPlayerPacket(r); break;
 				default:
 					SPLog("Demo: dropped unknown packet %d", (int)r.GetType());
 					break;
+			}
+		}
+
+		void DemoNetClient::CreatePlayer(int pId, int weapon, int team, Vector3 pos,
+		                                 const std::string& name) {
+			SPADES_MARK_FUNCTION();
+
+			WeaponType wType;
+			switch (weapon) {
+				case 0: wType = RIFLE_WEAPON; break;
+				case 1: wType = SMG_WEAPON; break;
+				case 2: wType = SHOTGUN_WEAPON; break;
+				default: SPRaise("Invalid weapon: %d", weapon);
+			}
+
+			auto p = stmp::make_unique<Player>(*GetWorld(), pId, wType, team);
+			pos.z -= 2.4F;
+			p->SetPosition(pos);
+
+			GetWorld()->SetPlayer(pId, std::move(p));
+
+			if (!name.empty())
+				GetWorld()->GetPlayerPersistent(pId).name = name;
+
+			Player& pRef = GetWorld()->GetPlayer(pId).value();
+
+			// In demo mode, user is always spectator - track all team changes
+			if (savedPlayerTeam.at(pId) != team) {
+				if (!seekingMode)
+					client->PlayerJoinedTeam(pRef);
+				savedPlayerTeam.at(pId) = team;
+			}
+
+			if (!seekingMode)
+				client->PlayerSpawned(pRef);
+		}
+
+		void DemoNetClient::HandleSilentPlayerPacket(NetPacketReader& r) {
+			SPADES_MARK_FUNCTION();
+
+			if (!GetWorld()) SPRaise("No world");
+
+			int subId = r.ReadByte();
+			switch (subId) {
+				case SilentPlayerSubCreatePlayer: {
+					int pId = r.ReadByte();
+					int flags = r.ReadByte();
+					int weapon = r.ReadByte();
+					int team = r.ReadByte();
+					Vector3 pos = r.ReadVector3();
+					std::string name = TrimSpaces(r.ReadRemainingString());
+
+					if (pId < 0 || pId >= properties->GetMaxNumPlayerSlots()) {
+						SPLog("Ignoring invalid player ID %d in Create Silent Player", pId);
+						break;
+					}
+
+					// The mask has to be in place before the spawn is announced, so
+					// that a silent player is never briefly an ordinary participant.
+					GetWorld()->SetPlayerPresentation(pId, static_cast<uint8_t>(flags));
+					CreatePlayer(pId, weapon, team, pos, name);
+				} break;
+				case SilentPlayerSubSetFlags: {
+					// The entries fill the rest of the packet; for a repeated id the
+					// last entry wins, which applying them in order gives us.
+					while (r.GetNumRemainingBytes() >= 2) {
+						int pId = r.ReadByte();
+						int flags = r.ReadByte();
+						GetWorld()->SetPlayerPresentation(pId, static_cast<uint8_t>(flags));
+					}
+					if (r.GetNumRemainingBytes() > 0)
+						SPLog("Demo: Set Flags packet ends with a truncated entry; ignored");
+				} break;
+				default: SPLog("Demo: ignoring unknown Silent Player sub packet %d", subId); break;
 			}
 		}
 

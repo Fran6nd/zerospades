@@ -52,6 +52,7 @@ namespace spades {
 
 		enum NetExtensionType {
 			ExtensionTypePlayerProperties = 0,
+			ExtensionTypeSilentPlayer = 3,
 			ExtensionTypePlayerLimit = 192,
 			ExtensionTypeMessageTypes = 193,
 			ExtensionTypeKickReason = 194,
@@ -98,6 +99,7 @@ namespace spades {
 			/** Extensions implemented in this client (map of extension id → version) */
 			std::unordered_map<uint8_t, uint8_t> implementedExtensions{
 			  {ExtensionTypePlayerProperties, 1},
+			  {ExtensionTypeSilentPlayer, 1},
 			  {ExtensionTypePlayerLimit, 1},
 			  {ExtensionTypeMessageTypes, 1},
 			  {ExtensionTypeKickReason, 1}};
@@ -134,6 +136,16 @@ namespace spades {
 			bool HandleHandshakePackets(NetPacketReader&);
 			void HandleExtensionPacket(NetPacketReader&);
 			void HandleGamePacket(NetPacketReader&);
+			void HandleSilentPlayerPacket(NetPacketReader&);
+
+			/**
+			 * Spawns a player, shared by Create Player and its Silent Player
+			 * counterpart. The presentation mask of `pId` must already be set so
+			 * that nothing is reported about a spawn that should stay quiet.
+			 */
+			void CreatePlayer(int pId, int weapon, int team, Vector3 pos,
+			                  const std::string& name);
+
 			stmp::optional<World&> GetWorld();
 			Player& GetPlayer(int);
 			stmp::optional<Player&> GetPlayerOrNull(int);

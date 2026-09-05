@@ -19,8 +19,10 @@
 
  */
 
+#include <algorithm>
 #include <math.h>
 #include <string.h>
+#include <utility>
 #include <vector>
 
 #include <enet/enet.h>
@@ -659,6 +661,91 @@ namespace spades {
 			SendSupportedExtensions();
 		}
 
+		void NetClient::CreatePlayer(int pId, int weapon, int team, Vector3 pos,
+		                             const std::string& name) {
+			SPADES_MARK_FUNCTION();
+
+			WeaponType wType = GetWeaponType(weapon);
+
+			auto p = stmp::make_unique<Player>(*GetWorld(), pId, wType, team);
+
+			// adjust spawn height
+			pos.z -= 2.4F;
+
+			// set position
+			p->SetPosition(pos);
+
+			GetWorld()->SetPlayer(pId, std::move(p));
+
+			// set name
+			if (!name.empty()) // sometimes becomes empty
+				GetWorld()->GetPlayerPersistent(pId).name = name;
+
+			Player& pRef = GetWorld()->GetPlayer(pId).value();
+
+			if (pId == GetWorld()->GetLocalPlayerIndex()) {
+				client->LocalPlayerCreated();
+				lastPlayerInput = 0xFFFFFFFF;
+				lastWeaponInput = 0xFFFFFFFF;
+
+				// override default block color for local player
+				IntVector3 blockColor;
+				blockColor.x = Clamp((int)cg_defaultBlockColorR, 0, 255);
+				blockColor.y = Clamp((int)cg_defaultBlockColorG, 0, 255);
+				blockColor.z = Clamp((int)cg_defaultBlockColorB, 0, 255);
+				pRef.SetHeldBlockColor(blockColor);
+				SendHeldBlockColor(); // ensure block color is synchronized
+			}
+
+			if (savedPlayerTeam[pId] != team) {
+				client->PlayerJoinedTeam(pRef);
+				savedPlayerTeam[pId] = team;
+			}
+
+			client->PlayerSpawned(pRef);
+		}
+
+		void NetClient::HandleSilentPlayerPacket(spades::client::NetPacketReader& r) {
+			SPADES_MARK_FUNCTION();
+
+			if (!GetWorld())
+				SPRaise("No world");
+
+			int subId = r.ReadByte();
+			switch (subId) {
+				case SilentPlayerSubCreatePlayer: {
+					int pId = r.ReadByte();
+					int flags = r.ReadByte();
+					int weapon = r.ReadByte();
+					int team = r.ReadByte();
+					Vector3 pos = r.ReadVector3();
+					std::string name = StripNewlines(TrimSpaces(r.ReadRemainingString()));
+
+					if (pId < 0 || pId >= properties->GetMaxNumPlayerSlots()) {
+						SPLog("Ignoring invalid player ID %d in Create Silent Player", pId);
+						break;
+					}
+
+					// The mask has to be in place before the spawn is announced, so
+					// that a silent player is never briefly an ordinary participant.
+					GetWorld()->SetPlayerPresentation(pId, static_cast<uint8_t>(flags));
+					CreatePlayer(pId, weapon, team, pos, name);
+				} break;
+				case SilentPlayerSubSetFlags: {
+					// The entries fill the rest of the packet; for a repeated id the
+					// last entry wins, which applying them in order gives us.
+					while (r.GetNumRemainingBytes() >= 2) {
+						int pId = r.ReadByte();
+						int flags = r.ReadByte();
+						GetWorld()->SetPlayerPresentation(pId, static_cast<uint8_t>(flags));
+					}
+					if (r.GetNumRemainingBytes() > 0)
+						SPLog("Set Flags packet ends with a truncated entry; ignored");
+				} break;
+				default: SPLog("Ignoring unknown Silent Player sub packet %d", subId); break;
+			}
+		}
+
 		void NetClient::HandleGamePacket(spades::client::NetPacketReader& r) {
 			SPADES_MARK_FUNCTION();
 
@@ -874,44 +961,9 @@ namespace spades {
 						break;
 					}
 
-					WeaponType wType = GetWeaponType(weapon);
-
-					auto p = stmp::make_unique<Player>(*GetWorld(), pId, wType, team);
-
-					// adjust spawn height
-					pos.z -= 2.4F;
-
-					// set position
-					p->SetPosition(pos);
-
-					GetWorld()->SetPlayer(pId, std::move(p));
-
-					// set name
-					if (!name.empty()) // sometimes becomes empty
-						GetWorld()->GetPlayerPersistent(pId).name = name;
-
-					Player& pRef = GetWorld()->GetPlayer(pId).value();
-
-					if (pId == GetWorld()->GetLocalPlayerIndex()) {
-						client->LocalPlayerCreated();
-						lastPlayerInput = 0xFFFFFFFF;
-						lastWeaponInput = 0xFFFFFFFF;
-
-						// override default block color for local player
-						IntVector3 blockColor;
-						blockColor.x = Clamp((int)cg_defaultBlockColorR, 0, 255);
-						blockColor.y = Clamp((int)cg_defaultBlockColorG, 0, 255);
-						blockColor.z = Clamp((int)cg_defaultBlockColorB, 0, 255);
-						pRef.SetHeldBlockColor(blockColor);
-						SendHeldBlockColor(); // ensure block color is synchronized
-					}
-
-					if (savedPlayerTeam[pId] != team) {
-						client->PlayerJoinedTeam(pRef);
-						savedPlayerTeam[pId] = team;
-					}
-
-					client->PlayerSpawned(pRef);
+					// A plain Create Player leaves the presentation mask of the id
+					// untouched, as the Silent Player extension requires.
+					CreatePlayer(pId, weapon, team, pos, name);
 				} break;
 				case PacketTypeBlockAction: {
 					stmp::optional<Player&> p = GetPlayerOrNull(r.ReadByte());
@@ -1336,6 +1388,7 @@ namespace spades {
 					w.Restock(clip, reserve);
 					GetWorld()->GetPlayerPersistent(pId).score = score;
 				} break;
+				case PacketTypeSilentPlayer: HandleSilentPlayerPacket(r); break;
 				default:
 					printf("WARNING: dropped packet %d\n", (int)r.GetType());
 					r.DumpDebug();
@@ -1915,6 +1968,36 @@ namespace spades {
 
 				const auto& data = w.GetData();
 				demoRecorder->RecordPacket(data.data(), data.size());
+			}
+
+			// write a Set Flags packet for every silenced id. Like a joining client,
+			// a demo has to learn the presentation masks before the Existing Player
+			// flood: a player introduced first has already been announced.
+			{
+				// Two bytes of header leave room for 126 entries in the 255 byte
+				// budget the base protocol works with; larger updates are split.
+				static constexpr size_t kMaxSetFlagsEntries = 126;
+
+				std::vector<std::pair<uint8_t, uint8_t>> entries;
+				for (unsigned int i = 0; i < world->GetNumPlayerSlots(); i++) {
+					uint8_t mask = world->GetPlayerPresentation(static_cast<int>(i));
+					if (mask)
+						entries.emplace_back(static_cast<uint8_t>(i), mask);
+				}
+
+				for (size_t first = 0; first < entries.size(); first += kMaxSetFlagsEntries) {
+					NetPacketWriter w(PacketTypeSilentPlayer);
+					w.WriteByte((uint8_t)SilentPlayerSubSetFlags);
+
+					size_t last = std::min(first + kMaxSetFlagsEntries, entries.size());
+					for (size_t i = first; i < last; i++) {
+						w.WriteByte(entries[i].first);
+						w.WriteByte(entries[i].second);
+					}
+
+					const auto& data = w.GetData();
+					demoRecorder->RecordPacket(data.data(), data.size());
+				}
 			}
 
 			// write ExistingPlayer packets for all players
