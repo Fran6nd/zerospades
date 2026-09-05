@@ -1148,8 +1148,20 @@ namespace spades {
 			const int victimId = victim.GetId();
 			const int killerId = killer.GetId();
 
+			// A player the server silenced takes the kill out of the feed and out of
+			// the statistics for both sides of it: a kill only half-counted would
+			// leave the streaks and the counters disagreeing with each other. What a
+			// silent player's own client shows them is untouched — IsPlayerHiddenFrom
+			// never hides the local player from itself.
+			const bool showKillFeed =
+			  !world->IsPlayerHiddenFrom(killerId, PresentationHideKillFeed) &&
+			  !world->IsPlayerHiddenFrom(victimId, PresentationHideKillFeed);
+			const bool countStats = !world->IsPlayerHiddenFrom(killerId, PresentationNoStats) &&
+			                        !world->IsPlayerHiddenFrom(victimId, PresentationNoStats);
+
 			bool isRevengeKill = false;
-			if (killerId != victimId && (killer.IsLocalPlayer() || victim.IsLocalPlayer())) {
+			if (countStats && killerId != victimId &&
+			    (killer.IsLocalPlayer() || victim.IsLocalPlayer())) {
 				// check if the victim was dominating before dying
 				if (killStreaks[victimId][killerId] >= 4) {
 					killStreaks[killerId][victimId] = 1; // start new streak for the killer
@@ -1186,10 +1198,12 @@ namespace spades {
 					hitStats = HitStats();
 
 				// register local deaths
-				curDeaths++;
-				if (curStreak > bestStreak)
-					bestStreak = curStreak;
-				curStreak = 0;
+				if (countStats) {
+					curDeaths++;
+					if (curStreak > bestStreak)
+						bestStreak = curStreak;
+					curStreak = 0;
+				}
 			} else {
 				// play hit sound for non local player: see BullethitPlayer
 				if (!IsMuted() && (kt == KillTypeWeapon || kt == KillTypeHeadshot)) {
@@ -1206,7 +1220,7 @@ namespace spades {
 				}
 
 				// register local kills
-				if (killer.IsLocalPlayer()) {
+				if (countStats && killer.IsLocalPlayer()) {
 					curKills++;
 					curStreak++;
 					if (kt == KillTypeMelee)
@@ -1227,6 +1241,87 @@ namespace spades {
 					}
 				}
 			}
+
+			if (showKillFeed)
+				ReportKill(killer, victim, kt, isRevengeKill);
+
+			// show big message if local player is involved
+			if (killerId != victimId && (killer.IsLocalPlayer() || victim.IsLocalPlayer())) {
+				std::string msg = "";
+				if (victim.IsLocalPlayer()) {
+					msg = _Tr("Client", "You were killed by {0}", killer.GetName());
+				} else if (cg_centerMessage == 2) {
+					msg = _Tr("Client", "You have killed {0}", victim.GetName());
+				}
+
+				if (!msg.empty())
+					centerMessageView->AddMessage(msg);
+			}
+
+			// don't spawn blood/ragdolls for spectators
+			if (victim.IsSpectator())
+				return;
+
+			// emit blood (also for local player)
+			// FIXME: emiting blood for either
+			// client-side or server-side hit?
+			switch (kt) {
+				case KillTypeGrenade:
+				case KillTypeHeadshot:
+				case KillTypeMelee:
+				case KillTypeWeapon: Bleed(victim.GetEye()); break;
+				default: break;
+			}
+
+			// create ragdoll corpse
+			if (cg_ragdoll) {
+				auto corp = stmp::make_unique<Corpse>(*renderer, *map, victim, isChristmasOn);
+
+				if (kt == KillTypeGrenade) {
+					corp->AddImpulse(MakeVector3(0, 0, -4.0F - SampleRandomFloat() * 4.0F));
+				} else if (killerId != victimId) {
+					Vector3 dir = victim.GetPosition() - killer.GetPosition();
+					dir = dir.Normalize();
+
+					if (kt == KillTypeMelee) {
+						dir *= 6.0F;
+					} else {
+						switch (weaponType) {
+							case SMG_WEAPON: dir *= 2.8F; break;
+							case SHOTGUN_WEAPON: dir *= 4.5F; break;
+							default: dir *= 3.5F; break;
+						}
+					}
+
+					// add extra head impulse if its a headshot or melee kill
+					if (kt == KillTypeHeadshot || kt == KillTypeMelee)
+						corp->AddHeadImpulse(dir * 4.0F);
+
+					if (!victim.IsLocalPlayer() && cg_corpseDisableGravity) {
+						dir *= 2.0F;
+						corp->AddImpulse(MakeVector3(0, 0, -2.0F));
+					}
+
+					corp->AddImpulse(dir);
+				}
+				corp->AddImpulse(victim.GetVelocity() * 32.0F);
+
+				if (victim.IsLocalPlayer())
+					lastLocalCorpse = corp.get();
+
+				corpses.emplace_back(std::move(corp));
+				RemoveCorpses();
+			}
+		}
+
+		void Client::ReportKill(spades::client::Player& killer, spades::client::Player& victim,
+			KillType kt, bool isRevengeKill) {
+
+			// only used in case of KillTypeWeapon
+			const auto& weaponType = killer.GetWeapon().GetWeaponType();
+
+			const int victimId = victim.GetId();
+			const int killerId = killer.GetId();
 
 			// create a killfeed message
 			std::string s, cause;
@@ -1326,74 +1421,6 @@ namespace spades {
 			} else {
 				NetLog("%s (%s) [%s]", killer.GetName().c_str(),
 					killer.GetTeamName().c_str(), cause.c_str());
-			}
-
-			// show big message if local player is involved
-			if (killerId != victimId && (killer.IsLocalPlayer() || victim.IsLocalPlayer())) {
-				std::string msg = "";
-				if (victim.IsLocalPlayer()) {
-					msg = _Tr("Client", "You were killed by {0}", killer.GetName());
-				} else if (cg_centerMessage == 2) {
-					msg = _Tr("Client", "You have killed {0}", victim.GetName());
-				}
-
-				if (!msg.empty())
-					centerMessageView->AddMessage(msg);
-			}
-
-			// don't spawn blood/ragdolls for spectators
-			if (victim.IsSpectator())
-				return;
-
-			// emit blood (also for local player)
-			// FIXME: emiting blood for either
-			// client-side or server-side hit?
-			switch (kt) {
-				case KillTypeGrenade:
-				case KillTypeHeadshot:
-				case KillTypeMelee:
-				case KillTypeWeapon: Bleed(victim.GetEye()); break;
-				default: break;
-			}
-
-			// create ragdoll corpse
-			if (cg_ragdoll) {
-				auto corp = stmp::make_unique<Corpse>(*renderer, *map, victim, isChristmasOn);
-
-				if (kt == KillTypeGrenade) {
-					corp->AddImpulse(MakeVector3(0, 0, -4.0F - SampleRandomFloat() * 4.0F));
-				} else if (killerId != victimId) {
-					Vector3 dir = victim.GetPosition() - killer.GetPosition();
-					dir = dir.Normalize();
-
-					if (kt == KillTypeMelee) {
-						dir *= 6.0F;
-					} else {
-						switch (weaponType) {
-							case SMG_WEAPON: dir *= 2.8F; break;
-							case SHOTGUN_WEAPON: dir *= 4.5F; break;
-							default: dir *= 3.5F; break;
-						}
-					}
-
-					// add extra head impulse if its a headshot or melee kill
-					if (kt == KillTypeHeadshot || kt == KillTypeMelee)
-						corp->AddHeadImpulse(dir * 4.0F);
-
-					if (!victim.IsLocalPlayer() && cg_corpseDisableGravity) {
-						dir *= 2.0F;
-						corp->AddImpulse(MakeVector3(0, 0, -2.0F));
-					}
-
-					corp->AddImpulse(dir);
-				}
-				corp->AddImpulse(victim.GetVelocity() * 32.0F);
-
-				if (victim.IsLocalPlayer())
-					lastLocalCorpse = corp.get();
-
-				corpses.emplace_back(std::move(corp));
-				RemoveCorpses();
 			}
 		}
 

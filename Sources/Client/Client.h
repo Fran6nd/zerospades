@@ -579,6 +579,9 @@ namespace spades {
 
 			void NetLog(const char* format, ...);
 
+			/** Posts the kill feed line for a kill and logs it to the net log. */
+			void ReportKill(Player& killer, Player& victim, KillType, bool isRevengeKill);
+
 		protected:
 			~Client();
 
