@@ -62,6 +62,17 @@ enum ChatType {
 	ChatTypeError
 };
 
+// Per-player-id presentation mask carried by the Silent Player extension. Each
+// bit takes the id out of one thing the client reports; none of them change what
+// is simulated, drawn or heard. A mask of 0 presents the player normally.
+// Bits 4-7 are reserved and must be ignored.
+enum PresentationFlag {
+	PresentationHideRoster = 1 << 0,   // scoreboard, player counts, player pickers
+	PresentationHidePresence = 1 << 1, // join, team change and leave notifications
+	PresentationHideKillFeed = 1 << 2, // kill feed lines for kills made or suffered
+	PresentationNoStats = 1 << 3       // kill/death counters, streaks, domination
+};
+
 enum WeaponType { RIFLE_WEAPON, SMG_WEAPON, SHOTGUN_WEAPON };
 
 enum BlockActionType {

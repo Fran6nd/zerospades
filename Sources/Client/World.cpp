@@ -53,11 +53,34 @@ namespace spades {
 
 		size_t World::GetNumPlayers() {
 			size_t numPlayers = 0;
-			for (const auto& p : players) {
-				if (p)
-					++numPlayers;
+			for (size_t i = 0; i < players.size(); i++) {
+				if (!players[i])
+					continue;
+				if (IsPlayerHiddenFrom(static_cast<int>(i), PresentationHideRoster))
+					continue;
+				++numPlayers;
 			}
 			return numPlayers;
+		}
+
+		uint8_t World::GetPlayerPresentation(int playerId) const {
+			if (playerId < 0 || playerId >= static_cast<int>(playerPresentations.size()))
+				return 0;
+			return playerPresentations[playerId];
+		}
+
+		void World::SetPlayerPresentation(int playerId, uint8_t mask) {
+			if (playerId < 0 || playerId >= static_cast<int>(playerPresentations.size())) {
+				SPLog("Ignoring presentation mask for invalid player ID %d", playerId);
+				return;
+			}
+			playerPresentations[playerId] = mask;
+		}
+
+		bool World::IsPlayerHiddenFrom(int playerId, PresentationFlag flag) const {
+			if (localPlayerIndex && *localPlayerIndex == playerId)
+				return false;
+			return (GetPlayerPresentation(playerId) & flag) != 0;
 		}
 
 		void World::UpdatePlayer(float dt, bool locked) {
@@ -131,6 +154,11 @@ namespace spades {
 
 		void World::SetPlayer(int i, std::unique_ptr<Player> p) {
 			SPADES_MARK_FUNCTION();
+
+			// The presentation mask is bound to the id: a respawn keeps it, freeing
+			// the id releases it.
+			if (!p)
+				SetPlayerPresentation(i, 0);
 
 			players.at(i) = std::move(p);
 			if (listener)

@@ -22,6 +22,7 @@
 #pragma once
 
 #include <array>
+#include <cstdint>
 #include <list>
 #include <map>
 #include <memory>
@@ -76,6 +77,7 @@ namespace spades {
 
 			std::array<std::unique_ptr<Player>, NumPlayerSlots> players;
 			std::array<PlayerPersistent, NumPlayerSlots> playerPersistents;
+			std::array<uint8_t, NumPlayerSlots> playerPresentations{};
 			stmp::optional<int> localPlayerIndex;
 
 			std::list<std::unique_ptr<Grenade>> grenades;
@@ -123,7 +125,26 @@ namespace spades {
 				return players[i].get();
 			}
 
+			/**
+			 * Installs a player in a slot. Passing a null player frees the slot and
+			 * releases its presentation mask: the mask is bound to the id, so it
+			 * outlives the player occupying it but never the id itself.
+			 */
 			void SetPlayer(int i, std::unique_ptr<Player> p);
+
+			/**
+			 * Presentation mask of a player id, a combination of `PresentationFlag`
+			 * as set by the Silent Player extension. `0` (the default) presents the
+			 * player normally.
+			 */
+			uint8_t GetPlayerPresentation(int playerId) const;
+			void SetPlayerPresentation(int playerId, uint8_t mask);
+
+			/**
+			 * Whether the client must leave `playerId` out of what `flag` covers.
+			 * Never true for the local player: a client is never silent to itself.
+			 */
+			bool IsPlayerHiddenFrom(int playerId, PresentationFlag flag) const;
 
 			/**
 			 * Get the object containing data specific to the current game mode.
