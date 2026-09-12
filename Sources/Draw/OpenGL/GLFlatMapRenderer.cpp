@@ -35,6 +35,7 @@ namespace spades {
 			chunkCols = m.Width() >> ChunkBits;
 			for (int i = 0; i < chunkRows * chunkCols; i++)
 				chunkInvalid.push_back(false);
+			hasDirtyChunks = false;
 
 			Handle<Bitmap> bmp(GenerateBitmap(0, 0, m.Width(), m.Height()), false);
 			image = renderer.CreateImage(*bmp).Cast<GLImage>();
@@ -89,10 +90,16 @@ namespace spades {
 			int chunkId = chunkX + chunkY * chunkCols;
 			SPAssert(chunkId >= 0);
 			SPAssert(chunkId < chunkCols * chunkRows);
+
 			chunkInvalid[chunkId] = true;
+			hasDirtyChunks = true;
 		}
 
 		void GLFlatMapRenderer::UpdateChunks() {
+			// nothing changed since the last flush, skip the scan entirely.
+			if (!hasDirtyChunks)
+				return;
+
 			for (size_t i = 0; i < chunkInvalid.size(); i++) {
 				if (!chunkInvalid[i])
 					continue;
@@ -109,10 +116,14 @@ namespace spades {
 				}
 				chunkInvalid[i] = false;
 			}
+
+			hasDirtyChunks = false;
 		}
 
 		void GLFlatMapRenderer::Draw(const AABB2& dest, const AABB2& src) {
 			SPADES_MARK_FUNCTION();
+
+			UpdateChunks();
 
 			renderer.DrawImage(*image, dest, src);
 		}
@@ -120,6 +131,8 @@ namespace spades {
 		void GLFlatMapRenderer::Draw(const Vector2& destTopLeft, const Vector2& destTopRight,
 		                             const Vector2& destBottomLeft, const AABB2& src) {
 			SPADES_MARK_FUNCTION();
+
+			UpdateChunks();
 
 			renderer.DrawImage(*image, destTopLeft, destTopRight, destBottomLeft, src);
 		}

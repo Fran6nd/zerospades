@@ -1058,9 +1058,6 @@ namespace spades {
 			DrawImage(nullptr, AABB2(x0, y0, x1 - x0, y1 - y0));
 		}
 
-		void SWRenderer::UpdateFlatGameMap() {
-			SPADES_MARK_FUNCTION();
-		}
 		void SWRenderer::DrawFlatGameMap(const spades::AABB2& outRect,
 		                                 const spades::AABB2& inRect) {
 			SPADES_MARK_FUNCTION();

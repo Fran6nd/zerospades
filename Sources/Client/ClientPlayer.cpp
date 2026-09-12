@@ -234,7 +234,6 @@ namespace spades {
 					OnProhibitedAction();
 			}
 
-			void UpdateFlatGameMap() { OnProhibitedAction(); }
 			void DrawFlatGameMap(const AABB2& outRect, const AABB2& inRect) {
 				OnProhibitedAction();
 			}

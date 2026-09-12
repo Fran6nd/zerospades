@@ -616,7 +616,6 @@ namespace spades {
 					// Handle map controls in demo mode
 					if (CheckKey(cg_keyChangeMapScale, name) && down) {
 						if (!largeMapView->IsZoomed()) {
-							renderer->UpdateFlatGameMap();
 							mapView->SwitchScale();
 							Handle<IAudioChunk> c =
 							  audioDevice->RegisterSound("Sounds/Misc/SwitchMapZoom.opus");
@@ -628,8 +627,6 @@ namespace spades {
 							zoomed = !zoomed;
 							if (cg_holdMapZoom)
 								zoomed = down;
-
-							renderer->UpdateFlatGameMap();
 							largeMapView->SetZoom(zoomed);
 							Handle<IAudioChunk> c = zoomed
 								? audioDevice->RegisterSound("Sounds/Misc/OpenMap.opus")
@@ -930,7 +927,6 @@ namespace spades {
 						CaptureColor();
 				} else if (CheckKey(cg_keyChangeMapScale, name) && down) {
 					if (!largeMapView->IsZoomed()) {
-						renderer->UpdateFlatGameMap();
 						mapView->SwitchScale();
 						Handle<IAudioChunk> c =
 						  audioDevice->RegisterSound("Sounds/Misc/SwitchMapZoom.opus");
@@ -942,8 +938,6 @@ namespace spades {
 						zoomed = !zoomed;
 						if (cg_holdMapZoom)
 							zoomed = down;
-
-						renderer->UpdateFlatGameMap();
 						largeMapView->SetZoom(zoomed);
 						Handle<IAudioChunk> c = zoomed
 							? audioDevice->RegisterSound("Sounds/Misc/OpenMap.opus")

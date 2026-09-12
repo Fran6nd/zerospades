@@ -104,9 +104,6 @@ namespace spades {
 			// set loadout
 			limbo->SetSelectedTeam(p.GetTeamId());
 			limbo->SetSelectedWeapon(p.GetWeaponType());
-
-			// update minimap
-			renderer->UpdateFlatGameMap();
 		}
 
 		void Client::JoinedGame() {

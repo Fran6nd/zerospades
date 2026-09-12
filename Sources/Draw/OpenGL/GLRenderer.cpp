@@ -1313,12 +1313,6 @@ namespace spades {
 			);
 		}
 
-		void GLRenderer::UpdateFlatGameMap() {
-			EnsureSceneNotStarted();
-			if (flatMapRenderer)
-				flatMapRenderer->UpdateChunks();
-		}
-
 		void GLRenderer::DrawFlatGameMap(const spades::AABB2& outRect,
 										 const spades::AABB2& inRect) {
 			EnsureSceneNotStarted();

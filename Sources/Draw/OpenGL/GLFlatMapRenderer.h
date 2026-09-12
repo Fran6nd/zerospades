@@ -39,6 +39,7 @@ namespace spades {
 			GLRenderer& renderer;
 			Handle<client::GameMap> map;
 			std::vector<bool> chunkInvalid;
+			bool hasDirtyChunks;
 
 			Handle<GLImage> image;
 
