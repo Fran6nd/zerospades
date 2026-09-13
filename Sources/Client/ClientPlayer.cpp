@@ -930,15 +930,15 @@ namespace spades {
 			legsRot.y = Vector3::Dot(vel, p.GetRight());
 			legsRot *= sinf(p.GetWalkAnimationProgress() * M_PI_F * 2.0F) * 3.0F;
 
-			Matrix4 const leg1 = lower
-				* Matrix4::Translate(legsPosX, legsPosY, -legsPosZ)
-				* Matrix4::Rotate(MakeVector3(1, 0, 0), legsRot.x)
-				* Matrix4::Rotate(MakeVector3(0, 1, 0), legsRot.y);
-
-			Matrix4 const leg2 = lower
+			Matrix4 const legLeft = lower
 				* Matrix4::Translate(-legsPosX, legsPosY, -legsPosZ)
 				* Matrix4::Rotate(MakeVector3(1, 0, 0), -legsRot.x)
 				* Matrix4::Rotate(MakeVector3(0, 1, 0), -legsRot.y);
+				
+			Matrix4 const legRight = lower
+				* Matrix4::Translate(legsPosX, legsPosY, -legsPosZ)
+				* Matrix4::Rotate(MakeVector3(1, 0, 0), legsRot.x)
+				* Matrix4::Rotate(MakeVector3(0, 1, 0), legsRot.y);
 
 			Matrix4 const torso = lower
 				* Matrix4::Translate(0.0F, 1.0F, -torsoPosZ);
@@ -948,9 +948,13 @@ namespace spades {
 				model = inp.crouch
 					? renderer.RegisterModel((modelPath + "LegCrouch.kv6").c_str())
 					: renderer.RegisterModel((modelPath + "Leg.kv6").c_str());
-				param.matrix = leg1 * scaler;
+				param.matrix = legLeft * scaler;
 				renderer.RenderModel(*model, param);
-				param.matrix = leg2 * scaler * Matrix4::Scale(-1, 1, 1); // mirror
+
+				model = inp.crouch
+					? renderer.RegisterModel((modelPath + "LegRightCrouch.kv6").c_str())
+					: renderer.RegisterModel((modelPath + "LegRight.kv6").c_str());
+				param.matrix = legRight * scaler;
 				renderer.RenderModel(*model, param);
 
 				model = inp.crouch
@@ -1161,15 +1165,15 @@ namespace spades {
 			legsRot.y = Vector3::Dot(v, p.GetRight());
 			legsRot *= sinf(p.GetWalkAnimationProgress() * M_PI_F * 2.0F) * 3.0F;
 
-			Matrix4 const leg1 = lower
-				* Matrix4::Translate(legsPosX, legsPosY, -legsPosZ)
-				* Matrix4::Rotate(MakeVector3(1, 0, 0), legsRot.x)
-				* Matrix4::Rotate(MakeVector3(0, 1, 0), legsRot.y);
-
-			Matrix4 const leg2 = lower
+			Matrix4 const legLeft = lower
 				* Matrix4::Translate(-legsPosX, legsPosY, -legsPosZ)
 				* Matrix4::Rotate(MakeVector3(1, 0, 0), -legsRot.x)
 				* Matrix4::Rotate(MakeVector3(0, 1, 0), -legsRot.y);
+				
+			Matrix4 const legRight = lower
+				* Matrix4::Translate(legsPosX, legsPosY, -legsPosZ)
+				* Matrix4::Rotate(MakeVector3(1, 0, 0), legsRot.x)
+				* Matrix4::Rotate(MakeVector3(0, 1, 0), legsRot.y);
 
 			Matrix4 const torso = lower
 				* Matrix4::Translate(0.0F, 0.0F, -torsoPosZ);
@@ -1188,10 +1192,14 @@ namespace spades {
 					? renderer.RegisterModel((modelPath + "LegCrouch.kv6").c_str())
 					: renderer.RegisterModel((modelPath + "Leg.kv6").c_str());
 
-				param.matrix = leg1 * scaler;
+				param.matrix = legLeft * scaler;
 				renderer.RenderModel(*model, param);
 
-				param.matrix = leg2 * scaler * Matrix4::Scale(-1, 1, 1); // mirror
+				model = inp.crouch
+					? renderer.RegisterModel((modelPath + "LegRightCrouch.kv6").c_str())
+					: renderer.RegisterModel((modelPath + "LegRight.kv6").c_str());
+
+				param.matrix = legRight * scaler;
 				renderer.RenderModel(*model, param);
 			}
 

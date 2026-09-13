@@ -512,6 +512,8 @@ namespace spades {
 			renderer->RegisterModel("Models/Player/Rifle/Arms.kv6");
 			renderer->RegisterModel("Models/Player/Rifle/Leg.kv6");
 			renderer->RegisterModel("Models/Player/Rifle/LegCrouch.kv6");
+			renderer->RegisterModel("Models/Player/Rifle/LegRight.kv6");
+			renderer->RegisterModel("Models/Player/Rifle/LegRightCrouch.kv6");
 			renderer->RegisterModel("Models/Player/Rifle/Torso.kv6");
 			renderer->RegisterModel("Models/Player/Rifle/TorsoCrouch.kv6");
 			renderer->RegisterModel("Models/Player/Rifle/Dead.kv6");
@@ -523,6 +525,8 @@ namespace spades {
 			renderer->RegisterModel("Models/Player/Shotgun/Head.kv6");
 			renderer->RegisterModel("Models/Player/Shotgun/Leg.kv6");
 			renderer->RegisterModel("Models/Player/Shotgun/LegCrouch.kv6");
+			renderer->RegisterModel("Models/Player/Shotgun/LegRight.kv6");
+			renderer->RegisterModel("Models/Player/Shotgun/LegRightCrouch.kv6");
 			renderer->RegisterModel("Models/Player/Shotgun/Torso.kv6");
 			renderer->RegisterModel("Models/Player/Shotgun/TorsoCrouch.kv6");
 			renderer->RegisterModel("Models/Player/Shotgun/UpperArm.kv6");
@@ -532,6 +536,8 @@ namespace spades {
 			renderer->RegisterModel("Models/Player/SMG/Head.kv6");
 			renderer->RegisterModel("Models/Player/SMG/Leg.kv6");
 			renderer->RegisterModel("Models/Player/SMG/LegCrouch.kv6");
+			renderer->RegisterModel("Models/Player/SMG/LegRight.kv6");
+			renderer->RegisterModel("Models/Player/SMG/LegRightCrouch.kv6");
 			renderer->RegisterModel("Models/Player/SMG/Torso.kv6");
 			renderer->RegisterModel("Models/Player/SMG/TorsoCrouch.kv6");
 			renderer->RegisterModel("Models/Player/SMG/UpperArm.kv6");
@@ -541,6 +547,8 @@ namespace spades {
 			renderer->RegisterModel("Models/Player/Head.kv6");
 			renderer->RegisterModel("Models/Player/Leg.kv6");
 			renderer->RegisterModel("Models/Player/LegCrouch.kv6");
+			renderer->RegisterModel("Models/Player/LegRight.kv6");
+			renderer->RegisterModel("Models/Player/LegRightCrouch.kv6");
 			renderer->RegisterModel("Models/Player/Torso.kv6");
 			renderer->RegisterModel("Models/Player/TorsoCrouch.kv6");
 			renderer->RegisterModel("Models/Player/UpperArm.kv6");
