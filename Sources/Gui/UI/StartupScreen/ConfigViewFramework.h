@@ -189,6 +189,7 @@ namespace spades {
 		};
 
 		class StartupScreenComplexConfigPreset;
+		class StartupScreenComplexConfigDialog;
 
 		/** Maps multiple configs to {"0", "1", ...} or "custom". */
 		class StartupScreenComplexConfig : public StartupScreenGenericConfig {
@@ -221,6 +222,11 @@ namespace spades {
 		/** Select editor whose last option ("Custom") opens a detail dialog. */
 		class StartupScreenConfigComplexItemEditor : public StartupScreenConfigSelectItemEditor {
 			std::string dlgTitle;
+			// Built once and reused: its internal ConfigView parents the complex
+			// config's shared editor elements, so recreating the dialog on every
+			// "Custom" click would try to reparent those same elements after the
+			// previous dialog (and its ConfigView) was destroyed.
+			Handle<StartupScreenComplexConfigDialog> dialog;
 
 			void RunDialog();
 

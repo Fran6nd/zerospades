@@ -412,12 +412,13 @@ namespace spades {
 		}
 
 		void StartupScreenConfigComplexItemEditor::RunDialog() {
-			Handle<StartupScreenComplexConfigDialog> dlg =
-			    Handle<StartupScreenComplexConfigDialog>::New(
-			        &GetManager(), config.Cast<StartupScreenComplexConfig>());
-			dlg->dialogDone = [this](UIElement&) { LoadConfig(); };
-			dlg->title = dlgTitle;
-			dlg->RunDialog();
+			if (!dialog) {
+				dialog = Handle<StartupScreenComplexConfigDialog>::New(
+				    &GetManager(), config.Cast<StartupScreenComplexConfig>());
+				dialog->dialogDone = [this](UIElement&) { LoadConfig(); };
+				dialog->title = dlgTitle;
+			}
+			dialog->RunDialog();
 		}
 
 		// -- StartupScreenConfigViewModel --
