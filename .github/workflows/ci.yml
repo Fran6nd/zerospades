@@ -284,6 +284,7 @@ jobs:
       group: nightly-release
       cancel-in-progress: true
     permissions:
+      actions: read
       contents: write
     steps:
       - name: Checkout
@@ -291,25 +292,44 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Download all artifacts
-        uses: actions/download-artifact@v8
-        with:
-          path: artifacts
-
+      # The artifact archives are published as-is: extracting them (as
+      # actions/download-artifact does) drops Unix permissions, and re-zipping
+      # the result ships non-executable binaries that macOS refuses to launch.
       - name: Package artifacts
         id: package
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           SHORT_SHA="$(git rev-parse --short HEAD)"
           echo "short_sha=${SHORT_SHA}" >> "$GITHUB_OUTPUT"
 
           mkdir -p release-assets
-          cd artifacts
+
+          # Keep only the newest artifact per name, so a re-run job replaces the older upload
+          gh api --paginate "repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts" \
+            --jq '.artifacts[] | select(.expired | not) | [.name, .id] | @tsv' \
+            | sort -t$'\t' -k1,1 -k2,2nr | sort -s -u -t$'\t' -k1,1 > artifacts.tsv
 
           BINARIES_LIST=""
-          for name in $(find . -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort); do
+          while IFS=$'\t' read -r name id; do
             zip_name="${name/zerospades-/zerospades-${SHORT_SHA}-}"
-            echo "Zipping $name as ${zip_name}.zip..."
-            (cd "$name" && zip -r "../../release-assets/${zip_name}.zip" .)
+            echo "Downloading $name as ${zip_name}.zip..."
+            gh api "repos/${{ github.repository }}/actions/artifacts/${id}/zip" > "release-assets/${zip_name}.zip"
+
+            # Fail early instead of publishing a package whose launcher cannot run
+            case "$name" in
+              zerospades-linux-nix) executable="bin/zerospades" ;;
+              zerospades-linux-ubuntu) executable="zerospades" ;;
+              zerospades-macos-*) executable="ZeroSpades.app/Contents/MacOS/ZeroSpades" ;;
+              *) executable="" ;;
+            esac
+            if [ -n "$executable" ]; then
+              mode="$(zipinfo "release-assets/${zip_name}.zip" | awk -v f="$executable" '$NF == f { print $1 }')"
+              if [[ "$mode" != -??x* ]]; then
+                echo "::error::${executable} in ${name} is not executable (mode '${mode}')."
+                exit 1
+              fi
+            fi
 
             case "$name" in
               zerospades-linux-nix) desc="for Linux (built via Nix)." ;;
@@ -322,7 +342,7 @@ jobs:
             esac
             printf -v list_line '* **%s.zip**: %s\n' "$zip_name" "$desc"
             BINARIES_LIST="${BINARIES_LIST}${list_line}"
-          done
+          done < artifacts.tsv
 
           {
             echo "binaries_list<<EOF"
