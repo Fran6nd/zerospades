@@ -421,19 +421,28 @@ namespace spades {
 			// product collapses. Matches the camera side axis in SetupScene.
 			Vector3 right = MakeVector3(-sinf(yaw), cosf(yaw), 0.0F);
 
-			Vector3 move = MakeVector3(0, 0, 0);
-			if (keyFwd) move += fwd;
-			if (keyBack) move -= fwd;
-			if (keyRight) move += right;
-			if (keyLeft) move -= right;
-			if (keyUp) move += up;
-			if (keyDown) move -= up;
+			float step = float(cubeSize) * 0.7F * (keySprint ? kSprintMultiplier : 1.0F) * dt;
+			auto displacement = [&](bool withDescend) {
+				Vector3 move = MakeVector3(0, 0, 0);
+				if (keyFwd) move += fwd;
+				if (keyBack) move -= fwd;
+				if (keyRight) move += right;
+				if (keyLeft) move -= right;
+				if (keyUp) move += up;
+				if (withDescend && keyDown) move -= up;
+				if (move.x == 0.0F && move.y == 0.0F && move.z == 0.0F)
+					return MakeVector3(0, 0, 0);
+				return move.Normalize() * step;
+			};
 
-			if (move.x == 0.0F && move.y == 0.0F && move.z == 0.0F)
-				return;
-			float speed = float(cubeSize) * 0.7F * (keySprint ? kSprintMultiplier : 1.0F);
+			Vector3 delta = displacement(true);
 			// Moving the orbited point carries the whole view along with it.
-			orbitTarget += move.Normalize() * (speed * dt);
+			orbitTarget += delta;
+
+			// While Ctrl is both the descend key and held, remember how far the
+			// descend part alone moved us, so a Ctrl shortcut can take it back.
+			if (keyDown && ctrlHeld && KV6CheckKey(cg_keyCrouch, "Control"))
+				ctrlDescent += delta - displacement(false);
 		}
 
 		void KV6EditorView::PanView(float dx, float dy) {
@@ -447,6 +456,7 @@ namespace spades {
 
 		void KV6EditorView::ReleaseHeldInput() {
 			keyFwd = keyBack = keyLeft = keyRight = keyUp = keyDown = false;
+			ctrlDescent = MakeVector3(0, 0, 0);
 			lookActive = false;
 		}
 
@@ -1794,10 +1804,14 @@ namespace spades {
 			}
 
 			if (down && ctrlHeld && IsCtrlShortcut(key)) {
-				// Ctrl is also the default descend key (cg_keyCrouch): once it is
-				// used as a shortcut modifier, stop descending for this press.
-				if (KV6CheckKey(cg_keyCrouch, "Control"))
+				// Ctrl is also the default descend key (cg_keyCrouch), so the view
+				// has been sinking since Ctrl went down: undo that drift and stop
+				// descending for the rest of this press.
+				if (KV6CheckKey(cg_keyCrouch, "Control")) {
+					orbitTarget -= ctrlDescent;
+					ctrlDescent = MakeVector3(0, 0, 0);
 					keyDown = false;
+				}
 				if (EqualsIgnoringCase(key, "s")) Save();
 				else if (EqualsIgnoringCase(key, "c")) CopySelection();
 				else if (EqualsIgnoringCase(key, "x")) CutSelection();
@@ -1917,7 +1931,11 @@ namespace spades {
 			if (KV6CheckKey(lf, key)) { keyLeft = down; return; }
 			if (KV6CheckKey(rt, key)) { keyRight = down; return; }
 			if (KV6CheckKey(jp, key)) { keyUp = down; return; }
-			if (KV6CheckKey(cr, key)) { keyDown = down; return; }
+			if (KV6CheckKey(cr, key)) {
+				keyDown = down;
+				ctrlDescent = MakeVector3(0, 0, 0); // a new press, or a finished one
+				return;
+			}
 
 			// Remaining keys go to the active tool (e.g. Select's [L]).
 			if (EditorTool* t = ActiveTool()) {
