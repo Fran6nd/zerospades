@@ -442,8 +442,8 @@ namespace spades {
 					hitFeedbackIconState = 0.0F;
 			}
 
-			// Ping and mark lifetimes are client-side; the protocol has no removal
-			// packet other than a Duration 0 mark, so they are expired here.
+			// Ping and mark lifetimes are counted by the client: a finite Duration needs
+			// no removal packet from the server, so they are expired here.
 			teamplay->Update(dt);
 
 			{

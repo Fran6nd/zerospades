@@ -83,8 +83,9 @@ namespace spades {
 			};
 
 			/** What a Surfaces of `0` asks for: this client's own default placement.
-			 * The compass is left out of it because it is off by default here, so a
-			 * server with no opinion gets the marker and the minimap dot. */
+			 * The compass is left out of it because a compass exists only where the
+			 * server grants one, so a server with no opinion gets the marker and the
+			 * minimap dot. */
 			static constexpr uint8_t kDefaultSurfaces = SurfaceWorld | SurfaceMinimap;
 
 			/** Flag bits carried by the ESP Mark sub-packet. Bits 2-7 are reserved. */
@@ -99,8 +100,8 @@ namespace spades {
 			static constexpr int kServerPlayerId = 255;
 
 			/** The only Message ID version 1 of the extension defines. The byte is
-			 * reserved for a later version that names a label instead of spelling it,
-			 * and a receiver drops a packet carrying anything else. */
+			 * reserved for a later version that names a label instead of spelling it;
+			 * a receiver that gets any other value renders the packet and ignores it. */
 			static constexpr uint8_t kReservedMessageId = 0;
 
 			/** The reason strings are free-form UTF-8 and the protocol assigns no fixed

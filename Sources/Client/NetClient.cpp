@@ -750,7 +750,7 @@ namespace spades {
 					uint8_t flags = r.ReadByte();
 
 					// The outline colour, in the Blue-Green-Red order the base protocol
-					// already uses. Black asks for the marked player's team colour.
+					// already uses. The server chose it; the client draws it as sent.
 					IntVector3 color = r.ReadIntColor();
 
 					uint8_t messageId = r.ReadByte();

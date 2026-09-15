@@ -178,8 +178,8 @@ namespace spades {
 			// somewhere rather than replies to somebody: four of them drop a
 			// Teamplay ping on whatever the crosshair was on when the menu opened, and
 			// fall back to the same message on team chat when the server does not allow
-			// pings. "Affirmative" and "Negative" have no place to point at and stayed
-			// on the Player variant, where a reply is what is wanted.
+			// pings. "Affirmative" and "Negative" have no place to point at and live on
+			// the Player variant, where a reply is what is wanted.
 			worldLabels = {
 				"Enemies!",
 				"Behind Us!",

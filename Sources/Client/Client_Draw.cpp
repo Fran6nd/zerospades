@@ -2453,7 +2453,7 @@ namespace spades {
 					DrawPubOVL();
 				}
 
-				// Teamplay. Marks and pings come from the server and are drawn
+				// Teamplay marks and pings come from the server and are drawn
 				// whether or not the local player is spectating; the team overlay is the
 				// local player's own view of their team and is not.
 				DrawEspMarks();

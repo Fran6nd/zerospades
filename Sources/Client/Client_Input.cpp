@@ -682,10 +682,10 @@ namespace spades {
 				bool localPlayerIsSpectating = localPlayerIsSpectator || staffSpectating;
 				bool isStaff = activeNet->GetGameProperties()->isStaff;
 
-				// Teamplay: hold to reveal teammates, tap to ping. Both are
-				// gated server-side by the extension's feature bits, which the draw and
-				// send paths check; the bindings themselves stay live so they keep
-				// working across a server that changes its policy mid-game.
+				// Teamplay: hold to reveal teammates, tap to ping. Each is permitted by
+				// its own bit in the server's Config, which the draw and send paths
+				// check; the bindings themselves stay live so they keep working across
+				// a server that sends a different Config mid-game.
 				if (CheckKey(cg_keyTeamOverlay, name) && !localPlayerIsSpectating) {
 					// Say so rather than swallowing the key: a server that does not
 					// permit TEAM_ESP, or does not speak the extension at all, would
