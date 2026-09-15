@@ -1729,6 +1729,9 @@ namespace spades {
 
 		void KV6EditorView::MouseEvent(float dx, float dy) {
 			if (lookActive && shiftHeld) { // Shift + wheel-button drag pans
+				// The cursor travels with the drag, staying on the grabbed spot
+				// (it stops at the screen edge while the pan carries on).
+				softwareCursor->Accumulate(dx, dy);
 				PanView(dx, dy);
 				return;
 			}
