@@ -52,27 +52,6 @@ namespace spades {
 			void HotKey(const std::string& key) override;
 		};
 
-		/** A modal text prompt (title, editable field, OK/Cancel) used for names. */
-		class KV6NamePrompt : public ui::UIElement {
-			ui::UIElement* owner;   // weak
-			ui::Field* nameField;   // weak; owned as a child
-
-			void OnConfirm(ui::UIElement& sender);
-			void OnCancel(ui::UIElement& sender);
-
-		public:
-			ui::EventHandler closed;
-			bool result = false;
-			std::string text;
-
-			KV6NamePrompt(ui::UIElement* owner, const std::string& title,
-			              const std::string& initial);
-
-			void Close();
-			void Run();
-			void HotKey(const std::string& key) override;
-		};
-
 		/**
 		 * The KV6 editor's entry point: a filesystem explorer tab that browses
 		 * folders and voxel model files and launches the editor on the chosen one.
@@ -94,6 +73,10 @@ namespace spades {
 			bool selectedIsFolder = false;
 
 			std::string Child(const std::string& name) const;
+			// Error message if `name` cannot be created in `dir`, else empty.
+			std::string ValidateNewName(const std::string& name) const;
+			// `name` with the .kv6 extension appended if it lacks one.
+			static std::string ModelFileName(const std::string& name);
 			void Reload();
 			void OpenModel(const std::string& absPath, bool isNew);
 			void NotImplemented();

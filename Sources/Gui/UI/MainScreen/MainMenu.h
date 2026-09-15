@@ -57,26 +57,6 @@ namespace spades {
 			TabPanel(ui::UIManager* manager) : ui::UIElement(manager) {}
 		};
 
-		/** Modal dialog for renaming a demo file. */
-		class RenameScreen : public ui::UIElement {
-			ui::UIElement* owner; // weak
-			ui::Field* nameField; // weak; owned as a child
-
-			void OnConfirm(ui::UIElement& sender);
-			void OnCancel(ui::UIElement& sender);
-
-		public:
-			ui::EventHandler closed;
-			bool result = false;
-			std::string newName;
-
-			RenameScreen(ui::UIElement* owner, const std::string& currentName);
-
-			void Close();
-			void Run();
-			void HotKey(const std::string& key) override;
-		};
-
 		/**
 		 * The part of the main menu that survives a rebuild. Everything else either
 		 * lives in config (the quick-connect address, the protocol choice) or in the

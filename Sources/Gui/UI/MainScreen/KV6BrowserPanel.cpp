@@ -22,6 +22,7 @@
 
 #include <algorithm>
 
+#include <Core/LocalFileSystem.h>
 #include <Core/Settings.h>
 #include <Core/Strings.h>
 #include <Gui/MainScreenHelper.h>
@@ -29,6 +30,7 @@
 #include <Gui/UI/Widgets/Button.h>
 #include <Gui/UI/Widgets/Label.h>
 #include <Gui/UI/Widgets/MessageBox.h>
+#include <Gui/UI/Widgets/TextPromptScreen.h>
 
 DEFINE_SPADES_SETTING(cl_kv6EditorFolder, ""); // remembered folder (absolute)
 
@@ -117,95 +119,6 @@ namespace spades {
 
 		void KV6ModelTypePrompt::HotKey(const std::string& key) {
 			if (IsEnabled() && key == "Escape") {
-				OnCancel(*this);
-			} else {
-				UIElement::HotKey(key);
-			}
-		}
-
-		// -- KV6NamePrompt --
-
-		KV6NamePrompt::KV6NamePrompt(UIElement* owner, const std::string& title,
-		                             const std::string& initial)
-		    : UIElement(&owner->GetManager()), owner(owner) {
-			SetFont(GetManager().GetRootElement().GetFont());
-			SetBounds(owner->GetBounds());
-
-			UIManager* manager = &GetManager();
-			float sw = manager->screenWidth;
-			float sh = manager->screenHeight;
-			float w = std::min(sw - 16.0F, 500.0F);
-			float h = 160.0F;
-			float x = (sw - w) * 0.5F;
-			float y = (sh - h) * 0.5F;
-
-			{
-				Handle<Label> bg = Handle<Label>::New(manager);
-				bg->backgroundColor = MakeVector4(0.0F, 0.0F, 0.0F, 0.9F);
-				bg->SetBounds(AABB2(0.0F, y - 13.0F, size.x, h + 27.0F));
-				AddChild(bg.GetPointerOrNull());
-			}
-			{
-				Handle<Label> label = Handle<Label>::New(manager);
-				label->text = title;
-				label->SetBounds(AABB2(x, y, w, 30.0F));
-				label->alignment = MakeVector2(0.0F, 0.5F);
-				AddChild(label.GetPointerOrNull());
-			}
-			{
-				Handle<Field> field = Handle<Field>::New(manager);
-				nameField = field.GetPointerOrNull();
-				nameField->SetBounds(AABB2(x, y + 40.0F, w, 30.0F));
-				nameField->SetText(initial);
-				nameField->SelectAll();
-				AddChild(nameField);
-			}
-			{
-				Handle<Button> btn = Handle<Button>::New(manager);
-				btn->caption = _Tr("MainScreen", "OK");
-				btn->SetBounds(AABB2(x + w - 320.0F, y + 90.0F, 150.0F, 30.0F));
-				btn->activated = [this](UIElement& s) { OnConfirm(s); };
-				AddChild(btn.GetPointerOrNull());
-			}
-			{
-				Handle<Button> btn = Handle<Button>::New(manager);
-				btn->caption = _Tr("MainScreen", "Cancel");
-				btn->SetBounds(AABB2(x + w - 160.0F, y + 90.0F, 150.0F, 30.0F));
-				btn->activated = [this](UIElement& s) { OnCancel(s); };
-				AddChild(btn.GetPointerOrNull());
-			}
-		}
-
-		void KV6NamePrompt::OnConfirm(UIElement&) {
-			text = nameField->GetText();
-			result = true;
-			Close();
-		}
-
-		void KV6NamePrompt::OnCancel(UIElement&) {
-			result = false;
-			Close();
-		}
-
-		void KV6NamePrompt::Close() {
-			// keep ourselves alive while handlers observing the close run
-			Handle<KV6NamePrompt> keepAlive(this);
-			owner->enable = true;
-			GetParent()->RemoveChild(this);
-			if (closed)
-				closed(*this);
-		}
-
-		void KV6NamePrompt::Run() {
-			owner->enable = false;
-			owner->GetParent()->AddChild(this);
-			GetManager().SetActiveElement(nameField);
-		}
-
-		void KV6NamePrompt::HotKey(const std::string& key) {
-			if (IsEnabled() && key == "Enter") {
-				OnConfirm(*this);
-			} else if (IsEnabled() && key == "Escape") {
 				OnCancel(*this);
 			} else {
 				UIElement::HotKey(key);
@@ -397,18 +310,35 @@ namespace spades {
 			Reload();
 		}
 
+		std::string KV6BrowserPanel::ValidateNewName(const std::string& name) const {
+			std::string reason;
+			if (!LocalFileSystem::IsValidFileName(name, &reason))
+				return reason;
+			if (LocalFileSystem::Exists(Child(name)))
+				return _Tr("MainScreen", "An item named '{0}' already exists.", name);
+			return std::string();
+		}
+
 		void KV6BrowserPanel::OnNewFolder(UIElement&) {
-			Handle<KV6NamePrompt> prompt =
-			    Handle<KV6NamePrompt>::New(modalOwner, _Tr("MainScreen", "New Folder"), "");
+			TextPromptScreen::Options options;
+			options.title = _Tr("MainScreen", "New Folder");
+			options.validate = [this](const std::string& name) { return ValidateNewName(name); };
+			Handle<TextPromptScreen> prompt =
+			    Handle<TextPromptScreen>::New(modalOwner, std::move(options));
 			prompt->closed = [this](UIElement& s) { OnNewFolderClosed(s); };
 			prompt->Run();
 		}
 
 		void KV6BrowserPanel::OnNewFolderClosed(UIElement& sender) {
-			KV6NamePrompt* p = dynamic_cast<KV6NamePrompt*>(&sender);
-			if (!p || !p->result || p->text.empty())
+			TextPromptScreen* p = dynamic_cast<TextPromptScreen*>(&sender);
+			if (!p || !p->GetResult())
 				return;
-			fs->CreateFolder(Child(p->text));
+			std::string error;
+			if (!LocalFileSystem::CreateFolder(Child(p->GetText()), &error)) {
+				Handle<AlertScreen> al = Handle<AlertScreen>::New(
+				    modalOwner, _Tr("MainScreen", "Could not create the folder: {0}", error));
+				al->Run();
+			}
 			Reload();
 		}
 
@@ -424,8 +354,18 @@ namespace spades {
 				return;
 
 			if (p->result == 0) { // KV6 selected
-				Handle<KV6NamePrompt> namePrompt = Handle<KV6NamePrompt>::New(
-				    modalOwner, _Tr("MainScreen", "New KV6 Model"), "untitled");
+				TextPromptScreen::Options options;
+				options.title = _Tr("MainScreen", "New KV6 Model");
+				options.initialText = "untitled";
+				options.validate = [this](const std::string& name) {
+					// ".kv6" alone would silently become a hidden, nameless file.
+					std::string file = ModelFileName(name);
+					if (file.size() <= 4)
+						return _Tr("MainScreen", "The name is empty.");
+					return ValidateNewName(file);
+				};
+				Handle<TextPromptScreen> namePrompt =
+				    Handle<TextPromptScreen>::New(modalOwner, std::move(options));
 				namePrompt->closed = [this](UIElement& s) { OnNewModelNameClosed(s); };
 				namePrompt->Run();
 			} else if (p->result == 1) { // VXL selected
@@ -439,13 +379,14 @@ namespace spades {
 		}
 
 		void KV6BrowserPanel::OnNewModelNameClosed(UIElement& sender) {
-			KV6NamePrompt* p = dynamic_cast<KV6NamePrompt*>(&sender);
-			if (!p || !p->result || p->text.empty())
+			TextPromptScreen* p = dynamic_cast<TextPromptScreen*>(&sender);
+			if (!p || !p->GetResult())
 				return;
-			std::string name = p->text;
-			if (!EditorIsEditable(name))
-				name += ".kv6";
-			OpenModel(Child(name), true);
+			OpenModel(Child(ModelFileName(p->GetText())), true);
+		}
+
+		std::string KV6BrowserPanel::ModelFileName(const std::string& name) {
+			return EditorIsEditable(name) ? name : name + ".kv6";
 		}
 
 		void KV6BrowserPanel::OnDelete(UIElement&) {
