@@ -684,13 +684,6 @@ namespace spades {
 							} else {
 								client->ServerSentMessage((type == 1), msg);
 							}
-						} else if (type == ChatTypeDirect) {
-							// Recorded from the Teamplay extension: the line was
-							// sent to the recording player alone, by the player this
-							// packet names or by the server itself.
-							stmp::optional<Player&> p = GetPlayerOrNull(playerId);
-							client->ServerSentDirectMessage(p ? (*p).GetName() : std::string(),
-															msg);
 						}
 					}
 				} break;
