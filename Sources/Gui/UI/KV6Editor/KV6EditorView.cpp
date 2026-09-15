@@ -64,6 +64,15 @@ namespace spades {
 				return EqualsIgnoringCase(cfg, input);
 			}
 
+			// Keys that form an editor shortcut together with Ctrl.
+			bool IsCtrlShortcut(const std::string& key) {
+				for (const char* k : {"s", "c", "x", "v", "z", "y"}) {
+					if (EqualsIgnoringCase(key, k))
+						return true;
+				}
+				return false;
+			}
+
 			float Clampf(float v, float lo, float hi) { return std::max(lo, std::min(hi, v)); }
 
 			// Top UI bands (full width): a title ribbon above the toolbar. The 3D
@@ -417,11 +426,12 @@ namespace spades {
 		}
 
 		void KV6EditorView::UpdateMovement(float dt) {
-			if (orbitMode)
-				return;
 			Vector3 fwd = Forward();
 			Vector3 up = MakeVector3(0.0F, 0.0F, -1.0F);
-			Vector3 right = Vector3::Cross(fwd, up).Normalize();
+			// Cross(fwd, up) normalised, derived from the heading so it stays valid
+			// when looking straight up/down (navicube top/bottom), where the cross
+			// product collapses. Matches the camera side axis in SetupScene.
+			Vector3 right = MakeVector3(-sinf(yaw), cosf(yaw), 0.0F);
 
 			Vector3 move = MakeVector3(0, 0, 0);
 			if (keyFwd) move += fwd;
@@ -431,8 +441,19 @@ namespace spades {
 			if (keyUp) move += up;
 			if (keyDown) move -= up;
 
-			if (move.x != 0.0F || move.y != 0.0F || move.z != 0.0F)
-				freePos += move.Normalize() * (float(cubeSize) * 0.7F * dt);
+			if (move.x == 0.0F && move.y == 0.0F && move.z == 0.0F)
+				return;
+			Vector3 delta = move.Normalize() * (float(cubeSize) * 0.7F * dt);
+			// Orbit mode moves the point being orbited, so the view pans with it.
+			if (orbitMode)
+				orbitTarget += delta;
+			else
+				freePos += delta;
+		}
+
+		void KV6EditorView::ReleaseHeldInput() {
+			keyFwd = keyBack = keyLeft = keyRight = keyUp = keyDown = false;
+			lookActive = false;
 		}
 
 		client::SceneDefinition KV6EditorView::SetupScene(float vpX, float vpY, float vpW, float vpH) {
@@ -1754,8 +1775,19 @@ namespace spades {
 
 		void KV6EditorView::KeyEvent(const std::string& key, bool down) {
 			const Vector2& cursor = softwareCursor->GetPosition();
-			if (ui->GetEditorMenu()->KeyEvent(key, down))
+
+			// Modifier state must track the keyboard even while a modal swallows
+			// keys, or a Ctrl released during the menu stays "held" afterwards.
+			if (key == "Control") ctrlHeld = down;
+			if (key == "Alt") altHeld = down;
+			if (key == "Shift") shiftHeld = down;
+
+			if (ui->GetEditorMenu()->KeyEvent(key, down)) {
+				// Releases are swallowed too while the menu is up: drop held
+				// movement/look so nothing keeps going once it closes.
+				ReleaseHeldInput();
 				return;
+			}
 
 			// While pasting, the mouse positions/places the clipboard; other keys
 			// (camera) fall through.
@@ -1765,18 +1797,19 @@ namespace spades {
 				if (key == "LeftMouseButton") { CommitPaste(); return; }
 			}
 
-			if (key == "Control") ctrlHeld = down;
-			if (key == "Alt") altHeld = down;
-			if (key == "Shift") shiftHeld = down;
-			if (down && ctrlHeld && EqualsIgnoringCase(key, "s")) { Save(); return; }
-			if (down && ctrlHeld && EqualsIgnoringCase(key, "c")) { CopySelection(); return; }
-			if (down && ctrlHeld && EqualsIgnoringCase(key, "x")) { CutSelection(); return; }
-			if (down && ctrlHeld && EqualsIgnoringCase(key, "v")) { StartPaste(); return; }
-			if (down && ctrlHeld && EqualsIgnoringCase(key, "z")) {
-				if (shiftHeld) Redo(); else Undo();
+			if (down && ctrlHeld && IsCtrlShortcut(key)) {
+				// Ctrl is also the default descend key (cg_keyCrouch): once it is
+				// used as a shortcut modifier, stop descending for this press.
+				if (KV6CheckKey(cg_keyCrouch, "Control"))
+					keyDown = false;
+				if (EqualsIgnoringCase(key, "s")) Save();
+				else if (EqualsIgnoringCase(key, "c")) CopySelection();
+				else if (EqualsIgnoringCase(key, "x")) CutSelection();
+				else if (EqualsIgnoringCase(key, "v")) StartPaste();
+				else if (EqualsIgnoringCase(key, "z")) { if (shiftHeld) Redo(); else Undo(); }
+				else Redo(); // "y"
 				return;
 			}
-			if (down && ctrlHeld && EqualsIgnoringCase(key, "y")) { Redo(); return; }
 
 			if (key == "MiddleMouseButton") { lookActive = down; return; }
 
