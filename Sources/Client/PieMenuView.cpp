@@ -175,7 +175,7 @@ namespace spades {
 			// Slice order: top, then clockwise.
 			//
 			// The World variant is aimed at a place, so its slices are callouts about
-			// somewhere rather than replies to somebody: four of them drop an Extended
+			// somewhere rather than replies to somebody: four of them drop a
 			// Teamplay ping on whatever the crosshair was on when the menu opened, and
 			// fall back to the same message on team chat when the server does not allow
 			// pings. "Affirmative" and "Negative" have no place to point at and stayed

@@ -52,7 +52,7 @@ namespace spades {
 
 		enum NetExtensionType {
 			ExtensionTypePlayerProperties = 0,
-			ExtensionTypeExtendedTeamplay = 2,
+			ExtensionTypeTeamplay = 48,
 			ExtensionTypePlayerLimit = 192,
 			ExtensionTypeMessageTypes = 193,
 			ExtensionTypeKickReason = 194,
@@ -99,7 +99,7 @@ namespace spades {
 			/** Extensions implemented in this client (map of extension id → version) */
 			std::unordered_map<uint8_t, uint8_t> implementedExtensions{
 			  {ExtensionTypePlayerProperties, 1},
-			  {ExtensionTypeExtendedTeamplay, 1},
+			  {ExtensionTypeTeamplay, 1},
 			  {ExtensionTypePlayerLimit, 1},
 			  {ExtensionTypeMessageTypes, 1},
 			  {ExtensionTypeKickReason, 1}};
@@ -135,7 +135,7 @@ namespace spades {
 
 			bool HandleHandshakePackets(NetPacketReader&);
 			void HandleExtensionPacket(NetPacketReader&);
-			void HandleExtendedTeamplayPacket(NetPacketReader&);
+			void HandleTeamplayPacket(NetPacketReader&);
 
 			/** Whether the server negotiated the given extension during the handshake. */
 			bool HasExtension(NetExtensionType type) const {

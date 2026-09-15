@@ -61,7 +61,7 @@ enum ChatType {
 	ChatTypeWarning,
 	ChatTypeError,
 
-	// only through the ExtendedTeamplay extension: a line the server sends to one
+	// only through the Teamplay extension: a line the server sends to one
 	// player alone, the sender carried by the packet's own player id
 	ChatTypeDirect
 };

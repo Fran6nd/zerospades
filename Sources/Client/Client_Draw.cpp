@@ -38,7 +38,6 @@
 #include "ChatWindow.h"
 #include "ClientPlayer.h"
 #include "ClientUI.h"
-#include "ExtendedTeamplay.h"
 #include "Fonts.h"
 #include "GameProperties.h"
 #include "HitTestDebugger.h"
@@ -52,6 +51,7 @@
 #include "ScreenShot.h"
 #include "ScoreboardView.h"
 #include "TCProgressView.h"
+#include "Teamplay.h"
 
 #include "GameMap.h"
 #include "Weapon.h"
@@ -781,7 +781,7 @@ namespace spades {
 			}
 		}
 
-#pragma mark - Extended Teamplay
+#pragma mark - Teamplay
 
 		namespace {
 			/** Strokes a screen-space segment as a quad, the only 2D primitive the
@@ -965,7 +965,7 @@ namespace spades {
 				return MakeVector3(teamColor.x, teamColor.y, teamColor.z);
 			}
 
-			return ExtendedTeamplay::ToRenderColor(markColor);
+			return Teamplay::ToRenderColor(markColor);
 		}
 
 		bool Client::ShouldRevealPlayer(Player& p, Vector3& outColor) {
@@ -983,7 +983,7 @@ namespace spades {
 			// A mark is an instruction from the server, so it is drawn whatever the
 			// TEAM_ESP bit says — but only on the surfaces the packet named.
 			auto mark = teamplay->GetMark(p.GetId());
-			if (mark && (mark->surfaces & ExtendedTeamplay::SurfaceWorld)) {
+			if (mark && (mark->surfaces & Teamplay::SurfaceWorld)) {
 				outColor = ResolveMarkColor(p, mark->color);
 				return true;
 			}
@@ -1004,7 +1004,7 @@ namespace spades {
 			// A mark reveals its player whatever the feature bits say, but only one that
 			// asked for the world surface puts anything through a wall.
 			for (const auto& entry : teamplay->GetMarks()) {
-				if (entry.second.surfaces & ExtendedTeamplay::SurfaceWorld)
+				if (entry.second.surfaces & Teamplay::SurfaceWorld)
 					return true;
 			}
 
@@ -1083,7 +1083,7 @@ namespace spades {
 
 				// A mark that did not name the world surface says nothing here; it is
 				// on the minimap or the compass instead.
-				if (!(mark->surfaces & ExtendedTeamplay::SurfaceWorld))
+				if (!(mark->surfaces & Teamplay::SurfaceWorld))
 					continue;
 
 				Player& p = maybePlayer.value();
@@ -1134,7 +1134,7 @@ namespace spades {
 
 			// In the colour the server chose, so the notice says the same thing to its
 			// subject as the outline says to everybody else.
-			Vector3 col = ExtendedTeamplay::ToRenderColor(mark->color);
+			Vector3 col = Teamplay::ToRenderColor(mark->color);
 
 			IFont& font = fontManager->GetGuiFont();
 			Vector2 size = font.Measure(str);
@@ -1161,10 +1161,10 @@ namespace spades {
 			float margin = sz * 2.0F;
 
 			for (const auto& entry : teamplay->GetPings()) {
-				const ExtendedTeamplay::Ping& ping = entry.second;
+				const Teamplay::Ping& ping = entry.second;
 
 				// The packet decides where it is shown; this is the world.
-				if (!(ping.surfaces & ExtendedTeamplay::SurfaceWorld))
+				if (!(ping.surfaces & Teamplay::SurfaceWorld))
 					continue;
 
 				// Fade out over the last stretch of whatever lifetime the server gave
@@ -1200,7 +1200,7 @@ namespace spades {
 
 				// The colour the server chose, drawn as sent: which colour a ping should
 				// be is its business, and this client is never told what one means.
-				Vector3 pingCol = ExtendedTeamplay::ToRenderColor(ping.color);
+				Vector3 pingCol = Teamplay::ToRenderColor(ping.color);
 				Vector4 color = MakeVector4(pingCol.x, pingCol.y, pingCol.z, alpha);
 
 				// A diamond, drawn as four strokes with a dark pass underneath.
@@ -1231,7 +1231,7 @@ namespace spades {
 				// behind it, and looking it up in the roster would put the marker under
 				// the name of whoever holds a nearby id.
 				std::string label;
-				if (ping.playerId != ExtendedTeamplay::kServerPlayerId)
+				if (ping.playerId != Teamplay::kServerPlayerId)
 					label = world->GetPlayerName(ping.playerId);
 
 				// Rendered as received: the extension assigns no reason values, so
@@ -2368,18 +2368,18 @@ namespace spades {
 			};
 
 			for (const auto& entry : teamplay->GetPings()) {
-				const ExtendedTeamplay::Ping& ping = entry.second;
-				if (!(ping.surfaces & ExtendedTeamplay::SurfaceCompass))
+				const Teamplay::Ping& ping = entry.second;
+				if (!(ping.surfaces & Teamplay::SurfaceCompass))
 					continue;
 
 				constexpr float kFadeOutTime = 0.75F;
-				drawBearing(ping.position, ExtendedTeamplay::ToRenderColor(ping.color),
+				drawBearing(ping.position, Teamplay::ToRenderColor(ping.color),
 							ping.GetFadeAlpha(kFadeOutTime));
 			}
 
 			for (const auto& entry : teamplay->GetMarks()) {
-				const ExtendedTeamplay::Mark& mark = entry.second;
-				if (!(mark.surfaces & ExtendedTeamplay::SurfaceCompass))
+				const Teamplay::Mark& mark = entry.second;
+				if (!(mark.surfaces & Teamplay::SurfaceCompass))
 					continue;
 
 				auto maybeMarked = world->GetPlayer(static_cast<unsigned int>(entry.first));
@@ -2447,7 +2447,7 @@ namespace spades {
 					DrawPubOVL();
 				}
 
-				// Extended Teamplay. Marks and pings come from the server and are drawn
+				// Teamplay. Marks and pings come from the server and are drawn
 				// whether or not the local player is spectating; the team overlay is the
 				// local player's own view of their team and is not.
 				DrawEspMarks();

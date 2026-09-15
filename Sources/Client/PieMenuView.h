@@ -84,7 +84,7 @@ namespace spades {
 			}
 
 			/**
-			 * Whether a slice drops an *Extended Teamplay* ping rather than sending its
+			 * Whether a slice drops an *Teamplay* ping rather than sending its
 			 * message on chat. The ping carries the slice's `GetLabels()` entry as its
 			 * reason, so the wire text is the same either way.
 			 *

@@ -34,12 +34,12 @@
 #include "ClientPlayer.h"
 #include "ClientUI.h"
 #include "Corpse.h"
-#include "ExtendedTeamplay.h"
 #include "FallingBlock.h"
 #include "HurtRingView.h"
 #include "ILocalEntity.h"
 #include "MapView.h"
 #include "PieMenuView.h"
+#include "Teamplay.h"
 #include "Tracer.h"
 
 #include "GameMap.h"

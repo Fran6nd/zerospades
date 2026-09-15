@@ -21,7 +21,7 @@
 #include <cmath>
 #include <utility>
 
-#include "ExtendedTeamplay.h"
+#include "Teamplay.h"
 #include <Core/Debug.h>
 
 namespace spades {
@@ -31,17 +31,17 @@ namespace spades {
 			 * remaining bits and requires unknown ones to be ignored, so masking here
 			 * means a future server can set them without changing behaviour. */
 			constexpr uint8_t kKnownFeatures =
-			  ExtendedTeamplay::FeatureTeamESP | ExtendedTeamplay::FeaturePing |
-			  ExtendedTeamplay::FeatureCompassHud;
+			  Teamplay::FeatureTeamESP | Teamplay::FeaturePing |
+			  Teamplay::FeatureCompassHud;
 
 			/** Likewise for the Surfaces byte both the Ping and the ESP Mark carry. */
 			constexpr uint8_t kKnownSurfaces =
-			  ExtendedTeamplay::SurfaceWorld | ExtendedTeamplay::SurfaceMinimap |
-			  ExtendedTeamplay::SurfaceCompass;
+			  Teamplay::SurfaceWorld | Teamplay::SurfaceMinimap |
+			  Teamplay::SurfaceCompass;
 
 			/** Likewise for the ESP Mark flags. */
 			constexpr uint8_t kKnownMarkFlags =
-			  ExtendedTeamplay::MarkFlagClearOnRespawn | ExtendedTeamplay::MarkFlagShowName;
+			  Teamplay::MarkFlagClearOnRespawn | Teamplay::MarkFlagShowName;
 
 			bool IsUTF8Continuation(char c) { return (static_cast<unsigned char>(c) & 0xC0) == 0x80; }
 
@@ -109,31 +109,31 @@ namespace spades {
 			}
 		} // namespace
 
-		bool ExtendedTeamplay::IsValidDuration(float duration) {
+		bool Teamplay::IsValidDuration(float duration) {
 			return !std::isnan(duration) && duration >= 0.0F;
 		}
 
-		bool ExtendedTeamplay::IsEndlessDuration(float duration) { return std::isinf(duration); }
+		bool Teamplay::IsEndlessDuration(float duration) { return std::isinf(duration); }
 
-		uint8_t ExtendedTeamplay::ResolveSurfaces(uint8_t surfaces) {
+		uint8_t Teamplay::ResolveSurfaces(uint8_t surfaces) {
 			if (surfaces == 0) // named nothing: the client places it
 				return kDefaultSurfaces;
 			return surfaces & kKnownSurfaces;
 		}
 
-		float ExtendedTeamplay::Ping::GetAgeFraction() const {
+		float Teamplay::Ping::GetAgeFraction() const {
 			if (endless || duration <= 0.0F)
 				return 0.0F;
 			return Clamp(1.0F - timeLeft / duration, 0.0F, 1.0F);
 		}
 
-		float ExtendedTeamplay::Ping::GetFadeAlpha(float fadeTime) const {
+		float Teamplay::Ping::GetFadeAlpha(float fadeTime) const {
 			if (endless || fadeTime <= 0.0F)
 				return 1.0F;
 			return Clamp(timeLeft / fadeTime, 0.0F, 1.0F);
 		}
 
-		std::string ExtendedTeamplay::SanitizeReason(std::string reason) {
+		std::string Teamplay::SanitizeReason(std::string reason) {
 			reason = TrimSpaces(StripNewlines(DropIllFormedUTF8(reason)));
 
 			if (reason.size() > kMaxReasonBytes) {
@@ -153,7 +153,7 @@ namespace spades {
 			return reason;
 		}
 
-		void ExtendedTeamplay::SetFeatures(uint8_t newFeatures) {
+		void Teamplay::SetFeatures(uint8_t newFeatures) {
 			SPADES_MARK_FUNCTION();
 
 			features = newFeatures & kKnownFeatures;
@@ -164,7 +164,7 @@ namespace spades {
 			// dropping live ones would make a policy change look like a glitch.
 		}
 
-		void ExtendedTeamplay::SetPing(int playerId, const Vector3& position, float duration,
+		void Teamplay::SetPing(int playerId, const Vector3& position, float duration,
 		                               uint8_t surfaces, const IntVector3& color,
 		                               std::string reason) {
 			SPADES_MARK_FUNCTION();
@@ -185,7 +185,7 @@ namespace spades {
 			ping.timeLeft = ping.duration;
 		}
 
-		void ExtendedTeamplay::SetMark(int playerId, float duration, uint8_t surfaces,
+		void Teamplay::SetMark(int playerId, float duration, uint8_t surfaces,
 		                               uint8_t flags, const IntVector3& color,
 		                               std::string reason) {
 			SPADES_MARK_FUNCTION();
@@ -209,15 +209,15 @@ namespace spades {
 			mark.showName = (flags & MarkFlagShowName) != 0;
 		}
 
-		stmp::optional<const ExtendedTeamplay::Mark&>
-		ExtendedTeamplay::GetMark(int playerId) const {
+		stmp::optional<const Teamplay::Mark&>
+		Teamplay::GetMark(int playerId) const {
 			auto it = marks.find(playerId);
 			if (it == marks.end())
 				return {};
 			return it->second;
 		}
 
-		void ExtendedTeamplay::PlayerSpawned(int playerId) {
+		void Teamplay::PlayerSpawned(int playerId) {
 			// Keyed to the spawn rather than to the death, so any Create Player for the
 			// id ends the mark — killed, changed team, changed weapon or moved by a
 			// script — and this class needs no death bookkeeping of its own.
@@ -226,12 +226,12 @@ namespace spades {
 				marks.erase(it);
 		}
 
-		void ExtendedTeamplay::PlayerLeft(int playerId) {
+		void Teamplay::PlayerLeft(int playerId) {
 			marks.erase(playerId);
 			pings.erase(playerId);
 		}
 
-		void ExtendedTeamplay::Update(float dt) {
+		void Teamplay::Update(float dt) {
 			SPADES_MARK_FUNCTION();
 
 			for (auto it = pings.begin(); it != pings.end();) {
@@ -261,12 +261,12 @@ namespace spades {
 			}
 		}
 
-		void ExtendedTeamplay::ClearTransientState() {
+		void Teamplay::ClearTransientState() {
 			pings.clear();
 			marks.clear();
 		}
 
-		void ExtendedTeamplay::Reset() {
+		void Teamplay::Reset() {
 			ClearTransientState();
 			features = 0;
 		}

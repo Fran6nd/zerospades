@@ -39,7 +39,6 @@
 #include "ChatWindow.h"
 #include "ClientPlayer.h"
 #include "ClientUI.h"
-#include "ExtendedTeamplay.h"
 #include "HurtRingView.h"
 #include "LimboView.h"
 #include "MapView.h"
@@ -47,6 +46,7 @@
 #include "PieMenuView.h"
 #include "ScoreboardView.h"
 #include "TCProgressView.h"
+#include "Teamplay.h"
 
 #include "BloodMarks.h"
 #include <Gui/UI/Components/SoftwareCursor.h>
@@ -191,7 +191,7 @@ namespace spades {
 			limboMenu = stmp::make_unique<gui::LimboMenu>(
 				Handle<gui::ILimboMenuHost>(hostAdapter.GetPointerOrNull()), *renderer,
 				*fontManager, *cursor);
-			teamplay = stmp::make_unique<ExtendedTeamplay>();
+			teamplay = stmp::make_unique<Teamplay>();
 			scriptedUI = Handle<ClientUI>::New(renderer.GetPointerOrNull(),
 				audioDev.GetPointerOrNull(), fontManager.GetPointerOrNull(), this);
 
@@ -1223,23 +1223,23 @@ namespace spades {
 			}
 		}
 
-#pragma mark - Extended Teamplay
+#pragma mark - Teamplay
 
-		void Client::ExtendedTeamplayConfigured(uint8_t features) {
+		void Client::TeamplayConfigured(uint8_t features) {
 			SPADES_MARK_FUNCTION();
 
 			teamplay->SetFeatures(features);
-			NetLog("Extended Teamplay features: 0x%02x", (unsigned int)teamplay->GetFeatures());
+			NetLog("Teamplay features: 0x%02x", (unsigned int)teamplay->GetFeatures());
 		}
 
-		void Client::ExtendedTeamplayPingReceived(int playerId, Vector3 position, float duration,
+		void Client::TeamplayPingReceived(int playerId, Vector3 position, float duration,
 												  uint8_t surfaces, const IntVector3& color,
 												  std::string reason) {
 			SPADES_MARK_FUNCTION();
 
 			// No feature bit gates this: a relayed ping is drawn on the surfaces the
 			// packet names, and a server that wants one unseen does not send it.
-			std::string who = (playerId == ExtendedTeamplay::kServerPlayerId)
+			std::string who = (playerId == Teamplay::kServerPlayerId)
 				? _Tr("Client", "The server")
 				: world ? world->GetPlayerName(playerId) : std::string();
 
@@ -1250,11 +1250,11 @@ namespace spades {
 			// normally says so. A ping that never asked for the world surface has no
 			// marker to carry a name, so it is announced in the chat log instead — one
 			// of the places the extension names for exactly this.
-			uint8_t placed = ExtendedTeamplay::ResolveSurfaces(surfaces);
-			if (duration != 0.0F && !(placed & ExtendedTeamplay::SurfaceWorld)) {
+			uint8_t placed = Teamplay::ResolveSurfaces(surfaces);
+			if (duration != 0.0F && !(placed & Teamplay::SurfaceWorld)) {
 				// Never the server: `255` is no player, and a client that looked it up
 				// in its roster would put the callout under a stranger's name.
-				std::string line = (playerId == ExtendedTeamplay::kServerPlayerId)
+				std::string line = (playerId == Teamplay::kServerPlayerId)
 					? std::string()
 					: who;
 
@@ -1275,7 +1275,7 @@ namespace spades {
 			}
 		}
 
-		void Client::ExtendedTeamplayMarkReceived(int playerId, float duration, uint8_t surfaces,
+		void Client::TeamplayMarkReceived(int playerId, float duration, uint8_t surfaces,
 												  uint8_t flags, const IntVector3& color,
 												  std::string reason) {
 			SPADES_MARK_FUNCTION();
@@ -1287,7 +1287,7 @@ namespace spades {
 			teamplay->SetMark(playerId, duration, surfaces, flags, color, std::move(reason));
 		}
 
-		void Client::ExtendedTeamplayPlayerSpawned(int playerId) {
+		void Client::TeamplayPlayerSpawned(int playerId) {
 			teamplay->PlayerSpawned(playerId);
 		}
 

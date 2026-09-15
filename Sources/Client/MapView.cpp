@@ -23,7 +23,6 @@
 
 #include "CTFGameMode.h"
 #include "Client.h"
-#include "ExtendedTeamplay.h"
 #include "Fonts.h"
 #include "GameMap.h"
 #include "IImage.h"
@@ -31,6 +30,7 @@
 #include "MapView.h"
 #include "Player.h"
 #include "TCGameMode.h"
+#include "Teamplay.h"
 #include "Weapon.h"
 #include "World.h"
 #include <Core/Settings.h>
@@ -915,7 +915,7 @@ namespace spades {
 		}
 
 		void MapView::DrawTeamplayPings(float mapAlpha) {
-			const ExtendedTeamplay& teamplay = *client->teamplay;
+			const Teamplay& teamplay = *client->teamplay;
 			if (!teamplay.HasPings())
 				return;
 
@@ -924,10 +924,10 @@ namespace spades {
 				return;
 
 			for (const auto& entry : teamplay.GetPings()) {
-				const ExtendedTeamplay::Ping& ping = entry.second;
+				const Teamplay::Ping& ping = entry.second;
 
 				// The packet decides where it is shown; this is the minimap.
-				if (!(ping.surfaces & ExtendedTeamplay::SurfaceMinimap))
+				if (!(ping.surfaces & Teamplay::SurfaceMinimap))
 					continue;
 
 				// Match the world marker's fade so a ping does not linger on the minimap
@@ -938,7 +938,7 @@ namespace spades {
 					continue;
 
 				// The colour the server chose, drawn as sent.
-				Vector3 pingCol = ExtendedTeamplay::ToRenderColor(ping.color);
+				Vector3 pingCol = Teamplay::ToRenderColor(ping.color);
 				Vector4 color = MakeVector4(pingCol.x, pingCol.y, pingCol.z, alpha);
 				color.x *= alpha;
 				color.y *= alpha;
@@ -958,7 +958,7 @@ namespace spades {
 		}
 
 		void MapView::DrawTeamplayMarks(float mapAlpha) {
-			const ExtendedTeamplay& teamplay = *client->teamplay;
+			const Teamplay& teamplay = *client->teamplay;
 			if (!teamplay.HasMarks())
 				return;
 
@@ -967,8 +967,8 @@ namespace spades {
 				return;
 
 			for (const auto& entry : teamplay.GetMarks()) {
-				const ExtendedTeamplay::Mark& mark = entry.second;
-				if (!(mark.surfaces & ExtendedTeamplay::SurfaceMinimap))
+				const Teamplay::Mark& mark = entry.second;
+				if (!(mark.surfaces & Teamplay::SurfaceMinimap))
 					continue;
 
 				auto maybePlayer = world->GetPlayer(static_cast<unsigned int>(entry.first));

@@ -27,7 +27,6 @@
 
 #include "CTFGameMode.h"
 #include "Client.h"
-#include "ExtendedTeamplay.h"
 #include "GameMap.h"
 #include "NetProtocol.h"
 #include "GameMapLoader.h"
@@ -36,6 +35,7 @@
 #include "NetClient.h"
 #include "Player.h"
 #include "TCGameMode.h"
+#include "Teamplay.h"
 #include "Weapon.h"
 #include "World.h"
 #include <Core/CP437.h>
@@ -622,7 +622,7 @@ namespace spades {
 				// Config as soon as the extension is negotiated: during the Connecting
 				// stage anything but MapStart is treated as an unexpected packet, and
 				// during a map transfer it would be parked until the world exists.
-				case PacketTypeExtendedTeamplay: HandleExtendedTeamplayPacket(r); return true;
+				case PacketTypeTeamplay: HandleTeamplayPacket(r); return true;
 				case PacketTypeVersionGet: {
 					if (r.GetNumRemainingBytes() > 0) {
 						// Enhanced variant
@@ -679,22 +679,22 @@ namespace spades {
 			SendSupportedExtensions();
 		}
 
-		void NetClient::HandleExtendedTeamplayPacket(spades::client::NetPacketReader& r) {
+		void NetClient::HandleTeamplayPacket(spades::client::NetPacketReader& r) {
 			SPADES_MARK_FUNCTION();
 
 			// A server that never negotiated the extension has no business sending its
 			// packets; ignoring them keeps the client's state defined by the handshake.
-			if (!HasExtension(ExtensionTypeExtendedTeamplay)) {
-				SPLog("Ignoring an Extended Teamplay packet from a server that did not "
+			if (!HasExtension(ExtensionTypeTeamplay)) {
+				SPLog("Ignoring a Teamplay packet from a server that did not "
 					  "negotiate the extension");
 				return;
 			}
 
 			switch (r.ReadByte()) { // sub packet id
-				case ExtendedTeamplaySubConfig: {
-					client->ExtendedTeamplayConfigured(r.ReadByte());
+				case TeamplaySubConfig: {
+					client->TeamplayConfigured(r.ReadByte());
 				} break;
-				case ExtendedTeamplaySubPing: {
+				case TeamplaySubPing: {
 					int pId = r.ReadByte();
 					Vector3 pos = r.ReadVector3();
 					float duration = r.ReadFloat();
@@ -709,18 +709,18 @@ namespace spades {
 					// The Reason occupies the rest of the packet, is plain UTF-8 rather
 					// than the base protocol's Code Page 437, and may be empty.
 					std::string reason =
-					  ExtendedTeamplay::SanitizeReason(r.ReadRemainingData());
+					  Teamplay::SanitizeReason(r.ReadRemainingData());
 
 					// The Message ID is reserved and unimplemented: a value from a later
 					// version is ignored rather than taken as a reason to drop a ping
 					// that is otherwise perfectly renderable.
-					if (messageId != ExtendedTeamplay::kReservedMessageId) {
-						SPLog("Ignoring the message id %u on an Extended Teamplay ping",
+					if (messageId != Teamplay::kReservedMessageId) {
+						SPLog("Ignoring the message id %u on a Teamplay ping",
 							  (unsigned int)messageId);
 					}
 
-					if (!ExtendedTeamplay::IsValidDuration(duration)) {
-						SPLog("Dropped an Extended Teamplay ping with an invalid duration");
+					if (!Teamplay::IsValidDuration(duration)) {
+						SPLog("Dropped a Teamplay ping with an invalid duration");
 						break;
 					}
 
@@ -728,14 +728,14 @@ namespace spades {
 					// out-of-bounds position would corrupt the projection maths, so it
 					// is rejected rather than drawn. A removal carries no place to check.
 					if (duration != 0.0F && (pos.IsNaN() || !IsInsideMapBounds(pos))) {
-						SPLog("Dropped an Extended Teamplay ping at an invalid position");
+						SPLog("Dropped a Teamplay ping at an invalid position");
 						break;
 					}
 
-					client->ExtendedTeamplayPingReceived(pId, pos, duration, surfaces,
+					client->TeamplayPingReceived(pId, pos, duration, surfaces,
 														 color, std::move(reason));
 				} break;
-				case ExtendedTeamplaySubESPMark: {
+				case TeamplaySubESPMark: {
 					int pId = r.ReadByte();
 					float duration = r.ReadFloat();
 					uint8_t surfaces = r.ReadByte();
@@ -748,26 +748,26 @@ namespace spades {
 					uint8_t messageId = r.ReadByte();
 
 					std::string reason =
-					  ExtendedTeamplay::SanitizeReason(r.ReadRemainingData());
+					  Teamplay::SanitizeReason(r.ReadRemainingData());
 
 					// Reserved and unimplemented, as on the ping: ignored, not fatal.
-					if (messageId != ExtendedTeamplay::kReservedMessageId) {
-						SPLog("Ignoring the message id %u on an Extended Teamplay mark",
+					if (messageId != Teamplay::kReservedMessageId) {
+						SPLog("Ignoring the message id %u on a Teamplay mark",
 							  (unsigned int)messageId);
 					}
 
-					if (!ExtendedTeamplay::IsValidDuration(duration)) {
-						SPLog("Dropped an Extended Teamplay mark with an invalid duration");
+					if (!Teamplay::IsValidDuration(duration)) {
+						SPLog("Dropped a Teamplay mark with an invalid duration");
 						break;
 					}
 
-					client->ExtendedTeamplayMarkReceived(pId, duration, surfaces, flags,
+					client->TeamplayMarkReceived(pId, duration, surfaces, flags,
 														 color, std::move(reason));
 				} break;
 				default:
 					// Sub packets are the extension's own versioning seam: an unknown one
 					// belongs to a newer version and is skipped, not treated as an error.
-					SPLog("Ignoring an unknown Extended Teamplay sub packet");
+					SPLog("Ignoring an unknown Teamplay sub packet");
 					break;
 			}
 		}
@@ -1226,7 +1226,7 @@ namespace spades {
 					} else if (type == ChatTypeError) {
 						client->ServerSentMessage(false, CHATPREFIX_ERROR + msg);
 					} else if (type == ChatTypeDirect &&
-							   HasExtension(ExtensionTypeExtendedTeamplay)) {
+							   HasExtension(ExtensionTypeTeamplay)) {
 						// The packet needs no field for the recipient — it is us — and
 						// carries the sender in its own player id, 255 for the server.
 						stmp::optional<Player&> p = GetPlayerOrNull(playerId);
@@ -1768,16 +1768,16 @@ namespace spades {
 
 			// The caller is expected to have checked the feature bits, but the
 			// negotiation is this class's own business, so it is enforced here.
-			if (!HasExtension(ExtensionTypeExtendedTeamplay))
+			if (!HasExtension(ExtensionTypeTeamplay))
 				return;
 
-			NetPacketWriter w(PacketTypeExtendedTeamplay);
-			w.WriteByte((uint8_t)ExtendedTeamplaySubPing);
+			NetPacketWriter w(PacketTypeTeamplay);
+			w.WriteByte((uint8_t)TeamplaySubPing);
 
 			// The Player ID is ignored in this direction; the server fills it in
 			// authoritatively. Sent as 255 so a server reading it sees "unset" rather
 			// than a plausible-looking impersonation of some other player.
-			w.WriteByte((uint8_t)ExtendedTeamplay::kServerPlayerId);
+			w.WriteByte((uint8_t)Teamplay::kServerPlayerId);
 
 			w.WriteVector3(position);
 
@@ -1791,11 +1791,11 @@ namespace spades {
 			// ignored on arrival like the two fields above them.
 			w.WriteColor(MakeIntVector3(0, 0, 0));
 
-			w.WriteByte(ExtendedTeamplay::kReservedMessageId);
+			w.WriteByte(Teamplay::kReservedMessageId);
 
 			// The Reason is UTF-8 text, not the base protocol's Code Page 437, so the
 			// bytes go out as they are.
-			w.WriteRawString(ExtendedTeamplay::SanitizeReason(reason));
+			w.WriteRawString(Teamplay::SanitizeReason(reason));
 
 			enet_peer_send(peer, 0, w.CreatePacket());
 		}

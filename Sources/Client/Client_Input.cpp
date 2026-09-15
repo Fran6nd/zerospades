@@ -37,12 +37,12 @@
 #include "MapView.h"
 #include "PaletteView.h"
 #include "PieMenuView.h"
+#include "Teamplay.h"
 
 #include "GameMap.h"
 #include "Weapon.h"
 #include "World.h"
 
-#include "ExtendedTeamplay.h"
 #include "NetClient.h"
 #include <Gui/ConsoleScreen.h>
 
@@ -99,7 +99,7 @@ DEFINE_SPADES_SETTING(cg_keySpawnCorpse, "p");
 
 DEFINE_SPADES_SETTING(cg_keyPieMenu, "MiddleMouseButton");
 
-// Extended Teamplay protocol extension
+// Teamplay protocol extension
 DEFINE_SPADES_SETTING(cg_keyTeamOverlay, "Alt");
 DEFINE_SPADES_SETTING(cg_keyTeamPing, "q");
 
@@ -682,7 +682,7 @@ namespace spades {
 				bool localPlayerIsSpectating = localPlayerIsSpectator || staffSpectating;
 				bool isStaff = activeNet->GetGameProperties()->isStaff;
 
-				// Extended Teamplay: hold to reveal teammates, tap to ping. Both are
+				// Teamplay: hold to reveal teammates, tap to ping. Both are
 				// gated server-side by the extension's feature bits, which the draw and
 				// send paths check; the bindings themselves stay live so they keep
 				// working across a server that changes its policy mid-game.

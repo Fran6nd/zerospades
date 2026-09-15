@@ -31,8 +31,8 @@ namespace spades {
 	namespace client {
 
 		/**
-		 * Client-side state of the *Extended Teamplay* protocol extension
-		 * (extension id 2, packet id 66).
+		 * Client-side state of the *Teamplay* protocol extension
+		 * (extension id 48, packet id 112).
 		 *
 		 * The extension lets a server permit a set of optional teamplay features, relays
 		 * in-world team pings, and lets the server reveal a chosen player through walls.
@@ -45,7 +45,7 @@ namespace spades {
 		 * server: the protocol makes expiry the client's job and gives the server a
 		 * Duration of `0` to take something away before its time.
 		 */
-		class ExtendedTeamplay {
+		class Teamplay {
 		public:
 			/**
 			 * Feature bits carried by the Config sub-packet. Bits 3-7 are reserved and
@@ -172,7 +172,7 @@ namespace spades {
 			/** Marks in force, keyed by the player they reveal, one apiece. */
 			using MarkMap = std::unordered_map<int, Mark>;
 
-			ExtendedTeamplay() = default;
+			Teamplay() = default;
 
 			/** Applies a Config sub-packet. Reserved bits are dropped here so no other
 			 * code has to know which bits are defined. */

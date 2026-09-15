@@ -91,8 +91,8 @@ namespace spades {
 			virtual void SendWeaponChange(WeaponType) = 0;
 
 			/**
-			 * Pings a world position for the rest of the team, using the *Extended
-			 * Teamplay* extension. The server is authoritative on placement and on who
+			 * Pings a world position for the rest of the team, using the *Teamplay*
+			 * extension. The server is authoritative on placement and on who
 			 * receives the relay, and silently drops the request when the extension or
 			 * the ping features are not enabled.
 			 *

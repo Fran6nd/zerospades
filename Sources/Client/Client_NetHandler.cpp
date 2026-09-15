@@ -37,8 +37,8 @@
 #include "CenterMessageView.h"
 #include "ChatWindow.h"
 #include "ClientUI.h"
-#include "ExtendedTeamplay.h"
 #include "LimboView.h"
+#include "Teamplay.h"
 
 #include "GameMap.h"
 #include "World.h"
@@ -431,7 +431,7 @@ namespace spades {
 			// any Create Player for the id ends it and a mark on a player who stays dead
 			// lasts until they come back. Without the flag it survives death and respawn,
 			// so a punishment mark need not be re-sent on every kill.
-			ExtendedTeamplayPlayerSpawned(p.GetId());
+			TeamplayPlayerSpawned(p.GetId());
 
 			bool isArena = activeNet && activeNet->GetStatus() == NetClientStatusConnected &&
 			               activeNet->GetGameProperties()->isGameModeArena;

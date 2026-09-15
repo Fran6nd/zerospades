@@ -78,7 +78,7 @@ namespace spades {
 		class BloodMarks;
 		class ClientUI;
 		class PieMenuView;
-		class ExtendedTeamplay;
+		class Teamplay;
 
 		class Client : public IWorldListener, public gui::View {
 			friend class ScoreboardView;
@@ -178,10 +178,11 @@ namespace spades {
 
 			// unified cursor used by all UI overlays
 			std::unique_ptr<gui::SoftwareCursor> cursor;
-			// Extended Teamplay protocol extension (team ESP, pings, ESP marks).
+
+			// Teamplay protocol extension (team ESP, pings, ESP marks).
 			// Always allocated; it simply stays empty when the server does not
 			// negotiate the extension.
-			std::unique_ptr<ExtendedTeamplay> teamplay;
+			std::unique_ptr<Teamplay> teamplay;
 
 			// player state
 			PlayerInput playerInput;
@@ -564,7 +565,7 @@ namespace spades {
 			void UpdateDamageIndicators(float dt);
 			void DrawDamageIndicators();
 
-			// ── Extended Teamplay ───────────────────────────────────────────
+			// ── Teamplay ───────────────────────────────────────────
 			/** True while the team overlay key is held. */
 			bool teamOverlayHeld;
 			/** Eased `teamOverlayHeld`, so the overlay fades instead of snapping. */
@@ -744,28 +745,28 @@ namespace spades {
 			 * chat beep, unless the player asked to ignore private messages. */
 			void AddPrivateMessage(const std::string&);
 
-			/** A line the server sent to this client alone, through the *Extended
-			 * Teamplay* extension's `CHAT_DIRECT` type. `sender` is empty when the
+			/** A line the server sent to this client alone, through the *Teamplay*
+			 * extension's `CHAT_DIRECT` type. `sender` is empty when the
 			 * server itself is speaking. Rendered where a private message already goes,
 			 * which is all the extension asks of a client. */
 			void ServerSentDirectMessage(const std::string& sender, const std::string&);
 
-			// ── Extended Teamplay, called by the net client ─────────────────
+			// ── Teamplay, called by the net client ─────────────────
 			/** The server announced which of the extension's features it permits. */
-			void ExtendedTeamplayConfigured(uint8_t features);
+			void TeamplayConfigured(uint8_t features);
 			/** A ping was relayed to us. `playerId` is `255` for a server-origin ping,
 			 * and a `duration` of `0` removes that player's ping. */
-			void ExtendedTeamplayPingReceived(int playerId, Vector3 position, float duration,
+			void TeamplayPingReceived(int playerId, Vector3 position, float duration,
 											  uint8_t surfaces, const IntVector3& color,
 											  std::string reason);
 			/** The server marked (or, with a `0` duration, unmarked) a player. */
-			void ExtendedTeamplayMarkReceived(int playerId, float duration, uint8_t surfaces,
+			void TeamplayMarkReceived(int playerId, float duration, uint8_t surfaces,
 											  uint8_t flags, const IntVector3& color,
 											  std::string reason);
 			/** A player spawned, which ends a mark that was flagged to end there. Split
 			 * out of `PlayerSpawned` because a demo seek skips the rest of that work but
 			 * still has to rebuild the marks in force at the destination. */
-			void ExtendedTeamplayPlayerSpawned(int playerId);
+			void TeamplayPlayerSpawned(int playerId);
 
 			void PlayerCapturedIntel(Player&);
 			void PlayerPickedIntel(Player&);
