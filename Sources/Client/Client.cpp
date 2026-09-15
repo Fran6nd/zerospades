@@ -216,8 +216,8 @@ namespace spades {
 			hurtRingView->ClearAll();
 			killStreaks.clear();
 
-			// Marks and pings do not survive a map change, but the server's feature
-			// policy does until it sends a new Config.
+			// Marks and pings do not survive a map change. The Config belongs to the
+			// connection, so its bitmask and north carry into the new world.
 			teamplay->ClearTransientState();
 			teamOverlayHeld = false;
 			teamOverlayAlpha = 0.0F;
@@ -1225,11 +1225,14 @@ namespace spades {
 
 #pragma mark - Teamplay
 
-		void Client::TeamplayConfigured(uint8_t features) {
+		void Client::TeamplayConfigured(uint8_t features, float northX, float northY) {
 			SPADES_MARK_FUNCTION();
 
-			teamplay->SetFeatures(features);
-			NetLog("Teamplay features: 0x%02x", (unsigned int)teamplay->GetFeatures());
+			teamplay->ApplyConfig(features, northX, northY);
+
+			const Vector2& north = teamplay->GetNorth();
+			NetLog("Teamplay config: features 0x%02x, north (%.3f, %.3f)",
+				   (unsigned int)teamplay->GetFeatures(), north.x, north.y);
 		}
 
 		void Client::TeamplayPingReceived(int playerId, Vector3 position, float duration,

@@ -36,10 +36,11 @@ namespace spades {
 		 *
 		 * The extension lets a server permit a set of optional teamplay features, relays
 		 * in-world team pings, and lets the server reveal a chosen player through walls.
-		 * This class owns everything the extension makes the client remember: the feature
-		 * bitmask the server announced, the pings currently on screen, and the ESP marks
-		 * currently in force. It holds no rendering or networking concerns — `NetClient`
-		 * feeds it, `Client` ticks it, and the draw code reads it.
+		 * This class owns everything the extension makes the client remember: the Config
+		 * the server announced (feature bitmask and north), the pings currently on
+		 * screen, and the ESP marks currently in force. It holds no rendering or
+		 * networking concerns — `NetClient` feeds it, `Client` ticks it, and the draw
+		 * code reads it.
 		 *
 		 * Both the ping lifetime and the mark lifetime are expired here rather than by the
 		 * server: the protocol makes expiry the client's job and gives the server a
@@ -174,10 +175,31 @@ namespace spades {
 
 			Teamplay() = default;
 
-			/** Applies a Config sub-packet. Reserved bits are dropped here so no other
-			 * code has to know which bits are defined. */
-			void SetFeatures(uint8_t features);
+			/** The north a client uses until a Config says otherwise, and in place of a
+			 * malformed one. */
+			static Vector2 DefaultNorth() { return MakeVector2(0.0F, -1.0F); }
+
+			/**
+			 * Normalises the North a Config carries. Only the direction is used, so any
+			 * length is accepted; `(0, 0)`, a NaN or an infinity in either component is
+			 * malformed and yields `DefaultNorth()`.
+			 */
+			static Vector2 ResolveNorth(float x, float y);
+
+			/**
+			 * Applies a Config sub-packet, immediately and in full: the bitmask and the
+			 * north replace what the previous Config said. Reserved bits are dropped here
+			 * so no other code has to know which bits are defined.
+			 */
+			void ApplyConfig(uint8_t features, float northX, float northY);
 			uint8_t GetFeatures() const { return features; }
+
+			/** The unit map-plane vector pointing north, in world coordinates. */
+			const Vector2& GetNorth() const { return north; }
+
+			/** The compass bearing of a map-plane direction against `GetNorth()`, in
+			 * degrees clockwise from north within `[0, 360)`. */
+			float GetBearing(const Vector2& direction) const;
 
 			bool IsTeamESPEnabled() const { return (features & FeatureTeamESP) != 0; }
 
@@ -232,13 +254,13 @@ namespace spades {
 			 * expire anything. */
 			void Update(float dt);
 
-			/** Clears all state without touching the feature bitmask. Used on a map
-			 * change, where marks and pings are dropped but the server's policy stands
-			 * until it sends a new Config. */
+			/** Clears every ping and mark without touching the Config. Used on a map
+			 * change: the Config belongs to the connection, so its bitmask and north
+			 * carry into the new world until the server sends another. */
 			void ClearTransientState();
 
-			/** Clears all state including the feature bitmask. Used when the connection
-			 * itself goes away. */
+			/** Clears all state including the Config. Used when the connection itself
+			 * goes away. */
 			void Reset();
 
 			/**
@@ -258,6 +280,7 @@ namespace spades {
 
 		private:
 			uint8_t features = 0;
+			Vector2 north = DefaultNorth();
 			PingMap pings;
 			MarkMap marks;
 		};

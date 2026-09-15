@@ -2234,16 +2234,9 @@ namespace spades {
 
 			IFont& font = fontManager->GetSmallFont();
 
-			auto toAngle = [](float y, float x) -> float {
-				float deg = RAD2DEG(atan2f(y, x));
-				deg = fmodf(deg + 180.0F, 360.0F);
-				if (deg < 0.0F)
-					deg += 360.0F;
-				return deg;
-			};
-
-			const auto& o = p.GetFront2D();
-			const float yawDeg = toAngle(o.y, o.x);
+			// Every bearing on the bar, the heading included, is read against the north
+			// the server last sent in the Teamplay Config.
+			const float yawDeg = teamplay->GetBearing(p.GetFront2D().GetXY());
 			const float range = 120.0F;
 
 			// draw labels and ticks
@@ -2309,7 +2302,7 @@ namespace spades {
 
 			auto drawIcon = [&](Handle<IImage>& icon, Vector3 targetPos, Vector4 color, float size = 12.0F) {
 				Vector2 delta = targetPos.GetXY() - pos2D;
-				float angle = toAngle(delta.y, delta.x);
+				float angle = teamplay->GetBearing(delta);
 				float yawDelta = std::remainderf(angle - roundf(yawDeg), 360.0F);
 				if (fabsf(yawDelta) > range * 0.5F)
 					return;
@@ -2345,7 +2338,7 @@ namespace spades {
 			// direction alone belongs on this surface.
 			auto drawBearing = [&](Vector3 targetPos, const Vector3& col, float alpha) {
 				Vector2 delta = targetPos.GetXY() - pos2D;
-				float angle = toAngle(delta.y, delta.x);
+				float angle = teamplay->GetBearing(delta);
 				float yawDelta = std::remainderf(angle - roundf(yawDeg), 360.0F);
 				if (fabsf(yawDelta) > range * 0.5F)
 					return;

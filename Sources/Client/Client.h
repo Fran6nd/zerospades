@@ -742,8 +742,9 @@ namespace spades {
 			void ServerSentMessage(bool system, const std::string&);
 
 			// ── Teamplay, called by the net client ─────────────────
-			/** The server announced which of the extension's features it permits. */
-			void TeamplayConfigured(uint8_t features);
+			/** The server sent a Config: which of the extension's features it permits,
+			 * and which way north is. */
+			void TeamplayConfigured(uint8_t features, float northX, float northY);
 			/** A ping was relayed to us. `playerId` is `255` for a server-origin ping,
 			 * and a `duration` of `0` removes that player's ping. */
 			void TeamplayPingReceived(int playerId, Vector3 position, float duration,

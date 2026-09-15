@@ -692,7 +692,14 @@ namespace spades {
 
 			switch (r.ReadByte()) { // sub packet id
 				case TeamplaySubConfig: {
-					client->TeamplayConfigured(r.ReadByte());
+					uint8_t features = r.ReadByte();
+
+					// North, in the map plane. Normalised and checked by Teamplay, which
+					// falls back on a malformed one and still applies the bitmask.
+					float northX = r.ReadFloat();
+					float northY = r.ReadFloat();
+
+					client->TeamplayConfigured(features, northX, northY);
 				} break;
 				case TeamplaySubPing: {
 					int pId = r.ReadByte();

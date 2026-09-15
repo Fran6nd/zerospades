@@ -850,9 +850,12 @@ namespace spades {
 				} break;
 				case PacketTypeTeamplay: {
 					switch (r.ReadByte()) { // sub packet id
-						case TeamplaySubConfig:
-							client->TeamplayConfigured(r.ReadByte());
-							break;
+						case TeamplaySubConfig: {
+							uint8_t features = r.ReadByte();
+							float northX = r.ReadFloat();
+							float northY = r.ReadFloat();
+							client->TeamplayConfigured(features, northX, northY);
+						} break;
 						case TeamplaySubPing: {
 							int pId = r.ReadByte();
 							Vector3 pos = r.ReadVector3();

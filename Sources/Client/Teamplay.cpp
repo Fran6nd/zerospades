@@ -153,15 +153,41 @@ namespace spades {
 			return reason;
 		}
 
-		void Teamplay::SetFeatures(uint8_t newFeatures) {
+		Vector2 Teamplay::ResolveNorth(float x, float y) {
+			if (!std::isfinite(x) || !std::isfinite(y))
+				return DefaultNorth();
+
+			// Measured in double: a finite float32 squared can overflow a float, and a
+			// vector that tiny or that large still names a perfectly good direction.
+			double length = std::hypot(static_cast<double>(x), static_cast<double>(y));
+			if (!(length > 0.0) || !std::isfinite(length))
+				return DefaultNorth();
+
+			return MakeVector2(static_cast<float>(x / length), static_cast<float>(y / length));
+		}
+
+		void Teamplay::ApplyConfig(uint8_t newFeatures, float northX, float northY) {
 			SPADES_MARK_FUNCTION();
 
 			features = newFeatures & kKnownFeatures;
+			north = ResolveNorth(northX, northY);
 
 			// A ping the client sent before this arrived may still be in flight; the
-			// server drops it, which is not an error. Pings already on screen are kept:
-			// the specification only gates whether new ones may be sent and drawn, and
-			// dropping live ones would make a policy change look like a glitch.
+			// server ignores it, which is not an error. Pings and marks already on screen
+			// are kept: PING governs sending only, and where the server's own pings and
+			// marks are drawn is decided by the packets that carried them.
+		}
+
+		float Teamplay::GetBearing(const Vector2& direction) const {
+			// East is north turned a quarter clockwise as seen from above, which in the
+			// map plane's y-down frame is `(-north.y, north.x)`.
+			float alongNorth = direction.x * north.x + direction.y * north.y;
+			float alongEast = direction.y * north.x - direction.x * north.y;
+
+			float bearing = RAD2DEG(std::atan2(alongEast, alongNorth));
+			if (bearing < 0.0F)
+				bearing += 360.0F;
+			return bearing >= 360.0F ? 0.0F : bearing;
 		}
 
 		void Teamplay::SetPing(int playerId, const Vector3& position, float duration,
@@ -269,6 +295,7 @@ namespace spades {
 		void Teamplay::Reset() {
 			ClearTransientState();
 			features = 0;
+			north = DefaultNorth();
 		}
 	} // namespace client
 } // namespace spades
