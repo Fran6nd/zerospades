@@ -262,6 +262,9 @@ namespace spades {
 			bool keyUp = false, keyDown = false;
 			bool ctrlHeld = false, altHeld = false, shiftHeld = false;
 			bool keySprint = false; // cg_keySprint held (tracked like the modifiers)
+			// Distance the Ctrl-bound descend key moved the view during the current
+			// Ctrl press; a Ctrl shortcut subtracts it so shortcuts don't move the view.
+			Vector3 ctrlDescent = MakeVector3(0.0F, 0.0F, 0.0F);
 			bool lmbHeld = false, rmbHeld = false; // for move/drag pointer events
 
 			// Build a typed pointer/key event stamped with the current cursor and
