@@ -1249,18 +1249,15 @@ namespace spades {
 			NetLog("[Ping] %s @ (%.1f, %.1f, %.1f) for %.1fs: %s", who.c_str(),
 				   position.x, position.y, position.z, duration, reason.c_str());
 
-			// A client shows who pinged, and the marker under the crosshair is where it
-			// normally says so. A ping that never asked for the world surface has no
-			// marker to carry a name, so it is announced in the chat log instead — one
-			// of the places the extension names for exactly this.
+			// A client shows who pinged, and where the name goes is its own business: the
+			// world marker normally carries it. A player's ping that never asked for the
+			// world surface has no marker to carry a name, so the chat log names the
+			// sender instead. A server ping (`255`) has no sender to show, so it stays on
+			// exactly the surfaces its packet named.
 			uint8_t placed = Teamplay::ResolveSurfaces(surfaces);
-			if (duration != 0.0F && !(placed & Teamplay::SurfaceWorld)) {
-				// Never the server: `255` is no player, and a client that looked it up
-				// in its roster would put the callout under a stranger's name.
-				std::string line = (playerId == Teamplay::kServerPlayerId)
-					? std::string()
-					: who;
-
+			if (duration != 0.0F && !(placed & Teamplay::SurfaceWorld) &&
+				playerId != Teamplay::kServerPlayerId) {
+				std::string line = who;
 				if (!reason.empty())
 					line += line.empty() ? reason : ": " + reason;
 				if (!line.empty())
