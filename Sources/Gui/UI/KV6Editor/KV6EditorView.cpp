@@ -48,6 +48,7 @@ SPADES_SETTING(cg_keyMoveLeft);
 SPADES_SETTING(cg_keyMoveRight);
 SPADES_SETTING(cg_keyJump);
 SPADES_SETTING(cg_keyCrouch);
+SPADES_SETTING(cg_keySprint);
 SPADES_SETTING(cg_keyScreenshot);
 
 namespace spades {
@@ -74,6 +75,9 @@ namespace spades {
 			}
 
 			float Clampf(float v, float lo, float hi) { return std::max(lo, std::min(hi, v)); }
+
+			// Camera speed factor while the sprint key (cg_keySprint) is held.
+			constexpr float kSprintMultiplier = 3.0F;
 
 			// Top UI bands (full width): a title ribbon above the toolbar. The 3D
 			// viewport is inset below them by kBarsH.
@@ -318,7 +322,6 @@ namespace spades {
 			orbitDist =
 			  float(std::max(model->GetWidth(), std::max(model->GetHeight(), model->GetDepth()))) *
 			  1.8F;
-			freePos = CameraEye();
 		}
 
 		void KV6EditorView::NewModel(int n, const std::string& path) {
@@ -408,22 +411,7 @@ namespace spades {
 			return MakeVector3(cp * cosf(yaw), cp * sinf(yaw), -sinf(pitch));
 		}
 
-		Vector3 KV6EditorView::CameraEye() const {
-			if (orbitMode)
-				return orbitTarget - Forward() * orbitDist;
-			return freePos;
-		}
-
-		void KV6EditorView::ToggleCameraMode() {
-			Vector3 eye = CameraEye();
-			if (orbitMode) {
-				freePos = eye;
-				orbitMode = false;
-			} else {
-				orbitTarget = eye + Forward() * orbitDist;
-				orbitMode = true;
-			}
-		}
+		Vector3 KV6EditorView::CameraEye() const { return orbitTarget - Forward() * orbitDist; }
 
 		void KV6EditorView::UpdateMovement(float dt) {
 			Vector3 fwd = Forward();
@@ -443,12 +431,18 @@ namespace spades {
 
 			if (move.x == 0.0F && move.y == 0.0F && move.z == 0.0F)
 				return;
-			Vector3 delta = move.Normalize() * (float(cubeSize) * 0.7F * dt);
-			// Orbit mode moves the point being orbited, so the view pans with it.
-			if (orbitMode)
-				orbitTarget += delta;
-			else
-				freePos += delta;
+			float speed = float(cubeSize) * 0.7F * (keySprint ? kSprintMultiplier : 1.0F);
+			// Moving the orbited point carries the whole view along with it.
+			orbitTarget += move.Normalize() * (speed * dt);
+		}
+
+		void KV6EditorView::PanView(float dx, float dy) {
+			if (camSH <= 0.0F)
+				return;
+			// World units per screen pixel at the orbit distance, so the point under
+			// the cursor follows the drag at any zoom level.
+			float unitsPerPixel = 2.0F * orbitDist * tanf(camFovY * 0.5F) / camSH;
+			orbitTarget += camRight * (-dx * unitsPerPixel) + camUp * (dy * unitsPerPixel);
 		}
 
 		void KV6EditorView::ReleaseHeldInput() {
@@ -459,7 +453,7 @@ namespace spades {
 		client::SceneDefinition KV6EditorView::SetupScene(float vpX, float vpY, float vpW, float vpH) {
 			client::SceneDefinition sceneDef;
 			Vector3 eye = CameraEye();
-			Vector3 at = orbitMode ? orbitTarget : (eye + Forward());
+			Vector3 at = orbitTarget;
 			Vector3 up = MakeVector3(0.0F, 0.0F, -1.0F);
 
 			Vector3 dir = (at - eye).Normalize();
@@ -658,7 +652,6 @@ namespace spades {
 			dst->SetOrigin(model->GetOrigin() - shift);
 			model = dst;
 			orbitTarget += shift;
-			freePos += shift;
 			cubeSize = std::max(nw, std::max(nh, nd));
 			ShiftSelection(ox, oy, oz); // keep selected voxel coords aligned
 		}
@@ -1582,7 +1575,6 @@ namespace spades {
 			targetYaw = ty;
 			targetPitch = tp;
 			camAnim = true;
-			orbitMode = true; // navicube clicks orbit around the model
 		}
 
 		void KV6EditorView::DrawOverlay(float sw, float sh) {
@@ -1596,7 +1588,7 @@ namespace spades {
 				font.Draw(statusMessage, MakeVector2(16.0F, sh - 50.0F), 1.0F,
 				          MakeVector4(0.5F, 1.0F, 0.6F, 1.0F));
 
-			font.Draw("[LMB] use tool  |  [RMB] delete/cancel  |  [MMB] look  |  [WASD/Space/Ctrl] move"
+			font.Draw("[LMB] use tool  |  [RMB] delete/cancel  |  [MMB] look  |  [Shift+MMB] pan  |  [WASD/Space/Ctrl] move (+Shift faster)"
 			          "  |  [Wheel] zoom  |  [Ctrl+C/X/V] copy/cut/paste  |  [Ctrl+Z/Y] undo/redo"
 			          "  |  [Esc] menu",
 			          MakeVector2(16.0F, sh - 28.0F), 1.0F, grey);
@@ -1725,8 +1717,7 @@ namespace spades {
 			font.Draw(name + "   (" + std::to_string(voxelCount) + " voxels)",
 			          MakeVector2(120.0F, 5.0F), 0.85F, MakeVector4(0.75F, 0.75F, 0.78F, 1.0F));
 
-			std::string cam = std::string(orbitMode ? "Orbit" : "Free-fly") +
-			                  "   [Tab] camera   [Ctrl+S] save";
+			std::string cam = "[Ctrl+S] save";
 			Vector2 cs = font.Measure(cam);
 			font.Draw(cam, MakeVector2(sw - 12.0F - cs.x * 0.8F, 5.0F), 0.8F,
 			          MakeVector4(0.6F, 0.6F, 0.63F, 1.0F));
@@ -1737,6 +1728,10 @@ namespace spades {
 		// --- View interface ---------------------------------------------------
 
 		void KV6EditorView::MouseEvent(float dx, float dy) {
+			if (lookActive && shiftHeld) { // Shift + wheel-button drag pans
+				PanView(dx, dy);
+				return;
+			}
 			if (lookActive) {
 				camAnim = false; // manual look cancels a navicube animation
 				float sens = 0.003F;
@@ -1767,10 +1762,7 @@ namespace spades {
 		void KV6EditorView::WheelEvent(float x, float y) {
 			if (ui->GetEditorMenu()->IsActive())
 				return;
-			if (orbitMode)
-				orbitDist = Clampf(orbitDist * (1.0F + y * 0.1F), 2.0F, 1000.0F);
-			else
-				freePos += Forward() * (-y * float(cubeSize) * 0.1F);
+			orbitDist = Clampf(orbitDist * (1.0F + y * 0.1F), 2.0F, 1000.0F);
 		}
 
 		void KV6EditorView::KeyEvent(const std::string& key, bool down) {
@@ -1781,6 +1773,7 @@ namespace spades {
 			if (key == "Control") ctrlHeld = down;
 			if (key == "Alt") altHeld = down;
 			if (key == "Shift") shiftHeld = down;
+			if (KV6CheckKey(cg_keySprint, key)) keySprint = down;
 
 			if (ui->GetEditorMenu()->KeyEvent(key, down)) {
 				// Releases are swallowed too while the menu is up: drop held
@@ -1911,8 +1904,6 @@ namespace spades {
 				DispatchPointer(MakePointer(PointerButton::Right, PointerPhase::Down));
 				return;
 			}
-
-			if (down && key == "Tab") { ToggleCameraMode(); return; }
 
 			if (down && KV6CheckKey(cg_keyScreenshot, key)) { wantScreenShot = true; return; }
 
