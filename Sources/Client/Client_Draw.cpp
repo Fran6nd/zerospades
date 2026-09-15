@@ -829,13 +829,16 @@ namespace spades {
 			if (&p == &local)
 				return false;
 
-			// DrawEspMarks draws the chevron, but names the player only when the server
-			// asked for it; with SHOW_NAME clear the ordinary label is left to do its
-			// own job, since it is the client's feature and not the mark speaking.
-			if (auto mark = teamplay->GetMark(p.GetId()))
+			// DrawEspMarks draws the chevron for a mark that names the world surface, but
+			// names the player only when the server asked for it; with SHOW_NAME clear the
+			// ordinary label is left to do its own job, since it is the client's feature
+			// and not the mark speaking.
+			auto mark = teamplay->GetMark(p.GetId());
+			if (mark && (mark->surfaces & Teamplay::SurfaceWorld))
 				return mark->showName;
 
-			// DrawTeamOverlay draws one for every teammate while the key is held.
+			// DrawTeamOverlay draws one for every teammate while the key is held, marked
+			// or not, unless a world mark above took the chevron over.
 			return teamplay->IsTeamESPEnabled() && teamOverlayAlpha > 0.0F &&
 				   !local.IsSpectator() && local.IsTeammate(p);
 		}
@@ -1048,9 +1051,11 @@ namespace spades {
 				if (p.GetFront().GetSquaredLength() < 0.01F)
 					continue; // invalid state
 
-				// A marked player is drawn by DrawEspMarks with its own presentation;
-				// stacking both would double the name above their head.
-				if (teamplay->GetMark(p.GetId()))
+				// A mark that names the world surface is drawn by DrawEspMarks with its
+				// own presentation; stacking both would double the name above their head.
+				// A mark shown only on the minimap or the compass leaves this one alone.
+				auto mark = teamplay->GetMark(p.GetId());
+				if (mark && (mark->surfaces & Teamplay::SurfaceWorld))
 					continue;
 
 				// Showing the name alongside a TEAM_ESP highlight is recommended by the
