@@ -234,6 +234,8 @@ namespace spades {
 				pathField = field.GetPointerOrNull();
 				pathField->SetBounds(AABB2(contentsLeft, 200.0F, contentsWidth - 480.0F, 30.0F));
 				pathField->placeholder = _Tr("MainScreen", "Type a path and press [Enter]");
+				// The end of a path (current folder / file name) matters most.
+				pathField->elision = ui::FieldElision::Start;
 				AddChild(pathField);
 			}
 			{
