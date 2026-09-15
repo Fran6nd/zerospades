@@ -50,6 +50,7 @@
 #include "PieMenuView.h"
 #include "ScreenShot.h"
 #include "ScoreboardView.h"
+#include "TCGameMode.h"
 #include "TCProgressView.h"
 #include "Teamplay.h"
 
@@ -2330,6 +2331,13 @@ namespace spades {
 					if (!otherTeam.hasIntel)
 						drawIcon(intelIcon, team.flagPos, color);
 				}
+			} else if (mode && mode->ModeType() == IGameMode::m_TC) {
+				auto& tc = dynamic_cast<TCGameMode&>(mode.value());
+				Handle<IImage> baseIcon = renderer->RegisterImage("Gfx/Map/CommandPost.png");
+
+				// draw territories
+				for (int i = 0; i < tc.GetNumTerritories(); i++)
+					drawIcon(baseIcon, tc.GetTerritory(i).pos, color);
 			}
 
 			// The objectives above are on the compass by default; everything below is
