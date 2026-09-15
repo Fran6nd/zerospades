@@ -19,6 +19,7 @@
 
  */
 
+#include <limits>
 #include <math.h>
 #include <string.h>
 #include <vector>
@@ -2095,7 +2096,58 @@ namespace spades {
 				demoRecorder->RecordPacket(data.data(), data.size());
 			}
 
+			WriteInitialTeamplayDemoState();
+
 			SPLog("Initial demo state written successfully");
+		}
+
+		void NetClient::WriteInitialTeamplayDemoState() {
+			SPADES_MARK_FUNCTION();
+
+			if (!HasExtension(ExtensionTypeTeamplay))
+				return;
+
+			const Teamplay& teamplay = client->GetTeamplay();
+
+			// The Config belongs to the connection and was sent before a recording that
+			// starts mid-game, so the demo opens with the one in force.
+			{
+				NetPacketWriter w(PacketTypeTeamplay);
+				w.WriteByte((uint8_t)TeamplaySubConfig);
+				w.WriteByte(teamplay.GetFeatures());
+				w.WriteFloat(teamplay.GetNorth().x);
+				w.WriteFloat(teamplay.GetNorth().y);
+
+				const auto& data = w.GetData();
+				demoRecorder->RecordPacket(data.data(), data.size());
+			}
+
+			// Marks are state, so each one in force goes in with the time it has left,
+			// the way a server re-sends an active mark to a player who joins late. Pings
+			// are events and are not carried over.
+			for (const auto& entry : teamplay.GetMarks()) {
+				const Teamplay::Mark& mark = entry.second;
+
+				uint8_t flags = 0;
+				if (mark.clearOnRespawn)
+					flags |= Teamplay::MarkFlagClearOnRespawn;
+				if (mark.showName)
+					flags |= Teamplay::MarkFlagShowName;
+
+				NetPacketWriter w(PacketTypeTeamplay);
+				w.WriteByte((uint8_t)TeamplaySubESPMark);
+				w.WriteByte(static_cast<uint8_t>(entry.first));
+				w.WriteFloat(mark.endless ? std::numeric_limits<float>::infinity()
+										  : mark.timeLeft);
+				w.WriteByte(mark.surfaces);
+				w.WriteByte(flags);
+				w.WriteColor(mark.color);
+				w.WriteByte(Teamplay::kReservedMessageId);
+				w.WriteRawString(mark.reason);
+
+				const auto& data = w.GetData();
+				demoRecorder->RecordPacket(data.data(), data.size());
+			}
 		}
 
 		bool NetClient::StartDemoRecording(const std::string& filename, const std::string& context) {

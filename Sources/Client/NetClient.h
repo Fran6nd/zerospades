@@ -158,6 +158,10 @@ namespace spades {
 			/** Writes the initial game state to the demo recorder (map, players, etc.) */
 			void WriteInitialDemoState();
 
+			/** Writes the Teamplay Config and the ESP marks in force, which the server sent
+			 * before the recording started. Nothing when the extension is not negotiated. */
+			void WriteInitialTeamplayDemoState();
+
 			void SendMapCached();
 			void SendVersion();
 			void SendVersionEnhanced(const std::set<std::uint8_t>& propertyIds);

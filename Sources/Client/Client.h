@@ -738,6 +738,9 @@ namespace spades {
 			bool IsScoreboardVisible() { return scoreboardVisible; }
 			bool IsNetgraphVisible() { return netgraphVisible; }
 
+			/** What the Teamplay extension has made this client remember. */
+			const Teamplay& GetTeamplay() const { return *teamplay; }
+
 			void PlayerSentChatMessage(Player&, bool global, const std::string&);
 			void ServerSentMessage(bool system, const std::string&);
 
