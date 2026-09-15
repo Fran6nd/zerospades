@@ -293,7 +293,11 @@ namespace spades {
 			Vector3 Forward() const;
 			Vector3 CameraEye() const;
 			void ToggleCameraMode();
+			// Move with cg_keyMove*/cg_keyJump (up)/cg_keyCrouch (down): pans the
+			// orbit target in orbit mode, flies the eye in free-fly mode.
 			void UpdateMovement(float dt);
+			// Forget held movement/look keys whose release a modal may swallow.
+			void ReleaseHeldInput();
 			client::SceneDefinition SetupScene(float vpX, float vpY, float vpW, float vpH);
 
 			// Editing
