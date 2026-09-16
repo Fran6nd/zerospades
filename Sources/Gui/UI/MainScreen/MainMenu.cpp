@@ -608,8 +608,10 @@ namespace spades {
 			currentDemoListModel = model;
 		}
 
-		void MainScreenMainMenu::OnTabChanged(UIElement&) {
-			// Refresh demo list when switching to demos tab
+		void MainScreenMainMenu::RefreshVisibleTab() {
+			// The listings are snapshots: re-read whichever one is on screen, both
+			// when its tab is selected and when a subview (game, demo, editor) hands
+			// control back, since it may have added or removed files.
 			if (demoPanel->visible)
 				LoadDemoList();
 			if (modsPanel->visible)
@@ -617,6 +619,8 @@ namespace spades {
 			if (editorPanel->visible)
 				editorPanel->Refresh();
 		}
+
+		void MainScreenMainMenu::OnTabChanged(UIElement&) { RefreshVisibleTab(); }
 
 		MainScreenMainMenuState MainScreenMainMenu::GetState() {
 			MainScreenMainMenuState state;
@@ -1079,7 +1083,7 @@ namespace spades {
 				if (demoPanel->visible) {
 					PlaySelectedDemo();
 				} else if (editorPanel->visible) {
-					editorPanel->SubmitPath();
+					editorPanel->SubmitDefault();
 				} else {
 					Connect();
 				}
