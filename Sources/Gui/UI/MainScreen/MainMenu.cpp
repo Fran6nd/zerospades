@@ -1066,7 +1066,7 @@ namespace spades {
 				if (demoPanel->visible) {
 					PlaySelectedDemo();
 				} else if (editorPanel->visible) {
-					editorPanel->SubmitPath();
+					editorPanel->SubmitDefault();
 				} else {
 					Connect();
 				}

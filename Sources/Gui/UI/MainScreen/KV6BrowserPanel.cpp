@@ -152,7 +152,7 @@ namespace spades {
 			options.initialDir = static_cast<std::string>(cl_kv6EditorFolder);
 			options.homeDir = fs->DefaultDir();
 			options.filters.push_back(
-			  FileFilter{_Tr("MainScreen", "Voxel models"), {".kv6", ".2kv6", ".vxl"}});
+			  FileFilter{_Tr("MainScreen", "Voxel models"), KV6ModelExtensions()});
 			options.allowCreateFolder = true;
 			options.allowRename = true;
 			options.allowDelete = true;
@@ -192,13 +192,22 @@ namespace spades {
 			browser->entryRejected = [this](const FileBrowserEntry& entry) {
 				OnEntryRejected(entry);
 			};
+			// Typing a path that does not exist yet creates that model, as the old
+			// explorer did.
+			browser->unknownPathSubmitted = [this](const std::string& path) {
+				OpenModel(ModelFileName(path), true);
+			};
 			AddChild(browser);
+
+			// The browser may have fallen back to another folder (the remembered one
+			// could be gone), and it settles that before anyone can subscribe.
+			cl_kv6EditorFolder = browser->GetDirectory();
 
 			(void)headerHeight;
 			(void)listPos;
 		}
 
-		void KV6BrowserPanel::SubmitPath() { browser->SubmitPath(); }
+		void KV6BrowserPanel::SubmitDefault() { browser->SubmitDefault(); }
 		void KV6BrowserPanel::Refresh() { browser->Refresh(); }
 
 		void KV6BrowserPanel::OpenModel(const std::string& absPath, bool isNew) {
