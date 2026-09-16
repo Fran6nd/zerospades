@@ -1208,7 +1208,7 @@ namespace spades {
 				Vector3 pingCol = Teamplay::ToRenderColor(ping.color);
 				Vector4 color = MakeVector4(pingCol.x, pingCol.y, pingCol.z, alpha);
 
-				DrawPingDiamond(*renderer, scrPos, sz, pingCol, alpha);
+				DrawPingDiamond(*renderer, scrPos, sz, pingCol, alpha, ping.age);
 
 				// Who pinged, and what they said, under the marker. A marker is never
 				// anonymous, so that a label is never read as coming from somebody who
@@ -2364,6 +2364,12 @@ namespace spades {
 				renderer->DrawFilledRect(px, barY, px + w, barY + barH - 1.0F);
 			};
 
+			// A ping's pulse rings reach past the bar; keep them on it rather than over
+			// the heading readout underneath.
+			const bool clipPings = teamplay->HasPings();
+			if (clipPings)
+				renderer->BeginClippingRect(AABB2(barX, barY, barW, barH));
+
 			for (const auto& entry : teamplay->GetPings()) {
 				const Teamplay::Ping& ping = entry.second;
 				if (!(ping.surfaces & Teamplay::SurfaceCompass))
@@ -2378,8 +2384,12 @@ namespace spades {
 				// centred on the bar and sized to sit inside it with its outline.
 				constexpr float kCompassPingHalfSize = 5.0F;
 				DrawPingDiamond(*renderer, MakeVector2(px, barY + barH * 0.5F),
-								kCompassPingHalfSize, Teamplay::ToRenderColor(ping.color), fade);
+								kCompassPingHalfSize, Teamplay::ToRenderColor(ping.color), fade,
+								ping.age);
 			}
+
+			if (clipPings)
+				renderer->EndClippingRect();
 
 			for (const auto& entry : teamplay->GetMarks()) {
 				const Teamplay::Mark& mark = entry.second;

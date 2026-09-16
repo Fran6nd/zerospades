@@ -37,9 +37,14 @@ namespace spades {
 		 * coloured body; the outline and shadow extend past it by
 		 * `GetPingDiamondExtent(halfSize) - halfSize`. `color` is straight (not
 		 * premultiplied) RGB and `alpha` the opacity of the whole marker.
+		 *
+		 * `age` is the seconds since the ping was placed, and drives the animation:
+		 * the marker pops in with an overshoot, sends out a burst of expanding diamond
+		 * rings, then keeps a slow, softer pulse and a breathing core for as long as it
+		 * lives. The rings reach past the extent while they play.
 		 */
 		void DrawPingDiamond(IRenderer& renderer, Vector2 center, float halfSize,
-							 const Vector3& color, float alpha);
+							 const Vector3& color, float alpha, float age);
 
 		/** The distance from the centre to a tip of everything `DrawPingDiamond` draws
 		 * for `halfSize`, for placing a label or margin clear of the marker. */

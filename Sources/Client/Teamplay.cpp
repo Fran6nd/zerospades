@@ -203,6 +203,7 @@ namespace spades {
 			ping.endless = IsEndlessDuration(duration);
 			ping.duration = ping.endless ? 0.0F : duration;
 			ping.timeLeft = ping.duration;
+			ping.age = 0.0F;
 		}
 
 		void Teamplay::SetMark(int playerId, float duration, uint8_t surfaces,
@@ -255,6 +256,7 @@ namespace spades {
 			SPADES_MARK_FUNCTION();
 
 			for (auto it = pings.begin(); it != pings.end();) {
+				it->second.age += dt;
 				if (it->second.endless) {
 					++it;
 					continue;

@@ -139,6 +139,9 @@ namespace spades {
 				float timeLeft;
 				/** The ping stays until the server removes it (Duration `+inf`). */
 				bool endless;
+				/** Seconds since the ping was last placed, endless or not; drives the
+				 * marker's animation, so placing it again replays the intro. */
+				float age;
 
 				/** Opacity for a marker that fades over its last `fadeTime` seconds
 				 * rather than blinking out. An endless ping never fades. */

@@ -931,6 +931,14 @@ namespace spades {
 			if (!world)
 				return;
 
+			// A ping's pulse rings reach well past the marker, so keep them inside the
+			// map window the way the map itself is kept, rather than washing over the
+			// HUD around it.
+			if (circularMap)
+				renderer.BeginClippingCircle(scrCenter, scrRadius);
+			else
+				renderer.BeginClippingRect(outRect);
+
 			for (const auto& entry : teamplay.GetPings()) {
 				const Teamplay::Ping& ping = entry.second;
 
@@ -955,8 +963,13 @@ namespace spades {
 				// the map's rotation, so it reads the same on every map mode.
 				constexpr float kMapPingHalfSize = 6.0F;
 				DrawPingDiamond(renderer, *scrPos, kMapPingHalfSize,
-								Teamplay::ToRenderColor(ping.color), alpha);
+								Teamplay::ToRenderColor(ping.color), alpha, ping.age);
 			}
+
+			if (circularMap)
+				renderer.EndClippingCircle();
+			else
+				renderer.EndClippingRect();
 		}
 
 		void MapView::DrawTeamplayMarks(float mapAlpha) {
