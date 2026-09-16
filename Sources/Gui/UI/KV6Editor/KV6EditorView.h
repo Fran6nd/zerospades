@@ -309,6 +309,10 @@ namespace spades {
 			bool keyUp = false, keyDown = false;
 			bool ctrlHeld = false, altHeld = false, shiftHeld = false;
 			bool keySprint = false; // cg_keySprint held (tracked like the modifiers)
+			// When the descend key went down, for the grace period that keeps a
+			// Ctrl chord from moving the camera at all.
+			float descendPressTime = 0.0F;
+			bool DescendKeyIsActive() const;
 			// Distance the Ctrl-bound descend key moved the view during the current
 			// Ctrl press; a Ctrl shortcut subtracts it so shortcuts don't move the view.
 			Vector3 ctrlDescent = MakeVector3(0.0F, 0.0F, 0.0F);
