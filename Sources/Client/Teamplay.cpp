@@ -121,12 +121,6 @@ namespace spades {
 			return surfaces & kKnownSurfaces;
 		}
 
-		float Teamplay::Ping::GetAgeFraction() const {
-			if (endless || duration <= 0.0F)
-				return 0.0F;
-			return Clamp(1.0F - timeLeft / duration, 0.0F, 1.0F);
-		}
-
 		float Teamplay::Ping::GetFadeAlpha(float fadeTime) const {
 			if (endless || fadeTime <= 0.0F)
 				return 1.0F;

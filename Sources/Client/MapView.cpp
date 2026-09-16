@@ -31,6 +31,7 @@
 #include "Player.h"
 #include "TCGameMode.h"
 #include "Teamplay.h"
+#include "TeamplayMarker.h"
 #include "Weapon.h"
 #include "World.h"
 #include <Core/Settings.h>
@@ -330,24 +331,31 @@ namespace spades {
 			font.DrawShadow(s, scrPos, 1.0F, col, MakeVector4(0, 0, 0, col.w));
 		}
 
-		void MapView::DrawMapCircle(const Vector2& pos, const Vector4& col, float radius, float thickness) {
-			Vector2 scrPos;
+		stmp::optional<Vector2> MapView::ProjectVisible(const Vector2& pos) const {
 			if (circularMap) {
-				scrPos = Project(pos, true);
+				Vector2 scrPos = Project(pos, true);
 				Vector2 rel = scrPos - scrCenter;
 				if (rel.GetSquaredLength() > scrRadius*scrRadius)
-					return;
+					return {};
+				return scrPos;
 			} else if (rotatingMap) {
-				scrPos = Project(pos, true);
+				Vector2 scrPos = Project(pos, true);
 				if (!outRect.Contains(scrPos))
-					return;
+					return {};
+				return scrPos;
 			} else {
 				if (!inRect.Contains(pos))
-					return;
-				scrPos = Project(pos);
+					return {};
+				return Project(pos);
 			}
+		}
+
+		void MapView::DrawMapCircle(const Vector2& pos, const Vector4& col, float radius, float thickness) {
+			stmp::optional<Vector2> scrPos = ProjectVisible(pos);
+			if (!scrPos)
+				return;
 			renderer.SetColorAlphaPremultiplied(col);
-			renderer.DrawOutlinedCircle(scrPos, radius, thickness);
+			renderer.DrawOutlinedCircle(*scrPos, radius, thickness);
 		}
 
 		void MapView::SwitchScale() {
@@ -937,23 +945,17 @@ namespace spades {
 				if (alpha <= 0.0F)
 					continue;
 
-				// The colour the server chose, drawn as sent.
-				Vector3 pingCol = Teamplay::ToRenderColor(ping.color);
-				Vector4 color = MakeVector4(pingCol.x, pingCol.y, pingCol.z, alpha);
-				color.x *= alpha;
-				color.y *= alpha;
-				color.z *= alpha;
-
-				// A ring that shrinks as the ping ages, so a fresh callout catches the
-				// eye and an old one does not compete with the player icons.
-				constexpr float kOuterRadius = 7.0F;
-				constexpr float kInnerRadius = 2.5F;
-				float radius = Mix(kOuterRadius, kInnerRadius, ping.GetAgeFraction());
-
 				// The map is flat, so a ping's height plays no part in where it lands.
-				const Vector2 pingPos = ping.position.GetXY();
-				DrawMapCircle(pingPos, color, radius, 1.5F);
-				DrawMapCircle(pingPos, color, kInnerRadius * 0.5F, 1.5F);
+				stmp::optional<Vector2> scrPos = ProjectVisible(ping.position.GetXY());
+				if (!scrPos)
+					continue;
+
+				// The same diamond the ping wears in the world and on the compass, in
+				// the colour the server chose, drawn as sent. Screen-aligned whatever
+				// the map's rotation, so it reads the same on every map mode.
+				constexpr float kMapPingHalfSize = 6.0F;
+				DrawPingDiamond(renderer, *scrPos, kMapPingHalfSize,
+								Teamplay::ToRenderColor(ping.color), alpha);
 			}
 		}
 

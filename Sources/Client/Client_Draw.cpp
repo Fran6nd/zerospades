@@ -53,6 +53,7 @@
 #include "TCGameMode.h"
 #include "TCProgressView.h"
 #include "Teamplay.h"
+#include "TeamplayMarker.h"
 
 #include "GameMap.h"
 #include "Weapon.h"
@@ -1201,32 +1202,13 @@ namespace spades {
 
 				scrPos.x = Clamp(scrPos.x, margin, sw - margin);
 				scrPos.y = Clamp(scrPos.y, margin, sh - margin);
-				scrPos.x = floorf(scrPos.x) + 0.5F;
-				scrPos.y = floorf(scrPos.y) + 0.5F;
 
 				// The colour the server chose, drawn as sent: which colour a ping should
 				// be is its business, and this client is never told what one means.
 				Vector3 pingCol = Teamplay::ToRenderColor(ping.color);
 				Vector4 color = MakeVector4(pingCol.x, pingCol.y, pingCol.z, alpha);
 
-				// A diamond, drawn as four strokes with a dark pass underneath.
-				Vector2 corners[4] = {
-					MakeVector2(scrPos.x, scrPos.y - sz),
-					MakeVector2(scrPos.x + sz, scrPos.y),
-					MakeVector2(scrPos.x, scrPos.y + sz),
-					MakeVector2(scrPos.x - sz, scrPos.y),
-				};
-
-				float thickness = std::max(1.5F, sz * 0.16F);
-				Vector4 shadow = MakeVector4(0, 0, 0, 0.6F * alpha);
-				Vector4 stroke = Premultiply(color);
-
-				for (int pass = 0; pass < 2; pass++) {
-					float thick = (pass == 0) ? thickness + 2.0F : thickness;
-					const Vector4& col = (pass == 0) ? shadow : stroke;
-					for (int i = 0; i < 4; i++)
-						StrokeSegment(*renderer, corners[i], corners[(i + 1) % 4], thick, col);
-				}
+				DrawPingDiamond(*renderer, scrPos, sz, pingCol, alpha);
 
 				// Who pinged, and what they said, under the marker. A marker is never
 				// anonymous, so that a label is never read as coming from somebody who
@@ -1259,7 +1241,7 @@ namespace spades {
 
 				Vector2 size = font.Measure(label);
 				Vector2 pos = MakeVector2(floorf(scrPos.x - size.x * 0.5F),
-										  floorf(scrPos.y + sz + 2.0F));
+										  floorf(scrPos.y + GetPingDiamondExtent(sz) + 2.0F));
 				font.DrawShadow(label, pos, 1.0F, MakeVector4(color.x, color.y, color.z, alpha),
 								MakeVector4(0, 0, 0, 0.8F * alpha));
 			}
@@ -2349,22 +2331,31 @@ namespace spades {
 			// here because a ping or a mark asked for it. A bearing carries no distance
 			// and no position, only which way to turn, which is why a callout known by
 			// direction alone belongs on this surface.
-			auto drawBearing = [&](Vector3 targetPos, const Vector3& col, float alpha) {
+			//
+			// Where a bearing lands on the bar and how much the edge fade leaves of it;
+			// `false` when it is outside the visible range or fully faded.
+			auto locateBearing = [&](const Vector3& targetPos, float alpha, float& px,
+									 float& fade) {
 				Vector2 delta = targetPos.GetXY() - pos2D;
 				float angle = teamplay->GetBearing(delta);
 				float yawDelta = std::remainderf(angle - roundf(yawDeg), 360.0F);
 				if (fabsf(yawDelta) > range * 0.5F)
-					return;
+					return false;
 
-				float px = roundf(barX + barW * 0.5F + (yawDelta / range) * barW);
-				float fade = 1.0F - Clamp((fabsf(yawDelta) - range * 0.42F) / (range * 0.06F),
-										  0.0F, 1.0F);
+				px = roundf(barX + barW * 0.5F + (yawDelta / range) * barW);
+				fade = 1.0F - Clamp((fabsf(yawDelta) - range * 0.42F) / (range * 0.06F),
+									0.0F, 1.0F);
 				fade *= alpha;
-				if (fade <= 0.0F)
+				return fade > 0.0F;
+			};
+
+			// A mark follows a player, so it gets a full-height stripe rather than an
+			// icon: it reads as a direction, not as a thing sitting at a place.
+			auto drawBearing = [&](const Vector3& targetPos, const Vector3& col, float alpha) {
+				float px, fade;
+				if (!locateBearing(targetPos, alpha, px, fade))
 					return;
 
-				// A full-height stripe rather than an icon: it reads as a direction, not
-				// as a thing sitting at a place.
 				const float w = 2.0F;
 				renderer->SetColorAlphaPremultiplied(shadowP * fade);
 				renderer->DrawFilledRect(px, barY + 1.0F, px + w + 1.0F, barY + barH);
@@ -2379,8 +2370,15 @@ namespace spades {
 					continue;
 
 				constexpr float kFadeOutTime = 0.75F;
-				drawBearing(ping.position, Teamplay::ToRenderColor(ping.color),
-							ping.GetFadeAlpha(kFadeOutTime));
+				float px, fade;
+				if (!locateBearing(ping.position, ping.GetFadeAlpha(kFadeOutTime), px, fade))
+					continue;
+
+				// The same diamond the ping wears in the world and on the minimap,
+				// centred on the bar and sized to sit inside it with its outline.
+				constexpr float kCompassPingHalfSize = 5.0F;
+				DrawPingDiamond(*renderer, MakeVector2(px, barY + barH * 0.5F),
+								kCompassPingHalfSize, Teamplay::ToRenderColor(ping.color), fade);
 			}
 
 			for (const auto& entry : teamplay->GetMarks()) {

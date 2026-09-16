@@ -140,10 +140,6 @@ namespace spades {
 				/** The ping stays until the server removes it (Duration `+inf`). */
 				bool endless;
 
-				/** `0` while fresh and `1` as it is about to go, for a marker that
-				 * animates over its life. An endless ping never ages. */
-				float GetAgeFraction() const;
-
 				/** Opacity for a marker that fades over its last `fadeTime` seconds
 				 * rather than blinking out. An endless ping never fades. */
 				float GetFadeAlpha(float fadeTime) const;
