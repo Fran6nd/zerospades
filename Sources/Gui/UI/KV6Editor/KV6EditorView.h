@@ -94,6 +94,13 @@ namespace spades {
 			void DrawLine3D(const Vector3& a, const Vector3& b, const Vector4& color) override;
 			// Selection move (used by the move gizmo).
 			bool SelectionCentroid(Vector3& out) const override;
+			bool HasPlacement() const override { return placementActive; }
+			bool BeginPlacementFromSelection() override;
+			void MovePlacement(int dx, int dy, int dz) override;
+			bool PlacementCentroid(Vector3& out) const override;
+			void ApplyPlacement() override;
+			void CancelPlacement() override;
+			void DrawPlacementOffset(int dx, int dy, int dz, const Vector4& color) override;
 			void MoveSelection(int dx, int dy, int dz) override;
 			void DrawSelectionOffset(int dx, int dy, int dz, const Vector4& color) override;
 			void DrawSolidCube(const Vector3& center, float half, const Vector4& color) override;
@@ -209,6 +216,10 @@ namespace spades {
 			std::vector<std::unique_ptr<EditorTool>> tools;
 			int activeTool = 0;
 			EditorTool* ActiveTool(); // active tool in Edit mode, else null
+			// Switching tools or modes deactivates the outgoing tool, which is where
+			// a pending placement is applied.
+			void SetActiveTool(int index);
+			void SetMode(EditorMode mode);
 
 			// --- Selection ----------------------------------------------------
 			std::set<int64_t> selection; // packed voxel keys
@@ -224,22 +235,36 @@ namespace spades {
 				uint32_t color;
 			};
 			std::vector<ClipVoxel> clipboard; // Ctrl+C / Ctrl+X store
-			std::vector<ClipVoxel> pasteBuffer; // what is being placed right now
-			std::string pasteLabel = "Paste";   // undo step name for the drop
-			bool pasteActive = false;
-			IntVector3 pasteAnchor; // where the buffer's min lands (follows cursor)
-			// An imported model can also be dropped so that its own pivot meets the
-			// document's, which is what aligns a part to the model it belongs to.
-			bool pasteHasAlignedAnchor = false;
-			IntVector3 pasteAlignedAnchor;
+
+			/**
+			 * Voxels waiting to be placed (a paste, an import, or a lifted
+			 * selection being moved).
+			 *
+			 * Nothing here has touched the document yet: the voxels are drawn as a
+			 * preview and written only when the placement is applied, which is what
+			 * keeps a move from destroying whatever it is dragged across. `lifted`
+			 * holds the document voxels to clear at that point (empty for a paste or
+			 * an import, which take nothing away).
+			 */
+			struct Placement {
+				std::vector<ClipVoxel> voxels; // relative to `anchor`
+				IntVector3 anchor;             // min corner, in document coords
+				std::vector<IntVector3> lifted;
+				std::string label = "Move"; // undo step name
+			};
+			bool placementActive = false;
+			Placement placement;
+
 			void CopySelection();
 			bool CutSelection(); // returns false if it would empty the document
 			void StartPaste();
-			// Starts placing `voxels`; `label` names the resulting undo step.
-			void StartPlacement(std::vector<ClipVoxel> voxels, const std::string& label);
-			void CommitPaste();
-			void PlaceBuffer(const IntVector3& anchor);
-			void DrawPastePreview();
+			// Starts a placement of `voxels` with its min corner at `anchor`, and
+			// switches to the Move tool so it can be positioned.
+			void StartPlacement(std::vector<ClipVoxel> voxels, const std::string& label,
+			                    const IntVector3& anchor);
+			void DrawPlacementPreview();
+			// Switch to the Move sub-tool (where a placement is positioned).
+			bool ActivateMoveTool();
 			// Loads `path` and starts placing its voxels in the current document.
 			void ImportModel(const std::string& path);
 			/** Asks for a model with the shared file browser, then imports it. */
