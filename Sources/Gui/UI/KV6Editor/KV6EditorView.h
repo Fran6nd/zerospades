@@ -21,6 +21,7 @@
 #pragma once
 
 #include <cstdint>
+#include <functional>
 #include <memory>
 #include <set>
 #include <string>
@@ -335,7 +336,8 @@ namespace spades {
 			int CountSolids();
 			void RebuildRenderModel();
 			void FrameCamera();
-			void Save();
+			/** Writes the document to its path; false if there is none, or on error. */
+			bool Save();
 
 			// Camera
 			Vector3 Forward() const;
@@ -412,9 +414,17 @@ namespace spades {
 			// --- Document commands behind the menu items ---
 			std::string GetDocumentPath() const { return filePath; }
 			std::string GetDocumentExtension() const { return ".kv6"; }
-			void SaveDocument(const std::string& path);
-			/** Asks for a path with the shared file browser, then saves to it. */
-			void OpenSaveAsDialog();
+			bool SaveDocument(const std::string& path);
+			/** Asks for a path with the shared file browser, then saves to it.
+			 *  `after` runs only once the document has actually been written. */
+			void OpenSaveAsDialog(std::function<void()> after = std::function<void()>());
+			/** Opens another model in place of this one, guarding unsaved changes. */
+			void OpenDocument();
+			/**
+			 * Runs `proceed` once it is safe to lose the current document: right
+			 * away when it is clean, otherwise after the user picks Save or Discard.
+			 */
+			void ConfirmDiscardChanges(std::function<void()> proceed);
 		};
 	} // namespace gui
 } // namespace spades

@@ -44,6 +44,7 @@
 #include <Core/VoxelModel.h>
 #include <Gui/UI/Components/FileBrowser/FileBrowserDialog.h>
 #include <Gui/UI/Components/UIOverlayHost.h>
+#include <Gui/UI/Widgets/MessageBox.h>
 
 SPADES_SETTING(cg_keyMoveForward);
 SPADES_SETTING(cg_keyMoveBackward);
@@ -385,20 +386,21 @@ namespace spades {
 			statusTimer = 2.5F;
 		}
 
-		void KV6EditorView::Save() {
+		bool KV6EditorView::Save() {
 			// Saving writes the document, so anything still pending belongs in it.
 			if (placementActive)
 				ApplyPlacement();
 			if (filePath.empty()) {
 				SetStatus("No file to save to");
-				return;
+				return false;
 			}
-			if (io->Save(&*model, filePath)) {
-				savedGeomId = undo.GeometryStateId(); // this geometry state is now clean
-				SetStatus("Saved " + filePath);
-			} else {
+			if (!io->Save(&*model, filePath)) {
 				SetStatus("Save failed");
+				return false;
 			}
+			savedGeomId = undo.GeometryStateId(); // this geometry state is now clean
+			SetStatus("Saved " + filePath);
+			return true;
 		}
 
 		std::vector<EditorMenuItem> KV6EditorView::GetMenuItems() {
@@ -406,11 +408,69 @@ namespace spades {
 			items.push_back(EditorMenuItem{"Save", [this] { Save(); }, !filePath.empty()});
 			items.push_back(EditorMenuItem{"Save As...", [this] { OpenSaveAsDialog(); }, true});
 			items.push_back(EditorMenuItem{"Import Model...", [this] { OpenImportDialog(); }, true});
-			items.push_back(EditorMenuItem{"Exit to Menu", [this] { wantsClose = true; }, true});
+			items.push_back(EditorMenuItem{"Open Model...", [this] { OpenDocument(); }, true});
+			items.push_back(EditorMenuItem{
+			  "Exit to Menu", [this] { ConfirmDiscardChanges([this] { wantsClose = true; }); }, true});
 			return items;
 		}
 
-		void KV6EditorView::OpenSaveAsDialog() {
+		void KV6EditorView::ConfirmDiscardChanges(std::function<void()> proceed) {
+			if (!proceed)
+				return;
+			// Voxels still waiting to be placed are unsaved work too, even though
+			// the document itself may be clean.
+			if (!IsDirty() && !placementActive) {
+				proceed();
+				return;
+			}
+
+			UIOverlayHost* overlay = ui->GetOverlay();
+			Handle<MessageBoxScreen> box = Handle<MessageBoxScreen>::New(
+			  &overlay->GetUIManager().GetRootElement(),
+			  "This model has unsaved changes.",
+			  std::vector<std::string>{"Save", "Discard", "Cancel"}, 160.0F);
+			box->closed = [this, proceed](ui::UIElement& sender) {
+				MessageBoxScreen* answer = dynamic_cast<MessageBoxScreen*>(&sender);
+				if (!answer)
+					return;
+				if (answer->resultIndex == 1) { // Discard
+					proceed();
+				} else if (answer->resultIndex == 0) { // Save
+					// A document that was never saved needs somewhere to go first;
+					// `proceed` then runs only if that save succeeds.
+					if (filePath.empty())
+						OpenSaveAsDialog(proceed);
+					else if (Save())
+						proceed();
+				}
+			};
+			ReleaseHeldInput();
+			overlay->Show(box.GetPointerOrNull());
+		}
+
+		void KV6EditorView::OpenDocument() {
+			ConfirmDiscardChanges([this] {
+				FileBrowserOptions options;
+				options.purpose = FileBrowserPurpose::Open;
+				options.target = FileBrowserTarget::Files;
+				options.homeDir = io->DefaultDir();
+				options.initialDir =
+				  filePath.empty() ? io->DefaultDir() : LocalFileSystem::ParentDir(filePath);
+				options.filters.push_back(FileFilter{"KV6 models", {GetDocumentExtension()}});
+
+				UIOverlayHost* overlay = ui->GetOverlay();
+				Handle<FileBrowserDialog> dialog = Handle<FileBrowserDialog>::New(
+				  &overlay->GetUIManager().GetRootElement(), "Open Model", std::move(options));
+				dialog->closed = [this](const FileBrowserResult& result) {
+					if (result.accepted && !result.paths.empty())
+						LoadModel(result.paths.front());
+				};
+				ReleaseHeldInput();
+				overlay->Show(dialog.GetPointerOrNull());
+			});
+		}
+
+		void KV6EditorView::OpenSaveAsDialog(std::function<void()> after) {
 			FileBrowserOptions options;
 			options.purpose = FileBrowserPurpose::Save;
 			options.target = FileBrowserTarget::Files;
@@ -425,9 +485,11 @@ namespace spades {
 			UIOverlayHost* overlay = ui->GetOverlay();
 			Handle<FileBrowserDialog> dialog = Handle<FileBrowserDialog>::New(
 			  &overlay->GetUIManager().GetRootElement(), "Save As", std::move(options));
-			dialog->closed = [this](const FileBrowserResult& result) {
-				if (result.accepted && !result.paths.empty())
-					SaveDocument(result.paths.front());
+			dialog->closed = [this, after](const FileBrowserResult& result) {
+				if (!result.accepted || result.paths.empty())
+					return;
+				if (SaveDocument(result.paths.front()) && after)
+					after();
 			};
 			// A dialog takes over input: nothing should stay held while it is up.
 			ReleaseHeldInput();
@@ -454,9 +516,9 @@ namespace spades {
 			overlay->Show(dialog.GetPointerOrNull());
 		}
 
-		void KV6EditorView::SaveDocument(const std::string& path) {
+		bool KV6EditorView::SaveDocument(const std::string& path) {
 			filePath = path;
-			Save();
+			return Save();
 		}
 
 		bool KV6EditorView::OnMenuEscape() {
