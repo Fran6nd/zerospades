@@ -32,6 +32,10 @@ namespace spades {
 			Vector3 viewAxis[3];
 			float zNear, zFar;
 			bool skipWorld;
+			/** Draw the world's terrain but not its water surface, nor the mirrored
+			 *  scene that feeds it (the model editor wants voxels under the model,
+			 *  not the map's sea). */
+			bool skipWater;
 
 			float depthOfFieldFocalLength;
 			float depthOfFieldNearBlurStrength;
@@ -56,6 +60,7 @@ namespace spades {
 				viewAxis[2] = MakeVector3(0, 0, 1);
 				zNear = zFar = 0.0F;
 				skipWorld = false;
+				skipWater = false;
 				depthOfFieldFocalLength = 0.0F;
 				depthOfFieldNearBlurStrength = 1.0F;
 				depthOfFieldFarBlurStrength = 0.0F;
