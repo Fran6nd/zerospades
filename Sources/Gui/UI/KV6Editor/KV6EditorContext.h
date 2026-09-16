@@ -83,8 +83,6 @@ namespace spades {
 			virtual int SelectionCount() const = 0;
 			// Flood-fill: add all 6-connected voxels sharing (x,y,z)'s colour.
 			virtual void SelectLinkedColor(int x, int y, int z) = 0;
-			virtual bool SelectionCentroid(Vector3& out) const = 0;
-			virtual void MoveSelection(int dx, int dy, int dz) = 0;
 			// Add every solid voxel in [lo, hi] to the selection.
 			virtual void SelectBox(const IntVector3& lo, const IntVector3& hi) = 0;
 			// Add / remove the solid voxels among `cells`.
@@ -104,7 +102,6 @@ namespace spades {
 			virtual void DrawCellOutlineMirrored(int x, int y, int z, const Vector4& color) = 0;
 			virtual void DrawBoxOutlineMirrored(const IntVector3& lo, const IntVector3& hi,
 			                                    const Vector4& color) = 0;
-			virtual void DrawSelectionOffset(int dx, int dy, int dz, const Vector4& color) = 0;
 
 			// --- Pending placement (floating voxels) --------------------------
 			// Paste, import and move park their voxels here first: nothing reaches

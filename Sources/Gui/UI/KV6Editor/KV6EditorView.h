@@ -93,7 +93,6 @@ namespace spades {
 			Vector2 WorldToScreen(const Vector3& w, bool& ok) const override;
 			void DrawLine3D(const Vector3& a, const Vector3& b, const Vector4& color) override;
 			// Selection move (used by the move gizmo).
-			bool SelectionCentroid(Vector3& out) const override;
 			bool HasPlacement() const override { return placementActive; }
 			bool BeginPlacementFromSelection() override;
 			void MovePlacement(int dx, int dy, int dz) override;
@@ -101,8 +100,6 @@ namespace spades {
 			void ApplyPlacement() override;
 			void CancelPlacement() override;
 			void DrawPlacementOffset(int dx, int dy, int dz, const Vector4& color) override;
-			void MoveSelection(int dx, int dy, int dz) override;
-			void DrawSelectionOffset(int dx, int dy, int dz, const Vector4& color) override;
 			void DrawSolidCube(const Vector3& center, float half, const Vector4& color) override;
 			bool InBounds(int x, int y, int z) const override;
 			VoxelModel& Model() override { return *model; }
@@ -254,6 +251,14 @@ namespace spades {
 			};
 			bool placementActive = false;
 			Placement placement;
+			// The pending voxels as a renderable model, so they are drawn solid at
+			// their temporary position while the document shows the gap they left.
+			Handle<client::IModel> placementModel;
+			void RebuildPlacementModel();
+			// Take the pending voxels out of / put them back into the document
+			// without journaling: applying does the journaled edit in one step.
+			void LiftPlacementVoxels();
+			void RestorePlacementVoxels();
 
 			void CopySelection();
 			bool CutSelection(); // returns false if it would empty the document
