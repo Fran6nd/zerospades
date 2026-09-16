@@ -83,6 +83,15 @@ namespace spades {
 			// Camera speed factor while the sprint key (cg_keySprint) is held.
 			constexpr float kSprintMultiplier = 3.0F;
 
+			// The editor's ground grid. It never moves: a KV6 column is a 64-bit
+			// mask, so no model can be deeper than 64 voxels, and a plane at that
+			// depth therefore always sits below whatever is being edited (voxel z
+			// spans [z-0.5, z+0.5], so the deepest possible voxel ends at 63.5).
+			constexpr float kGroundPlaneZ = 64.0F;
+			constexpr int kGroundReach = 256; // voxels from the origin, each way
+			constexpr int kGroundStep = 4;    // voxels between lines
+			constexpr int kGroundMajorEvery = 4; // every Nth line is brighter
+
 			// The far plane (and the fog that fades into it) has to sit beyond the
 			// camera, or zooming out puts the whole model behind it.
 			constexpr float kViewDistanceFactor = 4.0F;
@@ -646,7 +655,11 @@ namespace spades {
 			sceneDef.viewportTop = int(vpY);
 			sceneDef.viewportWidth = int(vpW);
 			sceneDef.viewportHeight = int(vpH);
+			// The editor draws its own ground: the game world brings chunk culling
+			// and terrain that crowds the model, and water is a plane following the
+			// camera at sea level with a mirrored scene rendered into it.
 			sceneDef.skipWorld = true;
+			sceneDef.skipWater = true;
 			sceneDef.denyCameraBlur = true;
 			sceneDef.time = (unsigned int)(globalTime * 1000.0F);
 			return sceneDef;
@@ -1726,22 +1739,31 @@ void KV6EditorView::StartPaste() {
 		float KV6EditorView::BarsH() { return kBarsH; }
 
 		void KV6EditorView::DrawHelpers() {
-			Vector4 grid = MakeVector4(1.0F, 1.0F, 1.0F, 0.06F);
+			// Opaque: debug lines are blended with the source alpha, so 1.0 covers
+			// what is behind them.
+			Vector4 grid = MakeVector4(0.55F, 0.58F, 0.64F, 1.0F);
+			Vector4 gridMajor = MakeVector4(0.82F, 0.86F, 0.94F, 1.0F);
 			Vector4 box = MakeVector4(0.4F, 0.7F, 1.0F, 0.5F);
+
+			// A fixed grid in world space: it does not follow the model, the volume
+			// or the camera, so it reads as the ground rather than something moving
+			// with the subject.
+			float z = kGroundPlaneZ;
+			float from = float(-kGroundReach) - 0.5F; // voxel edges, not centres
+			float to = float(kGroundReach) - 0.5F;
+			for (int i = -kGroundReach; i <= kGroundReach; i += kGroundStep) {
+				float at = float(i) - 0.5F;
+				bool major = (i % (kGroundStep * kGroundMajorEvery)) == 0;
+				const Vector4& color = major ? gridMajor : grid;
+				renderer->AddDebugLine(MakeVector3(at, from, z), MakeVector3(at, to, z), color);
+				renderer->AddDebugLine(MakeVector3(from, at, z), MakeVector3(to, at, z), color);
+			}
+
 			float lo = -0.5F;
-			float hiX = float(model->GetWidth()) - 0.5F;
-			float hiY = float(model->GetHeight()) - 0.5F;
-			float hiZ = float(model->GetDepth()) - 0.5F;
-
-			for (int i = 0; i <= model->GetWidth(); i += 4)
-				renderer->AddDebugLine(MakeVector3(float(i) - 0.5F, lo, hiZ),
-				                       MakeVector3(float(i) - 0.5F, hiY, hiZ), grid);
-			for (int i = 0; i <= model->GetHeight(); i += 4)
-				renderer->AddDebugLine(MakeVector3(lo, float(i) - 0.5F, hiZ),
-				                       MakeVector3(hiX, float(i) - 0.5F, hiZ), grid);
-
 			Vector3 a = MakeVector3(lo, lo, lo);
-			Vector3 b = MakeVector3(hiX, hiY, hiZ);
+			Vector3 b = MakeVector3(float(model->GetWidth()) - 0.5F,
+			                        float(model->GetHeight()) - 0.5F,
+			                        float(model->GetDepth()) - 0.5F);
 			BoxEdges(a, b, [&](const Vector3& p, const Vector3& q) {
 				renderer->AddDebugLine(p, q, box);
 			});
