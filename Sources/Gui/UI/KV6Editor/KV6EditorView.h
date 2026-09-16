@@ -215,20 +215,35 @@ namespace spades {
 			void DrawSelection();
 			void ShiftSelection(int ox, int oy, int oz); // keep keys valid on resize
 
-			// --- Clipboard / paste --------------------------------------------
+			// --- Clipboard / placement ----------------------------------------
+			// Placing voxels (paste, import) is one mechanism: a buffer of voxels
+			// follows the cursor until it is dropped. The clipboard is just one
+			// source for that buffer, so an import never disturbs a copy.
 			struct ClipVoxel {
-				IntVector3 rel; // position relative to the clipboard's min corner
+				IntVector3 rel; // position relative to the buffer's min corner
 				uint32_t color;
 			};
-			std::vector<ClipVoxel> clipboard;
+			std::vector<ClipVoxel> clipboard; // Ctrl+C / Ctrl+X store
+			std::vector<ClipVoxel> pasteBuffer; // what is being placed right now
+			std::string pasteLabel = "Paste";   // undo step name for the drop
 			bool pasteActive = false;
-			IntVector3 pasteAnchor; // where the clipboard's min lands (follows cursor)
+			IntVector3 pasteAnchor; // where the buffer's min lands (follows cursor)
+			// An imported model can also be dropped so that its own pivot meets the
+			// document's, which is what aligns a part to the model it belongs to.
+			bool pasteHasAlignedAnchor = false;
+			IntVector3 pasteAlignedAnchor;
 			void CopySelection();
 			bool CutSelection(); // returns false if it would empty the document
 			void StartPaste();
+			// Starts placing `voxels`; `label` names the resulting undo step.
+			void StartPlacement(std::vector<ClipVoxel> voxels, const std::string& label);
 			void CommitPaste();
-			void PasteClipboard(const IntVector3& anchor);
+			void PlaceBuffer(const IntVector3& anchor);
 			void DrawPastePreview();
+			// Loads `path` and starts placing its voxels in the current document.
+			void ImportModel(const std::string& path);
+			/** Asks for a model with the shared file browser, then imports it. */
+			void OpenImportDialog();
 
 			// --- Colour picker (managed by ColorPicker component) ----------------
 			uint32_t currentColor = 0xC8C8C8; // packed 0x00BBGGRR
