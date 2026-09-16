@@ -81,8 +81,8 @@ namespace spades {
 			                ui::UIElement* modalOwner, float contentsLeft, float contentsWidth,
 			                float headerPos, float headerHeight, float listPos, float footerPos);
 
-			/** Navigate to / open the absolute path typed in the field (on Enter). */
-			void SubmitPath();
+			/** React to Enter: open the selected model, or the typed path. */
+			void SubmitDefault();
 
 			/** Rebuild the listing; call when the tab becomes visible. */
 			void Refresh();
