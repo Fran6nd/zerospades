@@ -342,6 +342,8 @@ namespace spades {
 			// Camera
 			Vector3 Forward() const;
 			Vector3 CameraEye() const;
+			// Far-plane / fog distance, scaled so zooming out never clips the scene.
+			float ViewDistance() const;
 			// Move the orbit target with cg_keyMove*, cg_keyJump (up) and
 			// cg_keyCrouch (down); faster while cg_keySprint is held.
 			void UpdateMovement(float dt);

@@ -83,6 +83,11 @@ namespace spades {
 			// Camera speed factor while the sprint key (cg_keySprint) is held.
 			constexpr float kSprintMultiplier = 3.0F;
 
+			// The far plane (and the fog that fades into it) has to sit beyond the
+			// camera, or zooming out puts the whole model behind it.
+			constexpr float kViewDistanceFactor = 4.0F;
+			constexpr float kMinViewDistance = 1000.0F;
+
 			// Option id of the brush swatch, which mirrors the editor's current
 			// colour rather than holding a value of its own.
 			const char* const kBrushColorOption = "color";
@@ -556,6 +561,12 @@ namespace spades {
 
 		Vector3 KV6EditorView::CameraEye() const { return orbitTarget - Forward() * orbitDist; }
 
+		float KV6EditorView::ViewDistance() const {
+			// Far enough to keep the model visible at any zoom, and never nearer than
+			// the fixed distance the editor used before.
+			return std::max(kMinViewDistance, orbitDist * kViewDistanceFactor);
+		}
+
 		void KV6EditorView::UpdateMovement(float dt) {
 			Vector3 fwd = Forward();
 			Vector3 up = MakeVector3(0.0F, 0.0F, -1.0F);
@@ -630,7 +641,7 @@ namespace spades {
 			sceneDef.fovY = 60.0F * M_PI_F / 180.0F;
 			sceneDef.fovX = 2.0F * atanf(tanf(sceneDef.fovY * 0.5F) * (vpW / vpH));
 			sceneDef.zNear = 0.1F;
-			sceneDef.zFar = 1000.0F;
+			sceneDef.zFar = ViewDistance();
 			sceneDef.viewportLeft = int(vpX);
 			sceneDef.viewportTop = int(vpY);
 			sceneDef.viewportWidth = int(vpW);
@@ -2371,7 +2382,9 @@ void KV6EditorView::StartPaste() {
 				statusTimer -= dt;
 
 			renderer->SetFogColor(MakeVector3(0.10F, 0.10F, 0.12F));
-			renderer->SetFogDistance(1000.0F);
+			// Matches the far plane: fog that ended closer would swallow the model
+			// at the far end of the zoom range.
+			renderer->SetFogDistance(ViewDistance());
 
 			// The scene is rendered full-screen (sub-viewport rendering isn't
 			// guaranteed across renderers — keep this renderer-agnostic), and the
