@@ -32,14 +32,16 @@ namespace spades {
 	namespace gui {
 		namespace fs = LocalFileSystem;
 
-		namespace {
-			// Model files the explorer lists (.kv6 is editable; .2kv6/.vxl are
-			// shown but not yet supported).
-			bool IsModelFile(const std::string& s) {
-				return fs::HasExtension(s, ".kv6") || fs::HasExtension(s, ".2kv6") ||
-				       fs::HasExtension(s, ".vxl");
-			}
+		bool KV6IsEditable(const std::string& name) { return fs::HasExtension(name, ".kv6"); }
 
+		// Model files the explorer lists (.kv6 is editable; .2kv6/.vxl are shown
+		// but not yet supported).
+		bool KV6IsModelFile(const std::string& name) {
+			return fs::HasExtension(name, ".kv6") || fs::HasExtension(name, ".2kv6") ||
+			       fs::HasExtension(name, ".vxl");
+		}
+
+		namespace {
 			std::string ToLower(const std::string& s) {
 				std::string out = s;
 				for (char& c : out)
@@ -83,7 +85,7 @@ namespace spades {
 		}
 
 		std::vector<std::string> KV6ScreenHelper::GetFiles(const std::string& absDir) {
-			return ListNames(absDir, false, IsModelFile);
+			return ListNames(absDir, false, KV6IsModelFile);
 		}
 
 		bool KV6ScreenHelper::Exists(const std::string& absPath) { return fs::Exists(absPath); }
