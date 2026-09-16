@@ -400,6 +400,7 @@ namespace spades {
 			std::vector<EditorMenuItem> items;
 			items.push_back(EditorMenuItem{"Save", [this] { Save(); }, !filePath.empty()});
 			items.push_back(EditorMenuItem{"Save As...", [this] { OpenSaveAsDialog(); }, true});
+			items.push_back(EditorMenuItem{"Import Model...", [this] { OpenImportDialog(); }, true});
 			items.push_back(EditorMenuItem{"Exit to Menu", [this] { wantsClose = true; }, true});
 			return items;
 		}
@@ -428,12 +429,39 @@ namespace spades {
 			overlay->Show(dialog.GetPointerOrNull());
 		}
 
+		void KV6EditorView::OpenImportDialog() {
+			FileBrowserOptions options;
+			options.purpose = FileBrowserPurpose::Open;
+			options.target = FileBrowserTarget::Files;
+			options.homeDir = io->DefaultDir();
+			options.initialDir =
+			  filePath.empty() ? io->DefaultDir() : LocalFileSystem::ParentDir(filePath);
+			options.filters.push_back(FileFilter{"KV6 models", {GetDocumentExtension()}});
+
+			UIOverlayHost* overlay = ui->GetOverlay();
+			Handle<FileBrowserDialog> dialog = Handle<FileBrowserDialog>::New(
+			  &overlay->GetUIManager().GetRootElement(), "Import Model", std::move(options));
+			dialog->closed = [this](const FileBrowserResult& result) {
+				if (result.accepted && !result.paths.empty())
+					ImportModel(result.paths.front());
+			};
+			ReleaseHeldInput();
+			overlay->Show(dialog.GetPointerOrNull());
+		}
+
 		void KV6EditorView::SaveDocument(const std::string& path) {
 			filePath = path;
 			Save();
 		}
 
 		bool KV6EditorView::OnMenuEscape() {
+			// Escape belongs to whatever is in progress; the menu only gets it when
+			// nothing is. (The menu asks before opening, so this runs first.)
+			if (pasteActive) {
+				pasteActive = false;
+				SetStatus(pasteLabel + " cancelled");
+				return true;
+			}
 			if (EditorTool* t = ActiveTool())
 				return t->OnEscape(*this);
 			return false;
@@ -976,18 +1004,79 @@ namespace spades {
 				SetStatus("Clipboard is empty");
 				return;
 			}
-			pasteActive = true;
-			pasteAnchor = MakeIntVector3(model->GetWidth() / 2, model->GetHeight() / 2,
-			                             model->GetDepth() / 2);
-			SetStatus("Paste: click to place, [Esc] to cancel");
+			StartPlacement(clipboard, "Paste");
 		}
 
-		void KV6EditorView::PasteClipboard(const IntVector3& anchor) {
-			if (clipboard.empty())
+		void KV6EditorView::StartPlacement(std::vector<ClipVoxel> voxels, const std::string& label) {
+			if (voxels.empty())
+				return;
+			pasteBuffer = std::move(voxels);
+			pasteLabel = label;
+			pasteActive = true;
+			pasteHasAlignedAnchor = false;
+			pasteAnchor = MakeIntVector3(model->GetWidth() / 2, model->GetHeight() / 2,
+			                             model->GetDepth() / 2);
+			SetStatus(label + ": click to place, [Esc] to cancel");
+		}
+
+		void KV6EditorView::ImportModel(const std::string& path) {
+			Handle<VoxelModel> imported(io->Load(path), false); // adopt (Load returns a ref)
+			if (!imported) {
+				SetStatus("Could not load " + path);
+				return;
+			}
+
+			// Collect the solid voxels relative to their own min corner. Interior
+			// voxels keep the sentinel colour the loader fills them with, exactly as
+			// in a document opened from disk; the writer drops them again on save.
+			int minX = imported->GetWidth(), minY = imported->GetHeight(),
+			    minZ = imported->GetDepth();
+			int maxX = -1, maxY = -1, maxZ = -1;
+			for (int x = 0; x < imported->GetWidth(); x++)
+			for (int y = 0; y < imported->GetHeight(); y++)
+			for (int z = 0; z < imported->GetDepth(); z++) {
+				if (!imported->IsSolid(x, y, z))
+					continue;
+				minX = std::min(minX, x); maxX = std::max(maxX, x);
+				minY = std::min(minY, y); maxY = std::max(maxY, y);
+				minZ = std::min(minZ, z); maxZ = std::max(maxZ, z);
+			}
+			if (maxX < 0) {
+				SetStatus("That model is empty");
+				return;
+			}
+
+			std::vector<ClipVoxel> voxels;
+			for (int x = minX; x <= maxX; x++)
+			for (int y = minY; y <= maxY; y++)
+			for (int z = minZ; z <= maxZ; z++) {
+				if (imported->IsSolid(x, y, z))
+					voxels.push_back({MakeIntVector3(x - minX, y - minY, z - minZ),
+					                  imported->GetColor(x, y, z) & 0xFFFFFF});
+			}
+
+			size_t count = voxels.size();
+			StartPlacement(std::move(voxels), "Import");
+
+			// Dropping the buffer so the imported pivot meets this document's pivot
+			// puts a part (a hand, a barrel) exactly where it belongs.
+			Vector3 importedPivot = imported->GetOrigin() * -1.0F;
+			Vector3 aligned =
+			  MakeVector3(float(minX), float(minY), float(minZ)) + GetPivot() - importedPivot;
+			pasteAlignedAnchor = MakeIntVector3(int(std::floor(aligned.x + 0.5F)),
+			                                    int(std::floor(aligned.y + 0.5F)),
+			                                    int(std::floor(aligned.z + 0.5F)));
+			pasteHasAlignedAnchor = true;
+			SetStatus("Import " + std::to_string(count) +
+			          " voxels: click to place, [Enter] at the pivot, [Esc] to cancel");
+		}
+
+		void KV6EditorView::PlaceBuffer(const IntVector3& anchor) {
+			if (pasteBuffer.empty())
 				return;
 			int loX = 0, loY = 0, loZ = 0;
 			int hiX = model->GetWidth(), hiY = model->GetHeight(), hiZ = model->GetDepth();
-			for (const ClipVoxel& v : clipboard) {
+			for (const ClipVoxel& v : pasteBuffer) {
 				int x = anchor.x + v.rel.x, y = anchor.y + v.rel.y, z = anchor.z + v.rel.z;
 				loX = std::min(loX, x); hiX = std::max(hiX, x + 1);
 				loY = std::min(loY, y); hiY = std::max(hiY, y + 1);
@@ -999,31 +1088,31 @@ namespace spades {
 				return;
 			}
 			int ox = -loX, oy = -loY, oz = -loZ;
-			undo.Begin("Paste");
+			undo.Begin(pasteLabel);
 			if (ox != 0 || oy != 0 || oz != 0 || nw != model->GetWidth() ||
 			    nh != model->GetHeight() || nd != model->GetDepth())
 				RebuildVolume(nw, nh, nd, ox, oy, oz);
 			selection.clear();
-			for (const ClipVoxel& v : clipboard) {
+			for (const ClipVoxel& v : pasteBuffer) {
 				int x = anchor.x + v.rel.x + ox, y = anchor.y + v.rel.y + oy,
 				    z = anchor.z + v.rel.z + oz;
 				if (!InBounds(x, y, z))
 					continue;
 				WriteVoxel(x, y, z, true, v.color);
-				AddSelect(x, y, z); // select the pasted voxels
+				AddSelect(x, y, z); // select the placed voxels
 			}
 			undo.End();
 			RebuildRenderModel();
-			SetStatus("Pasted " + std::to_string(clipboard.size()) + " voxels");
+			SetStatus(pasteLabel + ": placed " + std::to_string(pasteBuffer.size()) + " voxels");
 		}
 
 		void KV6EditorView::CommitPaste() {
-			PasteClipboard(pasteAnchor);
+			PlaceBuffer(pasteAnchor);
 			pasteActive = false;
 		}
 
 		void KV6EditorView::DrawPastePreview() {
-			for (const ClipVoxel& v : clipboard) {
+			for (const ClipVoxel& v : pasteBuffer) {
 				DrawCellOutline(pasteAnchor.x + v.rel.x, pasteAnchor.y + v.rel.y,
 				                pasteAnchor.z + v.rel.z, ColorToVec(v.color));
 			}
@@ -1843,9 +1932,14 @@ namespace spades {
 			// While pasting, the mouse positions/places the clipboard; other keys
 			// (camera) fall through.
 			if (pasteActive && down) {
-				if (key == "Escape") { pasteActive = false; SetStatus("Paste cancelled"); return; }
+				// Escape is handled in OnMenuEscape, which the menu consults first.
 				if (key == "RightMouseButton") { pasteActive = false; return; }
 				if (key == "LeftMouseButton") { CommitPaste(); return; }
+				if (key == "Enter" && pasteHasAlignedAnchor) {
+					PlaceBuffer(pasteAlignedAnchor);
+					pasteActive = false;
+					return;
+				}
 			}
 
 			if (down && ctrlHeld && IsCtrlShortcut(key)) {
