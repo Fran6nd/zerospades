@@ -1739,10 +1739,12 @@ void KV6EditorView::StartPaste() {
 		float KV6EditorView::BarsH() { return kBarsH; }
 
 		void KV6EditorView::DrawHelpers() {
-			// Opaque: debug lines are blended with the source alpha, so 1.0 covers
-			// what is behind them.
-			Vector4 grid = MakeVector4(0.55F, 0.58F, 0.64F, 1.0F);
-			Vector4 gridMajor = MakeVector4(0.82F, 0.86F, 0.94F, 1.0F);
+			// Opaque (alpha 1.0, so the lines cover what is behind them) but kept
+			// close to the background tone: the floor should be legible without
+			// competing with the model. Contrast comes from the minor/major
+			// difference rather than from brightness.
+			Vector4 grid = MakeVector4(0.19F, 0.20F, 0.23F, 1.0F);
+			Vector4 gridMajor = MakeVector4(0.30F, 0.32F, 0.37F, 1.0F);
 			Vector4 box = MakeVector4(0.4F, 0.7F, 1.0F, 0.5F);
 
 			// A fixed grid in world space: it does not follow the model, the volume
