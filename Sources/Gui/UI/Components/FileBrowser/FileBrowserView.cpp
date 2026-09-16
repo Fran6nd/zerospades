@@ -287,20 +287,22 @@ namespace spades {
 		}
 
 		void FileBrowserView::Refresh() {
-			std::string previous = dir;
-			std::vector<std::string> selected = GetSelectedNames();
-
-			// Fall back to the nearest folder that still exists, then to home.
+			// Fall back to the nearest folder that still exists, then to home. A
+			// relative path is its own parent, so stop as soon as it stops shrinking.
 			std::string target = dir;
-			while (!target.empty() && !fs::IsFolder(target) && !fs::IsRoot(target))
-				target = fs::ParentDir(target);
-			if (target.empty() || !fs::IsFolder(target)) {
-				target = options.homeDir;
-				if (target.empty() || !fs::IsFolder(target)) {
-					std::vector<std::string> roots = fs::GetRoots();
-					target = roots.empty() ? std::string("/") : roots.front();
-				}
+			while (!target.empty() && !fs::IsFolder(target)) {
+				std::string parent = fs::ParentDir(target);
+				if (parent == target)
+					break;
+				target = parent;
 			}
+			if (target.empty() || !fs::IsFolder(target))
+				target = HomeDirectory();
+			LoadDirectory(target);
+		}
+
+		bool FileBrowserView::LoadDirectory(const std::string& target) {
+			std::vector<std::string> selected = GetSelectedNames();
 
 			std::string error;
 			Handle<FileBrowserModel> built =
@@ -308,8 +310,10 @@ namespace spades {
 			                          options.showHidden, options.multiSelect,
 			                          options.describeEntry, &error);
 			if (!built) {
+				// Keep showing the folder that does work: the path bar, the listing
+				// and `dir` must never disagree, or actions would act on a wrong path.
 				SetError(_Tr("FileBrowser", "Could not open this folder: {0}", error));
-				return;
+				return false;
 			}
 
 			built->selectionChanged = [this] { OnSelectionChanged(); };
@@ -318,12 +322,14 @@ namespace spades {
 			list->SetModel(model.GetPointerOrNull());
 			list->ScrollToTop();
 
+			bool sameFolder = target == listedDir;
 			dir = target;
+			listedDir = target;
 			pathField->SetText(dir);
 			SetError("");
 
-			// Keep the selection across a refresh of the same folder.
-			if (dir == previous) {
+			// Keep the selection across a re-listing of the same folder.
+			if (sameFolder) {
 				for (size_t i = 0; i < selected.size(); i++) {
 					int row = model->FindRow(selected[i]);
 					if (row >= 0)
@@ -332,8 +338,19 @@ namespace spades {
 			}
 
 			UpdateButtons();
-			if (dir != previous && directoryChanged)
-				directoryChanged(dir);
+			if (dir != notifiedDir) {
+				notifiedDir = dir;
+				if (directoryChanged)
+					directoryChanged(dir);
+			}
+			return true;
+		}
+
+		std::string FileBrowserView::HomeDirectory() const {
+			if (!options.homeDir.empty() && fs::IsFolder(options.homeDir))
+				return options.homeDir;
+			std::vector<std::string> roots = fs::GetRoots();
+			return roots.empty() ? std::string("/") : roots.front();
 		}
 
 		void FileBrowserView::Navigate(const std::string& path) {
@@ -344,8 +361,7 @@ namespace spades {
 				SetError(_Tr("FileBrowser", "No such folder."));
 				return;
 			}
-			dir = target;
-			Refresh();
+			LoadDirectory(target);
 		}
 
 		std::vector<std::string> FileBrowserView::GetSelectedNames() const {
@@ -398,12 +414,7 @@ namespace spades {
 				return;
 			}
 			if (!entry.accepted) {
-				if (entryRejected) {
-					entryRejected(entry);
-				} else {
-					SetError(entry.hint.empty() ? _Tr("FileBrowser", "This item cannot be used.")
-					                            : entry.hint);
-				}
+				RejectEntry(entry);
 				return;
 			}
 			if (nameField)
@@ -412,14 +423,16 @@ namespace spades {
 				Confirm();
 		}
 
-		void FileBrowserView::OnHome() {
-			std::string home = options.homeDir;
-			if (home.empty() || !fs::IsFolder(home)) {
-				std::vector<std::string> roots = fs::GetRoots();
-				home = roots.empty() ? std::string("/") : roots.front();
+		void FileBrowserView::RejectEntry(const FileBrowserEntry& entry) {
+			if (entryRejected) {
+				entryRejected(entry);
+				return;
 			}
-			Navigate(home);
+			SetError(entry.hint.empty() ? _Tr("FileBrowser", "This item cannot be used.")
+			                            : entry.hint);
 		}
+
+		void FileBrowserView::OnHome() { Navigate(HomeDirectory()); }
 
 		void FileBrowserView::OnUp() {
 			if (!fs::IsRoot(dir))
@@ -544,8 +557,7 @@ namespace spades {
 					return false;
 				}
 				if (!entry.accepted) {
-					SetError(entry.hint.empty() ? _Tr("FileBrowser", "This item cannot be used.")
-					                            : entry.hint);
+					RejectEntry(entry);
 					return false;
 				}
 				paths.push_back(Child(entry.name));
@@ -663,6 +675,9 @@ namespace spades {
 			std::string typed = fs::StripTrailingSeparators(Trim(pathField->GetText()));
 			if (typed.empty())
 				return;
+			// A bare name means an entry of the folder on screen.
+			if (fs::GetFileName(typed) == typed)
+				typed = Child(typed);
 			if (fs::IsFolder(typed)) {
 				Navigate(typed);
 				return;
@@ -675,11 +690,18 @@ namespace spades {
 					SetError(_Tr("FileBrowser", "No such folder."));
 					return;
 				}
-				Navigate(parent);
+				if (!LoadDirectory(parent))
+					return;
 			}
 
 			if (options.purpose == FileBrowserPurpose::Open) {
 				if (!fs::Exists(typed)) {
+					// The owner may want to accept a path that does not exist yet
+					// (creating a document, for instance).
+					if (unknownPathSubmitted) {
+						unknownPathSubmitted(typed);
+						return;
+					}
 					SetError(_Tr("FileBrowser", "No such file or folder."));
 					return;
 				}
@@ -696,6 +718,8 @@ namespace spades {
 			}
 		}
 
+		void FileBrowserView::SubmitDefault() { HotKey("Enter"); }
+
 		void FileBrowserView::HotKey(const std::string& key) {
 			if (!IsEnabled()) {
 				UIElement::HotKey(key);
@@ -703,11 +727,15 @@ namespace spades {
 			}
 			if (key == "Enter") {
 				UIElement* focus = GetManager().GetActiveElement();
-				if (focus == pathField)
-					SubmitPath();
-				else if (nameField && focus == nameField)
+				bool hasSelection = model && !model->GetSelectedRows().empty();
+				// An untouched path bar (it shows the current folder) says nothing
+				// about intent, so a selection wins over re-listing that folder.
+				bool pathEdited = fs::StripTrailingSeparators(Trim(pathField->GetText())) != dir;
+				if (nameField && focus == nameField)
 					Confirm();
-				else if (model && !model->GetSelectedRows().empty())
+				else if (focus == pathField && pathEdited)
+					SubmitPath();
+				else if (hasSelection)
 					Confirm();
 				else
 					SubmitPath();

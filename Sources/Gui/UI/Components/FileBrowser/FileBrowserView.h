@@ -117,10 +117,16 @@ namespace spades {
 			/** The browser moved to another folder. */
 			std::function<void(const std::string& directory)> directoryChanged;
 			/**
-			 * A row the caller marked as not accepted was double-clicked. Without a
-			 * handler the browser shows the entry's hint as an inline message.
+			 * A row the caller marked as not accepted was chosen. Without a handler
+			 * the browser shows the entry's hint as an inline message.
 			 */
 			std::function<void(const FileBrowserEntry& entry)> entryRejected;
+			/**
+			 * A path typed in the path bar that does not exist. Set this to accept
+			 * such a path anyway (creating a document, for instance); without it the
+			 * browser reports that there is no such file.
+			 */
+			std::function<void(const std::string& path)> unknownPathSubmitted;
 
 			const std::string& GetDirectory() const { return dir; }
 			/** Names of the currently selected entries (may be empty). */
@@ -128,6 +134,9 @@ namespace spades {
 
 			/** Re-reads the current folder, keeping the selection where possible. */
 			void Refresh();
+			/** Reacts to Enter as if the browser had keyboard focus (for an embedded
+			 *  browser whose host screen sees the key first). */
+			void SubmitDefault();
 			/** Moves to `path` if it is a folder; otherwise shows a message. */
 			void Navigate(const std::string& path);
 			/** Acts on the path bar: enter a folder, or accept a typed file name. */
@@ -160,6 +169,8 @@ namespace spades {
 			Handle<FileBrowserModel> model;
 
 			std::string dir;
+			std::string listedDir;   // folder the current listing came from
+			std::string notifiedDir; // folder last reported through directoryChanged
 			size_t filterIndex = 0;
 			std::string pendingSavePath; // awaiting the overwrite confirmation
 
@@ -167,10 +178,16 @@ namespace spades {
 			std::string DefaultConfirmCaption() const;
 			std::string Child(const std::string& name) const;
 
+			/** Lists `target`; on success it becomes the current folder. */
+			bool LoadDirectory(const std::string& target);
 			void BuildWidgets();
 			void LayoutWidgets();
 			void UpdateButtons();
 			void SetError(const std::string& message);
+			/** The folder the Home button leads to (falls back to a root). */
+			std::string HomeDirectory() const;
+			/** Reports an entry the owner refuses, through `entryRejected` or inline. */
+			void RejectEntry(const FileBrowserEntry& entry);
 			/** Shows `message` in a modal alert (used for failures that need to be
 			 *  acknowledged, e.g. a delete that the OS refused). */
 			void ShowAlert(const std::string& message);
