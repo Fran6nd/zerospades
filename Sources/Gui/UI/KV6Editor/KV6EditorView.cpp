@@ -83,6 +83,12 @@ namespace spades {
 			// Camera speed factor while the sprint key (cg_keySprint) is held.
 			constexpr float kSprintMultiplier = 3.0F;
 
+			// How long a descend key that doubles as a chord modifier (Ctrl, the
+			// default cg_keyCrouch) must be held alone before it moves the camera.
+			// Long enough that even an unhurried Ctrl+Z never nudges the view, while
+			// a deliberate hold still starts descending without feeling stuck.
+			constexpr float kDescendGracePeriod = 0.4F;
+
 			// The editor's ground grid. It never moves: a KV6 column is a 64-bit
 			// mask, so no model can be deeper than 64 voxels, and a plane at that
 			// depth therefore always sits below whatever is being edited (voxel z
@@ -585,6 +591,7 @@ namespace spades {
 			Vector3 right = MakeVector3(-sinf(yaw), cosf(yaw), 0.0F);
 
 			float step = float(cubeSize) * 0.7F * (keySprint ? kSprintMultiplier : 1.0F) * dt;
+			bool descending = keyDown && DescendKeyIsActive();
 			auto displacement = [&](bool withDescend) {
 				Vector3 move = MakeVector3(0, 0, 0);
 				if (keyFwd) move += fwd;
@@ -592,7 +599,7 @@ namespace spades {
 				if (keyRight) move += right;
 				if (keyLeft) move -= right;
 				if (keyUp) move += up;
-				if (withDescend && keyDown) move -= up;
+				if (withDescend && descending) move -= up;
 				if (move.x == 0.0F && move.y == 0.0F && move.z == 0.0F)
 					return MakeVector3(0, 0, 0);
 				return move.Normalize() * step;
@@ -604,8 +611,18 @@ namespace spades {
 
 			// While Ctrl is both the descend key and held, remember how far the
 			// descend part alone moved us, so a Ctrl shortcut can take it back.
-			if (keyDown && ctrlHeld && KV6CheckKey(cg_keyCrouch, "Control"))
+			if (descending && ctrlHeld && KV6CheckKey(cg_keyCrouch, "Control"))
 				ctrlDescent += delta - displacement(false);
+		}
+
+		bool KV6EditorView::DescendKeyIsActive() const {
+			// A descend key that cannot start a shortcut moves the camera at once.
+			if (!KV6CheckKey(cg_keyCrouch, "Control"))
+				return true;
+			// Ctrl also opens Ctrl+S/C/X/V/Z/Y, so wait out the moment in which the
+			// letter of a chord would arrive: the view then never moves for a
+			// shortcut, and a deliberate hold still descends.
+			return globalTime - descendPressTime >= kDescendGracePeriod;
 		}
 
 		void KV6EditorView::PanView(float dx, float dy) {
@@ -2344,6 +2361,8 @@ void KV6EditorView::StartPaste() {
 			if (KV6CheckKey(jp, key)) { keyUp = down; return; }
 			if (KV6CheckKey(cr, key)) {
 				keyDown = down;
+				if (down)
+					descendPressTime = globalTime; // starts the grace period
 				ctrlDescent = MakeVector3(0, 0, 0); // a new press, or a finished one
 				return;
 			}
