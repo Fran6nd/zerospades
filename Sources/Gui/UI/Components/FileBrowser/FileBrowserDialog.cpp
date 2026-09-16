@@ -89,11 +89,17 @@ namespace spades {
 		}
 
 		void FileBrowserDialog::Run() {
-			owner->enable = false;
-			// The dialog sits next to its owner, or inside it when the owner is a
-			// root element with no parent of its own.
-			UIElement* parent = owner->GetParent();
-			(parent ? parent : owner)->AddChild(this);
+			// The dialog sits next to its owner, which it disables while it is up.
+			// An owner with no parent (a manager's root element) instead hosts the
+			// dialog directly, and must stay enabled: a disabled root swallows the
+			// mouse, leaving the dialog unclickable.
+			if (UIElement* parent = owner->GetParent()) {
+				owner->enable = false;
+				disabledOwner = true;
+				parent->AddChild(this);
+			} else {
+				owner->AddChild(this);
+			}
 		}
 
 		void FileBrowserDialog::Close(const FileBrowserResult& result) {
@@ -104,7 +110,10 @@ namespace spades {
 			// the `closed` handler runs.
 			Handle<FileBrowserDialog> keepAlive(this);
 			FileBrowserResult copy = result;
-			owner->enable = true;
+			if (disabledOwner) {
+				owner->enable = true;
+				disabledOwner = false;
+			}
 			if (GetParent())
 				GetParent()->RemoveChild(this);
 			if (closed)

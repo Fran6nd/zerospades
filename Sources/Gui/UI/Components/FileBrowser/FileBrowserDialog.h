@@ -51,7 +51,8 @@ namespace spades {
 		private:
 			ui::UIElement* owner;      // weak
 			FileBrowserView* browser;  // weak; owned as a child
-			bool closing = false;      // guards a second Close (e.g. Esc while saving)
+			bool closing = false;       // guards a second Close (e.g. Esc while saving)
+			bool disabledOwner = false; // whether Run() disabled the owner
 		};
 	} // namespace gui
 } // namespace spades
