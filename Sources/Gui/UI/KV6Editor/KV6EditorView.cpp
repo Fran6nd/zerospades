@@ -83,6 +83,11 @@ namespace spades {
 			// Camera speed factor while the sprint key (cg_keySprint) is held.
 			constexpr float kSprintMultiplier = 3.0F;
 
+			// Option id of the brush swatch, which mirrors the editor's current
+			// colour rather than holding a value of its own.
+			const char* const kBrushColorOption = "color";
+
+
 			// Top UI bands (full width): a title ribbon above the toolbar. The 3D
 			// viewport is inset below them by kBarsH.
 			const float kRibbonH = 24.0F;
@@ -277,19 +282,25 @@ namespace spades {
 				const ToolOption& opt = opts->At(idx);
 				if (opt.type != ToolOption::Type::Color) return;
 				colorOptionIdx = idx;
-				ui->GetColorPicker()->SetColor(opt.color);
+				// The brush swatch edits the shared colour; any other swatch (a
+				// future second colour) edits its own value.
+				ui->GetColorPicker()->SetColor(opt.id == kBrushColorOption ? currentColor
+				                                                          : opt.color);
 				ui->GetColorPicker()->Open();
 			};
 
 			// Wire up color picker callbacks
 			ui->GetColorPicker()->OnColorChanged = [this](uint32_t c) {
+				// A swatch of its own keeps the value; the brush swatch (and the
+				// picker opened on nothing in particular) sets the shared colour.
 				if (colorOptionIdx >= 0) {
 					EditorTool* tool = ActiveTool();
-					if (tool) {
-						ToolOptions* opts = tool->Options();
-						if (opts && colorOptionIdx < opts->Count()) {
-							opts->At(colorOptionIdx).color = c;
-						}
+					ToolOptions* opts = tool ? tool->Options() : nullptr;
+					if (opts && colorOptionIdx < opts->Count()) {
+						ToolOption& opt = opts->At(colorOptionIdx);
+						opt.color = c;
+						if (opt.id != kBrushColorOption)
+							return;
 					}
 				}
 				currentColor = c;
@@ -2051,6 +2062,13 @@ void KV6EditorView::StartPaste() {
 			std::vector<OptionBar::Option> options;
 			ToolOptions* opts = t->Options();
 			if (opts) {
+				// The brush swatch is a view of the editor's single current colour,
+				// not a per-tool value: the picker, the eyedropper and every tool's
+				// swatch must always agree.
+				for (int i = 0; i < opts->Count(); i++) {
+					if (opts->At(i).id == kBrushColorOption)
+						opts->At(i).color = currentColor;
+				}
 				for (int i = 0; i < opts->Count(); i++) {
 					const ToolOption& op = opts->At(i);
 					OptionBar::Option opt;
