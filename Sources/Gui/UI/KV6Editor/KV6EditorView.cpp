@@ -40,7 +40,10 @@
 #include <Client/ScreenShot.h>
 #include <Core/Debug.h>
 #include <Core/Settings.h>
+#include <Core/LocalFileSystem.h>
 #include <Core/VoxelModel.h>
+#include <Gui/UI/Components/FileBrowser/FileBrowserDialog.h>
+#include <Gui/UI/Components/UIOverlayHost.h>
 
 SPADES_SETTING(cg_keyMoveForward);
 SPADES_SETTING(cg_keyMoveBackward);
@@ -391,6 +394,38 @@ namespace spades {
 			} else {
 				SetStatus("Save failed");
 			}
+		}
+
+		std::vector<EditorMenuItem> KV6EditorView::GetMenuItems() {
+			std::vector<EditorMenuItem> items;
+			items.push_back(EditorMenuItem{"Save", [this] { Save(); }, !filePath.empty()});
+			items.push_back(EditorMenuItem{"Save As...", [this] { OpenSaveAsDialog(); }, true});
+			items.push_back(EditorMenuItem{"Exit to Menu", [this] { wantsClose = true; }, true});
+			return items;
+		}
+
+		void KV6EditorView::OpenSaveAsDialog() {
+			FileBrowserOptions options;
+			options.purpose = FileBrowserPurpose::Save;
+			options.target = FileBrowserTarget::Files;
+			options.homeDir = io->DefaultDir();
+			options.initialDir =
+			  filePath.empty() ? io->DefaultDir() : LocalFileSystem::ParentDir(filePath);
+			options.initialName =
+			  filePath.empty() ? "untitled.kv6" : LocalFileSystem::GetFileName(filePath);
+			options.filters.push_back(
+			  FileFilter{"KV6 models", {GetDocumentExtension()}});
+
+			UIOverlayHost* overlay = ui->GetOverlay();
+			Handle<FileBrowserDialog> dialog = Handle<FileBrowserDialog>::New(
+			  &overlay->GetUIManager().GetRootElement(), "Save As", std::move(options));
+			dialog->closed = [this](const FileBrowserResult& result) {
+				if (result.accepted && !result.paths.empty())
+					SaveDocument(result.paths.front());
+			};
+			// A dialog takes over input: nothing should stay held while it is up.
+			ReleaseHeldInput();
+			overlay->Show(dialog.GetPointerOrNull());
 		}
 
 		void KV6EditorView::SaveDocument(const std::string& path) {
@@ -1757,6 +1792,10 @@ namespace spades {
 			softwareCursor->Accumulate(dx, dy);
 			const Vector2& cursor = softwareCursor->GetPosition();
 
+			// While a dialog is up the cursor drives its widgets, not the editor.
+			if (ui->GetOverlay()->IsActive())
+				return;
+
 			// Forward mouse motion to color picker if it's open
 			if (ui && ui->GetColorPicker()->IsOpen()) {
 				ui->GetColorPicker()->MouseMove(cursor);
@@ -1773,6 +1812,8 @@ namespace spades {
 		}
 
 		void KV6EditorView::WheelEvent(float x, float y) {
+			if (ui->GetOverlay()->WheelEvent(x, y))
+				return;
 			if (ui->GetEditorMenu()->IsActive())
 				return;
 			orbitDist = Clampf(orbitDist * (1.0F + y * 0.1F), 2.0F, 1000.0F);
@@ -1787,6 +1828,10 @@ namespace spades {
 			if (key == "Alt") altHeld = down;
 			if (key == "Shift") shiftHeld = down;
 			if (KV6CheckKey(cg_keySprint, key)) keySprint = down;
+
+			// A modal dialog (file browser) owns every key while it is up.
+			if (ui->GetOverlay()->KeyEvent(key, down))
+				return;
 
 			if (ui->GetEditorMenu()->KeyEvent(key, down)) {
 				// Releases are swallowed too while the menu is up: drop held
@@ -1949,9 +1994,27 @@ namespace spades {
 			}
 		}
 
-		void KV6EditorView::TextInputEvent(const std::string& text) { ui->GetEditorMenu()->TextInputEvent(text); }
-		bool KV6EditorView::AcceptsTextInput() { return ui->GetEditorMenu()->AcceptsTextInput(); }
-		AABB2 KV6EditorView::GetTextInputRect() { return ui->GetEditorMenu()->GetTextInputRect(); }
+		void KV6EditorView::TextInputEvent(const std::string& text) {
+			if (ui->GetOverlay()->IsActive()) {
+				ui->GetOverlay()->TextInputEvent(text);
+				return;
+			}
+			ui->GetEditorMenu()->TextInputEvent(text);
+		}
+
+		void KV6EditorView::TextEditingEvent(const std::string& text, int start, int len) {
+			ui->GetOverlay()->TextEditingEvent(text, start, len);
+		}
+
+		bool KV6EditorView::AcceptsTextInput() {
+			return ui->GetOverlay()->AcceptsTextInput() || ui->GetEditorMenu()->AcceptsTextInput();
+		}
+
+		AABB2 KV6EditorView::GetTextInputRect() {
+			if (ui->GetOverlay()->IsActive())
+				return ui->GetOverlay()->GetTextInputRect();
+			return ui->GetEditorMenu()->GetTextInputRect();
+		}
 
 		void KV6EditorView::RunFrame(float dt) {
 			SPADES_MARK_FUNCTION();
@@ -1971,7 +2034,7 @@ namespace spades {
 				}
 			}
 
-			if (!ui->GetEditorMenu()->IsActive())
+			if (!ui->GetEditorMenu()->IsActive() && !ui->GetOverlay()->IsActive())
 				UpdateMovement(dt);
 			if (statusTimer > 0.0F)
 				statusTimer -= dt;
@@ -2045,7 +2108,13 @@ namespace spades {
 				tool->DrawOverlay(*this);
 
 			ui->GetEditorMenu()->Draw();
-			softwareCursor->Draw();
+
+			// Dialogs draw their own pointer (with the text-field I-beam), so the
+			// editor's cursor steps aside while one is open.
+			ui->GetOverlay()->RunFrame(dt);
+			ui->GetOverlay()->Draw();
+			if (!ui->GetOverlay()->IsActive())
+				softwareCursor->Draw();
 
 			// The runner is the only thing that presents, so the capture happens here
 			// rather than after the frame: `FrameDone` flushes everything drawn above so

@@ -69,6 +69,7 @@ namespace spades {
 			void WheelEvent(float x, float y) override;
 			void KeyEvent(const std::string&, bool down) override;
 			void TextInputEvent(const std::string&) override;
+			void TextEditingEvent(const std::string&, int start, int len) override;
 			bool AcceptsTextInput() override;
 			AABB2 GetTextInputRect() override;
 			bool NeedsAbsoluteMouseCoordinate() override { return false; }
@@ -360,11 +361,15 @@ namespace spades {
 
 			// --- IEditorMenuHost (overrides) ---
 			std::string GetMenuTitle() override { return "KV6 Editor"; }
-			std::string GetDocumentPath() override { return filePath; }
-			std::string GetDocumentExtension() override { return ".kv6"; }
-			void SaveDocument(const std::string& path) override;
-			void RequestClose() override { wantsClose = true; }
+			std::vector<EditorMenuItem> GetMenuItems() override;
 			bool OnMenuEscape() override;
+
+			// --- Document commands behind the menu items ---
+			std::string GetDocumentPath() const { return filePath; }
+			std::string GetDocumentExtension() const { return ".kv6"; }
+			void SaveDocument(const std::string& path);
+			/** Asks for a path with the shared file browser, then saves to it. */
+			void OpenSaveAsDialog();
 		};
 	} // namespace gui
 } // namespace spades
