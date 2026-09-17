@@ -21,6 +21,7 @@
 #include <cmath>
 #include <utility>
 
+#include "GameMap.h"
 #include "Teamplay.h"
 #include <Core/Debug.h>
 
@@ -114,6 +115,19 @@ namespace spades {
 		}
 
 		bool Teamplay::IsEndlessDuration(float duration) { return std::isinf(duration); }
+
+		bool Teamplay::IsValidPingPosition(const Vector3& v) {
+			// Up is -z, so anything standing on top of the map — a player on a tower
+			// built to the height limit, their eyes above their feet — has a negative z.
+			// The check is only here to keep a NaN or an absurd coordinate out of the
+			// projection maths, so it leaves a map's worth of room above the ceiling
+			// rather than trying to say where a ping may be placed.
+			constexpr float kCeilingMargin = static_cast<float>(GameMap::DefaultDepth);
+			return !v.IsNaN() &&
+				   v.x >= 0.0F && v.x <= static_cast<float>(GameMap::DefaultWidth) &&
+				   v.y >= 0.0F && v.y <= static_cast<float>(GameMap::DefaultHeight) &&
+				   v.z >= -kCeilingMargin && v.z <= static_cast<float>(GameMap::DefaultDepth);
+		}
 
 		uint8_t Teamplay::ResolveSurfaces(uint8_t surfaces) {
 			if (surfaces == 0) // named nothing: the client places it
@@ -223,6 +237,7 @@ namespace spades {
 			Mark& mark = marks[playerId];
 			mark.reason = std::move(reason);
 			mark.surfaces = ResolveSurfaces(surfaces);
+			mark.sentSurfaces = surfaces;
 			mark.color = color;
 			mark.endless = IsEndlessDuration(duration);
 			mark.timeLeft = mark.endless ? 0.0F : duration;
@@ -286,12 +301,6 @@ namespace spades {
 		void Teamplay::ClearTransientState() {
 			pings.clear();
 			marks.clear();
-		}
-
-		void Teamplay::Reset() {
-			ClearTransientState();
-			features = 0;
-			north = DefaultNorth();
 		}
 	} // namespace client
 } // namespace spades

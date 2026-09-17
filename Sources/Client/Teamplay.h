@@ -122,6 +122,11 @@ namespace spades {
 			/** Whether a valid Duration means "until the server removes it". */
 			static bool IsEndlessDuration(float duration);
 
+			/** Whether a ping's Position can be drawn: finite and inside the map volume.
+			 * The server is authoritative on placement, but a NaN or a far out-of-bounds
+			 * position would corrupt the projection maths, so the packet is dropped. */
+			static bool IsValidPingPosition(const Vector3& position);
+
 			struct Ping {
 				/** The player who pinged, or `kServerPlayerId` for a server-origin ping. */
 				int playerId;
@@ -152,6 +157,11 @@ namespace spades {
 				std::string reason;
 				/** Where the packet asked for it, as `Surface` bits. */
 				uint8_t surfaces;
+				/** The Surfaces byte exactly as the server sent it, before this client
+				 * resolved it. A mark outlives the packet that placed it and is sent on
+				 * into a demo, which has to carry what arrived rather than what this
+				 * version made of it. */
+				uint8_t sentSurfaces;
 				/** The colour the server chose for the outline, as 0-255 per channel,
 				 * drawn as sent on every surface the packet named. */
 				IntVector3 color;
@@ -258,10 +268,6 @@ namespace spades {
 			 * change: the Config belongs to the connection, so its bitmask and north
 			 * carry into the new world until the server sends another. */
 			void ClearTransientState();
-
-			/** Clears all state including the Config. Used when the connection itself
-			 * goes away. */
-			void Reset();
 
 			/**
 			 * Makes a reason string safe to draw and to send.
