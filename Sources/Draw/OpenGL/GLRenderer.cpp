@@ -654,10 +654,21 @@ namespace spades {
 
 				device->DepthFunc(IGLDevice::LessOrEqual);
 
-				// Stamp the world's own pixels with the stencil bit that RenderXRayPass
-				// reads: a model is revealed where the world is in front of it, and this
-				// is what marks where the world actually ended up on screen.
-				if (!sceneDef.skipWorld && mapRenderer) {
+				// Keep the stencil bit RenderXRayPass reads equal to "the world is the
+				// nearest surface here": the world sets it where its fragments land, and
+				// every model clears it again where it lands in front. Without the
+				// second half, a model standing against a wall would leave the bit set
+				// under itself, and the x-ray would draw that model's own hidden parts
+				// over its visible body.
+				//
+				// A model in front of a revealed one therefore hides the reveal, the
+				// first-person weapon included: what the x-ray sees through is the
+				// world, not everything. Exempting the weapon would only hold where no
+				// depth prepass runs — with one, the world never reaches the pixels the
+				// weapon covers — so the reveal would come and go with an unrelated
+				// graphics setting.
+				const bool stampWorld = !sceneDef.skipWorld && mapRenderer;
+				if (stampWorld) {
 					device->Enable(IGLDevice::StencilTest, true);
 					device->StencilMask(kStencilBitWorld);
 					device->StencilFunc(IGLDevice::Always, kStencilBitWorld, 0xFF);
@@ -665,14 +676,18 @@ namespace spades {
 
 					mapRenderer->RenderSunlightPass();
 
+					device->StencilFunc(IGLDevice::Always, 0, 0xFF);
+				}
+
+				modelRenderer->RenderSunlightPass(false);
+
+				if (stampWorld) {
 					// Back to the open mask this renderer rests at: with the test off
 					// nothing writes to the stencil buffer anyway, and a mask left
 					// closed would silently swallow the next clear of it.
 					device->Enable(IGLDevice::StencilTest, false);
 					device->StencilMask(0xFF);
 				}
-
-				modelRenderer->RenderSunlightPass(false);
 			}
 
 			if (needsFullDepthPrepass) {
