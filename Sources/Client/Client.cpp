@@ -138,7 +138,6 @@ namespace spades {
 			  spectatorPlayerNames(true),
 			  teamOverlayHeld(false),
 			  teamOverlayAlpha(0.0F),
-			  lastTeamplayPingTime(-100.0F),
 			  pieMenuPingValid(false) {
 			SPADES_MARK_FUNCTION();
 			SPLog("Initializing...");
@@ -1329,13 +1328,7 @@ namespace spades {
 			if (!maybePlayer || !maybePlayer.value().IsAlive())
 				return false;
 
-			// Rate-limited on the client too. The server is expected to rate-limit as
-			// well, but there is no reason to make it drop packets we chose to send.
-			constexpr float kMinPingInterval = 1.0F;
-			if (time - lastTeamplayPingTime < kMinPingInterval)
-				return false;
-
-			lastTeamplayPingTime = time;
+			// No client-side rate limit: throttling is the server's job.
 			activeNet->SendTeamplayPing(position, reason);
 			return true;
 		}

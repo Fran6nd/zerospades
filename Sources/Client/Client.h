@@ -570,8 +570,6 @@ namespace spades {
 			bool teamOverlayHeld;
 			/** Eased `teamOverlayHeld`, so the overlay fades instead of snapping. */
 			float teamOverlayAlpha;
-			/** When the local player last sent a ping, for the client-side rate limit. */
-			float lastTeamplayPingTime;
 
 			/** The team colour the extension mandates for a `TEAM_ESP` highlight: the
 			 * one the server sent in State Data, not the player's block colour. */
@@ -632,9 +630,9 @@ namespace spades {
 			 * when the ray hits nothing usable. */
 			bool ResolveCrosshairWorldPos(Vector3& out);
 
-			/** Sends a ping, honouring the server's feature bits and the client-side
-			 * rate limit. Returns whether it was actually sent, so a caller with
-			 * something else to say can fall back to it. */
+			/** Sends a ping when the server's feature bits allow it and the local player
+			 * is alive. Returns whether it was sent, so a caller with something else to
+			 * say can fall back to it. */
 			bool SendTeamplayPing(const Vector3& position, const std::string& reason);
 
 			/** Sends a neutral ping at whatever the crosshair points at. Bound to a key;
