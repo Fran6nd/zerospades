@@ -584,14 +584,6 @@ namespace spades {
 		// Max chat packet is 255 bytes: type + playerId + chatType + msg → 252 msg bytes.
 		static constexpr size_t kKickReasonMaxBytes = 252;
 
-		/** Whether a world position falls inside the fixed Ace of Spades map volume.
-		 * Used to reject nonsensical coordinates before they reach the renderer. */
-		static bool IsInsideMapBounds(const Vector3& v) {
-			return v.x >= 0.0F && v.x <= (float)GameMap::DefaultWidth &&
-				   v.y >= 0.0F && v.y <= (float)GameMap::DefaultHeight &&
-				   v.z >= 0.0F && v.z <= (float)GameMap::DefaultDepth;
-		}
-
 		void NetClient::CaptureKickReason(spades::client::NetPacketReader& r) {
 			std::string msg = StripNewlines(TrimSpaces(r.ReadRemainingString()));
 			customKickReasonString = msg.substr(0, kKickReasonMaxBytes);
@@ -619,11 +611,57 @@ namespace spades {
 			switch (r.GetType()) {
 				case PacketTypeHandShakeInit: SendHandShakeValid(r.ReadInt()); return true;
 				case PacketTypeExtensionInfo: HandleExtensionPacket(r); return true;
-				// Handled here rather than in HandleGamePacket so the server may send a
-				// Config as soon as the extension is negotiated: during the Connecting
-				// stage anything but MapStart is treated as an unexpected packet, and
-				// during a map transfer it would be parked until the world exists.
-				case PacketTypeTeamplay: HandleTeamplayPacket(r); return true;
+				case PacketTypeTeamplay: {
+					auto sub = PeekTeamplaySubPacket(r);
+
+					// Too short to name a sub packet: dropped here rather than failing
+					// the connection, which is what reading past the end would do.
+					if (!sub) {
+						SPLog("Ignoring a truncated Teamplay packet");
+						return true;
+					}
+
+					// Once the world exists, every sub packet is ordinary game traffic.
+					if (status == NetClientStatusConnected)
+						return false;
+
+					// The Config belongs to the connection, so it is applied whenever it
+					// arrives: during the Connecting stage anything but MapStart is an
+					// unexpected packet, and parking it would leave the new world
+					// without it until the transfer ends.
+					if (*sub == TeamplaySubConfig) {
+						HandleTeamplayPacket(r);
+						return true;
+					}
+
+					// A ping marks a place in the world it was sent in. That world is
+					// being replaced, and its coordinates mean nothing in the next one,
+					// so a ping that arrives during a map load is dropped rather than
+					// popping up, beeping, somewhere else entirely once the map is in.
+					if (*sub == TeamplaySubPing)
+						return true;
+
+					// A mark is state: it names a player and outlives the map it arrived
+					// on, so it waits with the other world packets and is replayed once
+					// the world exists. The Connecting stage parks it here itself, since
+					// its own branch treats anything but MapStart as a protocol error
+					// rather than saving it.
+					if (status == NetClientStatusConnecting) {
+						// Nothing drains these until a map arrives, so a server that
+						// never sends one cannot make this grow without end. The cap is
+						// far above the handful of marks a real server could have in
+						// force before the first map.
+						constexpr size_t kMaxPreMapMarks = 64;
+						if (savedPackets.size() >= kMaxPreMapMarks) {
+							SPLog("Ignoring a Teamplay mark: too many arrived before the map");
+							return true;
+						}
+
+						savedPackets.push_back(r.GetData());
+						return true;
+					}
+					return false;
+				}
 				case PacketTypeVersionGet: {
 					if (r.GetNumRemainingBytes() > 0) {
 						// Enhanced variant
@@ -691,8 +729,18 @@ namespace spades {
 				return;
 			}
 
+			auto hasBytes = [&r](size_t needed) {
+				if (r.GetNumRemainingBytes() >= needed)
+					return true;
+				SPLog("Ignoring a truncated Teamplay sub packet");
+				return false;
+			};
+
 			switch (r.ReadByte()) { // sub packet id
 				case TeamplaySubConfig: {
+					if (!hasBytes(kTeamplayConfigBytes))
+						break;
+
 					uint8_t features = r.ReadByte();
 
 					// North, in the map plane. Normalised and checked by Teamplay, which
@@ -703,6 +751,9 @@ namespace spades {
 					client->TeamplayConfigured(features, northX, northY);
 				} break;
 				case TeamplaySubPing: {
+					if (!hasBytes(kTeamplayPingBytes))
+						break;
+
 					int pId = r.ReadByte();
 					Vector3 pos = r.ReadVector3();
 					float duration = r.ReadFloat();
@@ -732,10 +783,8 @@ namespace spades {
 						break;
 					}
 
-					// The server is authoritative on placement, but a NaN or a wildly
-					// out-of-bounds position would corrupt the projection maths, so it
-					// is rejected rather than drawn. A removal carries no place to check.
-					if (duration != 0.0F && (pos.IsNaN() || !IsInsideMapBounds(pos))) {
+					// A removal carries no place to check.
+					if (duration != 0.0F && !Teamplay::IsValidPingPosition(pos)) {
 						SPLog("Dropped a Teamplay ping at an invalid position");
 						break;
 					}
@@ -744,6 +793,9 @@ namespace spades {
 														 color, std::move(reason));
 				} break;
 				case TeamplaySubESPMark: {
+					if (!hasBytes(kTeamplayMarkBytes))
+						break;
+
 					int pId = r.ReadByte();
 					float duration = r.ReadFloat();
 					uint8_t surfaces = r.ReadByte();
@@ -784,6 +836,7 @@ namespace spades {
 			SPADES_MARK_FUNCTION();
 
 			switch (r.GetType()) {
+				case PacketTypeTeamplay: HandleTeamplayPacket(r); break;
 				case PacketTypePositionData: {
 					Player& p = GetLocalPlayer();
 					if (r.GetLength() != 13) {
@@ -2139,7 +2192,7 @@ namespace spades {
 				w.WriteByte(static_cast<uint8_t>(entry.first));
 				w.WriteFloat(mark.endless ? std::numeric_limits<float>::infinity()
 										  : mark.timeLeft);
-				w.WriteByte(mark.surfaces);
+				w.WriteByte(mark.sentSurfaces);
 				w.WriteByte(flags);
 				w.WriteColor(mark.color);
 				w.WriteByte(Teamplay::kReservedMessageId);

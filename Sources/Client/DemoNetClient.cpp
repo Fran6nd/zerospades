@@ -196,6 +196,12 @@ namespace spades {
 						}
 
 						HandleGamePacket(reader);
+					} else if (PeekTeamplaySubPacket(reader) == TeamplaySubPing) {
+						// A ping marks a place in the world it was sent in, and this map
+						// is replacing that world, so it goes no further — the same
+						// decision the live client made while recording. Without this a
+						// recording that began at the connection would replay it into
+						// the loaded world, at coordinates belonging to another map.
 					} else {
 						// Save packet for later processing
 						preMapPackets.push_back(reader.GetData());
@@ -851,12 +857,18 @@ namespace spades {
 				case PacketTypeTeamplay: {
 					switch (r.ReadByte()) { // sub packet id
 						case TeamplaySubConfig: {
+							if (r.GetNumRemainingBytes() < kTeamplayConfigBytes)
+								break;
+
 							uint8_t features = r.ReadByte();
 							float northX = r.ReadFloat();
 							float northY = r.ReadFloat();
 							client->TeamplayConfigured(features, northX, northY);
 						} break;
 						case TeamplaySubPing: {
+							if (r.GetNumRemainingBytes() < kTeamplayPingBytes)
+								break;
+
 							int pId = r.ReadByte();
 							Vector3 pos = r.ReadVector3();
 							float duration = r.ReadFloat();
@@ -866,10 +878,13 @@ namespace spades {
 							std::string reason =
 							  Teamplay::SanitizeReason(r.ReadRemainingData());
 
-							// The message id is reserved and ignored, so only a malformed
-							// duration is a reason not to replay the ping.
+							// The same position and duration checks as a live ping, so a
+							// replay never draws one the live client rejected. The
+							// message id is reserved and ignored.
 							(void)messageId;
 							if (!Teamplay::IsValidDuration(duration))
+								break;
+							if (duration != 0.0F && !Teamplay::IsValidPingPosition(pos))
 								break;
 
 							// A ping is a momentary event, so replaying the whole demo to
@@ -880,6 +895,9 @@ namespace spades {
 																	 color, std::move(reason));
 						} break;
 						case TeamplaySubESPMark: {
+							if (r.GetNumRemainingBytes() < kTeamplayMarkBytes)
+								break;
+
 							int pId = r.ReadByte();
 							float duration = r.ReadFloat();
 							uint8_t surfaces = r.ReadByte();
