@@ -416,7 +416,7 @@ namespace spades {
 			// FreeCAD-style navigation cube (replaces the orientation gizmo): a
 			// rotating cube whose faces are clickable to snap the view.
 			void DrawNaviCube();
-			// Filled triangle (corner bevels), via horizontal parallelogram strips.
+			// Hard-edged filled triangle, for shapes tiled from several triangles.
 			void FillTri(const Vector2& a, const Vector2& b, const Vector2& c, const Vector4& col);
 			// View direction for the cursor's spot on the cube (face / bevel edge /
 			// corner -> ortho / 45deg / isometric). Returns false if not over the cube.
