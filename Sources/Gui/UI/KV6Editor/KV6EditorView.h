@@ -342,6 +342,8 @@ namespace spades {
 			PointerInput MakePointer(PointerButton b, PointerPhase ph,
 			                         const Vector2& delta = MakeVector2(0, 0)) const;
 			void DispatchPointer(const PointerInput& e);
+			// Drop the active tool's gesture in progress before acting behind its back.
+			void CancelToolInteraction();
 
 			// --- Cursor / status ----------------------------------------------
 			SoftwareCursor* softwareCursor = nullptr;
