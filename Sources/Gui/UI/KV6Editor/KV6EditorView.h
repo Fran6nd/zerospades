@@ -278,7 +278,13 @@ namespace spades {
 
 			// --- Colour picker (managed by ColorPicker component) ----------------
 			uint32_t currentColor = 0xC8C8C8; // packed 0x00BBGGRR
-			int colorOptionIdx = -1;  // tracks which tool option is being edited (-1 = none)
+			// What the open picker edits: the shared brush colour when null, else
+			// swatch `colorTargetOption` of that tool. Held by identity rather than
+			// by option index, since an index shifts as a tool's options change
+			// and names a different option in whichever tool is active when the
+			// picker reports.
+			EditorTool* colorTargetTool = nullptr;
+			std::string colorTargetOption;
 			bool pickMode = false; // for eyedropper tool (not color picker UI)
 
 			// --- Mirror modelling (reflect each edit across the pivot plane) ---
