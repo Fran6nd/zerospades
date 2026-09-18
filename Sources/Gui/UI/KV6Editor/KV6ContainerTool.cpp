@@ -65,6 +65,10 @@ namespace spades {
 			if (EditorTool* s = Cur())
 				s->OnDocumentChanged(ed);
 		}
+		std::string ContainerTool::Hint(IEditorContext& ed) {
+			EditorTool* s = Cur();
+			return s ? s->Hint(ed) : std::string();
+		}
 		void ContainerTool::DrawScene(IEditorContext& ed) {
 			if (EditorTool* s = Cur())
 				s->DrawScene(ed);

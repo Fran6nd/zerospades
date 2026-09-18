@@ -182,8 +182,6 @@ namespace spades {
 					break;
 				case ClickType::Eyedropper:
 					eyedropperMode = !eyedropperMode;
-					if (OnEyedropperToggled)
-						OnEyedropperToggled(eyedropperMode);
 					break;
 				case ClickType::Preset:
 					if (result.presetIndex >= 0 && result.presetIndex < int(presets.size())) {
@@ -232,20 +230,12 @@ namespace spades {
 			                 MakeVector4(0.7F, 0.5F, 0.5F, 0.9F));
 
 			// Close button X icon
-			auto DrawLine2D = [&](const Vector2& a, const Vector2& b, float w, const Vector4& col) {
-				Vector2 d = b - a;
-				float len = d.GetLength();
-				if (len < 0.001F) return;
-				Vector2 n = MakeVector2(-d.y, d.x) * (w * 0.5F / len);
-				OverlayColorNP(renderer, col);
-				renderer.DrawImage((client::IImage*)NULL, a + n, b + n, a - n, AABB2(0, 0, 1, 1));
-			};
-			DrawLine2D(MakeVector2(closeX + 3.0F, closeY + 3.0F),
-			          MakeVector2(closeX + closeS - 3.0F, closeY + closeS - 3.0F), 1.5F,
-			          MakeVector4(1, 1, 1, 0.9F));
-			DrawLine2D(MakeVector2(closeX + closeS - 3.0F, closeY + 3.0F),
-			          MakeVector2(closeX + 3.0F, closeY + closeS - 3.0F), 1.5F,
-			          MakeVector4(1, 1, 1, 0.9F));
+			OverlayStrokeLine(renderer, MakeVector2(closeX + 3.0F, closeY + 3.0F),
+			                  MakeVector2(closeX + closeS - 3.0F, closeY + closeS - 3.0F), 1.5F,
+			                  MakeVector4(1, 1, 1, 0.9F));
+			OverlayStrokeLine(renderer, MakeVector2(closeX + closeS - 3.0F, closeY + 3.0F),
+			                  MakeVector2(closeX + 3.0F, closeY + closeS - 3.0F), 1.5F,
+			                  MakeVector4(1, 1, 1, 0.9F));
 
 			// SV square (24x24 grid)
 			int cells = 24;
@@ -288,9 +278,9 @@ namespace spades {
 			OverlayColorNP(renderer, eyedropperMode ? MakeVector4(0.18F, 0.45F, 0.24F, 1.0F)
 			                                        : MakeVector4(0.18F, 0.18F, 0.20F, 1.0F));
 			OverlayFillRect(renderer, eyeX, eyeY, eyeS, eyeS);
-			DrawLine2D(MakeVector2(eyeX + 5.0F, eyeY + eyeS - 5.0F),
-			          MakeVector2(eyeX + eyeS - 5.0F, eyeY + 5.0F), 2.5F,
-			          MakeVector4(1.0F, 1.0F, 1.0F, 0.9F));
+			OverlayStrokeLine(renderer, MakeVector2(eyeX + 5.0F, eyeY + eyeS - 5.0F),
+			                  MakeVector2(eyeX + eyeS - 5.0F, eyeY + 5.0F), 2.5F,
+			                  MakeVector4(1.0F, 1.0F, 1.0F, 0.9F));
 			OverlayColorNP(renderer, ColorToVec(GetColor()));
 			OverlayFillRect(renderer, eyeX + 4.0F, eyeY + eyeS - 8.0F, 4.0F, 4.0F);
 			OverlayStrokeRect(renderer, eyeX, eyeY, eyeS, eyeS,

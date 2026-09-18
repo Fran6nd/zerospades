@@ -48,6 +48,7 @@ namespace spades {
 			void OnPointer(IEditorContext&, const PointerInput&) override;
 			void OnKey(IEditorContext&, const KeyInput&) override;
 			bool OnEscape(IEditorContext&) override;
+			std::string Hint(IEditorContext&) override;
 			void DrawScene(IEditorContext&) override;
 
 		private:
@@ -59,6 +60,7 @@ namespace spades {
 			asIScriptFunction* fnPointer = nullptr;
 			asIScriptFunction* fnKey = nullptr;
 			asIScriptFunction* fnEscape = nullptr;
+			asIScriptFunction* fnHint = nullptr;
 			asIScriptFunction* fnDraw = nullptr;
 			std::string label;
 		};

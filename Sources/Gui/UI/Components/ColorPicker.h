@@ -35,6 +35,12 @@ namespace spades {
 		/**
 		 * HSV colour picker popup: SV grid + hue bar + eyedropper + presets + close button.
 		 * Positioned at bottom-right of the screen; can be opened/closed.
+		 *
+		 * The eyedropper button arms a one-shot pick that only the host can carry
+		 * out, since only it knows what is under the cursor. The picker holds the
+		 * armed state, so there is exactly one copy of it: the host reads it with
+		 * GetEyedropperMode and disarms it once it has picked. Opening or closing
+		 * the picker disarms it too.
 		 */
 		class ColorPicker {
 		public:
@@ -62,7 +68,10 @@ namespace spades {
 
 			uint32_t GetColor() const;
 			bool GetEyedropperMode() const { return eyedropperMode; }
+			void SetEyedropperMode(bool armed) { eyedropperMode = armed; }
 			bool IsOverPicker(const Vector2& p) const;
+			/** The panel's screen rectangle as of the last UpdateLayout. */
+			AABB2 GetBounds() const { return AABB2(pkX, pkY, pkW, pkH); }
 
 			void Draw(client::IRenderer& renderer, client::FontManager& fontManager,
 			         const Vector2& cursorPos);
@@ -70,7 +79,6 @@ namespace spades {
 			// Callbacks (optional)
 			std::function<void(uint32_t)> OnColorChanged;
 			std::function<void(uint32_t)> OnColorPicked;
-			std::function<void(bool)> OnEyedropperToggled;
 
 		private:
 			// HSV state

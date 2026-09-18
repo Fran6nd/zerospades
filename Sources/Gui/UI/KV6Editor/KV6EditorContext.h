@@ -91,20 +91,30 @@ namespace spades {
 			// Recolour the solid voxels among `cells` to `color`, without changing the
 			// geometry (skips empty cells; never grows the volume).
 			virtual void PaintCells(const std::vector<IntVector3>& cells, uint32_t color) = 0;
-			// Place / delete / sample at the current pick (Draw's single-voxel ops).
+			// Place / delete at the current pick (Draw's single-voxel ops). Sampling
+			// a colour is the editor's own business (Alt+click, the eyedropper), so
+			// no tool has to handle it.
 			virtual void PlaceCube() = 0;
 			virtual void DeleteCube() = 0;
-			virtual void Eyedropper() = 0;
 
 			// --- Selection (a set of solid-voxel coords, shared across tools) ---
-			virtual void ToggleSelect(int x, int y, int z) = 0;
 			virtual bool IsSelected(int x, int y, int z) const = 0;
 			virtual void ClearSelection() = 0;
 			// Removes the selected voxels from the model (never the last one).
 			virtual void DeleteSelection() = 0;
 			virtual int SelectionCount() const = 0;
-			// Flood-fill: add all 6-connected voxels sharing (x,y,z)'s colour.
-			virtual void SelectLinkedColor(int x, int y, int z) = 0;
+			// The solid voxels 6-connected to (x,y,z) through its colour, itself
+			// included; empty if (x,y,z) holds no voxel. Changes nothing.
+			virtual std::vector<IntVector3> LinkedColorRegion(int x, int y, int z) const = 0;
+
+			// --- Clipboard ----------------------------------------------------
+			// Each reports what it did, or why not, on the status line.
+			virtual void CopySelection() = 0;
+			// False when refused (nothing selected, or it would empty the model).
+			virtual bool CutSelection() = 0;
+			// Starts placing the clipboard's voxels in the Transform tool.
+			virtual void Paste() = 0;
+			virtual bool CanPaste() const = 0;
 			// Add every solid voxel in [lo, hi] to the selection.
 			virtual void SelectBox(const IntVector3& lo, const IntVector3& hi) = 0;
 			// Add / remove the solid voxels among `cells`.
@@ -147,9 +157,9 @@ namespace spades {
 			// --- Pending placement (floating voxels) --------------------------
 			// Paste, import and Transform park their voxels here first: nothing
 			// reaches the document until the placement is applied, so dragging
-			// voxels over others never destroys what they pass across. Leaving the
-			// Transform
-			// tool applies the placement; Escape puts it back. Every edit of the
+			// voxels over others never destroys what they pass across. Place, or
+			// leaving the Transform tool, applies the placement; Cancel or Escape
+			// puts it back. Every edit of the
 			// voxels, the selection or the pivot (and the editor's copy, cut and
 			// save) applies it first, so it acts on the document as it stands.
 			// Lifting, moving, turning, applying and cancelling are undo steps.
@@ -197,9 +207,9 @@ namespace spades {
 			// Open the modal prompt to type a new pivot (x y z).
 			virtual void BeginPivotEntry() = 0;
 
-			// --- Misc editor state / feedback ---------------------------------
-			virtual bool PickModeActive() const = 0;
-			virtual void ClearPickMode() = 0;
+			// --- Feedback -----------------------------------------------------
+			// A transient message: what an action did, or why it did nothing.
+			// What a tool's buttons and keys do belongs in EditorTool::Hint.
 			virtual void SetStatus(const std::string&) = 0;
 
 			// --- Undo / redo --------------------------------------------------

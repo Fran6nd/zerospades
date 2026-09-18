@@ -32,40 +32,45 @@ namespace spades {
 			const char* const kReadoutOption = "mirror.readout";
 		} // namespace
 
-		MirrorTool::MirrorTool() {
-			subs.push_back(std::unique_ptr<EditorTool>(new MirrorGizmoSubTool()));
-
+		void AddMirrorToggles(ToolOptions& options) {
 			options.AddBool(kAxisOption[0], "X", "Mirror");
 			options.AddBool(kAxisOption[1], "Y", "Mirror");
 			options.AddBool(kAxisOption[2], "Z", "Mirror");
-			options.AddAction(kResetOption, "Reset to Pivot");
-			options.AddLabel(kReadoutOption);
 		}
 
-		void MirrorTool::OnActivate(IEditorContext& ed) {
-			// The editor owns the axis state and the toggles only show it, so bring
-			// them up to date in case it changed while another tool was active.
-			SyncAxisToggles(ed);
-			ContainerTool::OnActivate(ed);
-		}
-
-		void MirrorTool::OnDocumentChanged(IEditorContext& ed) {
-			SyncAxisToggles(ed); // an undo or redo may have flipped an axis
-			ContainerTool::OnDocumentChanged(ed);
-		}
-
-		void MirrorTool::SyncAxisToggles(IEditorContext& ed) {
+		void SyncMirrorToggles(ToolOptions& options, IEditorContext& ed) {
 			for (int a = 0; a < 3; a++)
 				options.SetBool(kAxisOption[a], ed.MirrorEnabled(a));
 		}
 
-		void MirrorTool::OnOptionToggled(IEditorContext& ed, const std::string& id, bool value) {
+		bool ApplyMirrorToggle(IEditorContext& ed, const std::string& id, bool value) {
 			for (int a = 0; a < 3; a++) {
 				if (id == kAxisOption[a]) {
 					ed.SetMirrorEnabled(a, value);
-					return;
+					return true;
 				}
 			}
+			return false;
+		}
+
+		MirrorTool::MirrorTool() {
+			subs.push_back(std::unique_ptr<EditorTool>(new MirrorGizmoSubTool()));
+
+			AddMirrorToggles(options);
+			options.AddAction(kResetOption, "Reset to Pivot");
+			options.AddLabel(kReadoutOption);
+		}
+
+		void MirrorTool::UpdateOptions(IEditorContext& ed) {
+			SyncMirrorToggles(options, ed);
+			Vector3 p = ed.MirrorPlane();
+			char buf[80];
+			std::snprintf(buf, sizeof(buf), "Plane  %.1f, %.1f, %.1f", p.x, p.y, p.z);
+			options.SetLabel(kReadoutOption, buf);
+		}
+
+		void MirrorTool::OnOptionToggled(IEditorContext& ed, const std::string& id, bool value) {
+			ApplyMirrorToggle(ed, id, value);
 		}
 
 		void MirrorTool::OnAction(IEditorContext& ed, const std::string& id) {
@@ -73,15 +78,6 @@ namespace spades {
 				ed.ResetMirrorPlane();
 				ed.SetStatus("Mirror planes reset to the pivot");
 			}
-		}
-
-		void MirrorTool::DrawScene(IEditorContext& ed) {
-			Vector3 p = ed.MirrorPlane();
-			char buf[80];
-			std::snprintf(buf, sizeof(buf), "Plane  %.1f, %.1f, %.1f", p.x, p.y, p.z);
-			options.SetLabel(kReadoutOption, buf);
-
-			ContainerTool::DrawScene(ed);
 		}
 	} // namespace gui
 } // namespace spades

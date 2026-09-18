@@ -20,6 +20,7 @@
 
 #include "EditorUI.h"
 #include "KV6EditorView.h"
+#include "KV6DrawTool.h"
 #include "KV6EditorTool.h"
 #include "KV6ScreenHelper.h"
 #include "KV6SubTool.h"
@@ -134,6 +135,38 @@ namespace spades {
 			// Option id of the brush swatch, which mirrors the editor's current
 			// colour rather than holding a value of its own.
 			const char* const kBrushColorOption = "color";
+
+			// Edge length of the cube a new model's volume starts as.
+			constexpr int kNewModelSize = 32;
+
+			// Parts of a hint or help line; a line only ever breaks between them.
+			const std::string kHintSeparator = "  |  ";
+
+			// Splits `text` at its separators into lines no wider than `maxWidth`.
+			// A part wider than that on its own gets a line to itself.
+			std::vector<std::string> WrapParts(client::IFont& font, const std::string& text,
+			                                   float maxWidth) {
+				std::vector<std::string> lines;
+				std::string line;
+				std::size_t start = 0;
+				while (true) {
+					const std::size_t end = text.find(kHintSeparator, start);
+					const std::string part = text.substr(start, end - start);
+					const std::string joined = line.empty() ? part : line + kHintSeparator + part;
+					if (!line.empty() && font.Measure(joined).x > maxWidth) {
+						lines.push_back(line);
+						line = part;
+					} else {
+						line = joined;
+					}
+					if (end == std::string::npos)
+						break;
+					start = end + kHintSeparator.size();
+				}
+				if (!line.empty())
+					lines.push_back(line);
+				return lines;
+			}
 
 
 			// Top UI bands (full width): a title ribbon above the toolbar. The 3D
@@ -301,8 +334,13 @@ namespace spades {
 			ui = Handle<EditorUI>::New(renderer.GetPointerOrNull(), audioDevice.GetPointerOrNull(),
 			                           &*fontManager, this, softwareCursor);
 
-			// Wire up toolbar callbacks
-			ui->GetToolbar()->OnModeClicked = [this](int idx) { SetMode(EditorMode(idx)); };
+			// Wire up toolbar callbacks. The mode buttons are the EditorMode values
+			// in order; the toolbar only reports clicks on the enabled ones.
+			ui->GetToolbar()->OnModeClicked = [this](int idx) {
+				EditorMode mode = EditorMode(idx);
+				if (ModeSupported(mode))
+					SetMode(mode);
+			};
 			ui->GetToolbar()->OnToolClicked = [this](int idx) { SetActiveTool(idx); };
 			ui->GetToolbar()->OnUndoClicked = [this]() { Undo(); };
 			ui->GetToolbar()->OnRedoClicked = [this]() { Redo(); };
@@ -359,24 +397,21 @@ namespace spades {
 				}
 				currentColor = c;
 			};
-			ui->GetColorPicker()->OnEyedropperToggled = [this](bool enabled) {
-				pickMode = enabled;
-				SetStatus(enabled ? "Pick mode: click a voxel" : "Pick mode off");
-			};
 
 			// The Edit-mode tools come from the registry (toolbar order = registration).
-			// Pivot is leftmost, but open on Draw so the user can start modelling.
+			// Open on Draw, so the user can start modelling; found by type, so
+			// no button label decides it.
 			ToolRegistry::Instance().BuildAll(tools);
 			activeTool = 0;
 			for (size_t i = 0; i < tools.size(); i++) {
-				if (std::string(tools[i]->Label()) == "Draw") {
+				if (dynamic_cast<DrawTool*>(tools[i].tool.get())) {
 					activeTool = int(i);
 					break;
 				}
 			}
 
 			if (isNew || path.empty())
-				NewModel(cubeSize, path);
+				NewModel(kNewModelSize, path);
 			else
 				LoadModel(path);
 		}
@@ -421,7 +456,7 @@ namespace spades {
 			previewedMirrorPlane.reset();
 			VoxelModel* loaded = io->Load(path);
 			if (!loaded) {
-				NewModel(cubeSize, path);
+				NewModel(kNewModelSize, path);
 				SetStatus("Could not load " + path);
 				return;
 			}
@@ -478,11 +513,18 @@ namespace spades {
 		}
 
 		std::vector<EditorMenuItem> KV6EditorView::GetMenuItems() {
+			auto newModel = [this] {
+				ConfirmDiscardChanges([this] {
+					NewModel(kNewModelSize, std::string());
+					SetStatus("New model");
+				});
+			};
 			std::vector<EditorMenuItem> items;
+			items.push_back(EditorMenuItem{"New Model", newModel, true});
+			items.push_back(EditorMenuItem{"Open Model...", [this] { OpenDocument(); }, true});
+			items.push_back(EditorMenuItem{"Import Model...", [this] { OpenImportDialog(); }, true});
 			items.push_back(EditorMenuItem{"Save", [this] { Save(); }, !filePath.empty()});
 			items.push_back(EditorMenuItem{"Save As...", [this] { OpenSaveAsDialog(); }, true});
-			items.push_back(EditorMenuItem{"Import Model...", [this] { OpenImportDialog(); }, true});
-			items.push_back(EditorMenuItem{"Open Model...", [this] { OpenDocument(); }, true});
 			items.push_back(EditorMenuItem{
 			  "Exit to Menu", [this] { ConfirmDiscardChanges([this] { wantsClose = true; }); }, true});
 			return items;
@@ -594,8 +636,10 @@ namespace spades {
 		}
 
 		bool KV6EditorView::OnMenuEscape() {
-			// Escape belongs to whatever is in progress; the menu only gets it when
-			// nothing is. (The menu asks before opening, so this runs first.)
+			// Escape backs out one level per press, the same in every tool: the
+			// gesture in progress, then pending voxels, the eyedropper, the colour
+			// picker and the selection. The menu only opens once nothing is left.
+			// (The menu asks before opening, so this runs first.)
 			if (EditorTool* t = ActiveTool()) {
 				if (t->OnEscape(*this))
 					return true;
@@ -603,6 +647,20 @@ namespace spades {
 			// A placement left pending by a tool that does not handle Escape itself.
 			if (placementActive) {
 				CancelPlacement();
+				return true;
+			}
+			ColorPicker& picker = *ui->GetColorPicker();
+			if (picker.GetEyedropperMode()) {
+				picker.SetEyedropperMode(false);
+				return true;
+			}
+			if (picker.IsOpen()) {
+				picker.Close();
+				return true;
+			}
+			if (!selection.empty()) {
+				ClearSelection();
+				SetStatus("Selection cleared");
 				return true;
 			}
 			return false;
@@ -1033,28 +1091,27 @@ namespace spades {
 			                   float((c >> 16) & 0xFF) / 255.0F, 1.0F);
 		}
 
-		void KV6EditorView::Eyedropper() {
+		bool KV6EditorView::SamplingArmed() const {
+			return altHeld || ui->GetColorPicker()->GetEyedropperMode();
+		}
+
+		bool KV6EditorView::SampleColor() {
 			DoPick();
 			if (!pickHit)
-				return;
-			currentColor = model->GetColor(pickHX, pickHY, pickHZ) & 0xFFFFFF;
-			if (ui)
-				ui->GetColorPicker()->SetColor(currentColor);
+				return false;
+			const uint32_t sampled = model->GetColor(pickHX, pickHY, pickHZ) & 0xFFFFFF;
+			ColorPicker& picker = *ui->GetColorPicker();
+			picker.SetColor(sampled);
+			picker.SetEyedropperMode(false); // a pick is one-shot
+			// Set after the picker, whose report back has been through HSV and may
+			// be a shade off: the brush takes the voxel's exact colour.
+			currentColor = sampled;
 			SetStatus("Picked colour");
+			return true;
 		}
 
 		// --- Selection --------------------------------------------------------
 
-		void KV6EditorView::ToggleSelect(int x, int y, int z) {
-			DocumentCommand command(*this);
-			KV6UndoStack::Step step(undo, "Select");
-			int64_t k = SelKey(x, y, z);
-			auto it = selection.find(k);
-			if (it == selection.end())
-				selection.insert(k);
-			else
-				selection.erase(it);
-		}
 		void KV6EditorView::AddSelect(int x, int y, int z) { selection.insert(SelKey(x, y, z)); }
 		bool KV6EditorView::IsSelected(int x, int y, int z) const {
 			return selection.find(SelKey(x, y, z)) != selection.end();
@@ -1065,16 +1122,14 @@ namespace spades {
 			selection.clear();
 		}
 
-		void KV6EditorView::SelectLinkedColor(int x, int y, int z) {
-			DocumentCommand command(*this);
+		std::vector<IntVector3> KV6EditorView::LinkedColorRegion(int x, int y, int z) const {
+			std::vector<IntVector3> region;
 			if (!InBounds(x, y, z) || !model->IsSolid(x, y, z))
-				return;
-			KV6UndoStack::Step step(undo, "Select Colour");
+				return region;
 			uint32_t target = model->GetColor(x, y, z) & 0xFFFFFF;
 			std::set<int64_t> visited;
 			std::vector<IntVector3> stack;
 			stack.push_back(MakeIntVector3(x, y, z));
-			int added = 0;
 			while (!stack.empty()) {
 				IntVector3 c = stack.back();
 				stack.pop_back();
@@ -1085,8 +1140,7 @@ namespace spades {
 					continue;
 				if ((model->GetColor(c.x, c.y, c.z) & 0xFFFFFF) != target)
 					continue;
-				AddSelect(c.x, c.y, c.z);
-				added++;
+				region.push_back(c);
 				stack.push_back(MakeIntVector3(c.x + 1, c.y, c.z));
 				stack.push_back(MakeIntVector3(c.x - 1, c.y, c.z));
 				stack.push_back(MakeIntVector3(c.x, c.y + 1, c.z));
@@ -1094,7 +1148,7 @@ namespace spades {
 				stack.push_back(MakeIntVector3(c.x, c.y, c.z + 1));
 				stack.push_back(MakeIntVector3(c.x, c.y, c.z - 1));
 			}
-			SetStatus("Selected " + std::to_string(added) + " linked voxels");
+			return region;
 		}
 
 		void KV6EditorView::DrawSelection() {
@@ -1199,7 +1253,7 @@ namespace spades {
 			return erased;
 		}
 
-		void KV6EditorView::StartPaste() {
+		void KV6EditorView::Paste() {
 			if (clipboard.empty()) {
 				SetStatus("Clipboard is empty");
 				return;
@@ -1233,20 +1287,20 @@ namespace spades {
 				SetStatus(label + ": could not open the Transform tool");
 				return;
 			}
-			SetStatus(label + ": drag the gizmo to move or turn it, or use the arrow keys, then"
-			                  " leave Transform to apply ([Esc] cancels)");
+			SetStatus(label + ": position it with the gizmo, then Place");
 		}
 
 		bool KV6EditorView::ActivateTransformTool() {
 			// Matched by type rather than by label, so neither renaming a button nor
 			// another sub-tool taking the same label can send a placement elsewhere.
 			for (size_t i = 0; i < tools.size(); i++) {
-				for (int sub = 0; sub < tools[i]->SubToolCount(); sub++) {
-					if (!dynamic_cast<TransformSubTool*>(tools[i]->SubTool(sub)))
+				EditorTool& tool = *tools[i].tool;
+				for (int sub = 0; sub < tool.SubToolCount(); sub++) {
+					if (!dynamic_cast<TransformSubTool*>(tool.SubTool(sub)))
 						continue;
 					SetMode(EditorMode::Edit);
 					SetActiveTool(int(i));
-					tools[i]->SetSubTool(*this, sub);
+					tool.SetSubTool(*this, sub);
 					return true;
 				}
 			}
@@ -2140,25 +2194,60 @@ namespace spades {
 			camAnim = true;
 		}
 
+		std::string KV6EditorView::ToolHintLine() {
+			if (SamplingArmed()) {
+				std::string hint = "Pick colour:  click a voxel";
+				if (ui->GetColorPicker()->GetEyedropperMode())
+					hint += kHintSeparator + "[Esc] cancel";
+				return hint;
+			}
+			EditorTool* tool = ActiveTool();
+			if (!tool)
+				return std::string();
+			// A tool whose only sub-tool is itself goes by its own name alone.
+			std::string name = tool->Label();
+			if (tool->SubToolCount() > 1)
+				name += std::string(" \xE2\x80\xBA ") + tool->SubToolLabel(tool->ActiveSubTool());
+			const std::string hint = tool->Hint(*this);
+			return hint.empty() ? name : name + ":  " + hint;
+		}
+
 		void KV6EditorView::DrawOverlay(float sw, float sh) {
-			(void)sw;
 			client::IFont& font = fontManager->GetSmallGuiFont();
-			Vector4 grey = MakeVector4(0.75F, 0.75F, 0.75F, 1.0F);
+			const float lineH = 22.0F;
+			const float left = 16.0F;
 
-			// Title / filename / camera now live in the ribbon. Here we draw the
-			// transient status line (above the help line) and the help line.
-			if (statusTimer > 0.0F)
-				font.Draw(statusMessage, MakeVector2(16.0F, sh - 50.0F), 1.0F,
-				          MakeVector4(0.5F, 1.0F, 0.6F, 1.0F));
-
-			std::string help =
-			  "[LMB] use tool  |  [RMB] delete/cancel  |  [MMB] look  |  [Shift+MMB] pan  |  [WASD/Space/Ctrl] move (+Shift faster)"
-			  "  |  [Wheel] zoom  |  [Ctrl+C/X/V] copy/cut/paste  |  [Ctrl+Z/Y] undo/redo";
+			// Title / filename live in the ribbon; the tools' own keys are on
+			// their buttons and in the tool hint, so this line keeps to the keys
+			// that work everywhere.
+			std::string help = "[MMB] look  |  [Shift+MMB] pan  |  [WASD/Space/Ctrl] move "
+			                   "(+Shift faster)  |  [Wheel] zoom  |  [Alt+LMB] pick colour  |  "
+			                   "[Ctrl+Z/Y] undo/redo  |  [Ctrl+C/X/V] copy/cut/paste";
 			const std::string deleteKey = cg_keyDelete;
 			if (!deleteKey.empty())
-				help += "  |  [" + deleteKey + "] delete selection";
-			help += "  |  [Esc] menu";
-			font.Draw(help, MakeVector2(16.0F, sh - 28.0F), 1.0F, grey);
+				help += kHintSeparator + "[" + deleteKey + "] delete selection";
+			help += kHintSeparator + "[Esc] cancel / menu";
+
+			// Text stays clear of the colour picker when it is open.
+			float right = sw - left;
+			ColorPicker& picker = *ui->GetColorPicker();
+			if (picker.IsOpen())
+				right = std::min(right, picker.GetBounds().GetMinX() - left);
+			const float width = std::max(0.0F, right - left);
+
+			// Bottom up: the help, the tool hint above it, the status above that.
+			float y = sh - 28.0F;
+			auto drawUp = [&](const std::string& text, const Vector4& color) {
+				const std::vector<std::string> lines = WrapParts(font, text, width);
+				for (auto it = lines.rbegin(); it != lines.rend(); ++it) {
+					font.Draw(*it, MakeVector2(left, y), 1.0F, color);
+					y -= lineH;
+				}
+			};
+			drawUp(help, MakeVector4(0.6F, 0.6F, 0.63F, 1.0F));
+			drawUp(ToolHintLine(), MakeVector4(0.9F, 0.9F, 0.93F, 1.0F));
+			if (statusTimer > 0.0F)
+				drawUp(statusMessage, MakeVector4(0.5F, 1.0F, 0.6F, 1.0F));
 		}
 
 		void KV6EditorView::SetActiveTool(int index) {
@@ -2173,6 +2262,43 @@ namespace spades {
 				current->OnActivate(*this);
 		}
 
+		std::string KV6EditorView::SubToolHotKey(int index) {
+			return (index >= 0 && index < 9) ? std::to_string(index + 1) : std::string();
+		}
+
+		bool KV6EditorView::KeyIsTaken(const std::string& key) const {
+			const std::string bound[] = {cg_keyMoveForward, cg_keyMoveBackward, cg_keyMoveLeft,
+			                             cg_keyMoveRight,   cg_keyJump,         cg_keyCrouch,
+			                             cg_keySprint,      cg_keyDelete,       cg_keyScreenshot};
+			for (const std::string& b : bound) {
+				if (KV6CheckKey(b, key))
+					return true;
+			}
+			return false;
+		}
+
+		bool KV6EditorView::SwitchByHotKey(const std::string& key) {
+			// Never mid-press: the tool taking over would see a drag it never saw start.
+			if (key.empty() || lmbHeld || rmbHeld || KeyIsTaken(key))
+				return false;
+			for (size_t i = 0; i < tools.size(); i++) {
+				if (!tools[i].hotKey.empty() && EqualsIgnoringCase(tools[i].hotKey, key)) {
+					SetActiveTool(int(i));
+					return true;
+				}
+			}
+			EditorTool* tool = ActiveTool();
+			if (!tool || tool->SubToolCount() < 2)
+				return false;
+			for (int sub = 0; sub < tool->SubToolCount(); sub++) {
+				if (SubToolHotKey(sub) == key) {
+					tool->SetSubTool(*this, sub);
+					return true;
+				}
+			}
+			return false;
+		}
+
 		void KV6EditorView::SetMode(EditorMode mode) {
 			if (mode == currentMode)
 				return;
@@ -2185,7 +2311,7 @@ namespace spades {
 
 		EditorTool* KV6EditorView::ActiveTool() {
 			if (currentMode == EditorMode::Edit && activeTool >= 0 && activeTool < int(tools.size()))
-				return tools[activeTool].get();
+				return tools[activeTool].tool.get();
 			return nullptr;
 		}
 
@@ -2209,8 +2335,14 @@ namespace spades {
 			if (e.IsDown() && !(lmbHeld && rmbHeld))
 				undo.BeginAction();
 			UserActionEnd end(*this, e.IsUp() && !lmbHeld && !rmbHeld);
-			if (EditorTool* t = ActiveTool())
-				t->OnPointer(*this, e);
+			EditorTool* t = ActiveTool();
+			if (!t)
+				return;
+			// The right button is the inverse of the left, and recolouring has
+			// none: the button does nothing in Paint, whatever the sub-tool.
+			if (e.IsRight() && t->Role() == EditorRole::Paint)
+				return;
+			t->OnPointer(*this, e);
 		}
 
 		void KV6EditorView::CancelToolInteraction() {
@@ -2249,19 +2381,30 @@ namespace spades {
 			(void)sh;
 			if (!ui) return;
 
-			// Set up mode buttons
-			std::vector<std::string> modeButtons = {"Object", "Edit", "Animation"};
+			// Mode buttons, one per EditorMode in order; the ones this document
+			// does not support are greyed out.
+			std::vector<Toolbar::ToolbarButton> modeButtons;
+			for (EditorMode mode : {EditorMode::Object, EditorMode::Edit, EditorMode::Animation}) {
+				Toolbar::ToolbarButton btn;
+				btn.label = mode == EditorMode::Object ? "Object"
+				            : mode == EditorMode::Edit ? "Edit"
+				                                       : "Animation";
+				btn.enabled = ModeSupported(mode);
+				btn.active = mode == currentMode;
+				modeButtons.push_back(btn);
+			}
 			ui->GetToolbar()->SetModeButtons(modeButtons);
-			ui->GetToolbar()->SetActiveModeButton(int(currentMode));
 
-			// Set up tool buttons
+			// Tool buttons. A hot key the editor already uses for something else
+			// never reaches the tool, so the button does not claim it.
 			int toolCount = (currentMode == EditorMode::Edit) ? int(tools.size()) : 0;
 			std::vector<Toolbar::ToolbarButton> toolButtons;
 			for (int i = 0; i < toolCount; i++) {
 				Toolbar::ToolbarButton btn;
-				btn.label = tools[i]->Label();
-				btn.enabled = true;
+				btn.label = tools[i].tool->Label();
+				btn.hotKey = KeyIsTaken(tools[i].hotKey) ? std::string() : tools[i].hotKey;
 				btn.active = (activeTool == i);
+				btn.group = tools[i].group;
 				toolButtons.push_back(btn);
 			}
 			ui->GetToolbar()->SetToolButtons(toolButtons);
@@ -2323,23 +2466,31 @@ namespace spades {
 		}
 
 		void KV6EditorView::DrawSubToolbar(float sw) {
-			(void)sw;
-			if (!ui || !ActiveTool()) return;
-
-			// Build sub-tool buttons for the option bar
-			std::vector<OptionBar::SubToolButton> subTools;
+			if (!ui)
+				return;
+			// With no tool active the bar is drawn empty, so it never keeps
+			// answering clicks on buttons that are no longer there.
 			EditorTool* t = ActiveTool();
-			for (int i = 0; i < t->SubToolCount(); i++) {
-				OptionBar::SubToolButton btn;
-				btn.label = t->SubToolLabel(i);
-				btn.active = (t->ActiveSubTool() == i);
-				subTools.push_back(btn);
+
+			// Sub-tool buttons for the option bar. A single sub-tool is the tool
+			// itself, and a lone button that is always on would only be noise.
+			std::vector<OptionBar::SubToolButton> subTools;
+			if (t && t->SubToolCount() > 1) {
+				for (int i = 0; i < t->SubToolCount(); i++) {
+					OptionBar::SubToolButton btn;
+					btn.label = t->SubToolLabel(i);
+					btn.hotKey = KeyIsTaken(SubToolHotKey(i)) ? std::string() : SubToolHotKey(i);
+					btn.active = (t->ActiveSubTool() == i);
+					subTools.push_back(btn);
+				}
 			}
 			ui->GetOptionBar()->SetSubToolButtons(subTools);
 
 			// Build options for the tool
 			std::vector<OptionBar::Option> options;
-			ToolOptions* opts = t->Options();
+			if (t)
+				t->UpdateOptions(*this);
+			ToolOptions* opts = t ? t->Options() : nullptr;
 			if (opts) {
 				// The brush swatch is a view of the editor's single current colour,
 				// not a per-tool value: the picker, the eyedropper and every tool's
@@ -2358,6 +2509,7 @@ namespace spades {
 							 : (op.type == ToolOption::Type::Action) ? OptionBar::OptionType::Action
 							 : OptionBar::OptionType::Bool;
 					opt.bvalue = op.bvalue;
+					opt.enabled = op.enabled;
 					opt.color = op.color;
 					options.push_back(opt);
 				}
@@ -2474,7 +2626,7 @@ namespace spades {
 				if (EqualsIgnoringCase(key, "s")) Save();
 				else if (EqualsIgnoringCase(key, "c")) CopySelection();
 				else if (EqualsIgnoringCase(key, "x")) CutSelection();
-				else if (EqualsIgnoringCase(key, "v")) StartPaste();
+				else if (EqualsIgnoringCase(key, "v")) Paste();
 				else if (EqualsIgnoringCase(key, "z")) { if (shiftHeld) Redo(); else Undo(); }
 				else Redo(); // "y"
 				return;
@@ -2504,67 +2656,24 @@ namespace spades {
 					}
 				}
 
-				// Check if cursor is over the bars
+				// Over the bars, a click belongs to whichever button is under it
+				// (the callbacks wired in the constructor act on it), or to nothing.
 				if (cursor.y < BarsH()) {
-					// Check toolbar hits
-					if (ui) {
-						auto hit = ui->GetToolbar()->HitTest(cursor, screenWidth);
-						if (hit.type != Toolbar::ClickType::None) {
-							if (hit.type == Toolbar::ClickType::Mode && ui->GetToolbar()->OnModeClicked)
-								ui->GetToolbar()->OnModeClicked(hit.index);
-							else if (hit.type == Toolbar::ClickType::Tool && ui->GetToolbar()->OnToolClicked)
-								ui->GetToolbar()->OnToolClicked(hit.index);
-							else if (hit.type == Toolbar::ClickType::Undo && ui->GetToolbar()->OnUndoClicked)
-								ui->GetToolbar()->OnUndoClicked();
-							else if (hit.type == Toolbar::ClickType::Redo && ui->GetToolbar()->OnRedoClicked)
-								ui->GetToolbar()->OnRedoClicked();
-							ui->GetToolbar()->PlayButtonActivateSound();
-							return;
-						}
-					}
-					// Check option bar hits (sub-tool buttons and options)
-					if (ui) {
-						int subToolIdx;
-						if (ui->GetOptionBar()->IsSubToolButtonHit(cursor, subToolIdx)) {
-							if (ui->GetOptionBar()->OnSubToolClicked)
-								ui->GetOptionBar()->OnSubToolClicked(subToolIdx);
-							ui->GetOptionBar()->PlayButtonActivateSound();
-							return;
-						}
-						float optionIdx = ui->GetOptionBar()->HitTest(cursor);
-						if (optionIdx >= 0.0F) {
-							int idx = int(optionIdx);
-							EditorTool* tool = ActiveTool();
-							if (tool) {
-								ToolOptions* opts = tool->Options();
-								if (opts && idx < opts->Count()) {
-									const ToolOption& opt = opts->At(idx);
-									if (opt.type == ToolOption::Type::Bool) {
-										if (ui->GetOptionBar()->OnBoolToggled)
-											ui->GetOptionBar()->OnBoolToggled(idx);
-										ui->GetOptionBar()->PlayButtonActivateSound();
-									} else if (opt.type == ToolOption::Type::Color) {
-										if (ui->GetOptionBar()->OnColorClicked)
-											ui->GetOptionBar()->OnColorClicked(idx);
-										ui->GetOptionBar()->PlayButtonActivateSound();
-									} else if (opt.type == ToolOption::Type::Action) {
-										if (ui->GetOptionBar()->OnActionClicked)
-											ui->GetOptionBar()->OnActionClicked(idx);
-										ui->GetOptionBar()->PlayButtonActivateSound();
-									}
-								}
-							}
-							return;
-						}
-					}
-					// Toolbar and option bar click handling is delegated to their
-					// callbacks which are wired in the constructor
+					if (!ui->GetToolbar()->Click(cursor, screenWidth))
+						ui->GetOptionBar()->Click(cursor);
 					return;
 				}
 
 				// Check navigation cube
 				Vector3 navDir;
 				if (NaviCubeDir(cursor, navDir)) { SnapCameraDir(navDir); return; }
+
+				// Sampling a colour works the same in every tool, which never sees
+				// the click.
+				if (SamplingArmed()) {
+					SampleColor();
+					return;
+				}
 
 				// Otherwise forward to active tool
 				lmbHeld = true;
@@ -2607,6 +2716,11 @@ namespace spades {
 				ctrlDescent = MakeVector3(0, 0, 0); // a new press, or a finished one
 				return;
 			}
+
+			// Tool and sub-tool keys, shown on their buttons. Plain keys only, so
+			// a chord never switches tools.
+			if (down && !ctrlHeld && !altHeld && SwitchByHotKey(key))
+				return;
 
 			// Remaining keys go to the active tool (e.g. Select's [L]).
 			if (EditorTool* t = ActiveTool()) {
@@ -2723,15 +2837,12 @@ namespace spades {
 			renderer->EndScene();
 
 			DrawOverlayLines2D(); // dim see-through pass for occluded outlines/gizmo
+			// The picker is laid out first: the text under the viewport keeps clear of it.
+			ui->GetColorPicker()->UpdateLayout(sw, sh, BarsH());
 			DrawOverlay(sw, sh);
 			DrawRibbon(sw);
 			DrawToolbar(sw, sh);
 			DrawSubToolbar(sw);
-
-			// Update color picker layout
-			if (ui) {
-				ui->GetColorPicker()->UpdateLayout(sw, sh, BarsH());
-			}
 
 			// Layout and draw navigation cube
 			float gizBox = 174.0F;

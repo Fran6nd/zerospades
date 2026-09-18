@@ -77,6 +77,7 @@ namespace spades {
 			fnPointer = ti->GetMethodByDecl("void OnPointer(EditorContext@, int, int, bool, bool, bool)");
 			fnKey = ti->GetMethodByDecl("void OnKey(EditorContext@, string, bool)");
 			fnEscape = ti->GetMethodByDecl("bool OnEscape(EditorContext@)");
+			fnHint = ti->GetMethodByDecl("string Hint(EditorContext@)");
 			fnDraw = ti->GetMethodByDecl("void DrawScene(EditorContext@)");
 
 			// Fetch the toolbar label once; it doesn't change at runtime.
@@ -145,6 +146,15 @@ namespace spades {
 			c->SetArgObject(0, &ed);
 			c.ExecuteChecked();
 			return c->GetReturnByte() != 0;
+		}
+
+		std::string ScriptEditorTool::Hint(IEditorContext& ed) {
+			if (fnHint == nullptr)
+				return std::string();
+			ScriptContextHandle c = PrepareCall(fnHint, obj);
+			c->SetArgObject(0, &ed);
+			c.ExecuteChecked();
+			return *reinterpret_cast<std::string*>(c->GetReturnObject());
 		}
 
 		void ScriptEditorTool::DrawScene(IEditorContext& ed) {

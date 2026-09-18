@@ -36,45 +36,47 @@ namespace spades {
 	namespace gui {
 		class IEditorContext;
 
-		// Leaf tools shown as buttons in the secondary toolbar (e.g. Select's Point
-		// / Rect). They are ordinary `EditorTool`s with no children of their own; a
+		// Leaf tools shown as buttons in the secondary toolbar (e.g. Select's Voxel
+		// / Box). They are ordinary `EditorTool`s with no children of their own; a
 		// `ContainerTool` (Draw, Select) groups them and forwards input to the active
-		// one.
+		// one. Throughout, the right button does the inverse of the left.
 
-		// Single-voxel placement / deletion (Draw's "Block"): LMB places (or samples
-		// a colour with Alt / pick mode), RMB deletes.
-		class BlockSubTool : public EditorTool {
+		// Single-voxel placement (Draw's "Voxel"): LMB places, RMB deletes.
+		class DrawVoxelSubTool : public EditorTool {
 		public:
-			const char* Label() const override { return "Block"; }
-			void OnActivate(IEditorContext&) override;
+			const char* Label() const override { return "Voxel"; }
+			std::string Hint(IEditorContext&) override;
 			void OnPointer(IEditorContext&, const PointerInput&) override;
 			void DrawScene(IEditorContext&) override;
 		};
 
-		// Single-voxel recolour (Paint's "Block"): LMB recolours the hovered voxel
-		// and keeps painting while dragged; RMB or Alt+LMB samples a colour.
-		class PaintBlockSubTool : public EditorTool {
+		// Single-voxel recolour (Paint's "Voxel"): LMB recolours the hovered voxel
+		// and keeps painting while dragged.
+		class PaintVoxelSubTool : public EditorTool {
 		public:
-			const char* Label() const override { return "Block"; }
-			void OnActivate(IEditorContext&) override;
+			const char* Label() const override { return "Voxel"; }
+			std::string Hint(IEditorContext&) override;
 			void OnPointer(IEditorContext&, const PointerInput&) override;
 			void DrawScene(IEditorContext&) override;
 		};
 
-		// Single-voxel selection toggle (Select's "Point").
-		class PointSubTool : public EditorTool {
+		// Single-voxel selection (Select's "Voxel"): LMB adds the voxel, RMB removes
+		// it; LMB on empty space selects nothing.
+		class SelectVoxelSubTool : public EditorTool {
 		public:
-			const char* Label() const override { return "Point"; }
-			void OnActivate(IEditorContext&) override;
+			const char* Label() const override { return "Voxel"; }
+			std::string Hint(IEditorContext&) override;
 			void OnPointer(IEditorContext&, const PointerInput&) override;
 			void DrawScene(IEditorContext&) override;
 		};
 
-		// Flood-fill selection by colour (Select's "By Colour"); also bound to [L].
+		// Flood-fill selection by colour (Select's "By Colour"): LMB adds the
+		// clicked voxel's colour region, RMB removes it; [L] adds the region under
+		// the cursor.
 		class ByColourSubTool : public EditorTool {
 		public:
 			const char* Label() const override { return "By Colour"; }
-			void OnActivate(IEditorContext&) override;
+			std::string Hint(IEditorContext&) override;
 			void OnPointer(IEditorContext&, const PointerInput&) override;
 			void OnKey(IEditorContext&, const KeyInput&) override;
 			void DrawScene(IEditorContext&) override;
@@ -83,32 +85,37 @@ namespace spades {
 		// A 3-point axis-aligned box: corner, opposite corner (on the clicked face's
 		// plane), then depth. The corner/depth are placed in free space, so the box
 		// can be sized beyond the existing model. The three clicks are tracked by a
-		// `ClickSequence`; the action applied to the cells (fill voxels, or add to
-		// the selection) is injected, so Draw and Select reuse the same code.
-		class RectSubTool : public EditorTool {
+		// `ClickSequence`; what the box does to its cells (fill voxels, or add to
+		// the selection) is injected, so Draw, Paint and Select reuse the same code.
+		class BoxSubTool : public EditorTool {
 		public:
 			using ApplyFn = std::function<void(IEditorContext&, const std::vector<IntVector3>&)>;
 
-			// `apply` runs when the final click is LMB, `applyAlt` when it is RMB
-			// (e.g. fill vs cut, or select vs deselect).
-			RectSubTool(const char* label, ApplyFn apply, ApplyFn applyAlt, bool useMirror = false,
-			            const char* applyMsg = "Rect applied", const char* altMsg = "Rect cut")
-			    : label(label), apply(std::move(apply)), applyAlt(std::move(applyAlt)),
-			      useMirror(useMirror), applyMsg(applyMsg), altMsg(altMsg) {}
+			// What a finished box does to its cells, and the verb the hint names
+			// it by ("fill").
+			struct Action {
+				ApplyFn apply;
+				const char* verb = "";
+			};
 
-			const char* Label() const override { return label; }
+			// `primary` runs when the final click is LMB, `secondary` when it is
+			// RMB (e.g. fill vs erase, or select vs deselect). Without a secondary
+			// action the right button does nothing. `mirrored` previews the box's
+			// mirror images, for actions that reflect.
+			BoxSubTool(Action primary, Action secondary, bool mirrored)
+			    : primary(std::move(primary)), secondary(std::move(secondary)), mirrored(mirrored) {}
+
+			const char* Label() const override { return "Box"; }
+			std::string Hint(IEditorContext&) override;
 			void OnActivate(IEditorContext&) override;
 			void OnPointer(IEditorContext&, const PointerInput&) override;
 			bool OnEscape(IEditorContext&) override;
 			void DrawScene(IEditorContext&) override;
 
 		private:
-			const char* label;
-			ApplyFn apply;
-			ApplyFn applyAlt;
-			bool useMirror;
-			const char* applyMsg; // status shown after an LMB apply
-			const char* altMsg;   // status shown after an RMB (alt) apply
+			Action primary;
+			Action secondary;
+			bool mirrored;
 
 			ClickSequence seq;  // the corner / opposite-corner / depth clicks
 			int normalAxis = 2; // axis of the clicked face's normal (set on click 1)
@@ -175,16 +182,17 @@ namespace spades {
 		 *
 		 * The first move or turn lifts the selected voxels out of the document;
 		 * a paste or an import arrives already pending. Nothing is written back
-		 * until the tool is left (or another command needs the document as it
-		 * stands), so voxels dragged over others never destroy them; Escape puts
-		 * them back instead. Every move and turn is an undo step. With nothing
+		 * until Place, leaving the tool, or another command that needs the
+		 * document as it stands, so voxels dragged over others never destroy
+		 * them; Cancel or Escape puts them back instead. Every move and turn is
+		 * an undo step. With nothing
 		 * pending, the next move takes whatever is selected at that moment.
 		 */
 		class TransformSubTool : public GizmoSubTool {
 		public:
 			TransformSubTool();
 			const char* Label() const override { return "Transform"; }
-			void OnActivate(IEditorContext&) override;
+			std::string Hint(IEditorContext&) override;
 			void OnDeactivate(IEditorContext&) override;
 			void OnKey(IEditorContext&, const KeyInput&) override;
 			bool OnEscape(IEditorContext&) override;
@@ -201,8 +209,8 @@ namespace spades {
 		class PivotGizmoSubTool : public GizmoSubTool {
 		public:
 			PivotGizmoSubTool();
-			const char* Label() const override { return "Gizmo"; }
-			void OnActivate(IEditorContext&) override;
+			const char* Label() const override { return "Move"; }
+			std::string Hint(IEditorContext&) override;
 
 		protected:
 			bool CurrentPose(IEditorContext& ed, GizmoPose& pose) override;
@@ -222,7 +230,7 @@ namespace spades {
 		public:
 			MirrorGizmoSubTool();
 			const char* Label() const override { return "Move"; }
-			void OnActivate(IEditorContext&) override;
+			std::string Hint(IEditorContext&) override;
 
 		protected:
 			bool CurrentPose(IEditorContext& ed, GizmoPose& pose) override;
@@ -233,15 +241,6 @@ namespace spades {
 
 		private:
 			Vector3 startPlane; // planes at the grab
-		};
-
-		// Set the pivot by typing exact values into a prompt.
-		class PivotValuesSubTool : public EditorTool {
-		public:
-			const char* Label() const override { return "Values"; }
-			void OnActivate(IEditorContext&) override;
-			void OnPointer(IEditorContext&, const PointerInput&) override;
-			void DrawScene(IEditorContext&) override;
 		};
 	} // namespace gui
 } // namespace spades

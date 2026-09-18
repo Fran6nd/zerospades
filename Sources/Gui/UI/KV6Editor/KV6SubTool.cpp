@@ -23,6 +23,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <string>
 
 namespace spades {
 	namespace gui {
@@ -42,10 +43,19 @@ namespace spades {
 			const Vector4 kHover = MakeVector4(0.3F, 0.8F, 1.0F, 0.95F);
 			const Vector4 kSelected = MakeVector4(1.0F, 0.3F, 0.3F, 0.95F);
 			const Vector4 kTarget = MakeVector4(1.0F, 0.9F, 0.3F, 0.9F);
-			const Vector4 kAxisCol[3] = {MakeVector4(1.0F, 0.35F, 0.35F, 1.0F),
-			                             MakeVector4(0.4F, 1.0F, 0.4F, 1.0F),
-			                             MakeVector4(0.45F, 0.6F, 1.0F, 1.0F)};
 			constexpr float kQuarterTurn = 0.5F * M_PI_F;
+			const char* const kGizmoDragHint = "  |  [RMB] cancel a drag";
+
+			// Adds the colour region of voxel `h` to the selection, or removes it.
+			void ApplyColourRegion(IEditorContext& ed, const IntVector3& h, bool remove) {
+				const std::vector<IntVector3> region = ed.LinkedColorRegion(h.x, h.y, h.z);
+				if (remove)
+					ed.DeselectCells(region);
+				else
+					ed.SelectCells(region);
+				ed.SetStatus(std::string(remove ? "Deselected " : "Selected ") +
+				             std::to_string(region.size()) + " linked voxels");
+			}
 
 			// A gizmo that only moves, in steps of `step`.
 			GizmoSnap TranslationSnap(float step) {
@@ -95,26 +105,20 @@ namespace spades {
 			}
 		} // namespace
 
-		// --- BlockSubTool (Draw single) --------------------------------------
+		// --- DrawVoxelSubTool (Draw single) ----------------------------------
 
-		void BlockSubTool::OnActivate(IEditorContext& ed) {
-			ed.SetStatus("Draw: LMB place  -  RMB delete  -  Alt+LMB pick colour");
+		std::string DrawVoxelSubTool::Hint(IEditorContext&) {
+			return "[LMB] place  |  [RMB] delete";
 		}
-		void BlockSubTool::OnPointer(IEditorContext& ed, const PointerInput& e) {
+		void DrawVoxelSubTool::OnPointer(IEditorContext& ed, const PointerInput& e) {
 			if (!e.IsDown())
 				return;
-			if (e.IsLeft()) {
-				if (e.alt || ed.PickModeActive()) {
-					ed.Eyedropper();
-					ed.ClearPickMode();
-					return;
-				}
+			if (e.IsLeft())
 				ed.PlaceCube();
-			} else if (e.IsRight()) {
+			else if (e.IsRight())
 				ed.DeleteCube();
-			}
 		}
-		void BlockSubTool::DrawScene(IEditorContext& ed) {
+		void DrawVoxelSubTool::DrawScene(IEditorContext& ed) {
 			ed.DoPick();
 			if (!ed.HasPick())
 				return;
@@ -123,27 +127,17 @@ namespace spades {
 			ed.DrawCellOutline(h.x, h.y, h.z, kTarget);
 		}
 
-		// --- PaintBlockSubTool (Paint single) --------------------------------
+		// --- PaintVoxelSubTool (Paint single) --------------------------------
 
-		void PaintBlockSubTool::OnActivate(IEditorContext& ed) {
-			ed.SetStatus("Paint: LMB drag to recolour  -  RMB / Alt+LMB sample colour");
+		std::string PaintVoxelSubTool::Hint(IEditorContext&) {
+			return "[LMB] recolour, drag to keep going";
 		}
-		void PaintBlockSubTool::OnPointer(IEditorContext& ed, const PointerInput& e) {
+		void PaintVoxelSubTool::OnPointer(IEditorContext& ed, const PointerInput& e) {
 			// A press/drag/release of LMB is one stroke, which the editor keeps as
-			// one undo step however many voxels it recolours.
-			// Sample a colour (Alt, pick mode, or RMB), else recolour the hovered
-			// voxel — and keep doing so while the button is dragged.
-			if (e.IsRight() && e.IsDown()) {
-				ed.Eyedropper();
-				return;
-			}
+			// one undo step however many voxels it recolours: recolour the hovered
+			// voxel, and keep doing so while the button is dragged.
 			if (!e.IsLeft() || !(e.IsDown() || e.IsDrag()))
 				return;
-			if (e.alt || ed.PickModeActive()) {
-				ed.Eyedropper();
-				ed.ClearPickMode();
-				return;
-			}
 			ed.DoPick();
 			if (!ed.HasPick())
 				return;
@@ -151,7 +145,7 @@ namespace spades {
 			std::vector<IntVector3> cell(1, h);
 			ed.PaintCells(cell, ed.CurrentColor());
 		}
-		void PaintBlockSubTool::DrawScene(IEditorContext& ed) {
+		void PaintVoxelSubTool::DrawScene(IEditorContext& ed) {
 			ed.DoPick();
 			if (!ed.HasPick())
 				return;
@@ -159,23 +153,27 @@ namespace spades {
 			ed.DrawCellOutlineMirrored(h.x, h.y, h.z, ed.ColorToVec(ed.CurrentColor()));
 		}
 
-		// --- PointSubTool (Select single) ------------------------------------
+		// --- SelectVoxelSubTool (Select single) ------------------------------
 
-		void PointSubTool::OnActivate(IEditorContext& ed) {
-			ed.SetStatus("Select Point: click to (de)select  -  click empty to clear");
+		std::string SelectVoxelSubTool::Hint(IEditorContext&) {
+			return "[LMB] select  |  [RMB] deselect  |  [LMB] on empty space selects nothing";
 		}
-		void PointSubTool::OnPointer(IEditorContext& ed, const PointerInput& e) {
-			if (!e.IsDown() || !e.IsLeft())
+		void SelectVoxelSubTool::OnPointer(IEditorContext& ed, const PointerInput& e) {
+			if (!e.IsDown() || !(e.IsLeft() || e.IsRight()))
 				return;
 			ed.DoPick();
-			if (ed.HasPick()) {
-				IntVector3 h = ed.PickSolid();
-				ed.ToggleSelect(h.x, h.y, h.z);
-			} else {
-				ed.ClearSelection();
+			if (!ed.HasPick()) {
+				if (e.IsLeft())
+					ed.ClearSelection();
+				return;
 			}
+			const std::vector<IntVector3> cell(1, ed.PickSolid());
+			if (e.IsLeft())
+				ed.SelectCells(cell);
+			else
+				ed.DeselectCells(cell);
 		}
-		void PointSubTool::DrawScene(IEditorContext& ed) {
+		void SelectVoxelSubTool::DrawScene(IEditorContext& ed) {
 			ed.DoPick();
 			if (!ed.HasPick())
 				return;
@@ -185,27 +183,24 @@ namespace spades {
 
 		// --- ByColourSubTool (Select flood-fill) -----------------------------
 
-		void ByColourSubTool::OnActivate(IEditorContext& ed) {
-			ed.SetStatus("Select By Colour: click a voxel to select its colour region  -  [L]");
+		std::string ByColourSubTool::Hint(IEditorContext&) {
+			return "[LMB] select a colour region  |  [RMB] deselect it  |  [L] select the one under "
+			       "the cursor";
 		}
 		void ByColourSubTool::OnPointer(IEditorContext& ed, const PointerInput& e) {
-			if (!e.IsDown() || !e.IsLeft())
+			if (!e.IsDown() || !(e.IsLeft() || e.IsRight()))
 				return;
 			ed.DoPick();
-			if (ed.HasPick()) {
-				IntVector3 h = ed.PickSolid();
-				ed.SelectLinkedColor(h.x, h.y, h.z);
-			} else {
+			if (ed.HasPick())
+				ApplyColourRegion(ed, ed.PickSolid(), e.IsRight());
+			else if (e.IsLeft())
 				ed.ClearSelection();
-			}
 		}
 		void ByColourSubTool::OnKey(IEditorContext& ed, const KeyInput& e) {
 			if (e.IsDown() && EqualsIgnoringCase(e.key, "L")) {
 				ed.DoPick();
-				if (ed.HasPick()) {
-					IntVector3 h = ed.PickSolid();
-					ed.SelectLinkedColor(h.x, h.y, h.z);
-				}
+				if (ed.HasPick())
+					ApplyColourRegion(ed, ed.PickSolid(), false);
 			}
 		}
 		void ByColourSubTool::DrawScene(IEditorContext& ed) {
@@ -216,14 +211,22 @@ namespace spades {
 			ed.DrawCellOutline(h.x, h.y, h.z, kHover);
 		}
 
-		// --- RectSubTool (axis-aligned box) ----------------------------------
+		// --- BoxSubTool (axis-aligned box) -----------------------------------
 
-		void RectSubTool::OnActivate(IEditorContext& ed) {
-			seq.Reset();
-			ed.SetStatus("Rect: click a corner on a voxel face");
+		std::string BoxSubTool::Hint(IEditorContext&) {
+			if (seq.Count() == 0)
+				return "click a corner on a voxel face";
+			if (seq.Count() == 1)
+				return "click the opposite corner  |  [Esc] cancel";
+			std::string hint = std::string("click the depth: [LMB] ") + primary.verb;
+			if (secondary.apply)
+				hint += std::string("  |  [RMB] ") + secondary.verb;
+			return hint + "  |  [Esc] cancel";
 		}
 
-		bool RectSubTool::StagePoint(IEditorContext& ed, IntVector3& out) const {
+		void BoxSubTool::OnActivate(IEditorContext&) { seq.Reset(); }
+
+		bool BoxSubTool::StagePoint(IEditorContext& ed, IntVector3& out) const {
 			const IntVector3& p0 = seq.Points()[0];
 			Vector3 pp = VecOf(p0);
 			// Opposite corner: free on the face plane. Depth: free along the normal
@@ -238,7 +241,7 @@ namespace spades {
 			return true;
 		}
 
-		void RectSubTool::BBoxOf(const std::vector<IntVector3>& pts, IntVector3& lo,
+		void BoxSubTool::BBoxOf(const std::vector<IntVector3>& pts, IntVector3& lo,
 		                         IntVector3& hi) const {
 			int na = normalAxis, u = (na + 1) % 3, v = (na + 2) % 3;
 			const IntVector3& p0 = pts[0];
@@ -256,7 +259,7 @@ namespace spades {
 			}
 		}
 
-		void RectSubTool::CellsOf(const std::vector<IntVector3>& pts,
+		void BoxSubTool::CellsOf(const std::vector<IntVector3>& pts,
 		                          std::vector<IntVector3>& out) const {
 			IntVector3 lo, hi;
 			BBoxOf(pts, lo, hi);
@@ -267,11 +270,11 @@ namespace spades {
 				out.push_back(MakeIntVector3(x, y, z));
 		}
 
-		void RectSubTool::OnPointer(IEditorContext& ed, const PointerInput& e) {
+		void BoxSubTool::OnPointer(IEditorContext& ed, const PointerInput& e) {
 			if (!e.IsDown())
 				return;
-			bool lmb = e.IsLeft(), rmb = e.IsRight();
-			if (!lmb && !rmb)
+			const bool rmb = e.IsRight();
+			if (!e.IsLeft() && !(rmb && secondary.apply))
 				return;
 
 			// First click: anchor a corner on a solid face and capture the normal.
@@ -284,37 +287,30 @@ namespace spades {
 				normalAxis = (d.x != 0) ? 0 : (d.y != 0) ? 1 : 2;
 				seq.BeginFixed(3);
 				seq.Add(p0);
-				ed.SetStatus("Rect: pick the opposite corner  (RMB on the last click cuts)");
 				return;
 			}
 
 			IntVector3 q;
 			if (!StagePoint(ed, q))
 				return;
-			if (!seq.Add(q)) { // still collecting (just set the opposite corner)
-				ed.SetStatus("Rect: pick the depth  (RMB to cut)");
-				return;
-			}
-			// The final click's button decides the action: LMB = apply, RMB = alt.
+			if (!seq.Add(q))
+				return; // still collecting (just set the opposite corner)
+			// The final click's button decides the action. The box is finished
+			// whatever the action makes of it, so it is reset first.
 			std::vector<IntVector3> cells;
 			CellsOf(seq.Points(), cells);
-			if (rmb)
-				applyAlt(ed, cells);
-			else
-				apply(ed, cells);
 			seq.Reset();
-			ed.SetStatus(rmb ? altMsg : applyMsg);
+			(rmb ? secondary : primary).apply(ed, cells);
 		}
 
-		bool RectSubTool::OnEscape(IEditorContext& ed) {
+		bool BoxSubTool::OnEscape(IEditorContext&) {
 			if (!seq.Active())
 				return false;
 			seq.Reset();
-			ed.SetStatus("Rect cancelled");
 			return true;
 		}
 
-		void RectSubTool::DrawScene(IEditorContext& ed) {
+		void BoxSubTool::DrawScene(IEditorContext& ed) {
 			if (seq.Count() == 0) {
 				ed.DoPick();
 				if (ed.HasPick()) {
@@ -333,7 +329,7 @@ namespace spades {
 			pts.push_back(q); // include the in-progress point
 			IntVector3 lo, hi;
 			BBoxOf(pts, lo, hi);
-			if (useMirror)
+			if (mirrored)
 				ed.DrawBoxOutlineMirrored(lo, hi, kHover);
 			else
 				ed.DrawBoxOutline(lo, hi, kHover);
@@ -410,14 +406,15 @@ namespace spades {
 
 		TransformSubTool::TransformSubTool() : GizmoSubTool(TransformSnap(), TransformHandles()) {}
 
-		void TransformSubTool::OnActivate(IEditorContext& ed) {
-			GizmoSubTool::OnActivate(ed);
-			if (!ed.HasPlacement() && ed.SelectionCount() == 0) {
-				ed.SetStatus("Transform: select some voxels first");
-				return;
-			}
-			ed.SetStatus("Transform: drag an arrow to move or a ring to turn (90 degrees), or use"
-			             " the arrow keys; leaving Transform places them");
+		std::string TransformSubTool::Hint(IEditorContext& ed) {
+			if (!ed.HasPlacement() && ed.SelectionCount() == 0)
+				return "select some voxels first, or paste some";
+			std::string hint = "drag an arrow to move, a ring to turn 90 degrees  |  [Arrows] "
+			                   "[PgUp/PgDn] nudge";
+			hint += kGizmoDragHint;
+			if (ed.HasPlacement())
+				hint += "  |  [Esc] put them back";
+			return hint;
 		}
 
 		void TransformSubTool::OnDeactivate(IEditorContext& ed) {
@@ -477,9 +474,8 @@ namespace spades {
 
 		PivotGizmoSubTool::PivotGizmoSubTool() : GizmoSubTool(TranslationSnap(0.1F)) {}
 
-		void PivotGizmoSubTool::OnActivate(IEditorContext& ed) {
-			GizmoSubTool::OnActivate(ed);
-			ed.SetStatus("Pivot: drag a handle to move the pivot (0.1 steps)");
+		std::string PivotGizmoSubTool::Hint(IEditorContext&) {
+			return std::string("drag a handle to move the pivot (0.1 steps)") + kGizmoDragHint;
 		}
 
 		bool PivotGizmoSubTool::CurrentPose(IEditorContext& ed, GizmoPose& pose) {
@@ -510,9 +506,8 @@ namespace spades {
 
 		MirrorGizmoSubTool::MirrorGizmoSubTool() : GizmoSubTool(TranslationSnap(0.5F)) {}
 
-		void MirrorGizmoSubTool::OnActivate(IEditorContext& ed) {
-			GizmoSubTool::OnActivate(ed);
-			ed.SetStatus("Mirror: drag a handle to move the planes (0.5 steps)");
+		std::string MirrorGizmoSubTool::Hint(IEditorContext&) {
+			return std::string("drag a handle to move the planes (0.5 steps)") + kGizmoDragHint;
 		}
 
 		bool MirrorGizmoSubTool::CurrentPose(IEditorContext& ed, GizmoPose& pose) {
@@ -536,22 +531,6 @@ namespace spades {
 
 		void MirrorGizmoSubTool::OnGizmoCancel(IEditorContext& ed, const GizmoTransform&) {
 			ed.PreviewMirrorPlane(startPlane); // show the original planes again, commit nothing
-		}
-
-		// --- PivotValuesSubTool (type the pivot) -----------------------------
-
-		void PivotValuesSubTool::OnActivate(IEditorContext& ed) {
-			ed.SetStatus("Pivot: type x y z, then [Enter]");
-			ed.BeginPivotEntry();
-		}
-		void PivotValuesSubTool::OnPointer(IEditorContext& ed, const PointerInput& e) {
-			if (e.IsDown() && e.IsLeft())
-				ed.BeginPivotEntry(); // re-open the prompt
-		}
-		void PivotValuesSubTool::DrawScene(IEditorContext& ed) {
-			Vector3 c = ed.GetPivot(); // mark where the pivot currently is
-			for (int a = 0; a < 3; a++)
-				ed.DrawLine3D(c - AxisUnit(a), c + AxisUnit(a), kAxisCol[a]);
 		}
 	} // namespace gui
 } // namespace spades
