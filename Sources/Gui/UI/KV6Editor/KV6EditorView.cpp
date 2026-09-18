@@ -1741,11 +1741,12 @@ void KV6EditorView::StartPaste() {
 			ReframeRaw(w, h, d, ox, oy, oz);
 		}
 
+		// Both land a pending move first. A move that went somewhere becomes the
+		// latest step, so Undo takes back exactly that move (and Redo finds a
+		// fresh edit, which ends the redo branch as any other would); one that
+		// went nowhere is simply put back.
 		void KV6EditorView::Undo() {
-			// The pending voxels describe coordinates in the document as it stands;
-			// replaying history would leave them dangling, so drop them first.
-			if (placementActive)
-				CancelPlacement();
+			DocumentCommand command(*this);
 			std::string label = undo.UndoLabel();
 			if (undo.Undo())
 				SetStatus("Undid " + (label.empty() ? std::string("edit") : label));
@@ -1753,8 +1754,7 @@ void KV6EditorView::StartPaste() {
 				SetStatus("Nothing to undo");
 		}
 		void KV6EditorView::Redo() {
-			if (placementActive)
-				CancelPlacement();
+			DocumentCommand command(*this);
 			std::string label = undo.RedoLabel();
 			if (undo.Redo())
 				SetStatus("Redid " + (label.empty() ? std::string("edit") : label));
