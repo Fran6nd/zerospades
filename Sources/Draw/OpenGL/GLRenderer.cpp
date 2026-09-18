@@ -1298,6 +1298,17 @@ namespace spades {
 										col.x, col.y, col.z, col.w);
 		}
 
+		void GLRenderer::DrawShadedTriangle(const Vector2& v0, const Vector2& v1,
+		                                    const Vector2& v2, const Vector4& c0,
+		                                    const Vector4& c1, const Vector4& c2) {
+			SPADES_MARK_FUNCTION();
+
+			EnsureSceneNotStarted();
+
+			imageRenderer->SetImage(imageManager->GetWhiteImage());
+			imageRenderer->AddShadedTriangle(v0, v1, v2, c0, c1, c2);
+		}
+
 		void GLRenderer::DrawFilledRectFade(float x0, float y0, float x1, float y1,
                                     Vector4 color0, Vector4 color1, bool horizontal) {
 			EnsureSceneNotStarted();
