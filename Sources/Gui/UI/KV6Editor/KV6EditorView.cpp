@@ -677,8 +677,11 @@ namespace spades {
 			ctrlDescent = MakeVector3(0, 0, 0);
 			lookActive = false;
 			// The release of a held button may be swallowed too, so the press it
-			// began is over: the tool drops its drag and nothing reads as dragged.
+			// began is over: the tool and the colour picker drop their drags and
+			// nothing reads as dragged.
 			lmbHeld = rmbHeld = false;
+			if (ui)
+				ui->GetColorPicker()->MouseUp();
 			CancelToolInteraction();
 		}
 
