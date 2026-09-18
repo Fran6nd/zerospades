@@ -657,6 +657,8 @@ namespace spades {
 			keyFwd = keyBack = keyLeft = keyRight = keyUp = keyDown = false;
 			ctrlDescent = MakeVector3(0, 0, 0);
 			lookActive = false;
+			// The button release that would end a drag may be swallowed too.
+			CancelToolInteraction();
 		}
 
 		client::SceneDefinition KV6EditorView::SetupScene(float vpX, float vpY, float vpW, float vpH) {
@@ -2062,6 +2064,11 @@ void KV6EditorView::StartPaste() {
 				t->OnPointer(*this, e);
 		}
 
+		void KV6EditorView::CancelToolInteraction() {
+			if (EditorTool* t = ActiveTool())
+				t->CancelInteraction(*this);
+		}
+
 		// --- Ribbon (title) + unified toolbar [modes] | [tools] -------------
 		//
 		// Two stacked full-width bars at the very top: a ribbon (title/filename)
@@ -2270,6 +2277,9 @@ void KV6EditorView::StartPaste() {
 					ctrlDescent = MakeVector3(0, 0, 0);
 					keyDown = false;
 				}
+				// A shortcut changes the document or the placement under a drag
+				// in progress (a paste replaces it), so that drag is abandoned.
+				CancelToolInteraction();
 				if (EqualsIgnoringCase(key, "s")) Save();
 				else if (EqualsIgnoringCase(key, "c")) CopySelection();
 				else if (EqualsIgnoringCase(key, "x")) CutSelection();

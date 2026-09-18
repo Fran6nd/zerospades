@@ -366,6 +366,8 @@ namespace spades {
 			return true;
 		}
 
+		void GizmoSubTool::CancelInteraction(IEditorContext& ed) { CancelDrag(ed); }
+
 		void GizmoSubTool::DrawOverlay(IEditorContext& ed) {
 			if (!SyncPose(ed))
 				return;

@@ -136,6 +136,7 @@ namespace spades {
 			void OnDeactivate(IEditorContext&) override;
 			void OnPointer(IEditorContext&, const PointerInput&) override;
 			bool OnEscape(IEditorContext&) override;
+			void CancelInteraction(IEditorContext&) override;
 			void DrawOverlay(IEditorContext&) override;
 
 		protected:
