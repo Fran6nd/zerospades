@@ -43,6 +43,19 @@ namespace spades {
          *  fainter, so they keep their weight instead of breaking up. */
         void OverlayStrokeLine(client::IRenderer& renderer, const Vector2& a, const Vector2& b,
                                float width, const Vector4& c);
+        /** Anti-aliased connected segments `width` 2D units thick, mitred at the
+         *  joints so a translucent stroke covers each pixel once; `closed` links
+         *  the last point back to the first. Thin strokes behave as in
+         *  OverlayStrokeLine. */
+        void OverlayStrokePolyline(client::IRenderer& renderer, const Vector2* points,
+                                   std::size_t count, float width, const Vector4& c,
+                                   bool closed);
+        /** An anti-aliased filled circle. `c` is not alpha premultiplied. */
+        void OverlayFillCircle(client::IRenderer& renderer, const Vector2& center, float radius,
+                               const Vector4& c);
+        /** An anti-aliased ring of stroke `width` centred on `radius`. */
+        void OverlayStrokeCircle(client::IRenderer& renderer, const Vector2& center,
+                                 float radius, float width, const Vector4& c);
         bool OverlayInRect(const Vector2& p, float x, float y, float w, float h);
     } // namespace gui
 } // namespace spades
