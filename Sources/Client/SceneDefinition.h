@@ -37,6 +37,16 @@ namespace spades {
 			 *  not the map's sea). */
 			bool skipWater;
 
+			/** Light models from every direction at once instead of from the sun.
+			 *  A voxel has only six face normals, so a directional term splits one
+			 *  flat colour into a handful of visibly different shades; the model
+			 *  editor wants the voxel's own colour on screen. Ambient occlusion
+			 *  still applies, so corners keep a soft shape cue. */
+			bool flatModelLighting;
+			/** Draw the outline pass whatever `r_outlines` says. Flat lighting drops
+			 *  the shading that conveys depth, and a silhouette gives it back. */
+			bool forceOutlines;
+
 			float depthOfFieldFocalLength;
 			float depthOfFieldNearBlurStrength;
 			float depthOfFieldFarBlurStrength;
@@ -61,6 +71,8 @@ namespace spades {
 				zNear = zFar = 0.0F;
 				skipWorld = false;
 				skipWater = false;
+				flatModelLighting = false;
+				forceOutlines = false;
 				depthOfFieldFocalLength = 0.0F;
 				depthOfFieldNearBlurStrength = 1.0F;
 				depthOfFieldFarBlurStrength = 0.0F;
