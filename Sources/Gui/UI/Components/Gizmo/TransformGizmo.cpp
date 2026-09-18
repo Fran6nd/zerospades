@@ -346,7 +346,9 @@ namespace spades {
 					canvas.Convex(outline.data(), kConeSegments, Shaded(color, 0.7F));
 			}
 
-			// A solid cube aligned with the gizmo axes, shaded per face.
+			// A solid cube aligned with the gizmo axes, shaded per face. Each face is
+			// anti-aliased on its own, so where two meet their rims leave a faint
+			// line that reads as the cube's edge.
 			void DrawCube(GizmoCanvas& canvas, const GizmoView& view, const GizmoFrame& frame,
 			              const Vector3& center, float half, const Vector4& color) {
 				for (int a = 0; a < 3; a++) {
