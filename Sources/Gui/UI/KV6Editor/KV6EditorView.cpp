@@ -1491,13 +1491,7 @@ void KV6EditorView::StartPaste() {
 		}
 		void KV6EditorView::DrawLine2D(const Vector2& a, const Vector2& b, float w,
 		                               const Vector4& col) {
-			Vector2 d = b - a;
-			float len = d.GetLength();
-			if (len < 0.001F)
-				return;
-			Vector2 n = MakeVector2(-d.y, d.x) * (w * 0.5F / len);
-			ColorNP(col);
-			renderer->DrawImage((client::IImage*)NULL, a + n, b + n, a - n, AABB2(0, 0, 1, 1));
+			OverlayStrokeLine(*renderer, a, b, w, col);
 		}
 
 		void KV6EditorView::DrawCellOutline(int x, int y, int z, const Vector4& color) {
@@ -1863,31 +1857,11 @@ void KV6EditorView::StartPaste() {
 
 		void KV6EditorView::FillTri(const Vector2& A, const Vector2& B, const Vector2& C,
 		                            const Vector4& col) {
-			Vector2 p[3] = {A, B, C};
-			auto sw = [](Vector2& a, Vector2& b) { Vector2 t = a; a = b; b = t; };
-			if (p[0].y > p[1].y) sw(p[0], p[1]);
-			if (p[1].y > p[2].y) sw(p[1], p[2]);
-			if (p[0].y > p[1].y) sw(p[0], p[1]);
-			float y0 = p[0].y, y2 = p[2].y;
-			if (y2 - y0 < 0.5F)
-				return;
-			auto xAt = [](const Vector2& a, const Vector2& b, float y) {
-				float dy = b.y - a.y;
-				return a.x + (b.x - a.x) * ((std::fabs(dy) < 1.0e-5F) ? 0.0F : (y - a.y) / dy);
-			};
+			// Hard-edged on purpose: triangles tiling a larger shape would show
+			// seams where two anti-aliased edges meet. Use OverlayFillConvexPolygon
+			// for a standalone shape.
 			ColorNP(col);
-			const int N = 10; // horizontal strips approximate the triangle
-			for (int i = 0; i < N; i++) {
-				float ya = y0 + (y2 - y0) * float(i) / N;
-				float yb = y0 + (y2 - y0) * float(i + 1) / N;
-				float la = xAt(p[0], p[2], ya), lb = xAt(p[0], p[2], yb);
-				// The strip's lower-right corner is implied by DrawImage's affine
-				// parallelogram (top-left, top-right, bottom-left), so only `ra` is
-				// needed here.
-				float ra = (ya < p[1].y) ? xAt(p[0], p[1], ya) : xAt(p[1], p[2], ya);
-				renderer->DrawImage((client::IImage*)NULL, MakeVector2(la, ya), MakeVector2(ra, ya),
-				                    MakeVector2(lb, yb), AABB2(0, 0, 1, 1));
-			}
+			renderer->DrawFilledTriangle(A, B, C);
 		}
 
 		GizmoView KV6EditorView::GetGizmoView() const {
@@ -1982,12 +1956,10 @@ void KV6EditorView::StartPaste() {
 					bool hl = hov && Vector3::Dot(hdir, f.dir) > 0.999F;
 					Vector4 col = hl ? MakeVector4(0.4F, 0.7F, 1.0F, 0.97F)
 					                 : MakeVector4(base.x * sh, base.y * sh, base.z * sh, 0.97F);
-					if (f.n == 3) {
-						FillTri(q[0], q[1], q[2], col);
-					} else {
-						ColorNP(col);
-						renderer->DrawImage((client::IImage*)NULL, q[0], q[1], q[3], AABB2(0, 0, 1, 1));
-					}
+					// Each facet is one convex polygon so its whole outline is
+					// anti-aliased; the seams it leaves against its neighbours are
+					// covered by the edge lines drawn next.
+					OverlayFillConvexPolygon(*renderer, q, std::size_t(f.n), col);
 					Vector4 ec = MakeVector4(0.08F, 0.08F, 0.1F, 0.85F);
 					for (int e = 0; e < f.n; e++)
 						DrawLine2D(q[e], q[(e + 1) % f.n], 1.0F, ec);
