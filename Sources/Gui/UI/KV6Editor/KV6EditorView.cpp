@@ -1287,7 +1287,7 @@ void KV6EditorView::StartPaste() {
 			// visible while they are being positioned. The edit is not journaled:
 			// applying (or cancelling) decides what the undo history sees.
 			LiftPlacementVoxels();
-			selection.clear(); // those cells are empty now
+			selection.clear(); // whatever is left selected is not a voxel
 			RebuildPlacementModel();
 			return true;
 		}
@@ -1298,6 +1298,7 @@ void KV6EditorView::StartPaste() {
 			for (const IntVector3& v : placement.lifted) {
 				if (InBounds(v.x, v.y, v.z))
 					WriteVoxelRaw(v.x, v.y, v.z, false, 0);
+				selection.erase(SelKey(v.x, v.y, v.z));
 			}
 			RebuildRenderModel();
 		}
@@ -1310,6 +1311,7 @@ void KV6EditorView::StartPaste() {
 				const IntVector3& v = placement.lifted[i];
 				if (InBounds(v.x, v.y, v.z))
 					WriteVoxelRaw(v.x, v.y, v.z, true, placement.voxels[i].color);
+				AddSelect(v.x, v.y, v.z);
 			}
 			RebuildRenderModel();
 		}
@@ -1422,10 +1424,8 @@ void KV6EditorView::StartPaste() {
 				moved = from.x != pending.anchor.x || from.y != pending.anchor.y ||
 				        from.z != pending.anchor.z;
 			}
-			if (!moved) {
-				RebuildRenderModel(); // the lift was undone above
-				return;
-			}
+			if (!moved)
+				return; // the voxels and their selection are back as they were
 
 			undo.Begin(pending.label);
 			// Clear where the voxels came from first, so a move that overlaps its own
@@ -1461,8 +1461,6 @@ void KV6EditorView::StartPaste() {
 			std::string label = placement.label;
 			// Nothing was journaled, so putting the voxels back is the whole undo.
 			RestorePlacementVoxels();
-			for (const IntVector3& v : placement.lifted)
-				AddSelect(v.x, v.y, v.z); // they are selected again, as before the lift
 			placement = Placement();
 			placementActive = false;
 			placementModel = Handle<client::IModel>();

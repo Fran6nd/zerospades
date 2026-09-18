@@ -268,8 +268,9 @@ namespace spades {
 			// document outgrowing the model size limit; false if none exists.
 			bool ClampPlacementAnchor(const std::vector<ClipVoxel>& voxels,
 			                          IntVector3& anchor) const;
-			// Take the pending voxels out of / put them back into the document
-			// without journaling: applying does the journaled edit in one step.
+			// Take the lifted voxels, and their selection, out of / back into the
+			// document without journaling: applying does the journaled edit in one
+			// step, starting from the document exactly as it was before the lift.
 			void LiftPlacementVoxels();
 			void RestorePlacementVoxels();
 
