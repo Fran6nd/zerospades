@@ -25,6 +25,8 @@
 #include "KV6SubTool.h"
 #include "KV6ToolRegistry.h"
 #include <Gui/UI/Components/ColorPicker.h>
+#include <Gui/UI/Components/Gizmo/GizmoCanvas.h>
+#include <Gui/UI/Components/Gizmo/TransformGizmo.h>
 #include <Gui/UI/Components/OptionBar.h>
 #include <Gui/UI/Components/Toolbar.h>
 #include <Gui/UIWidgetPainter.h>
@@ -1888,8 +1890,28 @@ void KV6EditorView::StartPaste() {
 			}
 		}
 
+		GizmoView KV6EditorView::GetGizmoView() const {
+			GizmoView view;
+			view.eye = camEye;
+			view.right = camRight;
+			view.up = camUp;
+			view.forward = camFwd;
+			view.tanHalfFovX = tanf(camFovX * 0.5F);
+			view.tanHalfFovY = tanf(camFovY * 0.5F);
+			view.viewportX = camVpX;
+			view.viewportY = camVpY;
+			view.viewportWidth = camSW;
+			view.viewportHeight = camSH;
+			return view;
+		}
+
+		void KV6EditorView::DrawGizmo(const TransformGizmo& gizmo) {
+			GizmoCanvas canvas(*renderer);
+			gizmo.Draw(canvas, GetGizmoView());
+		}
+
 		// A solid, shaded cube drawn as a 2D overlay: project the camera-facing faces
-		// and fill them (used for the move gizmo's draggable handles).
+		// and fill them (offered to tool scripts for solid markers).
 		void KV6EditorView::DrawSolidCube(const Vector3& center, float half,
 		                                  const Vector4& color) {
 			Vector3 corner[8];
