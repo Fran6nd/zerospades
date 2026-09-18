@@ -126,6 +126,7 @@ namespace spades {
 			virtual bool HasPlacement() const = 0;
 			/** Lifts the selection into a placement; false if nothing solid is selected. */
 			virtual bool BeginPlacementFromSelection() = 0;
+			/** Shifts the pending voxels, as far as the model size limit allows. */
 			virtual void MovePlacement(int dx, int dy, int dz) = 0;
 			/** Centre of the pending voxels, for a gizmo; false if none pending. */
 			virtual bool PlacementCentroid(Vector3& out) const = 0;
