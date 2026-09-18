@@ -582,6 +582,7 @@ namespace spades {
 
 			ModelRenderParam param;
 			param.customColor = Vector3{0.7F, 0.07F, 0.01F}; // hemoglobin
+			param.ghost = true; // flat decals don't benefit from shadows or outlines
 
 			for (auto& slot : impl.marks) {
 				if (slot) {
