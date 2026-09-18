@@ -172,10 +172,19 @@ namespace spades {
 			 */
 			virtual void TransformPlacement(const PlacementTransform& t) = 0;
 			/**
-			 * The voxel a transform turns about: the pending voxels' pivot, or the
-			 * one the selection would get; false when there is nothing to move.
+			 * The voxel a transform turns about: the middle of the pending voxels
+			 * (or of the selection), or the model's pivot (see
+			 * TurnsAboutModelPivot); false when there is nothing to move.
 			 */
 			virtual bool TransformPivot(IntVector3& out) const = 0;
+			/**
+			 * Whether turns go round the model's pivot rather than the middle of
+			 * the voxels being turned. Turns keep voxels on voxels only about a
+			 * whole voxel, so they go round the one nearest the pivot. An editor
+			 * setting: not saved, and not an undo step.
+			 */
+			virtual bool TurnsAboutModelPivot() const = 0;
+			virtual void SetTurnsAboutModelPivot(bool on) = 0;
 			/** Writes the pending voxels into the document as one undo step. */
 			virtual void ApplyPlacement() = 0;
 			/** Puts lifted voxels back where they came from, or drops a paste. */

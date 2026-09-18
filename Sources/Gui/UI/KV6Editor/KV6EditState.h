@@ -65,9 +65,10 @@ namespace spades {
 			// voxel i was taken from lifted[i], whatever turns it made since.
 			std::vector<ClipVoxel> voxels;
 			IntVector3 anchor = IntVector3::Make(0, 0, 0); // min corner, document coords
-			// The voxel turns go round, in document coords. It starts at the middle
-			// of the voxels and moves only with a shift, so turning back always
-			// returns them exactly where they were.
+			// The middle of the voxels, in document coords, which turns go round
+			// unless they go round the model's pivot. It follows the voxels
+			// through every shift and turn, so turning back always returns them
+			// exactly where they were.
 			IntVector3 pivot = IntVector3::Make(0, 0, 0);
 			// Where lifted voxels came from (empty for a paste or an import), so
 			// cancelling puts them back.
