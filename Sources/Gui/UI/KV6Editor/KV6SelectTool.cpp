@@ -29,6 +29,7 @@ namespace spades {
 		namespace {
 			const char* kSelectAllOption = "select.all";
 			const char* kClearSelectionOption = "select.clear";
+			const char* kDeleteSelectionOption = "select.delete";
 		} // namespace
 
 		SelectTool::SelectTool() {
@@ -51,6 +52,7 @@ namespace spades {
 			// Whole-selection commands, available whichever sub-tool is active.
 			options.AddAction(kSelectAllOption, "Select All");
 			options.AddAction(kClearSelectionOption, "Select None");
+			options.AddAction(kDeleteSelectionOption, "Delete");
 		}
 
 		ToolOptions* SelectTool::Options() { return &options; }
@@ -63,12 +65,14 @@ namespace spades {
 		}
 
 		void SelectTool::OnAction(IEditorContext& ed, const std::string& id) {
-			// Both report a count: selecting is invisible on a model that was
+			// Each reports a count: selecting is invisible on a model that was
 			// already fully selected, and a button that seems to do nothing reads
 			// as broken. Matches SelectLinkedColor / Copy / Cut.
 			if (id == kSelectAllOption) {
 				SelectAll(ed);
 				ed.SetStatus("Selected " + std::to_string(ed.SelectionCount()) + " voxels");
+			} else if (id == kDeleteSelectionOption) {
+				ed.DeleteSelection(); // reports what it removed, or why not
 			} else if (id == kClearSelectionOption) {
 				int count = ed.SelectionCount();
 				ed.ClearSelection();
