@@ -677,6 +677,12 @@ namespace spades {
 			// camera at sea level with a mirrored scene rendered into it.
 			sceneDef.skipWorld = true;
 			sceneDef.skipWater = true;
+			// A voxel has six face normals, so sunlight splits one palette colour
+			// into several on-screen shades and the model stops reading as the
+			// colour it was painted. Light it evenly instead, and outline it so the
+			// shape survives the loss of shading.
+			sceneDef.flatModelLighting = true;
+			sceneDef.forceOutlines = true;
 			sceneDef.denyCameraBlur = true;
 			sceneDef.time = (unsigned int)(globalTime * 1000.0F);
 			return sceneDef;
