@@ -112,6 +112,13 @@ namespace spades {
 						return o.bvalue;
 				return false;
 			}
+			void SetBool(const std::string& id, bool value) {
+				for (ToolOption& o : items)
+					if (o.id == id) {
+						o.bvalue = value;
+						return;
+					}
+			}
 
 		private:
 			std::vector<ToolOption> items;

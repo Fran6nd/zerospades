@@ -142,6 +142,11 @@ namespace spades {
 			// 3D wireframe over the inclusive voxel range [lo, hi].
 			void DrawBoxOutline(const IntVector3& lo, const IntVector3& hi,
 			                    const Vector4& color) override;
+			bool MirrorEnabled(int axis) const override;
+			void SetMirrorEnabled(int axis, bool on) override;
+			Vector3 MirrorPlane() const override { return mirrorPlane; }
+			void SetMirrorPlane(const Vector3& plane) override;
+			void ResetMirrorPlane() override;
 			// As above, but also drawing the mirror images for the enabled axes.
 			void DrawCellOutlineMirrored(int x, int y, int z, const Vector4& color) override;
 			void DrawBoxOutlineMirrored(const IntVector3& lo, const IntVector3& hi,
@@ -269,7 +274,7 @@ namespace spades {
 			void StartPlacement(std::vector<ClipVoxel> voxels, const std::string& label,
 			                    const IntVector3& anchor);
 			void DrawPlacementPreview();
-			// Switch to the Move sub-tool (where a placement is positioned).
+			// Switch to the placement Move sub-tool (where a placement is positioned).
 			bool ActivateMoveTool();
 			// Loads `path` and starts placing its voxels in the current document.
 			void ImportModel(const std::string& path);
@@ -287,10 +292,16 @@ namespace spades {
 			std::string colorTargetOption;
 			bool pickMode = false; // for eyedropper tool (not color picker UI)
 
-			// --- Mirror modelling (reflect each edit across the pivot plane) ---
-			// The X/Y/Z toggles live in the active tool's options (Draw); the edit
-			// and preview code reads them through MirrorOn().
-			bool MirrorOn(int axis) const; // axis 0/1/2 -> mirror.x/y/z option
+			// --- Mirror modelling (reflect each edit across the mirror planes) ---
+			// Owned here rather than by a tool, so an edit mirrors whichever tool
+			// made it and the planes survive switching tools. The Mirror tool is
+			// the UI over this state.
+			bool mirrorEnabled[3] = {false, false, false};
+			// Plane position per axis, in voxel coordinates. Starts on the pivot.
+			// MirrorIdx only sees whole half steps, so SetMirrorPlane keeps it on
+			// that grid, and ReframeRaw shifts it along with the voxels.
+			Vector3 mirrorPlane = MakeVector3(0.0F, 0.0F, 0.0F);
+			bool MirrorOn(int axis) const; // shorthand for MirrorEnabled
 
 			// Orientation gizmo.
 			float gizCx, gizCy, gizR;
@@ -364,8 +375,10 @@ namespace spades {
 			client::SceneDefinition SetupScene(float vpX, float vpY, float vpW, float vpH);
 
 			// Editing
-			int MirrorIdx(int i, float pivot) const;
-			// Append each cell's mirror images for the enabled axes (Draw edits).
+			// Index that voxel `i` reflects to across a mirror plane at `plane`.
+			int MirrorIdx(int i, float plane) const;
+			// Append each cell's mirror images for the enabled axes (Draw and Paint
+			// edits).
 			void ExpandMirrors(std::vector<IntVector3>& cells) const;
 			// Resize/relabel the volume. `ReframeRaw` does the work; `RebuildVolume`
 			// also journals it for undo (used by the live mutators).

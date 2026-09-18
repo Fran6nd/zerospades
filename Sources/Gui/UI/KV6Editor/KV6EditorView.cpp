@@ -22,6 +22,7 @@
 #include "KV6EditorView.h"
 #include "KV6EditorTool.h"
 #include "KV6ScreenHelper.h"
+#include "KV6SubTool.h"
 #include "KV6ToolRegistry.h"
 #include <Gui/UI/Components/ColorPicker.h>
 #include <Gui/UI/Components/OptionBar.h>
@@ -81,6 +82,12 @@ namespace spades {
 			}
 
 			float Clampf(float v, float lo, float hi) { return std::max(lo, std::min(hi, v)); }
+
+			// `v` in whole half-voxel steps, to the nearest step with ties going up.
+			// A mirror plane `k` half steps from the origin maps voxel i to k - i,
+			// and the plane snaps to the same count, so snapping never changes
+			// which voxels a plane pairs up.
+			int HalfSteps(float v) { return int(std::floor(v * 2.0F + 0.5F)); }
 
 			// Camera speed factor while the sprint key (cg_keySprint) is held.
 			constexpr float kSprintMultiplier = 3.0F;
@@ -372,11 +379,12 @@ namespace spades {
 			cubeSize = n;
 			model = Handle<VoxelModel>::New(n, n, n);
 			model->SetSolid(n / 2, n / 2, n / 2, currentColor);
-			// Anchor the pivot on the seed voxel so mirroring (which reflects across
-			// the pivot) is symmetric about it from the start.
+			// Anchor the pivot on the seed voxel so mirroring (whose planes start
+			// there) is symmetric about it from the start.
 			float c = float(n / 2);
 			model->SetOrigin(MakeVector3(-c, -c, -c));
 			voxelCount = 1;
+			ResetMirrorPlane();
 			RebuildRenderModel();
 			filePath = path;
 			FrameCamera();
@@ -395,6 +403,7 @@ namespace spades {
 			model = Handle<VoxelModel>(loaded, false); // adopt (Load returns a ref)
 			cubeSize = std::max(model->GetWidth(), std::max(model->GetHeight(), model->GetDepth()));
 			voxelCount = CountSolids();
+			ResetMirrorPlane();
 			RebuildRenderModel();
 			filePath = path;
 			FrameCamera();
@@ -816,24 +825,21 @@ namespace spades {
 			}
 		}
 
-		int KV6EditorView::MirrorIdx(int i, float pivot) const {
-			return int(std::floor(2.0F * pivot + 0.5F)) - i;
-		}
+		int KV6EditorView::MirrorIdx(int i, float plane) const { return HalfSteps(plane) - i; }
 
 		void KV6EditorView::ExpandMirrors(std::vector<IntVector3>& cells) const {
 			bool mx = MirrorOn(0), my = MirrorOn(1), mz = MirrorOn(2);
 			if (!mx && !my && !mz)
 				return;
-			Vector3 org = model->GetOrigin();
 			std::vector<IntVector3> out;
 			out.reserve(cells.size() * 8);
 			for (const IntVector3& c : cells) {
 				int xs[2] = {c.x, c.x}, nx = 1;
 				int ys[2] = {c.y, c.y}, ny = 1;
 				int zs[2] = {c.z, c.z}, nz = 1;
-				if (mx) { int m = MirrorIdx(c.x, -org.x); if (m != c.x) { xs[1] = m; nx = 2; } }
-				if (my) { int m = MirrorIdx(c.y, -org.y); if (m != c.y) { ys[1] = m; ny = 2; } }
-				if (mz) { int m = MirrorIdx(c.z, -org.z); if (m != c.z) { zs[1] = m; nz = 2; } }
+				if (mx) { int m = MirrorIdx(c.x, mirrorPlane.x); if (m != c.x) { xs[1] = m; nx = 2; } }
+				if (my) { int m = MirrorIdx(c.y, mirrorPlane.y); if (m != c.y) { ys[1] = m; ny = 2; } }
+				if (mz) { int m = MirrorIdx(c.z, mirrorPlane.z); if (m != c.z) { zs[1] = m; nz = 2; } }
 				for (int a = 0; a < nx; a++)
 				for (int b = 0; b < ny; b++)
 				for (int d = 0; d < nz; d++)
@@ -860,6 +866,9 @@ namespace spades {
 			dst->SetOrigin(model->GetOrigin() - shift);
 			model = dst;
 			orbitTarget += shift;
+			// The mirror planes are in voxel coordinates too. The shift is whole
+			// voxels, so they stay on the half-step grid.
+			mirrorPlane += shift;
 			cubeSize = std::max(nw, std::max(nh, nd));
 			ShiftSelection(ox, oy, oz); // keep selected voxel coords aligned
 			// A pending placement stores document coordinates too, so it has to
@@ -901,13 +910,12 @@ namespace spades {
 				return;
 			int tx = pickPX, ty = pickPY, tz = pickPZ;
 
-			// Target plus its mirror images across the pivot plane. The mirror — or
-			// a placement past an edge — may land outside, so grow to fit them all.
-			Vector3 org = model->GetOrigin();
+			// Target plus its mirror images across the mirror planes. The mirror —
+			// or a placement past an edge — may land outside, so grow to fit them all.
 			bool mx = MirrorOn(0), my = MirrorOn(1), mz = MirrorOn(2);
-			int xb = mx ? MirrorIdx(tx, -org.x) : tx; int nx = (mx && xb != tx) ? 2 : 1;
-			int yb = my ? MirrorIdx(ty, -org.y) : ty; int ny = (my && yb != ty) ? 2 : 1;
-			int zb = mz ? MirrorIdx(tz, -org.z) : tz; int nz = (mz && zb != tz) ? 2 : 1;
+			int xb = mx ? MirrorIdx(tx, mirrorPlane.x) : tx; int nx = (mx && xb != tx) ? 2 : 1;
+			int yb = my ? MirrorIdx(ty, mirrorPlane.y) : ty; int ny = (my && yb != ty) ? 2 : 1;
+			int zb = mz ? MirrorIdx(tz, mirrorPlane.z) : tz; int nz = (mz && zb != tz) ? 2 : 1;
 
 			int loX = std::min(0, tx); int hiX = std::max(model->GetWidth(), tx + 1);
 			if (nx == 2) { loX = std::min(loX, xb); hiX = std::max(hiX, xb + 1); }
@@ -947,11 +955,10 @@ namespace spades {
 			if (!pickHit)
 				return;
 			int hx = pickHX, hy = pickHY, hz = pickHZ;
-			Vector3 org = model->GetOrigin();
 			bool mx = MirrorOn(0), my = MirrorOn(1), mz = MirrorOn(2);
-			int xb = mx ? MirrorIdx(hx, -org.x) : hx; int nx = (mx && xb != hx) ? 2 : 1;
-			int yb = my ? MirrorIdx(hy, -org.y) : hy; int ny = (my && yb != hy) ? 2 : 1;
-			int zb = mz ? MirrorIdx(hz, -org.z) : hz; int nz = (mz && zb != hz) ? 2 : 1;
+			int xb = mx ? MirrorIdx(hx, mirrorPlane.x) : hx; int nx = (mx && xb != hx) ? 2 : 1;
+			int yb = my ? MirrorIdx(hy, mirrorPlane.y) : hy; int ny = (my && yb != hy) ? 2 : 1;
+			int zb = mz ? MirrorIdx(hz, mirrorPlane.z) : hz; int nz = (mz && zb != hz) ? 2 : 1;
 
 			int n = 0;
 			for (int ia = 0; ia < nx; ia++) { int X = (ia == 0) ? hx : xb;
@@ -1181,9 +1188,11 @@ void KV6EditorView::StartPaste() {
 		}
 
 		bool KV6EditorView::ActivateMoveTool() {
+			// Matched by type: other sub-tools share the "Move" label (the mirror
+			// gizmo does), so a label search would depend on the toolbar order.
 			for (size_t i = 0; i < tools.size(); i++) {
 				for (int sub = 0; sub < tools[i]->SubToolCount(); sub++) {
-					if (std::string(tools[i]->SubToolLabel(sub)) != "Move")
+					if (!dynamic_cast<MoveSubTool*>(tools[i]->SubTool(sub)))
 						continue;
 					SetMode(EditorMode::Edit);
 					SetActiveTool(int(i));
@@ -1512,16 +1521,15 @@ void KV6EditorView::StartPaste() {
 
 		void KV6EditorView::DrawBoxOutlineMirrored(const IntVector3& lo, const IntVector3& hi,
 		                                           const Vector4& color) {
-			Vector3 org = model->GetOrigin();
 			for (int mx = 0; mx <= (MirrorOn(0) ? 1 : 0); mx++)
 			for (int my = 0; my <= (MirrorOn(1) ? 1 : 0); my++)
 			for (int mz = 0; mz <= (MirrorOn(2) ? 1 : 0); mz++) {
 				IntVector3 a = lo, b = hi;
-				if (mx) { int p = MirrorIdx(lo.x, -org.x), q = MirrorIdx(hi.x, -org.x);
+				if (mx) { int p = MirrorIdx(lo.x, mirrorPlane.x), q = MirrorIdx(hi.x, mirrorPlane.x);
 				          a.x = std::min(p, q); b.x = std::max(p, q); }
-				if (my) { int p = MirrorIdx(lo.y, -org.y), q = MirrorIdx(hi.y, -org.y);
+				if (my) { int p = MirrorIdx(lo.y, mirrorPlane.y), q = MirrorIdx(hi.y, mirrorPlane.y);
 				          a.y = std::min(p, q); b.y = std::max(p, q); }
-				if (mz) { int p = MirrorIdx(lo.z, -org.z), q = MirrorIdx(hi.z, -org.z);
+				if (mz) { int p = MirrorIdx(lo.z, mirrorPlane.z), q = MirrorIdx(hi.z, mirrorPlane.z);
 				          a.z = std::min(p, q); b.z = std::max(p, q); }
 				DrawBoxOutline(a, b, color);
 			}
@@ -1805,7 +1813,6 @@ void KV6EditorView::StartPaste() {
 		// Semi-transparent quad at each enabled mirror plane (drawn as a fan of
 		// debug lines, since the editor only has line primitives in 3D).
 		void KV6EditorView::DrawMirrorPlanes() {
-			Vector3 org = model->GetOrigin();
 			int w = model->GetWidth(), h = model->GetHeight(), d = model->GetDepth();
 
 			// Grid lines are spaced one tile (2 voxels) apart. Extend one tile past
@@ -1819,7 +1826,7 @@ void KV6EditorView::StartPaste() {
 			float hiZ = float(stop(d)) - 0.5F;
 
 			if (MirrorOn(0)) {
-				float px = -org.x;
+				float px = mirrorPlane.x;
 				Vector4 col = MakeVector4(1.0F, 0.35F, 0.35F, 0.25F);
 				for (int i = -2; i <= stop(h); i += 2)
 					renderer->AddDebugLine(MakeVector3(px, float(i) - 0.5F, lo),
@@ -1829,7 +1836,7 @@ void KV6EditorView::StartPaste() {
 					                       MakeVector3(px, hiY, float(i) - 0.5F), col);
 			}
 			if (MirrorOn(1)) {
-				float py = -org.y;
+				float py = mirrorPlane.y;
 				Vector4 col = MakeVector4(0.4F, 1.0F, 0.4F, 0.25F);
 				for (int i = -2; i <= stop(w); i += 2)
 					renderer->AddDebugLine(MakeVector3(float(i) - 0.5F, py, lo),
@@ -1839,7 +1846,7 @@ void KV6EditorView::StartPaste() {
 					                       MakeVector3(hiX, py, float(i) - 0.5F), col);
 			}
 			if (MirrorOn(2)) {
-				float pz = -org.z;
+				float pz = mirrorPlane.z;
 				Vector4 col = MakeVector4(0.45F, 0.6F, 1.0F, 0.25F);
 				for (int i = -2; i <= stop(w); i += 2)
 					renderer->AddDebugLine(MakeVector3(float(i) - 0.5F, lo, pz),
@@ -2096,18 +2103,32 @@ void KV6EditorView::StartPaste() {
 					ui->GetEditorMenu()->IsActive(), sw);
 		}
 
-		bool KV6EditorView::MirrorOn(int axis) const {
+		bool KV6EditorView::MirrorOn(int axis) const { return MirrorEnabled(axis); }
+
+		bool KV6EditorView::MirrorEnabled(int axis) const {
 			if (axis < 0 || axis > 2)
 				return false;
-			if (currentMode != EditorMode::Edit || activeTool < 0 ||
-			    activeTool >= int(tools.size()))
+			// Mirroring is a modelling aid for Edit mode; it must not silently
+			// reshape anything while another mode is driving the document.
+			if (currentMode != EditorMode::Edit)
 				return false;
-			ToolOptions* o = tools[activeTool]->Options();
-			if (!o)
-				return false;
-			static const char* ids[3] = {"mirror.x", "mirror.y", "mirror.z"};
-			return o->GetBool(ids[axis]);
+			return mirrorEnabled[axis];
 		}
+
+		void KV6EditorView::SetMirrorEnabled(int axis, bool on) {
+			if (axis < 0 || axis > 2)
+				return;
+			mirrorEnabled[axis] = on;
+		}
+
+		void KV6EditorView::SetMirrorPlane(const Vector3& plane) {
+			// MirrorIdx only sees whole half steps, so anything finer would move the
+			// handle without moving the reflection.
+			auto snap = [](float v) { return float(HalfSteps(v)) * 0.5F; };
+			mirrorPlane = MakeVector3(snap(plane.x), snap(plane.y), snap(plane.z));
+		}
+
+		void KV6EditorView::ResetMirrorPlane() { SetMirrorPlane(GetPivot()); }
 
 		void KV6EditorView::DrawSubToolbar(float sw) {
 			(void)sw;
