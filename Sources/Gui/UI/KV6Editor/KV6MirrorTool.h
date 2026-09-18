@@ -24,18 +24,28 @@
 
 namespace spades {
 	namespace gui {
-		// Recolour existing voxels: Block (single, drag to keep painting) and Rect
-		// (recolour a box). The geometry is never changed, only the colours.
-		class PaintTool : public ContainerTool {
+		/**
+		 * The UI over the editor's mirror state: which axes reflect, and where the
+		 * planes sit.
+		 *
+		 * The state itself lives on the editor, not here, so an edit mirrors
+		 * whichever tool made it — this tool only turns axes on and moves the
+		 * planes. Its one sub-tool, Move, is the plane gizmo; Reset to Pivot is a
+		 * one-shot action beside the X/Y/Z toggles.
+		 */
+		class MirrorTool : public ContainerTool {
 		public:
-			PaintTool();
-			const char* Label() const override { return "Paint"; }
-			// Cells from sub-tools (incl. scripted ones) recolour rather than fill.
-			EditorRole Role() const override { return EditorRole::Paint; }
+			MirrorTool();
+			const char* Label() const override { return "Mirror"; }
+
+			void OnActivate(IEditorContext& ed) override;
 			ToolOptions* Options() override { return &options; }
+			void OnOptionToggled(IEditorContext& ed, const std::string& id, bool value) override;
+			void OnAction(IEditorContext& ed, const std::string& id) override;
+			void DrawScene(IEditorContext& ed) override;
 
 		private:
-			ToolOptions options; // the brush colour swatch
+			ToolOptions options; // X/Y/Z toggles, Reset to Pivot, the plane readout
 		};
 	} // namespace gui
 } // namespace spades
