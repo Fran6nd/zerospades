@@ -205,6 +205,39 @@ namespace spades {
 					            AABB2(pos.x + 4.0F, pos.y + (sz.y - 8.0F) * 0.5F, 8.0F, 8.0F));
 				}
 			}
+
+			void LinkButton::Render() {
+				client::IRenderer& r = GetManager().GetRenderer();
+				Vector2 pos = GetScreenPosition();
+				Vector2 sz = size;
+
+				Vector4 color = IsEnabled() ? textColor : disabledTextColor;
+
+				if (pressed && hover) {
+					SetColorNP(r, MakeVector4(1.0F, 1.0F, 1.0F, 0.08F));
+					r.DrawImage(nullptr, AABB2(pos.x, pos.y, sz.x, sz.y));
+				}
+
+				client::IFont* font = GetFont();
+				if (!font)
+					return;
+
+				pos += MakeVector2(4.0F, 4.0F);
+				sz -= MakeVector2(8.0F, 8.0F);
+
+				Vector2 txtSize = font->Measure(caption);
+				Vector2 txtPos  = pos + (sz - txtSize) * alignment;
+
+				font->DrawShadow(caption, txtPos, 1.0F, color,
+								 MakeVector4(0.0F, 0.0F, 0.0F, 0.35F * color.w));
+
+				if (hover && IsEnabled()) {
+					float underlineY = txtPos.y + txtSize.y - 2.0F;
+					SetColorNP(r, MakeVector4(color.x, color.y, color.z, 0.8F));
+					r.DrawFilledRect(txtPos.x, underlineY,
+									 txtPos.x + txtSize.x, underlineY + 1.5F);
+				}
+			}
 		} // namespace ui
 	} // namespace gui
 } // namespace spades

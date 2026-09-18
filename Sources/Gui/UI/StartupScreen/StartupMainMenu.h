@@ -45,8 +45,7 @@ namespace spades {
 			Settings::ItemHandle cl_showStartupWindow;
 			bool advancedTabVisible = false;
 
-			void OnGithubRepositoryPressed(ui::UIElement&);
-			void OnGithubPaksRepositoryPressed(ui::UIElement&);
+			void OnWebsitePressed(ui::UIElement&);
 			void OnTabChanged(ui::UIElement&);
 			void OnBypassStartupWindowCheckChanged(ui::UIElement& sender);
 			void Start();

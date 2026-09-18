@@ -32,6 +32,7 @@ namespace spades {
 		using ui::Button;
 		using ui::CheckBox;
 		using ui::SimpleButton;
+		using ui::LinkButton;
 		using ui::SimpleTabStrip;
 		using ui::UIElement;
 		using ui::UIManager;
@@ -56,23 +57,17 @@ namespace spades {
 				AddChild(button.GetPointerOrNull());
 			}
 			{
-				Handle<SimpleButton> button = Handle<SimpleButton>::New(manager);
-				button->caption = _Tr("StartupScreen", "GitHub Repository");
+				Handle<LinkButton> button = Handle<LinkButton>::New(manager);
+				button->caption = _Tr("StartupScreen", "Official Website");
 				float capSize = GetFont()->Measure(button->caption).x;
-				button->SetBounds(
-				    AABB2(sw - 170.0F - (capSize + 16.0F) - 10.0F, 20.0F, capSize + 16.0F, 20.0F));
-				button->textColor = MakeVector4(0.1F, 0.7F, 1, 1);
-				button->activated = [this](UIElement& s) { OnGithubRepositoryPressed(s); };
-				AddChild(button.GetPointerOrNull());
-			}
-			{
-				Handle<SimpleButton> button = Handle<SimpleButton>::New(manager);
-				button->caption = _Tr("StartupScreen", "Compatible Mods");
-				float capSize = GetFont()->Measure(button->caption).x;
-				button->SetBounds(
-				    AABB2(sw - 170.0F - (capSize + 16.0F) - 10.0F, 44.0F, capSize + 16.0F, 20.0F));
-				button->textColor = MakeVector4(0.1F, 0.7F, 1, 1);
-				button->activated = [this](UIElement& s) { OnGithubPaksRepositoryPressed(s); };
+				button->SetBounds(AABB2(
+					sw - 200.0F - (capSize + 20.0F) - 10.0F,
+					24.0F,
+					capSize + 20.0F, 24.0F
+				));
+				button->textColor = MakeVector4(0.3F, 0.75F, 1.0F, 1.0F);
+				button->disabledTextColor = MakeVector4(0.3F, 0.75F, 1.0F, 0.4F);
+				button->activated = [this](UIElement& s) { OnWebsitePressed(s); };
 				AddChild(button.GetPointerOrNull());
 			}
 			{
@@ -136,22 +131,12 @@ namespace spades {
 			LoadConfig();
 		}
 
-		void StartupScreenMainMenu::OnGithubRepositoryPressed(UIElement&) {
-			if (helper->OpenLinkInBrowser("https://github.com/zerospades/zerospades"))
+		void StartupScreenMainMenu::OnWebsitePressed(UIElement&) {
+			if (helper->OpenLinkInBrowser("https://zerospades.github.io/"))
 				return;
 
 			std::string msg =
-			    _Tr("StartupScreen", "An unknown error has occurred while opening this url.");
-			Handle<AlertScreen> al = Handle<AlertScreen>::New(GetParent(), msg, 100.0F);
-			al->Run();
-		}
-
-		void StartupScreenMainMenu::OnGithubPaksRepositoryPressed(UIElement&) {
-			if (helper->OpenLinkInBrowser("https://github.com/zerospades/zerospades-paks"))
-				return;
-
-			std::string msg =
-			    _Tr("StartupScreen", "An unknown error has occurred while opening this url.");
+				_Tr("StartupScreen", "An unknown error has occurred while opening this url.");
 			Handle<AlertScreen> al = Handle<AlertScreen>::New(GetParent(), msg, 100.0F);
 			al->Run();
 		}

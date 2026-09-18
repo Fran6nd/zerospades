@@ -66,6 +66,13 @@ namespace spades {
 				void OnActivated() override;
 				void Render() override;
 			};
+
+			/** Link-style button (no solid background, underlined on hover). */
+			class LinkButton : public SimpleButton {
+			public:
+				LinkButton(UIManager* manager) : SimpleButton(manager) {}
+				void Render() override;
+			};
 		} // namespace ui
 	} // namespace gui
 } // namespace spades
