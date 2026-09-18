@@ -670,7 +670,7 @@ namespace spades {
 				device->Enable(IGLDevice::Blend, false);
 			}
 
-			if (settings.r_outlines && !mirror) {
+			if ((settings.r_outlines || sceneDef.forceOutlines) && !mirror) {
 				GLProfiler::Context p(*profiler, "Outline Pass");
 
 				device->DepthFunc(IGLDevice::Less);
