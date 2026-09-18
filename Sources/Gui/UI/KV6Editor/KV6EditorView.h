@@ -199,6 +199,9 @@ namespace spades {
 			KV6UndoStack undo{*this};
 			long savedGeomId = -1;
 			bool IsDirty() const { return undo.GeometryStateId() != savedGeomId; }
+			// What saving would change: the journaled edits, plus voxels still
+			// waiting to be placed somewhere new.
+			bool HasUnsavedChanges() const { return IsDirty() || PlacementChangesDocument(); }
 
 			// KV6UndoStack::Sink — apply primitives the stack replays on undo/redo.
 			void UndoApplyVoxel(int x, int y, int z, bool solid, uint32_t color) override;
@@ -257,12 +260,24 @@ namespace spades {
 			 */
 			struct Placement {
 				std::vector<ClipVoxel> voxels; // relative to `anchor`
-				IntVector3 anchor;             // min corner, in document coords
+				IntVector3 anchor = IntVector3::Make(0, 0, 0); // min corner, document coords
 				std::vector<IntVector3> lifted;
+				// Where `anchor` was when `lifted` was taken (a move's starting point).
+				IntVector3 origin = IntVector3::Make(0, 0, 0);
 				std::string label = "Move"; // undo step name
 			};
 			bool placementActive = false;
 			Placement placement;
+			// Whether applying the placement would change the document: always for
+			// a paste or an import, and for a move once it has left its origin.
+			bool PlacementChangesDocument() const {
+				return placementActive &&
+				       (placement.lifted.empty() || !(placement.anchor == placement.origin));
+			}
+			// Voxels in the document, counting those lifted by Move (they only float).
+			int DocumentVoxelCount() const {
+				return voxelCount + (placementActive ? int(placement.lifted.size()) : 0);
+			}
 			// The pending voxels as a renderable model, so they are drawn solid at
 			// their temporary position while the document shows the gap they left.
 			Handle<client::IModel> placementModel;

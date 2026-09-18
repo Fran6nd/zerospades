@@ -482,9 +482,7 @@ namespace spades {
 		void KV6EditorView::ConfirmDiscardChanges(std::function<void()> proceed) {
 			if (!proceed)
 				return;
-			// Voxels still waiting to be placed are unsaved work too, even though
-			// the document itself may be clean.
-			if (!IsDirty() && !placementActive) {
+			if (!HasUnsavedChanges()) {
 				proceed();
 				return;
 			}
@@ -878,9 +876,9 @@ namespace spades {
 			// A pending placement stores document coordinates too, so it has to
 			// follow the relabelling or it would apply in the wrong place.
 			if (placementActive) {
-				placement.anchor.x += ox;
-				placement.anchor.y += oy;
-				placement.anchor.z += oz;
+				const IntVector3 shift = MakeIntVector3(ox, oy, oz);
+				placement.anchor = placement.anchor + shift;
+				placement.origin = placement.origin + shift;
 				for (IntVector3& v : placement.lifted) {
 					v.x += ox;
 					v.y += oy;
@@ -1289,7 +1287,7 @@ void KV6EditorView::StartPaste() {
 			placement = Placement();
 			placement.voxels = std::move(voxels);
 			placement.lifted = std::move(lifted);
-			placement.anchor = MakeIntVector3(minX, minY, minZ);
+			placement.anchor = placement.origin = MakeIntVector3(minX, minY, minZ);
 			placement.label = "Move";
 			placementActive = true;
 
@@ -1426,6 +1424,7 @@ void KV6EditorView::StartPaste() {
 				return;
 			}
 
+			const bool changes = PlacementChangesDocument();
 			// Put the lifted voxels back first: the journaled edit below is what the
 			// undo history should contain, as a single step.
 			RestorePlacementVoxels();
@@ -1433,20 +1432,7 @@ void KV6EditorView::StartPaste() {
 			placement = Placement();
 			placementActive = false;
 			placementModel = Handle<client::IModel>();
-
-			// Voxels that end up exactly where they started change nothing.
-			bool moved = true;
-			if (!pending.lifted.empty()) {
-				IntVector3 from = pending.lifted.front();
-				for (const IntVector3& v : pending.lifted) {
-					from.x = std::min(from.x, v.x);
-					from.y = std::min(from.y, v.y);
-					from.z = std::min(from.z, v.z);
-				}
-				moved = from.x != pending.anchor.x || from.y != pending.anchor.y ||
-				        from.z != pending.anchor.z;
-			}
-			if (!moved)
+			if (!changes)
 				return; // the voxels and their selection are back as they were
 
 			undo.Begin(pending.label);
@@ -2229,10 +2215,10 @@ void KV6EditorView::StartPaste() {
 			FillRect(0.0F, 0.0F, sw, kRibbonH);
 
 			std::string name = (!filePath.empty()) ? filePath : "(unsaved model)";
-			if (IsDirty())
+			if (HasUnsavedChanges())
 				name += " *";
 			font.Draw("KV6 Editor", MakeVector2(12.0F, 4.0F), 0.95F, MakeVector4(1, 1, 1, 1));
-			font.Draw(name + "   (" + std::to_string(voxelCount) + " voxels)",
+			font.Draw(name + "   (" + std::to_string(DocumentVoxelCount()) + " voxels)",
 			          MakeVector2(120.0F, 5.0F), 0.85F, MakeVector4(0.75F, 0.75F, 0.78F, 1.0F));
 
 			std::string cam = "[Ctrl+S] save";
