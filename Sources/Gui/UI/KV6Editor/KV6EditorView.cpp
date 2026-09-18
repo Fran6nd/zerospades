@@ -33,6 +33,7 @@
 #include <Gui/OverlayPaint.h>
 
 #include <algorithm>
+#include <climits>
 #include <cmath>
 #include <cstdio>
 #include <exception>
@@ -878,7 +879,7 @@ namespace spades {
 			if (placementActive) {
 				const IntVector3 shift = MakeIntVector3(ox, oy, oz);
 				placement.anchor = placement.anchor + shift;
-				placement.origin = placement.origin + shift;
+				placement.pivot = placement.pivot + shift;
 				for (IntVector3& v : placement.lifted) {
 					v.x += ox;
 					v.y += oy;
@@ -1184,11 +1185,7 @@ void KV6EditorView::StartPaste() {
 				SetStatus(label + ": too large for the maximum model size");
 				return;
 			}
-			placement = Placement();
-			placement.voxels = std::move(voxels);
-			placement.anchor = at;
-			placement.label = label;
-			placementActive = true;
+			BeginPlacement(std::move(voxels), at, std::vector<IntVector3>(), label);
 			RebuildPlacementModel();
 
 			// Positioning a placement is what the Transform tool is for, so go there.
@@ -1196,8 +1193,8 @@ void KV6EditorView::StartPaste() {
 				SetStatus(label + ": could not open the Transform tool");
 				return;
 			}
-			SetStatus(label + ": drag the gizmo or use the arrow keys, then leave Transform to apply"
-			                  " ([Esc] cancels)");
+			SetStatus(label + ": drag the gizmo to move or turn it, or use the arrow keys, then"
+			                  " leave Transform to apply ([Esc] cancels)");
 		}
 
 		bool KV6EditorView::ActivateTransformTool() {
@@ -1284,12 +1281,8 @@ void KV6EditorView::StartPaste() {
 				                  model->GetColor(v.x, v.y, v.z) & 0xFFFFFF});
 			}
 
-			placement = Placement();
-			placement.voxels = std::move(voxels);
-			placement.lifted = std::move(lifted);
-			placement.anchor = placement.origin = MakeIntVector3(minX, minY, minZ);
-			placement.label = "Transform";
-			placementActive = true;
+			BeginPlacement(std::move(voxels), MakeIntVector3(minX, minY, minZ), std::move(lifted),
+			               "Transform");
 
 			// The voxels leave the document right away, so the gap they came from is
 			// visible while they are being positioned. The edit is not journaled:
@@ -1340,40 +1333,113 @@ void KV6EditorView::StartPaste() {
 			placementModel = Handle<client::IModel>();
 			if (!placementActive || placement.voxels.empty())
 				return;
-			int w = 1, h = 1, d = 1;
-			for (const ClipVoxel& v : placement.voxels) {
-				w = std::max(w, v.rel.x + 1);
-				h = std::max(h, v.rel.y + 1);
-				d = std::max(d, v.rel.z + 1);
-			}
-			Handle<VoxelModel> preview = Handle<VoxelModel>::New(w, h, d);
+			const IntVector3 extent = ExtentOf(placement.voxels);
+			Handle<VoxelModel> preview = Handle<VoxelModel>::New(extent.x, extent.y, extent.z);
 			for (const ClipVoxel& v : placement.voxels)
 				preview->SetSolid(v.rel.x, v.rel.y, v.rel.z, v.color);
 			placementModel = renderer->CreateModel(*preview);
 		}
 
-		void KV6EditorView::MovePlacement(int dx, int dy, int dz) {
-			if (!placementActive || (dx == 0 && dy == 0 && dz == 0))
+		IntVector3 KV6EditorView::ExtentOf(const std::vector<ClipVoxel>& voxels) {
+			IntVector3 extent = MakeIntVector3(1, 1, 1);
+			for (const ClipVoxel& v : voxels) {
+				extent.x = std::max(extent.x, v.rel.x + 1);
+				extent.y = std::max(extent.y, v.rel.y + 1);
+				extent.z = std::max(extent.z, v.rel.z + 1);
+			}
+			return extent;
+		}
+
+		void KV6EditorView::BeginPlacement(std::vector<ClipVoxel> voxels, const IntVector3& anchor,
+		                                   std::vector<IntVector3> lifted,
+		                                   const std::string& label) {
+			placement = Placement();
+			placement.voxels = std::move(voxels);
+			placement.anchor = anchor;
+			// The voxel at the middle of their box (the lower one where the middle
+			// falls between two), so a turn keeps them about where they were.
+			const IntVector3 extent = ExtentOf(placement.voxels);
+			placement.pivot = anchor + MakeIntVector3((extent.x - 1) / 2, (extent.y - 1) / 2,
+			                                          (extent.z - 1) / 2);
+			placement.lifted = std::move(lifted);
+			placement.label = label;
+			placementActive = true;
+		}
+
+		bool KV6EditorView::TransformedPlacement(const PlacementTransform& t, Placement& out,
+		                                         bool& clamped) const {
+			out = placement;
+			clamped = false;
+
+			if (t.Turns()) {
+				// A quarter turn takes the axis after `t.axis` onto the one after
+				// that, which is the right-handed sense about `t.axis`. Offsets from
+				// a whole-voxel pivot stay whole, so every voxel lands on a voxel.
+				const int turns = ((t.quarterTurns % 4) + 4) % 4;
+				const int u = (t.axis + 1) % 3, v = (t.axis + 2) % 3;
+				std::vector<IntVector3> cells(out.voxels.size());
+				IntVector3 lo = MakeIntVector3(INT_MAX, INT_MAX, INT_MAX);
+				for (size_t i = 0; i < out.voxels.size(); i++) {
+					const IntVector3 at = placement.anchor + out.voxels[i].rel - placement.pivot;
+					int c[3] = {at.x, at.y, at.z};
+					for (int k = 0; k < turns; k++) {
+						const int cu = c[u];
+						c[u] = -c[v];
+						c[v] = cu;
+					}
+					cells[i] = placement.pivot + MakeIntVector3(c[0], c[1], c[2]);
+					lo.x = std::min(lo.x, cells[i].x);
+					lo.y = std::min(lo.y, cells[i].y);
+					lo.z = std::min(lo.z, cells[i].z);
+				}
+				out.anchor = lo;
+				for (size_t i = 0; i < out.voxels.size(); i++)
+					out.voxels[i].rel = cells[i] - lo;
+			}
+
+			out.anchor = out.anchor + t.shift;
+			out.pivot = out.pivot + t.shift;
+			IntVector3 fitted = out.anchor;
+			if (!ClampPlacementAnchor(out.voxels, fitted))
+				return false;
+			clamped = !(fitted == out.anchor);
+			// The pivot stays with the voxels, so turning back still returns them.
+			out.pivot = out.pivot + (fitted - out.anchor);
+			out.anchor = fitted;
+
+			out.displaced = false;
+			for (size_t i = 0; i < out.lifted.size() && !out.displaced; i++)
+				out.displaced = !(out.anchor + out.voxels[i].rel == out.lifted[i]);
+			return true;
+		}
+
+		void KV6EditorView::TransformPlacement(const PlacementTransform& t) {
+			if (!placementActive || !t.IsValid() || t.IsIdentity())
 				return;
-			const IntVector3 wanted = placement.anchor + MakeIntVector3(dx, dy, dz);
-			IntVector3 anchor = wanted;
-			if (!ClampPlacementAnchor(placement.voxels, anchor)) {
+			Placement next;
+			bool clamped = false;
+			if (!TransformedPlacement(t, next, clamped)) {
 				SetStatus(kMaxModelSizeMessage);
 				return;
 			}
-			if (!(anchor == wanted))
+			if (clamped)
 				SetStatus(kMaxModelSizeMessage); // went as far as the limit allows
-			placement.anchor = anchor;
+			placement = std::move(next);
+			if (t.Turns())
+				RebuildPlacementModel();
+		}
+
+		bool KV6EditorView::PlacementPivot(IntVector3& out) const {
+			if (!placementActive)
+				return false;
+			out = placement.pivot;
+			return true;
 		}
 
 		bool KV6EditorView::ClampPlacementAnchor(const std::vector<ClipVoxel>& voxels,
 		                                         IntVector3& anchor) const {
-			int extent[3] = {1, 1, 1};
-			for (const ClipVoxel& v : voxels) {
-				extent[0] = std::max(extent[0], v.rel.x + 1);
-				extent[1] = std::max(extent[1], v.rel.y + 1);
-				extent[2] = std::max(extent[2], v.rel.z + 1);
-			}
+			const IntVector3 box = ExtentOf(voxels);
+			const int extent[3] = {box.x, box.y, box.z};
 			const int size[3] = {model->GetWidth(), model->GetHeight(), model->GetDepth()};
 			const int limit[3] = {kMaxModelWidth, kMaxModelHeight, kMaxModelDepth};
 			int at[3] = {anchor.x, anchor.y, anchor.z};
@@ -1385,19 +1451,6 @@ void KV6EditorView::StartPaste() {
 				at[a] = std::max(size[a] - limit[a], std::min(limit[a] - extent[a], at[a]));
 			}
 			anchor = MakeIntVector3(at[0], at[1], at[2]);
-			return true;
-		}
-
-		bool KV6EditorView::PlacementCentroid(Vector3& out) const {
-			if (!placementActive || placement.voxels.empty())
-				return false;
-			Vector3 sum = MakeVector3(0, 0, 0);
-			for (const ClipVoxel& v : placement.voxels) {
-				sum += MakeVector3(float(placement.anchor.x + v.rel.x),
-				                   float(placement.anchor.y + v.rel.y),
-				                   float(placement.anchor.z + v.rel.z));
-			}
-			out = sum * (1.0F / float(placement.voxels.size()));
 			return true;
 		}
 
@@ -1492,20 +1545,19 @@ void KV6EditorView::StartPaste() {
 			DrawBoxOutline(lo, hi, MakeVector4(0.4F, 1.0F, 0.5F, 0.9F));
 		}
 
-		void KV6EditorView::DrawPlacementOffset(int dx, int dy, int dz, const Vector4& color) {
-			if (!placementActive)
+		void KV6EditorView::DrawPlacementTransformed(const PlacementTransform& t,
+		                                             const Vector4& color) {
+			if (!placementActive || !t.IsValid())
 				return;
-			// A zero-alpha colour means "use each voxel's own colour" (the preview);
-			// the gizmo passes a solid colour for the drag ghost.
-			bool useVoxelColor = color.w <= 0.0F;
-			for (const ClipVoxel& v : placement.voxels) {
-				DrawCellOutline(placement.anchor.x + v.rel.x + dx, placement.anchor.y + v.rel.y + dy,
-				                placement.anchor.z + v.rel.z + dz,
-				                useVoxelColor ? ColorToVec(v.color) : color);
+			Placement preview;
+			bool clamped = false;
+			if (!TransformedPlacement(t, preview, clamped))
+				return;
+			for (const ClipVoxel& v : preview.voxels) {
+				const IntVector3 at = preview.anchor + v.rel;
+				DrawCellOutline(at.x, at.y, at.z, color);
 			}
 		}
-
-				// --- Selection move (gizmo) ------------------------------------------
 
 		// --- Layout / hit testing --------------------------------------------
 

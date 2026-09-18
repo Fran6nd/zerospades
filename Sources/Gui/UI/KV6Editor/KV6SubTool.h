@@ -142,8 +142,9 @@ namespace spades {
 			void DrawOverlay(IEditorContext&) override;
 
 		protected:
-			/** `translationStep`: the snap increment of a move, in voxels. */
-			explicit GizmoSubTool(float translationStep);
+			/** The gizmo snaps by `snap` and shows (and responds to) `handles`. */
+			explicit GizmoSubTool(const GizmoSnap& snap,
+			                      const GizmoHandleSet& handles = GizmoHandleSet::Translation());
 
 			TransformGizmo gizmo;
 
@@ -167,8 +168,10 @@ namespace spades {
 		};
 
 		/**
-		 * Positions pending voxels with the gizmo (whole voxels), or with the arrow
-		 * keys (Page Up/Down for the third axis).
+		 * Positions pending voxels with the gizmo: its arrows and squares move
+		 * them by whole voxels, its axis rings turn them by quarter turns about
+		 * their pivot. The arrow keys move them too (Page Up/Down for the third
+		 * axis).
 		 *
 		 * Entering the tool lifts the selection into a placement, and a paste or an
 		 * import arrives with one already pending. Nothing is written to the
