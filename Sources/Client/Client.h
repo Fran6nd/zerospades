@@ -473,6 +473,7 @@ namespace spades {
 			void RemoveAllLocalEntities();
 
 			std::unique_ptr<BloodMarks> bloodMarks;
+			Handle<IModel> blockCursorModel;
 
 			int nextMapShotIndex;
 

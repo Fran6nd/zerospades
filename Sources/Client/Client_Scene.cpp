@@ -710,8 +710,6 @@ namespace spades {
 							bool active = blockCursorActive && valid;
 							bool debugCursor = cg_debugBlockCursor;
 
-							Handle<IModel> curLine = renderer->RegisterModel("Models/MapObjects/BlockCursorLine.kv6");
-
 							for (const auto& v : cells) {
 								const Vector3 blockF = MakeVector3(v);
 								const Vector3 color(1.0F, valid, active);
@@ -721,7 +719,6 @@ namespace spades {
 								param.opacity = active ? 0.5F : 0.25F;
 								param.customColor = color;
 								param.matrix = Matrix4::Translate(blockF + 0.5F);
-								param.matrix = param.matrix * Matrix4::Scale(0.1F);
 
 								if (debugCursor) {
 									AddDebugObjectToScene(
@@ -734,7 +731,7 @@ namespace spades {
 								if (blocks > 2 && map->IsSolid(v.x, v.y, v.z))
 									continue;
 
-								renderer->RenderModel(*curLine, param);
+								renderer->RenderModel(*blockCursorModel, param);
 							}
 						}
 					}

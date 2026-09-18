@@ -31,6 +31,7 @@
 #include <Core/IStream.h>
 #include <Core/Settings.h>
 #include <Core/Strings.h>
+#include <Core/VoxelModel.h>
 
 #include "IAudioChunk.h"
 #include "IAudioDevice.h"
@@ -354,8 +355,6 @@ namespace spades {
 		void Client::DoInit() {
 			renderer->Init();
 
-			bloodMarks = stmp::make_unique<BloodMarks>(*this);
-
 			// load images
 			SmokeSpriteEntity::Preload(renderer.GetPointerOrNull());
 
@@ -529,9 +528,19 @@ namespace spades {
 			audioDevice->RegisterSound("Sounds/Weapons/RestockLocal.opus");
 			audioDevice->RegisterSound("Sounds/Weapons/Switch.opus");
 			audioDevice->RegisterSound("Sounds/Weapons/SwitchLocal.opus");
+			
+			// init blood marks
+			bloodMarks = stmp::make_unique<BloodMarks>(*this);
+
+			// create block cursor model
+			{
+				auto voxel = Handle<VoxelModel>::New(1, 1, 1);
+				voxel->SetOrigin(MakeVector3(0.0F, 0.0F, 0.0F));
+				voxel->SetSolid(0, 0, 0, 0);
+				blockCursorModel = renderer->CreateModel(*voxel);
+			}
 
 			// load models
-			renderer->RegisterModel("Models/MapObjects/BlockCursorLine.kv6");
 			renderer->RegisterModel("Models/MapObjects/CheckPoint.kv6");
 			renderer->RegisterModel("Models/MapObjects/Intel.kv6");
 			renderer->RegisterModel("Models/Player/Rifle/Arm.kv6");
