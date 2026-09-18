@@ -389,9 +389,12 @@ namespace spades {
 
 			float y = 8.0F;
 
+			bool isDemoMode = IsDemoMode();
+
 			const int statsMode = cg_stats;
-			if ((statsMode == 2 || (statsMode >= 3 && scoreboardVisible))
-				|| (statsMode >= 1 && IsDemoMode())) // force on screen top for demo playback hud
+			if (statsMode == 2
+				|| (statsMode >= 3 && scoreboardVisible)
+				|| (statsMode == 1 && isDemoMode)) // force on screen top for demo playback hud
 				y += cg_statsSmallFont ? 10.0F : 20.0F;
 
 			int now = (int)time;
@@ -426,17 +429,26 @@ namespace spades {
 			float x = sw * 0.5F;
 			float y = 8.0F;
 
+			const int statsMode = cg_stats;
+
 			bool isDemoMode = IsDemoMode();
-			if ((playerCountMode < 2 || isDemoMode) && scoreboardVisible)
+			bool statsOnTop = statsMode == 2
+				|| (statsMode >= 3 && scoreboardVisible)
+				|| (statsMode == 1 && isDemoMode);
+			bool playerCountOnTop = playerCountMode > 0
+				&& playerCountMode < 2
+				|| (playerCountMode >= 1 && playerCountMode < 3 && isDemoMode); // force on screen top for demo mode
+
+			// account for playing time height
+			if (playerCountOnTop && scoreboardVisible)
 				y += 30.0F;
 
-			const int statsMode = cg_stats;
-			if ((playerCountMode >= 2 && statsMode == 1) ||
-				(playerCountMode < 2 && (statsMode == 2 || (statsMode >= 3 && scoreboardVisible)))
-				|| (statsMode >= 1 && isDemoMode)) // force on screen top for demo playback hud
+			// account for client stats height
+			if ((statsOnTop && playerCountOnTop)
+				|| ((statsMode > 0 && statsMode == 1) && !playerCountOnTop))
 				y += cg_statsSmallFont ? 10.0F : 20.0F;
 
-			float teamBarY = (playerCountMode < 2 || isDemoMode) ? y : ((sh - y) - teamBarH);
+			float teamBarY = playerCountOnTop ? y : ((sh - y) - teamBarH);
 
 			Handle<IImage> img;
 			IFont& font = fontManager->GetHeadingFont();
@@ -1700,14 +1712,29 @@ namespace spades {
 			const float barX = (sw - barW) * 0.5F;
 
 			float barY = 16.0F;
+
+			const int statsMode = cg_stats;
+			const int playerCountMode = cg_hudPlayerCount;
+
+			bool isDemoMode = IsDemoMode();
+			bool statsOnTop = statsMode == 2
+				|| (statsMode >= 3 && scoreboardVisible)
+				|| (statsMode == 1 && isDemoMode);
+			bool playerCountOnTop = playerCountMode > 0
+				&& playerCountMode < 2
+				|| (playerCountMode >= 1 && playerCountMode < 3 && isDemoMode); // force on screen top for demo mode
+
+			// account for playing time height
 			if (scoreboardVisible)
 				barY += 30.0F;
-			const int statsMode = cg_stats;
-			if (statsMode == 2 || (statsMode >= 3 && scoreboardVisible))
+
+			// account for client stats height
+			if (statsOnTop)
 				barY += cg_statsSmallFont ? 10.0F : 20.0F;
-			const int playerCountMode = cg_hudPlayerCount;
-			if (playerCountMode == 1)
-				barY += 42.0F;
+
+			// account for alive player count height
+			if (playerCountOnTop)
+				barY += 40.0F;
 
 			const Vector4 color = GetHUDColor(p);
 			float luminosity = color.x + color.y + color.z;
@@ -2069,6 +2096,8 @@ namespace spades {
 		void Client::DrawStats() {
 			SPADES_MARK_FUNCTION();
 
+			bool isDemoMode = IsDemoMode();
+
 			// only draw stats when scoreboard is visible
 			const int statsMode = cg_stats;
 			if (statsMode >= 3 && !scoreboardVisible)
@@ -2100,7 +2129,7 @@ namespace spades {
 				}
 			}
 
-			if (!IsDemoMode() && !netgraphVisible) {
+			if (!isDemoMode && !netgraphVisible) {
 				auto ping = activeNet->GetPing();
 				snprintf(buf, sizeof(buf), ", ping: %dms", ping);
 				str += buf;
@@ -2127,7 +2156,7 @@ namespace spades {
 				: fontManager->GetGuiFont();
 			Vector2 size = font.Measure(str) + (margin * 2.0F);
 			Vector2 pos = MakeVector2(sw, sh) - size;
-			pos *= MakeVector2(0.5F, (statsMode >= 2 || IsDemoMode()) ? 0.0F : 1.0F);
+			pos *= MakeVector2(0.5F, (statsMode >= 2 || isDemoMode) ? 0.0F : 1.0F);
 
 			Vector4 color = MakeVector4(1, 1, 1, 1);
 			Vector4 outline = MakeVector4(0, 0, 0, 0.8F);
