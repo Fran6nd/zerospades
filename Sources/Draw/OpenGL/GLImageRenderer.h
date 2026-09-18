@@ -38,9 +38,6 @@ namespace spades {
 			IGLDevice& device;
 			GLImage* image;
 
-			float invScreenWidthFactored;
-			float invScreenHeightFactored;
-
 			GLProgram* program;
 
 			GLProgramAttribute* positionAttribute;

@@ -231,6 +231,7 @@ namespace spades {
 
 			float ScreenWidth() override;
 			float ScreenHeight() override;
+			float ScreenPixelRatio() override;
 
 			int GetRenderWidth() const { return renderWidth; }
 			int GetRenderHeight() const { return renderHeight; }
