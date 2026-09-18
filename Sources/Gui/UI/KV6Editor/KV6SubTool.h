@@ -218,7 +218,8 @@ namespace spades {
 		};
 
 		// Moves the mirror planes with the gizmo, in 0.5 steps — the step at which
-		// a reflection actually shifts. The planes follow the drag live.
+		// a reflection actually shifts. The planes follow the drag live and the
+		// move is committed as one undo step on release, as the pivot's is.
 		class MirrorGizmoSubTool : public GizmoSubTool {
 		public:
 			MirrorGizmoSubTool();
@@ -227,9 +228,13 @@ namespace spades {
 
 		protected:
 			bool CurrentPose(IEditorContext& ed, GizmoPose& pose) override;
-			// Applied step by step, so a resize shifting the planes mid-drag stands.
+			void OnGizmoBegin(IEditorContext& ed) override;
 			void OnGizmoDrag(IEditorContext& ed) override;
+			void OnGizmoEnd(IEditorContext& ed, const GizmoTransform& total) override;
 			void OnGizmoCancel(IEditorContext& ed, const GizmoTransform& undo) override;
+
+		private:
+			Vector3 startPlane; // planes at the grab
 		};
 
 		// Set the pivot by typing exact values into a prompt.

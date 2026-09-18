@@ -45,9 +45,18 @@ namespace spades {
 		void MirrorTool::OnActivate(IEditorContext& ed) {
 			// The editor owns the axis state and the toggles only show it, so bring
 			// them up to date in case it changed while another tool was active.
+			SyncAxisToggles(ed);
+			ContainerTool::OnActivate(ed);
+		}
+
+		void MirrorTool::OnDocumentChanged(IEditorContext& ed) {
+			SyncAxisToggles(ed); // an undo or redo may have flipped an axis
+			ContainerTool::OnDocumentChanged(ed);
+		}
+
+		void MirrorTool::SyncAxisToggles(IEditorContext& ed) {
 			for (int a = 0; a < 3; a++)
 				options.SetBool(kAxisOption[a], ed.MirrorEnabled(a));
-			ContainerTool::OnActivate(ed);
 		}
 
 		void MirrorTool::OnOptionToggled(IEditorContext& ed, const std::string& id, bool value) {
