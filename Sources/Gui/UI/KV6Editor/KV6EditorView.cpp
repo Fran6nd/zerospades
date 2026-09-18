@@ -35,6 +35,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
+#include <exception>
 
 #include <Client/Fonts.h>
 #include <Client/IFont.h>
@@ -404,6 +405,7 @@ namespace spades {
 			selection.clear(); // it named voxels of the previous document
 			undo.Clear();
 			savedGeomId = -1; // a fresh, never-saved document starts dirty
+			NotifyDocumentChanged();
 		}
 
 		void KV6EditorView::LoadModel(const std::string& path) {
@@ -424,6 +426,7 @@ namespace spades {
 			selection.clear(); // it named voxels of the previous document
 			undo.Clear();
 			savedGeomId = undo.GeometryStateId(); // a freshly loaded document is clean
+			NotifyDocumentChanged();
 		}
 
 		int KV6EditorView::CountSolids() {
@@ -451,8 +454,7 @@ namespace spades {
 
 		bool KV6EditorView::Save() {
 			// Saving writes the document, so anything still pending belongs in it.
-			if (placementActive)
-				ApplyPlacement();
+			DocumentCommand command(*this);
 			if (filePath.empty()) {
 				SetStatus("No file to save to");
 				return false;
@@ -907,6 +909,7 @@ namespace spades {
 		}
 
 		void KV6EditorView::PlaceCube() {
+			DocumentCommand command(*this);
 			DoPick();
 			if (!pickHit)
 				return;
@@ -953,6 +956,7 @@ namespace spades {
 		}
 
 		void KV6EditorView::DeleteCube() {
+			DocumentCommand command(*this);
 			DoPick();
 			if (!pickHit)
 				return;
@@ -1028,6 +1032,7 @@ namespace spades {
 		// --- Selection --------------------------------------------------------
 
 		void KV6EditorView::ToggleSelect(int x, int y, int z) {
+			DocumentCommand command(*this);
 			undo.Begin("Select");
 			int64_t k = SelKey(x, y, z);
 			auto it = selection.find(k);
@@ -1042,12 +1047,14 @@ namespace spades {
 			return selection.find(SelKey(x, y, z)) != selection.end();
 		}
 		void KV6EditorView::ClearSelection() {
+			DocumentCommand command(*this);
 			undo.Begin("Clear Selection");
 			selection.clear();
 			undo.End();
 		}
 
 		void KV6EditorView::SelectLinkedColor(int x, int y, int z) {
+			DocumentCommand command(*this);
 			if (!InBounds(x, y, z) || !model->IsSolid(x, y, z))
 				return;
 			undo.Begin("Select Colour");
@@ -1102,6 +1109,7 @@ namespace spades {
 		// --- Clipboard / paste -----------------------------------------------
 
 		void KV6EditorView::CopySelection() {
+			DocumentCommand command(*this);
 			if (selection.empty()) {
 				SetStatus("Nothing selected");
 				return;
@@ -1124,6 +1132,7 @@ namespace spades {
 		}
 
 		bool KV6EditorView::CutSelection() {
+			DocumentCommand command(*this);
 			if (selection.empty()) {
 				SetStatus("Nothing selected");
 				return false;
@@ -1170,8 +1179,7 @@ void KV6EditorView::StartPaste() {
 			if (voxels.empty())
 				return;
 			// Anything already pending belongs to the document before this starts.
-			if (placementActive)
-				ApplyPlacement();
+			DocumentCommand command(*this);
 
 			IntVector3 at = anchor;
 			if (!ClampPlacementAnchor(voxels, at)) {
@@ -1316,6 +1324,18 @@ void KV6EditorView::StartPaste() {
 				AddSelect(v.x, v.y, v.z);
 			}
 			RebuildRenderModel();
+		}
+
+		KV6EditorView::DocumentCommand::DocumentCommand(KV6EditorView& editor) : editor(editor) {
+			if (editor.documentCommandDepth++ == 0)
+				editor.ApplyPlacement();
+		}
+
+		KV6EditorView::DocumentCommand::~DocumentCommand() {
+			// A command that threw has not finished, so there is nothing yet for
+			// the tool to catch up with (and a destructor must not throw on top).
+			if (--editor.documentCommandDepth == 0 && std::uncaught_exceptions() == 0)
+				editor.NotifyDocumentChanged();
 		}
 
 		void KV6EditorView::RebuildPlacementModel() {
@@ -1560,6 +1580,7 @@ void KV6EditorView::StartPaste() {
 		}
 
 		void KV6EditorView::SelectBox(const IntVector3& lo, const IntVector3& hi) {
+			DocumentCommand command(*this);
 			undo.Begin("Select");
 			for (int x = lo.x; x <= hi.x; x++)
 			for (int y = lo.y; y <= hi.y; y++)
@@ -1571,6 +1592,7 @@ void KV6EditorView::StartPaste() {
 		}
 
 		void KV6EditorView::SelectCells(const std::vector<IntVector3>& cells) {
+			DocumentCommand command(*this);
 			undo.Begin("Select");
 			for (const IntVector3& c : cells) {
 				if (InBounds(c.x, c.y, c.z) && model->IsSolid(c.x, c.y, c.z))
@@ -1580,6 +1602,7 @@ void KV6EditorView::StartPaste() {
 		}
 
 		void KV6EditorView::FillCells(const std::vector<IntVector3>& cellsIn, uint32_t color) {
+			DocumentCommand command(*this);
 			std::vector<IntVector3> cells = cellsIn;
 			ExpandMirrors(cells); // also fill the mirror images, if enabled
 			if (cells.empty())
@@ -1616,6 +1639,7 @@ void KV6EditorView::StartPaste() {
 		}
 
 		void KV6EditorView::EraseCells(const std::vector<IntVector3>& cellsIn) {
+			DocumentCommand command(*this);
 			std::vector<IntVector3> cells = cellsIn;
 			ExpandMirrors(cells); // also erase the mirror images, if enabled
 			int count = 0;
@@ -1642,6 +1666,7 @@ void KV6EditorView::StartPaste() {
 		}
 
 		void KV6EditorView::DeselectCells(const std::vector<IntVector3>& cells) {
+			DocumentCommand command(*this);
 			undo.Begin("Deselect");
 			for (const IntVector3& c : cells)
 				selection.erase(SelKey(c.x, c.y, c.z));
@@ -1649,6 +1674,7 @@ void KV6EditorView::StartPaste() {
 		}
 
 		void KV6EditorView::PaintCells(const std::vector<IntVector3>& cellsIn, uint32_t color) {
+			DocumentCommand command(*this);
 			std::vector<IntVector3> cells = cellsIn;
 			ExpandMirrors(cells); // also recolour the mirror images, if enabled
 			uint32_t rgb = color & 0xFFFFFF;
@@ -1748,6 +1774,7 @@ void KV6EditorView::StartPaste() {
 		}
 
 		void KV6EditorView::SetPivot(const Vector3& pivot) {
+			DocumentCommand command(*this);
 			Vector3 before = model->GetOrigin();
 			Vector3 after = pivot * -1.0F;
 			if (after.x == before.x && after.y == before.y && after.z == before.z)
@@ -2080,6 +2107,11 @@ void KV6EditorView::StartPaste() {
 		void KV6EditorView::CancelToolInteraction() {
 			if (EditorTool* t = ActiveTool())
 				t->CancelInteraction(*this);
+		}
+
+		void KV6EditorView::NotifyDocumentChanged() {
+			if (EditorTool* t = ActiveTool())
+				t->OnDocumentChanged(*this);
 		}
 
 		// --- Ribbon (title) + unified toolbar [modes] | [tools] -------------
