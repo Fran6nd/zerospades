@@ -102,6 +102,8 @@ namespace spades {
 			void CancelPlacement() override;
 			void DrawPlacementOffset(int dx, int dy, int dz, const Vector4& color) override;
 			void DrawSolidCube(const Vector3& center, float half, const Vector4& color) override;
+			GizmoView GetGizmoView() const override;
+			void DrawGizmo(const TransformGizmo& gizmo) override;
 			bool InBounds(int x, int y, int z) const override;
 			VoxelModel& Model() override { return *model; }
 			uint32_t CurrentColor() const override { return currentColor; }
