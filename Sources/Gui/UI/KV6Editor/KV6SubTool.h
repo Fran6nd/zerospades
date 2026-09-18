@@ -178,10 +178,10 @@ namespace spades {
 		 * the tool lifts the selection again: while it is active, what is selected
 		 * is what moves.
 		 */
-		class MoveSubTool : public GizmoSubTool {
+		class TransformSubTool : public GizmoSubTool {
 		public:
-			MoveSubTool();
-			const char* Label() const override { return "Move"; }
+			TransformSubTool();
+			const char* Label() const override { return "Transform"; }
 			void OnActivate(IEditorContext&) override;
 			void OnDeactivate(IEditorContext&) override;
 			void OnDocumentChanged(IEditorContext&) override;

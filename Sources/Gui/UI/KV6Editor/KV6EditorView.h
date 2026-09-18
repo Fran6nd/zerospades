@@ -93,7 +93,7 @@ namespace spades {
 			// Project a world point to screen pixels. `ok` is false if behind the camera.
 			Vector2 WorldToScreen(const Vector3& w, bool& ok) const override;
 			void DrawLine3D(const Vector3& a, const Vector3& b, const Vector4& color) override;
-			// Selection move (used by the move gizmo).
+			// Pending placement (positioned by the Transform tool).
 			bool HasPlacement() const override { return placementActive; }
 			bool BeginPlacementFromSelection() override;
 			void MovePlacement(int dx, int dy, int dz) override;
@@ -113,7 +113,7 @@ namespace spades {
 			void AddSelect(int x, int y, int z) override;
 			bool IsSelected(int x, int y, int z) const override;
 			void ClearSelection() override;
-			// Voxels lifted by Move are still what is selected; they only float.
+			// Voxels lifted by Transform are still what is selected; they only float.
 			int SelectionCount() const override {
 				return int(selection.size() + (placementActive ? placement.lifted.size() : 0));
 			}
@@ -264,7 +264,7 @@ namespace spades {
 				std::vector<IntVector3> lifted;
 				// Where `anchor` was when `lifted` was taken (a move's starting point).
 				IntVector3 origin = IntVector3::Make(0, 0, 0);
-				std::string label = "Move"; // undo step name
+				std::string label = "Transform"; // undo step name
 			};
 			bool placementActive = false;
 			Placement placement;
@@ -274,7 +274,7 @@ namespace spades {
 				return placementActive &&
 				       (placement.lifted.empty() || !(placement.anchor == placement.origin));
 			}
-			// Voxels in the document, counting those lifted by Move (they only float).
+			// Voxels in the document, counting those lifted by Transform (they only float).
 			int DocumentVoxelCount() const {
 				return voxelCount + (placementActive ? int(placement.lifted.size()) : 0);
 			}
@@ -296,7 +296,7 @@ namespace spades {
 			 * Scope of a command that edits the document or the selection, or reads
 			 * them as a whole (copy, save). The outermost one applies a pending
 			 * placement first, so the command acts on the document as it stands,
-			 * and tells the active tool once it is done, so Move can lift what is
+			 * and tells the active tool once it is done, so Transform can lift what is
 			 * selected then. Nested commands (Cut copies) act as one.
 			 */
 			class DocumentCommand {
@@ -317,12 +317,12 @@ namespace spades {
 			bool CutSelection(); // returns false if it would empty the document
 			void StartPaste();
 			// Starts a placement of `voxels` with its min corner at `anchor`, and
-			// switches to the Move tool so it can be positioned.
+			// switches to the Transform tool so it can be positioned.
 			void StartPlacement(std::vector<ClipVoxel> voxels, const std::string& label,
 			                    const IntVector3& anchor);
 			void DrawPlacementPreview();
-			// Switch to the placement Move sub-tool (where a placement is positioned).
-			bool ActivateMoveTool();
+			// Switch to the placement Transform sub-tool (where a placement is positioned).
+			bool ActivateTransformTool();
 			// Loads `path` and starts placing its voxels in the current document.
 			void ImportModel(const std::string& path);
 			/** Asks for a model with the shared file browser, then imports it. */
