@@ -1191,21 +1191,21 @@ void KV6EditorView::StartPaste() {
 			placementActive = true;
 			RebuildPlacementModel();
 
-			// Positioning a placement is what the Move tool is for, so go there.
-			if (!ActivateMoveTool()) {
-				SetStatus(label + ": could not open the Move tool");
+			// Positioning a placement is what the Transform tool is for, so go there.
+			if (!ActivateTransformTool()) {
+				SetStatus(label + ": could not open the Transform tool");
 				return;
 			}
-			SetStatus(label + ": drag the gizmo or use the arrow keys, then leave Move to apply"
+			SetStatus(label + ": drag the gizmo or use the arrow keys, then leave Transform to apply"
 			                  " ([Esc] cancels)");
 		}
 
-		bool KV6EditorView::ActivateMoveTool() {
-			// Matched by type: other sub-tools share the "Move" label (the mirror
-			// gizmo does), so a label search would depend on the toolbar order.
+		bool KV6EditorView::ActivateTransformTool() {
+			// Matched by type rather than by label, so neither renaming a button nor
+			// another sub-tool taking the same label can send a placement elsewhere.
 			for (size_t i = 0; i < tools.size(); i++) {
 				for (int sub = 0; sub < tools[i]->SubToolCount(); sub++) {
-					if (!dynamic_cast<MoveSubTool*>(tools[i]->SubTool(sub)))
+					if (!dynamic_cast<TransformSubTool*>(tools[i]->SubTool(sub)))
 						continue;
 					SetMode(EditorMode::Edit);
 					SetActiveTool(int(i));
@@ -1288,7 +1288,7 @@ void KV6EditorView::StartPaste() {
 			placement.voxels = std::move(voxels);
 			placement.lifted = std::move(lifted);
 			placement.anchor = placement.origin = MakeIntVector3(minX, minY, minZ);
-			placement.label = "Move";
+			placement.label = "Transform";
 			placementActive = true;
 
 			// The voxels leave the document right away, so the gap they came from is

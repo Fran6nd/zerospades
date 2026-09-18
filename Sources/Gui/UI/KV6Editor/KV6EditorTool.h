@@ -66,7 +66,7 @@ namespace spades {
 
 			// A command changed the document or the selection (an edit, a shortcut,
 			// an option, undo). A tool holding state derived from them refreshes it
-			// here; the Move tool, for one, picks the selection up again.
+			// here; the Transform tool, for one, picks the selection up again.
 			virtual void OnDocumentChanged(IEditorContext&) {}
 
 			// Declarative options shown in the secondary toolbar next to this tool's

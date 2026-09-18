@@ -376,27 +376,27 @@ namespace spades {
 			ed.DrawGizmo(gizmo);
 		}
 
-		// --- MoveSubTool (position the pending placement) --------------------
+		// --- TransformSubTool (position the pending placement) ---------------
 
-		MoveSubTool::MoveSubTool() : GizmoSubTool(1.0F) {}
+		TransformSubTool::TransformSubTool() : GizmoSubTool(1.0F) {}
 
-		void MoveSubTool::OnActivate(IEditorContext& ed) {
+		void TransformSubTool::OnActivate(IEditorContext& ed) {
 			GizmoSubTool::OnActivate(ed);
 			if (ed.HasPlacement())
 				return; // a paste or import is already waiting to be positioned
 			if (ed.BeginPlacementFromSelection())
-				ed.SetStatus("Move: drag a handle or use the arrows; leaving Move applies it");
+				ed.SetStatus("Transform: drag a handle or use the arrows; leaving Transform applies it");
 			else
-				ed.SetStatus("Move: select some voxels first");
+				ed.SetStatus("Transform: select some voxels first");
 		}
 
-		void MoveSubTool::OnDeactivate(IEditorContext& ed) {
+		void TransformSubTool::OnDeactivate(IEditorContext& ed) {
 			GizmoSubTool::OnDeactivate(ed);
 			// Leaving the tool is what writes the voxels into the document.
 			ed.ApplyPlacement();
 		}
 
-		void MoveSubTool::OnDocumentChanged(IEditorContext& ed) {
+		void TransformSubTool::OnDocumentChanged(IEditorContext& ed) {
 			GizmoSubTool::OnDocumentChanged(ed);
 			// The command landed the placement; carry on with what is selected now.
 			// Quietly, so the command's own status stays up.
@@ -404,7 +404,7 @@ namespace spades {
 				ed.BeginPlacementFromSelection();
 		}
 
-		bool MoveSubTool::CurrentPose(IEditorContext& ed, GizmoPose& pose) {
+		bool TransformSubTool::CurrentPose(IEditorContext& ed, GizmoPose& pose) {
 			Vector3 centroid;
 			if (!ed.PlacementCentroid(centroid))
 				return false;
@@ -414,13 +414,13 @@ namespace spades {
 			return true;
 		}
 
-		void MoveSubTool::OnGizmoEnd(IEditorContext& ed, const GizmoTransform& total) {
+		void TransformSubTool::OnGizmoEnd(IEditorContext& ed, const GizmoTransform& total) {
 			IntVector3 d = WholeVoxels(total.translation);
 			if (d.x != 0 || d.y != 0 || d.z != 0)
 				ed.MovePlacement(d.x, d.y, d.z); // still only a pending move
 		}
 
-		void MoveSubTool::OnKey(IEditorContext& ed, const KeyInput& e) {
+		void TransformSubTool::OnKey(IEditorContext& ed, const KeyInput& e) {
 			if (e.phase != KeyPhase::Down || !ed.HasPlacement())
 				return;
 			int d[3] = {0, 0, 0};
@@ -434,7 +434,7 @@ namespace spades {
 			ed.MovePlacement(d[0], d[1], d[2]);
 		}
 
-		bool MoveSubTool::OnEscape(IEditorContext& ed) {
+		bool TransformSubTool::OnEscape(IEditorContext& ed) {
 			if (GizmoSubTool::OnEscape(ed))
 				return true; // cancelled the drag, the placement stays where it was
 			if (ed.HasPlacement()) {
@@ -444,7 +444,7 @@ namespace spades {
 			return false;
 		}
 
-		void MoveSubTool::DrawScene(IEditorContext& ed) {
+		void TransformSubTool::DrawScene(IEditorContext& ed) {
 			IntVector3 d = WholeVoxels(gizmo.Total().translation);
 			if (d.x != 0 || d.y != 0 || d.z != 0)
 				ed.DrawPlacementOffset(d.x, d.y, d.z, MakeVector4(0.4F, 1.0F, 0.5F, 0.9F));

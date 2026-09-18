@@ -121,8 +121,8 @@ namespace spades {
 			// --- Pending placement (floating voxels) --------------------------
 			// Paste, import and move park their voxels here first: nothing reaches
 			// the document until the placement is applied, so dragging voxels over
-			// others never destroys what they pass across. Leaving the Move tool
-			// applies the placement; Escape drops it. Every edit of the voxels,
+			// others never destroys what they pass across. Leaving the Transform
+			// tool applies the placement; Escape drops it. Every edit of the voxels,
 			// the selection or the pivot (and the editor's copy, cut, save and
 			// undo) applies it first, so it acts on the document as it stands.
 			virtual bool HasPlacement() const = 0;
