@@ -276,21 +276,25 @@ namespace spades {
 		}
 
 		void StandardPreferenceLayouter::CreatePreview(UIElement* field, EventHandler resetHandler,
-		                                               EventHandler randomizeHandler) {
+                                               EventHandler randomizeHandler) {
 			UIElement* container = CreateItem();
 
 			field->SetBounds(AABB2(listX, 0.0F, listWidth, 64.0F));
 			container->AddChild(field);
 
+			client::IFont& font = fontManager->GetGuiFont();
+
 			Handle<SimpleButton> resetButton = Handle<SimpleButton>::New(&parent->GetManager());
 			resetButton->caption = _Tr("Preferences", "Reset");
-			resetButton->SetBounds(AABB2(10.0F + 2.0F, 2.0F, 50.0F, 20.0F));
+			float resetW = font.Measure(resetButton->caption).x + 8.0F;
+			resetButton->SetBounds(AABB2(10.0F + 2.0F, 2.0F, resetW, 20.0F));
 			resetButton->activated = std::move(resetHandler);
 			container->AddChild(resetButton.GetPointerOrNull());
 
 			Handle<SimpleButton> randomizeButton = Handle<SimpleButton>::New(&parent->GetManager());
 			randomizeButton->caption = _Tr("Preferences", "Randomize");
-			randomizeButton->SetBounds(AABB2(fieldX + fieldWidth - 80.0F - 2.0F, 2.0F, 80.0F, 20.0F));
+			float randomizeW = font.Measure(randomizeButton->caption).x + 8.0F;
+			randomizeButton->SetBounds(AABB2(fieldX + fieldWidth - randomizeW - 2.0F, 2.0F, randomizeW, 20.0F));
 			randomizeButton->activated = std::move(randomizeHandler);
 			container->AddChild(randomizeButton.GetPointerOrNull());
 		}
