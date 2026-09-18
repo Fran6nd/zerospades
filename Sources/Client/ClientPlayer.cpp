@@ -260,6 +260,7 @@ namespace spades {
 
 			float ScreenWidth() { return base->ScreenWidth(); }
 			float ScreenHeight() { return base->ScreenHeight(); }
+			float ScreenPixelRatio() { return base->ScreenPixelRatio(); }
 		};
 
 		ClientPlayer::ClientPlayer(Player& p, Client& c)

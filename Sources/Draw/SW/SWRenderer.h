@@ -213,6 +213,7 @@ namespace spades {
 
 			float ScreenWidth() override;
 			float ScreenHeight() override;
+			float ScreenPixelRatio() override { return 1.0F; }
 
 			const Matrix4 &GetProjectionMatrix() const { return projectionMatrix; }
 			const Matrix4 &GetProjectionViewMatrix() const { return projectionViewMatrix; }

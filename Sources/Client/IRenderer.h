@@ -221,8 +221,14 @@ namespace spades {
 			/** get a rendered image. */
 			virtual Handle<Bitmap> ReadBitmap() = 0;
 
+			/** Screen size in 2D drawing units, the units of mouse input too. */
 			virtual float ScreenWidth() = 0;
 			virtual float ScreenHeight() = 0;
+			/** Framebuffer pixels per 2D drawing unit: above 1 on a high-DPI display,
+			 *  where the screen size above stays in window units while the image is
+			 *  rendered at the display's full resolution. Anything sized in device
+			 *  pixels (a one-pixel anti-aliasing fringe, a hairline) divides by it. */
+			virtual float ScreenPixelRatio() = 0;
 
 			/**
 			 * 2D drawing helpers

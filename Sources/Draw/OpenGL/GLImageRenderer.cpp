@@ -28,10 +28,7 @@
 namespace spades {
 	namespace draw {
 		GLImageRenderer::GLImageRenderer(GLRenderer& r)
-		    : renderer(r),
-		      device(r.GetGLDevice()),
-		      invScreenWidthFactored(2.0F / device.ScreenWidth()),
-		      invScreenHeightFactored(-2.0F / device.ScreenHeight()) {
+		    : renderer(r), device(r.GetGLDevice()) {
 
 			SPADES_MARK_FUNCTION();
 			image = NULL;
@@ -94,7 +91,10 @@ namespace spades {
 			device.EnableVertexAttribArray((*colorAttribute)(), true);
 			device.EnableVertexAttribArray((*textureCoordAttribute)(), true);
 
-			screenSize->SetValue(invScreenWidthFactored, invScreenHeightFactored);
+			// Vertices are in 2D units (window units), not framebuffer pixels, so a
+			// high-DPI framebuffer draws the same layout with more pixels. Read
+			// every flush: the window can change size or move to another display.
+			screenSize->SetValue(2.0F / renderer.ScreenWidth(), -2.0F / renderer.ScreenHeight());
 			textureSize->SetValue(image->GetInvWidth(), image->GetInvHeight());
 			texture->SetValue(0);
 
