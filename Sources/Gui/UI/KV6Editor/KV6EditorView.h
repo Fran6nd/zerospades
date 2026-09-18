@@ -23,6 +23,7 @@
 #include <cstdint>
 #include <functional>
 #include <memory>
+#include <optional>
 #include <set>
 #include <string>
 #include <vector>
@@ -110,7 +111,6 @@ namespace spades {
 
 			// Selection (a set of solid-voxel coords, shared across tools).
 			void ToggleSelect(int x, int y, int z) override;
-			void AddSelect(int x, int y, int z) override;
 			bool IsSelected(int x, int y, int z) const override;
 			void ClearSelection() override;
 			void DeleteSelection() override;
@@ -234,6 +234,9 @@ namespace spades {
 
 			// --- Selection ----------------------------------------------------
 			std::set<int64_t> selection; // packed voxel keys
+			// Adds to the selection without an undo step, for edits that journal
+			// the selection they leave as part of their own step.
+			void AddSelect(int x, int y, int z);
 			void DrawSelection();
 			void ShiftSelection(int ox, int oy, int oz); // keep keys valid on resize
 
@@ -390,6 +393,34 @@ namespace spades {
 			void DispatchPointer(const PointerInput& e);
 			// Drop the active tool's gesture in progress before acting behind its back.
 			void CancelToolInteraction();
+
+			// --- User actions -------------------------------------------------
+			// A user action is a press to its release, or a key press: its undo
+			// steps merge into one, and a preview it shows lasts no longer.
+			// Ends the current one: steps stop merging, previews go back.
+			void EndUserAction();
+			// Ends the user action on leaving the scope when `ends` says the scope
+			// completes it (the last release, a key press), even if the tool
+			// handling it throws.
+			class UserActionEnd {
+			public:
+				UserActionEnd(KV6EditorView& editor, bool ends) : editor(editor), ends(ends) {}
+				~UserActionEnd() {
+					if (ends)
+						editor.EndUserAction();
+				}
+				UserActionEnd(const UserActionEnd&) = delete;
+				UserActionEnd& operator=(const UserActionEnd&) = delete;
+
+			private:
+				KV6EditorView& editor;
+				bool ends;
+			};
+			// Live previews (pivot, mirror planes) remember the value they cover,
+			// so committing records from it and ending a preview puts it back.
+			std::optional<Vector3> previewedOrigin;
+			std::optional<Vector3> previewedMirrorPlane;
+			void EndPreviews();
 
 			// --- Cursor / status ----------------------------------------------
 			SoftwareCursor* softwareCursor = nullptr;

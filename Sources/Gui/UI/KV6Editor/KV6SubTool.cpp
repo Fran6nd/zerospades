@@ -490,19 +490,20 @@ namespace spades {
 		void PivotGizmoSubTool::OnGizmoBegin(IEditorContext& ed) { startPivot = ed.GetPivot(); }
 
 		void PivotGizmoSubTool::OnGizmoDrag(IEditorContext& ed) {
-			// Move the pivot for real (marker and toolbar readout follow) but
-			// without journaling it.
+			// A preview: the marker and the toolbar readout follow the drag, and
+			// the release commits it as one undo step.
 			ed.PreviewPivot(startPivot + gizmo.Total().translation);
 		}
 
 		void PivotGizmoSubTool::OnGizmoEnd(IEditorContext& ed, const GizmoTransform& total) {
-			ed.PreviewPivot(startPivot); // rewind the preview...
+			// One undo step from where the drag began; a drag that went nowhere
+			// commits nothing and its preview ends with the press.
 			if (!total.IsIdentity())
-				ed.SetPivot(startPivot + total.translation); // ...then apply as one step
+				ed.SetPivot(startPivot + total.translation);
 		}
 
 		void PivotGizmoSubTool::OnGizmoCancel(IEditorContext& ed, const GizmoTransform&) {
-			ed.PreviewPivot(startPivot); // restore the original pivot, commit nothing
+			ed.PreviewPivot(startPivot); // show the original pivot again, commit nothing
 		}
 
 		// --- MirrorGizmoSubTool (drag the mirror planes) ---------------------
@@ -527,13 +528,14 @@ namespace spades {
 		}
 
 		void MirrorGizmoSubTool::OnGizmoEnd(IEditorContext& ed, const GizmoTransform& total) {
-			ed.PreviewMirrorPlane(startPlane); // rewind the preview...
+			// One undo step from where the drag began; a drag that went nowhere
+			// commits nothing and its preview ends with the press.
 			if (!total.IsIdentity())
-				ed.SetMirrorPlane(startPlane + total.translation); // ...then apply as one step
+				ed.SetMirrorPlane(startPlane + total.translation);
 		}
 
 		void MirrorGizmoSubTool::OnGizmoCancel(IEditorContext& ed, const GizmoTransform&) {
-			ed.PreviewMirrorPlane(startPlane); // restore the planes, commit nothing
+			ed.PreviewMirrorPlane(startPlane); // show the original planes again, commit nothing
 		}
 
 		// --- PivotValuesSubTool (type the pivot) -----------------------------

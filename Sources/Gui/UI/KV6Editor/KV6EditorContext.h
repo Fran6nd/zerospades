@@ -98,7 +98,6 @@ namespace spades {
 
 			// --- Selection (a set of solid-voxel coords, shared across tools) ---
 			virtual void ToggleSelect(int x, int y, int z) = 0;
-			virtual void AddSelect(int x, int y, int z) = 0;
 			virtual bool IsSelected(int x, int y, int z) const = 0;
 			virtual void ClearSelection() = 0;
 			// Removes the selected voxels from the model (never the last one).
@@ -132,8 +131,9 @@ namespace spades {
 			/** Moves the planes; each coordinate is quantised to 0.5. */
 			virtual void SetMirrorPlane(const Vector3& plane) = 0;
 			/**
-			 * Moves the planes live without recording undo, for a drag in progress;
-			 * commit the result with a single SetMirrorPlane on release.
+			 * Shows the planes at `plane` for a drag in progress, without an undo
+			 * step. A preview lasts until the user action ends or a command runs:
+			 * commit it with SetMirrorPlane before then, or the planes go back.
 			 */
 			virtual void PreviewMirrorPlane(const Vector3& plane) = 0;
 			/** Puts the planes back on the pivot, where they start. */
@@ -190,8 +190,9 @@ namespace spades {
 			// ResetMirrorPlane). Float-valued.
 			virtual Vector3 GetPivot() const = 0;
 			virtual void SetPivot(const Vector3& pivot) = 0;
-			// Move the pivot live without recording undo — for a drag in progress.
-			// Commit the result with a single SetPivot on release.
+			// Shows the pivot at `pivot` for a drag in progress, without an undo
+			// step. A preview lasts until the user action ends or a command runs:
+			// commit it with SetPivot before then, or the pivot goes back.
 			virtual void PreviewPivot(const Vector3& pivot) = 0;
 			// Open the modal prompt to type a new pivot (x y z).
 			virtual void BeginPivotEntry() = 0;
