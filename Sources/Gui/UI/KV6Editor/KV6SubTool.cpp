@@ -367,6 +367,7 @@ namespace spades {
 		}
 
 		void GizmoSubTool::CancelInteraction(IEditorContext& ed) { CancelDrag(ed); }
+		void GizmoSubTool::OnDocumentChanged(IEditorContext& ed) { CancelDrag(ed); }
 
 		void GizmoSubTool::DrawOverlay(IEditorContext& ed) {
 			if (!SyncPose(ed))
@@ -393,6 +394,14 @@ namespace spades {
 			GizmoSubTool::OnDeactivate(ed);
 			// Leaving the tool is what writes the voxels into the document.
 			ed.ApplyPlacement();
+		}
+
+		void MoveSubTool::OnDocumentChanged(IEditorContext& ed) {
+			GizmoSubTool::OnDocumentChanged(ed);
+			// The command landed the placement; carry on with what is selected now.
+			// Quietly, so the command's own status stays up.
+			if (!ed.HasPlacement())
+				ed.BeginPlacementFromSelection();
 		}
 
 		bool MoveSubTool::CurrentPose(IEditorContext& ed, GizmoPose& pose) {

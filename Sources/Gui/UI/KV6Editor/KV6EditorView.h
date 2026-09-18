@@ -113,7 +113,10 @@ namespace spades {
 			void AddSelect(int x, int y, int z) override;
 			bool IsSelected(int x, int y, int z) const override;
 			void ClearSelection() override;
-			int SelectionCount() const override { return int(selection.size()); }
+			// Voxels lifted by Move are still what is selected; they only float.
+			int SelectionCount() const override {
+				return int(selection.size() + (placementActive ? placement.lifted.size() : 0));
+			}
 			// Flood-fill: add all 6-connected voxels sharing (x,y,z)'s colour.
 			void SelectLinkedColor(int x, int y, int z) override;
 
@@ -273,6 +276,27 @@ namespace spades {
 			// step, starting from the document exactly as it was before the lift.
 			void LiftPlacementVoxels();
 			void RestorePlacementVoxels();
+
+			/**
+			 * Scope of a command that edits the document or the selection, or reads
+			 * them as a whole (copy, save). The outermost one applies a pending
+			 * placement first, so the command acts on the document as it stands,
+			 * and tells the active tool once it is done, so Move can lift what is
+			 * selected then. Nested commands (Cut copies) act as one.
+			 */
+			class DocumentCommand {
+			public:
+				explicit DocumentCommand(KV6EditorView& editor);
+				~DocumentCommand();
+				DocumentCommand(const DocumentCommand&) = delete;
+				DocumentCommand& operator=(const DocumentCommand&) = delete;
+
+			private:
+				KV6EditorView& editor;
+			};
+			int documentCommandDepth = 0;
+			// The document or the selection changed: let the active tool catch up.
+			void NotifyDocumentChanged();
 
 			void CopySelection();
 			bool CutSelection(); // returns false if it would empty the document

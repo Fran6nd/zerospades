@@ -137,6 +137,8 @@ namespace spades {
 			void OnPointer(IEditorContext&, const PointerInput&) override;
 			bool OnEscape(IEditorContext&) override;
 			void CancelInteraction(IEditorContext&) override;
+			// What the gizmo handles moved under it, so a drag in progress is void.
+			void OnDocumentChanged(IEditorContext&) override;
 			void DrawOverlay(IEditorContext&) override;
 
 		protected:
@@ -171,7 +173,10 @@ namespace spades {
 		 * Entering the tool lifts the selection into a placement, and a paste or an
 		 * import arrives with one already pending. Nothing is written to the
 		 * document until the tool is left, so voxels dragged over others never
-		 * destroy them; Escape drops the placement instead.
+		 * destroy them; Escape drops the placement instead. Any other command
+		 * (select all, copy, save, undo, ...) lands the placement first and then
+		 * the tool lifts the selection again: while it is active, what is selected
+		 * is what moves.
 		 */
 		class MoveSubTool : public GizmoSubTool {
 		public:
@@ -179,6 +184,7 @@ namespace spades {
 			const char* Label() const override { return "Move"; }
 			void OnActivate(IEditorContext&) override;
 			void OnDeactivate(IEditorContext&) override;
+			void OnDocumentChanged(IEditorContext&) override;
 			void OnKey(IEditorContext&, const KeyInput&) override;
 			bool OnEscape(IEditorContext&) override;
 			void DrawScene(IEditorContext&) override;
