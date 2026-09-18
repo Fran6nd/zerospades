@@ -249,7 +249,8 @@ namespace spades {
 			 * preview and written only when the placement is applied, which is what
 			 * keeps a move from destroying whatever it is dragged across. `lifted`
 			 * holds the document voxels to clear at that point (empty for a paste or
-			 * an import, which take nothing away).
+			 * an import, which take nothing away). A placement only ever sits
+			 * where it fits the model size limit, so applying it never fails.
 			 */
 			struct Placement {
 				std::vector<ClipVoxel> voxels; // relative to `anchor`
@@ -263,6 +264,10 @@ namespace spades {
 			// their temporary position while the document shows the gap they left.
 			Handle<client::IModel> placementModel;
 			void RebuildPlacementModel();
+			// Moves `anchor` to the nearest spot where `voxels` land without the
+			// document outgrowing the model size limit; false if none exists.
+			bool ClampPlacementAnchor(const std::vector<ClipVoxel>& voxels,
+			                          IntVector3& anchor) const;
 			// Take the pending voxels out of / put them back into the document
 			// without journaling: applying does the journaled edit in one step.
 			void LiftPlacementVoxels();

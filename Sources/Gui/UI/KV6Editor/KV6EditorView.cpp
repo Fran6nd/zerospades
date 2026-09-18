@@ -100,11 +100,22 @@ namespace spades {
 			// a deliberate hold still starts descending without feeling stuck.
 			constexpr float kDescendGracePeriod = 0.4F;
 
-			// The editor's ground grid. It never moves: a KV6 column is a 64-bit
-			// mask, so no model can be deeper than 64 voxels, and a plane at that
-			// depth therefore always sits below whatever is being edited (voxel z
-			// spans [z-0.5, z+0.5], so the deepest possible voxel ends at 63.5).
-			constexpr float kGroundPlaneZ = 64.0F;
+			// The largest volume a model may grow to. A KV6 column is a 64-bit mask,
+			// so no model can be deeper than 64 voxels.
+			constexpr int kMaxModelWidth = 4096;
+			constexpr int kMaxModelHeight = 4096;
+			constexpr int kMaxModelDepth = 64;
+			const char* const kMaxModelSizeMessage = "Reached the maximum model size";
+
+			bool FitsModelSize(int w, int h, int d) {
+				return w <= kMaxModelWidth && h <= kMaxModelHeight && d <= kMaxModelDepth;
+			}
+
+			// The editor's ground grid. It never moves: no model is deeper than
+			// kMaxModelDepth, so a plane at that depth always sits below whatever is
+			// being edited (voxel z spans [z-0.5, z+0.5], so the deepest possible
+			// voxel ends half a voxel above it).
+			constexpr float kGroundPlaneZ = float(kMaxModelDepth);
 			constexpr int kGroundReach = 256; // voxels from the origin, each way
 			constexpr int kGroundStep = 4;    // voxels between lines
 			constexpr int kGroundMajorEvery = 4; // every Nth line is brighter
@@ -914,8 +925,8 @@ namespace spades {
 			if (nz == 2) { loZ = std::min(loZ, zb); hiZ = std::max(hiZ, zb + 1); }
 
 			int nw = hiX - loX, nh = hiY - loY, nd = hiZ - loZ;
-			if (nw > 4096 || nh > 4096 || nd > 64) {
-				SetStatus("Reached the maximum model size");
+			if (!FitsModelSize(nw, nh, nd)) {
+				SetStatus(kMaxModelSizeMessage);
 				return;
 			}
 			int ox = -loX, oy = -loY, oz = -loZ;
@@ -1160,9 +1171,14 @@ void KV6EditorView::StartPaste() {
 			if (placementActive)
 				ApplyPlacement();
 
+			IntVector3 at = anchor;
+			if (!ClampPlacementAnchor(voxels, at)) {
+				SetStatus(label + ": too large for the maximum model size");
+				return;
+			}
 			placement = Placement();
 			placement.voxels = std::move(voxels);
-			placement.anchor = anchor;
+			placement.anchor = at;
 			placement.label = label;
 			placementActive = true;
 			RebuildPlacementModel();
@@ -1317,9 +1333,37 @@ void KV6EditorView::StartPaste() {
 		void KV6EditorView::MovePlacement(int dx, int dy, int dz) {
 			if (!placementActive || (dx == 0 && dy == 0 && dz == 0))
 				return;
-			placement.anchor.x += dx;
-			placement.anchor.y += dy;
-			placement.anchor.z += dz;
+			const IntVector3 wanted = placement.anchor + MakeIntVector3(dx, dy, dz);
+			IntVector3 anchor = wanted;
+			if (!ClampPlacementAnchor(placement.voxels, anchor)) {
+				SetStatus(kMaxModelSizeMessage);
+				return;
+			}
+			if (!(anchor == wanted))
+				SetStatus(kMaxModelSizeMessage); // went as far as the limit allows
+			placement.anchor = anchor;
+		}
+
+		bool KV6EditorView::ClampPlacementAnchor(const std::vector<ClipVoxel>& voxels,
+		                                         IntVector3& anchor) const {
+			int extent[3] = {1, 1, 1};
+			for (const ClipVoxel& v : voxels) {
+				extent[0] = std::max(extent[0], v.rel.x + 1);
+				extent[1] = std::max(extent[1], v.rel.y + 1);
+				extent[2] = std::max(extent[2], v.rel.z + 1);
+			}
+			const int size[3] = {model->GetWidth(), model->GetHeight(), model->GetDepth()};
+			const int limit[3] = {kMaxModelWidth, kMaxModelHeight, kMaxModelDepth};
+			int at[3] = {anchor.x, anchor.y, anchor.z};
+			for (int a = 0; a < 3; a++) {
+				if (extent[a] > limit[a] || size[a] > limit[a])
+					return false;
+				// Landing grows the volume to span min(0, at) .. max(size, at + extent),
+				// which stays within the limit exactly for `at` in this range.
+				at[a] = std::max(size[a] - limit[a], std::min(limit[a] - extent[a], at[a]));
+			}
+			anchor = MakeIntVector3(at[0], at[1], at[2]);
+			return true;
 		}
 
 		bool KV6EditorView::PlacementCentroid(Vector3& out) const {
@@ -1338,6 +1382,26 @@ void KV6EditorView::StartPaste() {
 		void KV6EditorView::ApplyPlacement() {
 			if (!placementActive)
 				return;
+
+			// Volume that must hold the document plus the placed voxels. Every
+			// placement is kept where it fits (ClampPlacementAnchor), so this holds;
+			// were it ever not to, putting the voxels back would lose nothing.
+			int loX = 0, loY = 0, loZ = 0;
+			int hiX = model->GetWidth(), hiY = model->GetHeight(), hiZ = model->GetDepth();
+			for (const ClipVoxel& v : placement.voxels) {
+				int x = placement.anchor.x + v.rel.x, y = placement.anchor.y + v.rel.y,
+				    z = placement.anchor.z + v.rel.z;
+				loX = std::min(loX, x); hiX = std::max(hiX, x + 1);
+				loY = std::min(loY, y); hiY = std::max(hiY, y + 1);
+				loZ = std::min(loZ, z); hiZ = std::max(hiZ, z + 1);
+			}
+			int nw = hiX - loX, nh = hiY - loY, nd = hiZ - loZ;
+			if (!FitsModelSize(nw, nh, nd)) {
+				CancelPlacement();
+				SetStatus(kMaxModelSizeMessage);
+				return;
+			}
+
 			// Put the lifted voxels back first: the journaled edit below is what the
 			// undo history should contain, as a single step.
 			RestorePlacementVoxels();
@@ -1360,29 +1424,6 @@ void KV6EditorView::StartPaste() {
 			}
 			if (!moved) {
 				RebuildRenderModel(); // the lift was undone above
-				return;
-			}
-
-			// Volume that must hold the document plus the placed voxels, checked
-			// before anything is written.
-			int loX = 0, loY = 0, loZ = 0;
-			int hiX = model->GetWidth(), hiY = model->GetHeight(), hiZ = model->GetDepth();
-			for (const ClipVoxel& v : pending.voxels) {
-				int x = pending.anchor.x + v.rel.x, y = pending.anchor.y + v.rel.y,
-				    z = pending.anchor.z + v.rel.z;
-				loX = std::min(loX, x); hiX = std::max(hiX, x + 1);
-				loY = std::min(loY, y); hiY = std::max(hiY, y + 1);
-				loZ = std::min(loZ, z); hiZ = std::max(hiZ, z + 1);
-			}
-			int nw = hiX - loX, nh = hiY - loY, nd = hiZ - loZ;
-			if (nw > 4096 || nh > 4096 || nd > 64) {
-				// Refuse the placement rather than lose it: it stays pending where it
-				// was so the user can move it somewhere that fits.
-				placement = std::move(pending);
-				placementActive = true;
-				LiftPlacementVoxels();
-				RebuildPlacementModel();
-				SetStatus("Reached the maximum model size");
 				return;
 			}
 
@@ -1552,8 +1593,8 @@ void KV6EditorView::StartPaste() {
 				loZ = std::min(loZ, c.z); hiZ = std::max(hiZ, c.z + 1);
 			}
 			int nw = hiX - loX, nh = hiY - loY, nd = hiZ - loZ;
-			if (nw > 4096 || nh > 4096 || nd > 64) {
-				SetStatus("Reached the maximum model size");
+			if (!FitsModelSize(nw, nh, nd)) {
+				SetStatus(kMaxModelSizeMessage);
 				return;
 			}
 			int ox = -loX, oy = -loY, oz = -loZ;
