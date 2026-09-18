@@ -295,6 +295,7 @@ namespace spades {
 				const ToolOption& opt = opts->At(idx);
 				if (opt.type != ToolOption::Type::Bool) return;
 				opts->At(idx).bvalue = !opts->At(idx).bvalue;
+				tool->OnOptionToggled(*this, opt.id, opt.bvalue);
 			};
 			ui->GetOptionBar()->OnActionClicked = [this](int idx) {
 				EditorTool* tool = ActiveTool();
