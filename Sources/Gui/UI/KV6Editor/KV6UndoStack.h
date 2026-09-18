@@ -104,6 +104,26 @@ namespace spades {
 			void BeginAction();
 			void EndAction() { action = 0; }
 
+			/**
+			 * Ends the current action on leaving the scope, when `ends` says the
+			 * scope completes it (the release of the last held button, a key
+			 * press), also if handling it throws.
+			 */
+			class ActionEnd {
+			public:
+				ActionEnd(KV6UndoStack& stack, bool ends) : stack(stack), ends(ends) {}
+				~ActionEnd() {
+					if (ends)
+						stack.EndAction();
+				}
+				ActionEnd(const ActionEnd&) = delete;
+				ActionEnd& operator=(const ActionEnd&) = delete;
+
+			private:
+				KV6UndoStack& stack;
+				bool ends;
+			};
+
 			// Append a reversible voxel change to the open group (old -> new state).
 			void RecordVoxel(int x, int y, int z, bool oldSolid, uint32_t oldColor,
 			                 bool newSolid, uint32_t newColor);

@@ -2168,10 +2168,9 @@ namespace spades {
 			// flags already include this press and exclude this release.)
 			if (e.IsDown() && !(lmbHeld && rmbHeld))
 				undo.BeginAction();
+			KV6UndoStack::ActionEnd end(undo, e.IsUp() && !lmbHeld && !rmbHeld);
 			if (EditorTool* t = ActiveTool())
 				t->OnPointer(*this, e);
-			if (e.IsUp() && !lmbHeld && !rmbHeld)
-				undo.EndAction();
 		}
 
 		void KV6EditorView::CancelToolInteraction() {
@@ -2546,9 +2545,8 @@ namespace spades {
 				const bool ownAction = !lmbHeld && !rmbHeld;
 				if (ownAction)
 					undo.BeginAction();
+				KV6UndoStack::ActionEnd end(undo, ownAction);
 				t->OnKey(*this, e);
-				if (ownAction)
-					undo.EndAction();
 			}
 		}
 
