@@ -394,7 +394,7 @@ namespace spades {
 		}
 
 		void KV6EditorView::NewModel(int n, const std::string& path) {
-			CancelPlacement();
+			DropPlacement(); // it belongs to the document being replaced
 			cubeSize = n;
 			model = Handle<VoxelModel>::New(n, n, n);
 			model->SetSolid(n / 2, n / 2, n / 2, currentColor);
@@ -414,7 +414,7 @@ namespace spades {
 		}
 
 		void KV6EditorView::LoadModel(const std::string& path) {
-			CancelPlacement();
+			DropPlacement(); // it belongs to the document being replaced
 			VoxelModel* loaded = io->Load(path);
 			if (!loaded) {
 				NewModel(cubeSize, path);
@@ -1217,7 +1217,11 @@ namespace spades {
 				SetStatus(label + ": too large for the maximum model size");
 				return;
 			}
-			BeginPlacement(std::move(voxels), at, std::vector<IntVector3>(), label);
+			{
+				KV6UndoStack::Step step(undo, label);
+				placement = MakePlacement(std::move(voxels), at, std::vector<IntVector3>(), label);
+				placementActive = true;
+			}
 			RebuildPlacementModel();
 
 			// Positioning a placement is what the Transform tool is for, so go there.
@@ -1292,60 +1296,39 @@ namespace spades {
 			StartPlacement(std::move(voxels), "Import", anchor);
 		}
 
-		bool KV6EditorView::BeginPlacementFromSelection() {
-			if (placementActive)
-				return true; // already positioning one
-			std::vector<ClipVoxel> voxels;
+		bool KV6EditorView::PlacementFromSelection(PendingPlacement& out) const {
 			std::vector<IntVector3> lifted;
-			int minX = model->GetWidth(), minY = model->GetHeight(), minZ = model->GetDepth();
+			IntVector3 lo = MakeIntVector3(INT_MAX, INT_MAX, INT_MAX);
 			for (int64_t k : selection) {
 				int x, y, z;
 				SelDecode(k, x, y, z);
 				if (!InBounds(x, y, z) || !model->IsSolid(x, y, z))
 					continue;
 				lifted.push_back(MakeIntVector3(x, y, z));
-				minX = std::min(minX, x); minY = std::min(minY, y); minZ = std::min(minZ, z);
+				lo.x = std::min(lo.x, x);
+				lo.y = std::min(lo.y, y);
+				lo.z = std::min(lo.z, z);
 			}
 			if (lifted.empty())
 				return false;
-			for (const IntVector3& v : lifted) {
-				voxels.push_back({MakeIntVector3(v.x - minX, v.y - minY, v.z - minZ),
-				                  model->GetColor(v.x, v.y, v.z) & 0xFFFFFF});
-			}
-
-			BeginPlacement(std::move(voxels), MakeIntVector3(minX, minY, minZ), std::move(lifted),
-			               "Transform");
-
-			// The voxels leave the document right away, so the gap they came from is
-			// visible while they are being positioned. The edit is not journaled:
-			// applying (or cancelling) decides what the undo history sees.
-			LiftPlacementVoxels();
-			selection.clear(); // whatever is left selected is not a voxel
-			RebuildPlacementModel();
+			std::vector<ClipVoxel> voxels;
+			voxels.reserve(lifted.size());
+			for (const IntVector3& v : lifted)
+				voxels.push_back({v - lo, model->GetColor(v.x, v.y, v.z) & 0xFFFFFF});
+			out = MakePlacement(std::move(voxels), lo, std::move(lifted), "Transform");
 			return true;
 		}
 
-		void KV6EditorView::LiftPlacementVoxels() {
-			if (placement.lifted.empty())
-				return;
-			for (const IntVector3& v : placement.lifted) {
+		void KV6EditorView::LiftIntoPlacement(PendingPlacement taken) {
+			// The voxels leave the document, journaled, so the gap they came from
+			// shows while they are positioned and undo puts them back.
+			for (const IntVector3& v : taken.lifted) {
 				if (InBounds(v.x, v.y, v.z))
-					WriteVoxelRaw(v.x, v.y, v.z, false, 0);
-				selection.erase(SelKey(v.x, v.y, v.z));
+					WriteVoxel(v.x, v.y, v.z, false, 0);
 			}
-			RebuildRenderModel();
-		}
-
-		void KV6EditorView::RestorePlacementVoxels() {
-			if (placement.lifted.empty())
-				return;
-			// `lifted` and `voxels` are parallel: same order, same voxel.
-			for (size_t i = 0; i < placement.lifted.size(); i++) {
-				const IntVector3& v = placement.lifted[i];
-				if (InBounds(v.x, v.y, v.z))
-					WriteVoxelRaw(v.x, v.y, v.z, true, placement.voxels[i].color);
-				AddSelect(v.x, v.y, v.z);
-			}
+			selection.clear(); // the lifted voxels are what is selected now
+			placement = std::move(taken);
+			placementActive = true;
 			RebuildRenderModel();
 		}
 
@@ -1372,6 +1355,12 @@ namespace spades {
 			placementModel = renderer->CreateModel(*preview);
 		}
 
+		void KV6EditorView::DropPlacement() {
+			placementActive = false;
+			placement = PendingPlacement();
+			placementModel = Handle<client::IModel>();
+		}
+
 		IntVector3 KV6EditorView::ExtentOf(const std::vector<ClipVoxel>& voxels) {
 			IntVector3 extent = MakeIntVector3(1, 1, 1);
 			for (const ClipVoxel& v : voxels) {
@@ -1382,25 +1371,27 @@ namespace spades {
 			return extent;
 		}
 
-		void KV6EditorView::BeginPlacement(std::vector<ClipVoxel> voxels, const IntVector3& anchor,
-		                                   std::vector<IntVector3> lifted,
-		                                   const std::string& label) {
-			placement = Placement();
-			placement.voxels = std::move(voxels);
-			placement.anchor = anchor;
+		PendingPlacement KV6EditorView::MakePlacement(std::vector<ClipVoxel> voxels,
+		                                              const IntVector3& anchor,
+		                                              std::vector<IntVector3> lifted,
+		                                              const std::string& label) {
+			PendingPlacement p;
+			p.voxels = std::move(voxels);
+			p.anchor = anchor;
 			// The voxel at the middle of their box (the lower one where the middle
 			// falls between two), so a turn keeps them about where they were.
-			const IntVector3 extent = ExtentOf(placement.voxels);
-			placement.pivot = anchor + MakeIntVector3((extent.x - 1) / 2, (extent.y - 1) / 2,
-			                                          (extent.z - 1) / 2);
-			placement.lifted = std::move(lifted);
-			placement.label = label;
-			placementActive = true;
+			const IntVector3 extent = ExtentOf(p.voxels);
+			p.pivot = anchor + MakeIntVector3((extent.x - 1) / 2, (extent.y - 1) / 2,
+			                                  (extent.z - 1) / 2);
+			p.lifted = std::move(lifted);
+			p.label = label;
+			return p;
 		}
 
-		bool KV6EditorView::TransformedPlacement(const PlacementTransform& t, Placement& out,
-		                                         bool& clamped) const {
-			out = placement;
+		bool KV6EditorView::TransformedPlacement(const PendingPlacement& from,
+		                                         const PlacementTransform& t,
+		                                         PendingPlacement& out, bool& clamped) const {
+			out = from;
 			clamped = false;
 
 			if (t.Turns()) {
@@ -1412,14 +1403,14 @@ namespace spades {
 				std::vector<IntVector3> cells(out.voxels.size());
 				IntVector3 lo = MakeIntVector3(INT_MAX, INT_MAX, INT_MAX);
 				for (size_t i = 0; i < out.voxels.size(); i++) {
-					const IntVector3 at = placement.anchor + out.voxels[i].rel - placement.pivot;
+					const IntVector3 at = from.anchor + out.voxels[i].rel - from.pivot;
 					int c[3] = {at.x, at.y, at.z};
 					for (int k = 0; k < turns; k++) {
 						const int cu = c[u];
 						c[u] = -c[v];
 						c[v] = cu;
 					}
-					cells[i] = placement.pivot + MakeIntVector3(c[0], c[1], c[2]);
+					cells[i] = from.pivot + MakeIntVector3(c[0], c[1], c[2]);
 					lo.x = std::min(lo.x, cells[i].x);
 					lo.y = std::min(lo.y, cells[i].y);
 					lo.z = std::min(lo.z, cells[i].z);
@@ -1438,33 +1429,45 @@ namespace spades {
 			// The pivot stays with the voxels, so turning back still returns them.
 			out.pivot = out.pivot + (fitted - out.anchor);
 			out.anchor = fitted;
-
-			out.displaced = false;
-			for (size_t i = 0; i < out.lifted.size() && !out.displaced; i++)
-				out.displaced = !(out.anchor + out.voxels[i].rel == out.lifted[i]);
 			return true;
 		}
 
 		void KV6EditorView::TransformPlacement(const PlacementTransform& t) {
-			if (!placementActive || !t.IsValid() || t.IsIdentity())
+			if (!t.IsValid() || t.IsIdentity())
 				return;
-			Placement next;
+			// Nothing pending yet: the move takes the selected voxels with it.
+			PendingPlacement selected;
+			const bool lifting = !placementActive;
+			if (lifting && !PlacementFromSelection(selected))
+				return;
+
+			PendingPlacement next;
 			bool clamped = false;
-			if (!TransformedPlacement(t, next, clamped)) {
+			if (!TransformedPlacement(lifting ? selected : placement, t, next, clamped)) {
 				SetStatus(kMaxModelSizeMessage);
 				return;
 			}
 			if (clamped)
 				SetStatus(kMaxModelSizeMessage); // went as far as the limit allows
-			placement = std::move(next);
-			if (t.Turns())
-				RebuildPlacementModel();
+
+			{
+				KV6UndoStack::Step step(undo, t.Turns() ? "Turn" : "Move");
+				if (lifting)
+					LiftIntoPlacement(std::move(selected));
+				placement = std::move(next);
+			}
+			RebuildPlacementModel();
 		}
 
-		bool KV6EditorView::PlacementPivot(IntVector3& out) const {
-			if (!placementActive)
+		bool KV6EditorView::TransformPivot(IntVector3& out) const {
+			if (placementActive) {
+				out = placement.pivot;
+				return true;
+			}
+			PendingPlacement selected;
+			if (!PlacementFromSelection(selected))
 				return false;
-			out = placement.pivot;
+			out = selected.pivot;
 			return true;
 		}
 
@@ -1496,11 +1499,10 @@ namespace spades {
 			int loX = 0, loY = 0, loZ = 0;
 			int hiX = model->GetWidth(), hiY = model->GetHeight(), hiZ = model->GetDepth();
 			for (const ClipVoxel& v : placement.voxels) {
-				int x = placement.anchor.x + v.rel.x, y = placement.anchor.y + v.rel.y,
-				    z = placement.anchor.z + v.rel.z;
-				loX = std::min(loX, x); hiX = std::max(hiX, x + 1);
-				loY = std::min(loY, y); hiY = std::max(hiY, y + 1);
-				loZ = std::min(loZ, z); hiZ = std::max(hiZ, z + 1);
+				const IntVector3 at = placement.anchor + v.rel;
+				loX = std::min(loX, at.x); hiX = std::max(hiX, at.x + 1);
+				loY = std::min(loY, at.y); hiY = std::max(hiY, at.y + 1);
+				loZ = std::min(loZ, at.z); hiZ = std::max(hiZ, at.z + 1);
 			}
 			int nw = hiX - loX, nh = hiY - loY, nd = hiZ - loZ;
 			if (!FitsModelSize(nw, nh, nd)) {
@@ -1509,40 +1511,28 @@ namespace spades {
 				return;
 			}
 
-			const bool changes = PlacementChangesDocument();
-			// Put the lifted voxels back first: the journaled edit below is what the
-			// undo history should contain, as a single step.
-			RestorePlacementVoxels();
-			Placement pending = std::move(placement);
-			placement = Placement();
-			placementActive = false;
-			placementModel = Handle<client::IModel>();
-			if (!changes)
-				return; // the voxels and their selection are back as they were
-
-			KV6UndoStack::Step step(undo, pending.label);
-			// Clear where the voxels came from first, so a move that overlaps its own
-			// source keeps the overlapping cells.
-			for (const IntVector3& v : pending.lifted) {
-				if (InBounds(v.x, v.y, v.z))
-					WriteVoxel(v.x, v.y, v.z, false, 0);
-			}
-			int ox = -loX, oy = -loY, oz = -loZ;
-			if (ox != 0 || oy != 0 || oz != 0 || nw != model->GetWidth() ||
-			    nh != model->GetHeight() || nd != model->GetDepth())
-				RebuildVolume(nw, nh, nd, ox, oy, oz);
-			selection.clear();
+			const PendingPlacement pending = placement;
 			int placed = 0;
-			for (const ClipVoxel& v : pending.voxels) {
-				int x = pending.anchor.x + v.rel.x + ox, y = pending.anchor.y + v.rel.y + oy,
-				    z = pending.anchor.z + v.rel.z + oz;
-				if (!InBounds(x, y, z))
-					continue;
-				WriteVoxel(x, y, z, true, v.color);
-				AddSelect(x, y, z); // select what was just placed
-				placed++;
+			{
+				KV6UndoStack::Step step(undo, pending.label);
+				// No longer pending before the volume changes, so the relabelling
+				// below leaves `pending` in the frame it was measured in.
+				DropPlacement();
+				int ox = -loX, oy = -loY, oz = -loZ;
+				if (ox != 0 || oy != 0 || oz != 0 || nw != model->GetWidth() ||
+				    nh != model->GetHeight() || nd != model->GetDepth())
+					RebuildVolume(nw, nh, nd, ox, oy, oz);
+				selection.clear();
+				for (const ClipVoxel& v : pending.voxels) {
+					const IntVector3 at = pending.anchor + v.rel + MakeIntVector3(ox, oy, oz);
+					if (!InBounds(at.x, at.y, at.z))
+						continue;
+					WriteVoxel(at.x, at.y, at.z, true, v.color);
+					AddSelect(at.x, at.y, at.z); // select what was just placed
+					placed++;
+				}
+				TrimVolume();
 			}
-			TrimVolume();
 			RebuildRenderModel();
 			SetStatus(pending.label + ": placed " + std::to_string(placed) + " voxels");
 		}
@@ -1550,13 +1540,22 @@ namespace spades {
 		void KV6EditorView::CancelPlacement() {
 			if (!placementActive)
 				return;
-			std::string label = placement.label;
-			// Nothing was journaled, so putting the voxels back is the whole undo.
-			RestorePlacementVoxels();
-			placement = Placement();
-			placementActive = false;
-			placementModel = Handle<client::IModel>();
-			SetStatus(label + " cancelled");
+			const PendingPlacement pending = placement;
+			{
+				KV6UndoStack::Step step(undo, "Cancel " + pending.label);
+				DropPlacement();
+				// Lifted voxels go back where they came from, selected as they were;
+				// `lifted` and `voxels` are parallel, so each keeps its colour.
+				for (size_t i = 0; i < pending.lifted.size(); i++) {
+					const IntVector3& v = pending.lifted[i];
+					if (!InBounds(v.x, v.y, v.z))
+						continue;
+					WriteVoxel(v.x, v.y, v.z, true, pending.voxels[i].color);
+					AddSelect(v.x, v.y, v.z);
+				}
+			}
+			RebuildRenderModel();
+			SetStatus(pending.label + " cancelled");
 		}
 
 		void KV6EditorView::DrawPlacementPreview() {
@@ -1578,11 +1577,14 @@ namespace spades {
 
 		void KV6EditorView::DrawPlacementTransformed(const PlacementTransform& t,
 		                                             const Vector4& color) {
-			if (!placementActive || !t.IsValid())
+			if (!t.IsValid())
 				return;
-			Placement preview;
+			PendingPlacement selected;
+			if (!placementActive && !PlacementFromSelection(selected))
+				return;
+			PendingPlacement preview;
 			bool clamped = false;
-			if (!TransformedPlacement(t, preview, clamped))
+			if (!TransformedPlacement(placementActive ? placement : selected, t, preview, clamped))
 				return;
 			for (const ClipVoxel& v : preview.voxels) {
 				const IntVector3 at = preview.anchor + v.rel;
@@ -1800,12 +1802,17 @@ namespace spades {
 			EditState state;
 			state.selection = selection;
 			state.mirror = mirror;
+			state.placing = placementActive;
+			if (placementActive)
+				state.placement = placement;
 			return state;
 		}
 
 		void KV6EditorView::UndoRestoreState(const EditState& state) {
 			selection = state.selection;
 			mirror = state.mirror;
+			placementActive = state.placing;
+			placement = state.placing ? state.placement : PendingPlacement();
 		}
 
 		// KV6UndoStack::Sink — the stack replays records through these.
@@ -1816,25 +1823,31 @@ namespace spades {
 			ReframeRaw(w, h, d, ox, oy, oz);
 		}
 
-		// Both land a pending move first. A move that went somewhere becomes the
-		// latest step, so Undo takes back exactly that move (and Redo finds a
-		// fresh edit, which ends the redo branch as any other would); one that
-		// went nowhere is simply put back.
+		// Undo and redo replay the one history, pending voxels included: a
+		// move or a turn is a step like any edit, so nothing is placed first.
 		void KV6EditorView::Undo() {
-			DocumentCommand command(*this);
 			std::string label = undo.UndoLabel();
-			if (undo.Undo())
-				SetStatus("Undid " + (label.empty() ? std::string("edit") : label));
-			else
+			if (!undo.Undo()) {
 				SetStatus("Nothing to undo");
+				return;
+			}
+			SetStatus("Undid " + (label.empty() ? std::string("edit") : label));
+			HistoryReplayed();
 		}
 		void KV6EditorView::Redo() {
-			DocumentCommand command(*this);
 			std::string label = undo.RedoLabel();
-			if (undo.Redo())
-				SetStatus("Redid " + (label.empty() ? std::string("edit") : label));
-			else
+			if (!undo.Redo()) {
 				SetStatus("Nothing to redo");
+				return;
+			}
+			SetStatus("Redid " + (label.empty() ? std::string("edit") : label));
+			HistoryReplayed();
+		}
+
+		void KV6EditorView::HistoryReplayed() {
+			if (placementActive)
+				ActivateTransformTool();
+			NotifyDocumentChanged();
 		}
 
 		// --- Pivot ------------------------------------------------------------

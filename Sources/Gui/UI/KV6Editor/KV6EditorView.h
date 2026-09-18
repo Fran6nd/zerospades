@@ -95,9 +95,8 @@ namespace spades {
 			void DrawLine3D(const Vector3& a, const Vector3& b, const Vector4& color) override;
 			// Pending placement (positioned by the Transform tool).
 			bool HasPlacement() const override { return placementActive; }
-			bool BeginPlacementFromSelection() override;
 			void TransformPlacement(const PlacementTransform& t) override;
-			bool PlacementPivot(IntVector3& out) const override;
+			bool TransformPivot(IntVector3& out) const override;
 			void ApplyPlacement() override;
 			void CancelPlacement() override;
 			void DrawPlacementTransformed(const PlacementTransform& t,
@@ -198,8 +197,8 @@ namespace spades {
 			long savedGeomId = -1;
 			bool IsDirty() const { return undo.GeometryStateId() != savedGeomId; }
 			// What saving would change: the journaled edits, plus voxels still
-			// waiting to be placed somewhere new.
-			bool HasUnsavedChanges() const { return IsDirty() || PlacementChangesDocument(); }
+			// waiting to be placed (a paste leaves the document itself untouched).
+			bool HasUnsavedChanges() const { return IsDirty() || placementActive; }
 
 			// KV6UndoStack::Sink — apply primitives the stack replays on undo/redo.
 			void UndoApplyVoxel(int x, int y, int z, bool solid, uint32_t color) override;
@@ -207,7 +206,10 @@ namespace spades {
 			void UndoApplyOrigin(const Vector3& origin) override;
 			EditState UndoSnapshotState() const override;
 			void UndoRestoreState(const EditState& state) override;
-			void UndoReplayed() override { RebuildRenderModel(); }
+			void UndoReplayed() override {
+				RebuildRenderModel();
+				RebuildPlacementModel();
+			}
 
 			// The single voxel-write choke point. `WriteVoxel` journals the change for
 			// undo; `WriteVoxelRaw` only applies it (used by the stack's replay). Both
@@ -236,60 +238,40 @@ namespace spades {
 			void ShiftSelection(int ox, int oy, int oz); // keep keys valid on resize
 
 			// --- Clipboard / placement ----------------------------------------
-			// Placing voxels (paste, import) is one mechanism: a buffer of voxels
-			// follows the cursor until it is dropped. The clipboard is just one
-			// source for that buffer, so an import never disturbs a copy.
-			struct ClipVoxel {
-				IntVector3 rel; // position relative to the buffer's min corner
-				uint32_t color;
-			};
+			// Placing voxels (paste, import, Transform) is one mechanism: a group of
+			// voxels waits, drawn where it would land, until it is placed. The
+			// clipboard is just one source for that group, so an import never
+			// disturbs a copy.
 			std::vector<ClipVoxel> clipboard; // Ctrl+C / Ctrl+X store
 
-			/**
-			 * Voxels waiting to be placed (a paste, an import, or a lifted
-			 * selection being moved).
-			 *
-			 * Nothing here has touched the document yet: the voxels are drawn as a
-			 * preview and written only when the placement is applied, which is what
-			 * keeps a move from destroying whatever it is dragged across. `lifted`
-			 * holds the document voxels to clear at that point (empty for a paste or
-			 * an import, which take nothing away). A placement only ever sits
-			 * where it fits the model size limit, so applying it never fails.
-			 */
-			struct Placement {
-				// Relative to `anchor`. Parallel to `lifted` when that is not empty:
-				// voxel i was taken from lifted[i], whatever turns it made since.
-				std::vector<ClipVoxel> voxels;
-				IntVector3 anchor = IntVector3::Make(0, 0, 0); // min corner, document coords
-				// The voxel turns go round, in document coords. It starts at the
-				// middle of the voxels and moves only with a shift, so turning back
-				// always returns them exactly where they were.
-				IntVector3 pivot = IntVector3::Make(0, 0, 0);
-				std::vector<IntVector3> lifted;
-				// Whether some voxel would land elsewhere than where it was lifted.
-				bool displaced = false;
-				std::string label = "Transform"; // undo step name
-			};
+			// The pending voxels (see PendingPlacement). Part of the edit state, so
+			// lifting, moving, turning, placing and cancelling them are undo steps
+			// like any edit.
 			bool placementActive = false;
-			Placement placement;
-			// Whether applying the placement would change the document: always for
-			// a paste or an import, and for a lifted selection once it is displaced.
-			bool PlacementChangesDocument() const {
-				return placementActive && (placement.lifted.empty() || placement.displaced);
-			}
-			// Starts `placement` as `voxels` (relative to `anchor`), pivoting about
-			// their middle; `lifted` names where each came from, if anywhere.
-			void BeginPlacement(std::vector<ClipVoxel> voxels, const IntVector3& anchor,
-			                    std::vector<IntVector3> lifted, const std::string& label);
-			// The placement `t` would make of the current one, kept within the model
-			// size limit (`clamped` says whether that held it back); false if it
-			// fits nowhere.
-			bool TransformedPlacement(const PlacementTransform& t, Placement& out,
-			                          bool& clamped) const;
+			PendingPlacement placement;
 			// Voxels in the document, counting those lifted by Transform (they only float).
 			int DocumentVoxelCount() const {
 				return voxelCount + (placementActive ? int(placement.lifted.size()) : 0);
 			}
+			// A group of `voxels` (relative to `anchor`) turning about their middle;
+			// `lifted` names where each came from, if anywhere.
+			static PendingPlacement MakePlacement(std::vector<ClipVoxel> voxels,
+			                                      const IntVector3& anchor,
+			                                      std::vector<IntVector3> lifted,
+			                                      const std::string& label);
+			// What lifting the selection would take: false when no selected cell
+			// holds a voxel. Changes nothing.
+			bool PlacementFromSelection(PendingPlacement& out) const;
+			// Takes the voxels of `taken` (see PlacementFromSelection) out of the
+			// document into the placement, as part of the undo step in progress.
+			void LiftIntoPlacement(PendingPlacement taken);
+			// The group `t` makes of `from`, kept within the model size limit
+			// (`clamped` says whether that held it back); false if it fits nowhere.
+			bool TransformedPlacement(const PendingPlacement& from, const PlacementTransform& t,
+			                          PendingPlacement& out, bool& clamped) const;
+			// Forgets the pending voxels without touching the document or history:
+			// for a document being replaced, or once they are placed or put back.
+			void DropPlacement();
 			// The pending voxels as a renderable model, so they are drawn solid at
 			// their temporary position while the document shows the gap they left.
 			Handle<client::IModel> placementModel;
@@ -300,18 +282,13 @@ namespace spades {
 			// document outgrowing the model size limit; false if none exists.
 			bool ClampPlacementAnchor(const std::vector<ClipVoxel>& voxels,
 			                          IntVector3& anchor) const;
-			// Take the lifted voxels, and their selection, out of / back into the
-			// document without journaling: applying does the journaled edit in one
-			// step, starting from the document exactly as it was before the lift.
-			void LiftPlacementVoxels();
-			void RestorePlacementVoxels();
 
 			/**
 			 * Scope of a command that edits the document or the selection, or reads
 			 * them as a whole (copy, save). The outermost one applies a pending
 			 * placement first, so the command acts on the document as it stands,
-			 * and tells the active tool once it is done, so Transform can lift what is
-			 * selected then. Nested commands (Cut copies) act as one.
+			 * and tells the active tool once it is done, so the tool can catch up.
+			 * Nested commands (Cut copies) act as one.
 			 */
 			class DocumentCommand {
 			public:
@@ -326,6 +303,9 @@ namespace spades {
 			int documentCommandDepth = 0;
 			// The document or the selection changed: let the active tool catch up.
 			void NotifyDocumentChanged();
+			// After undo or redo: pending voxels it brought back are positioned in
+			// the Transform tool, and the active tool catches up.
+			void HistoryReplayed();
 
 			void CopySelection();
 			bool CutSelection(); // false when refused (nothing selected, or it would empty it)

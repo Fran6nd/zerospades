@@ -22,6 +22,8 @@
 
 #include <cstdint>
 #include <set>
+#include <string>
+#include <vector>
 
 #include <Core/Math.h>
 
@@ -42,6 +44,42 @@ namespace spades {
 			bool operator!=(const MirrorSetup& o) const { return !(*this == o); }
 		};
 
+		/** A voxel held apart from the document: its offset in a group, and colour. */
+		struct ClipVoxel {
+			IntVector3 rel;
+			uint32_t color;
+
+			bool operator==(const ClipVoxel& o) const { return rel == o.rel && color == o.color; }
+		};
+
+		/**
+		 * Voxels waiting to be placed: a paste, an import, or a selection lifted
+		 * out of the document to be moved and turned. They are drawn where they
+		 * would land, and only written into the document when they are placed,
+		 * so dragging them over other voxels never destroys what they pass.
+		 * They are only ever kept where they fit the model size limit, so
+		 * placing them never fails.
+		 */
+		struct PendingPlacement {
+			// Relative to `anchor`. Parallel to `lifted` when that is not empty:
+			// voxel i was taken from lifted[i], whatever turns it made since.
+			std::vector<ClipVoxel> voxels;
+			IntVector3 anchor = IntVector3::Make(0, 0, 0); // min corner, document coords
+			// The voxel turns go round, in document coords. It starts at the middle
+			// of the voxels and moves only with a shift, so turning back always
+			// returns them exactly where they were.
+			IntVector3 pivot = IntVector3::Make(0, 0, 0);
+			// Where lifted voxels came from (empty for a paste or an import), so
+			// cancelling puts them back.
+			std::vector<IntVector3> lifted;
+			std::string label = "Transform"; // names its undo steps
+
+			bool operator==(const PendingPlacement& o) const {
+				return anchor == o.anchor && pivot == o.pivot && voxels == o.voxels &&
+				       lifted == o.lifted && label == o.label;
+			}
+		};
+
 		/**
 		 * Everything besides the voxels that an undo step restores: what the
 		 * user moved, turned or selected along with the model. Each step keeps
@@ -51,9 +89,12 @@ namespace spades {
 		struct EditState {
 			std::set<int64_t> selection; // packed voxel keys
 			MirrorSetup mirror;
+			bool placing = false; // whether `placement` holds voxels
+			PendingPlacement placement;
 
 			bool operator==(const EditState& o) const {
-				return selection == o.selection && mirror == o.mirror;
+				return selection == o.selection && mirror == o.mirror && placing == o.placing &&
+				       (!placing || placement == o.placement);
 			}
 			bool operator!=(const EditState& o) const { return !(*this == o); }
 		};
