@@ -73,6 +73,14 @@ namespace spades {
 			contentsHeight = sh - 200.0F;
 			contentsTop = (sh - contentsHeight - 106.0F) * 0.5F;
 
+			// draw full background
+			{
+				Handle<Label> overlay = Handle<Label>::New(manager);
+				overlay->backgroundColor = MakeVector4(0.0F, 0.0F, 0.0F, 0.7F);
+				overlay->SetBounds(AABB2(0.0F, 0.0F, sw, sh));
+				AddChild(overlay.GetPointerOrNull());
+			}
+
 			{
 				Handle<Label> label = Handle<Label>::New(manager);
 				label->backgroundColor = MakeVector4(0.0F, 0.0F, 0.0F, 0.9F);

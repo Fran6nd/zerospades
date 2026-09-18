@@ -82,6 +82,14 @@ namespace spades {
 			panelTop = contentsTop - panelBorderOffset;
 			panelBottom = contentsTop + contentsHeight + panelBorderOffset;
 
+			// draw full background
+			if (options.showOverlay) {
+				Handle<Label> overlay = Handle<Label>::New(manager);
+				overlay->backgroundColor = MakeVector4(0.0F, 0.0F, 0.0F, 0.7F);
+				overlay->SetBounds(AABB2(0.0F, 0.0F, sw, sh));
+				AddChild(overlay.GetPointerOrNull());
+			}
+
 			{
 				Handle<Label> label = Handle<Label>::New(manager);
 				label->backgroundColor = MakeVector4(0.0F, 0.0F, 0.0F, 0.9F);
@@ -256,6 +264,7 @@ namespace spades {
 
 		void PreferenceView::OnEditHUDRequested(UIElement&) {
 			visible = false;
+			owner->visible = false;
 			Handle<ConfigHUDEdit> overlay = Handle<ConfigHUDEdit>::New(&GetManager());
 			overlay->OnDone = [this](UIElement& s) { OnHUDEditDone(s); };
 			GetParent()->AddChild(overlay.GetPointerOrNull());
@@ -264,6 +273,7 @@ namespace spades {
 		void PreferenceView::OnHUDEditDone(UIElement& sender) {
 			sender.SetParent(nullptr);
 			visible = true;
+			owner->visible = true;
 		}
 
 		void PreferenceView::OnClosed() {

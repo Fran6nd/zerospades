@@ -89,6 +89,14 @@ namespace spades {
 			float x = (sw - w) * 0.5F;
 			float y = (sh - h) * 0.5F;
 
+			// draw full background
+			{
+				Handle<Label> overlay = Handle<Label>::New(manager);
+				overlay->backgroundColor = MakeVector4(0.0F, 0.0F, 0.0F, 0.7F);
+				overlay->SetBounds(AABB2(0.0F, 0.0F, sw, sh));
+				AddChild(overlay.GetPointerOrNull());
+			}
+
 			// Background
 			{
 				Handle<Label> bg = Handle<Label>::New(manager);
@@ -114,14 +122,14 @@ namespace spades {
 			{
 				Handle<Button> btn = Handle<Button>::New(manager);
 				btn->caption = _Tr("MainScreen", "Rename");
-				btn->SetBounds(AABB2(x + w - 320.0F, y + 90.0F, 150.0F, 30.0F));
+				btn->SetBounds(AABB2(x + w - 310.0F, y + 130.0F, 150.0F, 30.0F));
 				btn->activated = [this](UIElement& s) { OnConfirm(s); };
 				AddChild(btn.GetPointerOrNull());
 			}
 			{
 				Handle<Button> btn = Handle<Button>::New(manager);
 				btn->caption = _Tr("MainScreen", "Cancel");
-				btn->SetBounds(AABB2(x + w - 160.0F, y + 90.0F, 150.0F, 30.0F));
+				btn->SetBounds(AABB2(x + w - 150.0F, y + 130.0F, 150.0F, 30.0F));
 				btn->activated = [this](UIElement& s) { OnCancel(s); };
 				AddChild(btn.GetPointerOrNull());
 			}
@@ -805,7 +813,7 @@ namespace spades {
 			body += _Tr("MainScreen", "Files will be saved into your Mods/ folder, overwriting "
 			                          "any existing copies.");
 			Handle<ConfirmScreen> cs = Handle<ConfirmScreen>::New(
-			    this, body, std::min(500.0F, GetManager().screenHeight - 100.0F));
+			    this, body, std::min(500.0F, GetManager().screenHeight - 100.0F), true);
 			cs->closed = [this](UIElement& s) { OnDownloadConfirmed(s); };
 			cs->Run();
 		}
@@ -831,7 +839,8 @@ namespace spades {
 
 		void MainScreenMainMenu::OnResetModsPressed(UIElement&) {
 			Handle<ConfirmScreen> cs = Handle<ConfirmScreen>::New(
-			    this, _Tr("MainScreen", "Disable all mods? This takes effect after a restart."));
+			    this, _Tr("MainScreen", "Disable all mods? This takes effect after a restart."),
+			    200.0F, true);
 			cs->closed = [this](UIElement& s) { OnResetConfirmed(s); };
 			cs->Run();
 		}
@@ -872,7 +881,8 @@ namespace spades {
 				std::string err = modsHelper->GetRefreshMessage();
 				if (!err.empty()) {
 					Handle<AlertScreen> al = Handle<AlertScreen>::New(
-					    this, _Tr("MainScreen", "Mod download failed:") + "\n\n" + err);
+					    this, _Tr("MainScreen", "Mod download failed:") + "\n\n" + err, 200.0F,
+					    true);
 					al->Run();
 				}
 				return;
@@ -896,7 +906,7 @@ namespace spades {
 				return;
 			std::string msg = helper->PlayDemo(selectedDemoPath);
 			if (msg.size() > 0) {
-				Handle<AlertScreen> al = Handle<AlertScreen>::New(this, msg);
+				Handle<AlertScreen> al = Handle<AlertScreen>::New(this, msg, 200.0F, true);
 				al->Run();
 			}
 		}
@@ -910,7 +920,7 @@ namespace spades {
 			Handle<ConfirmScreen> confirm = Handle<ConfirmScreen>::New(
 			    this, _Tr("MainScreen",
 			              "Are you sure you want to delete '{0}'?\nThis action cannot be undone.",
-			              name));
+			              name), 200.0F, true);
 			confirm->closed = [this](UIElement& s) { OnDeleteConfirmClosed(s); };
 			confirm->Run();
 		}
@@ -947,7 +957,8 @@ namespace spades {
 			std::string newPath = "Demos/" + newName + ".dem";
 			if (!helper->RenameDemo(selectedDemoPath, newPath)) {
 				Handle<AlertScreen> al =
-				    Handle<AlertScreen>::New(this, _Tr("MainScreen", "Failed to rename demo."));
+				    Handle<AlertScreen>::New(this, _Tr("MainScreen", "Failed to rename demo."),
+				                             200.0F, true);
 				al->Run();
 				return;
 			}
@@ -1102,12 +1113,14 @@ namespace spades {
 
 		void MainScreenMainMenu::OnCreditsPressed(UIElement&) {
 			Handle<AlertScreen> al = Handle<AlertScreen>::New(
-			    this, helper->GetCredits(), std::min(500.0F, GetManager().screenHeight - 100.0F));
+			    this, helper->GetCredits(), std::min(500.0F, GetManager().screenHeight - 100.0F),
+			    true);
 			al->Run();
 		}
 
 		void MainScreenMainMenu::OnSetupPressed(UIElement&) {
 			PreferenceViewOptions opt;
+			opt.showOverlay = true;
 			Handle<PreferenceView> al =
 			    Handle<PreferenceView>::New(this, opt, &ui->GetFontManager());
 			al->Run();
@@ -1120,7 +1133,7 @@ namespace spades {
 			                                        static_cast<int>(cg_protocolVersion),
 			                                        selectedMapName);
 			if (msg.size() > 0) {
-				Handle<AlertScreen> al = Handle<AlertScreen>::New(this, msg);
+				Handle<AlertScreen> al = Handle<AlertScreen>::New(this, msg, 200.0F, true);
 				al->Run();
 			}
 		}
@@ -1165,7 +1178,7 @@ namespace spades {
 					}
 
 					// failed to connect.
-					Handle<AlertScreen> al = Handle<AlertScreen>::New(this, msg);
+					Handle<AlertScreen> al = Handle<AlertScreen>::New(this, msg, 200.0F, true);
 					al->Run();
 				}
 			}

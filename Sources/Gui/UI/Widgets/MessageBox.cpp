@@ -36,7 +36,8 @@ namespace spades {
 		using ui::UIElement;
 
 		MessageBoxScreen::MessageBoxScreen(UIElement* owner, const std::string& text,
-		                                   const std::vector<std::string>& buttons, float height)
+		                                   const std::vector<std::string>& buttons, float height,
+		                                   bool showOverlay)
 		    : UIElement(&owner->GetManager()), owner(owner) {
 			SetFont(GetManager().GetRootElement().GetFont());
 			SetBounds(owner->GetBounds());
@@ -52,6 +53,14 @@ namespace spades {
 			float contentsLeft = (sw - contentsWidth) * 0.5F;
 			contentsHeight = height;
 			contentsTop = (sh - contentsHeight) * 0.5F;
+			
+			// draw full background
+			if (showOverlay) {
+				Handle<Label> overlay = Handle<Label>::New(&GetManager());
+				overlay->backgroundColor = MakeVector4(0.0F, 0.0F, 0.0F, 0.7F);
+				overlay->SetBounds(AABB2(0.0F, 0.0F, sw, sh));
+				AddChild(overlay.GetPointerOrNull());
+			}
 
 			{
 				Handle<Label> label = Handle<Label>::New(&GetManager());
@@ -123,8 +132,9 @@ namespace spades {
 
 		// -- AlertScreen --
 
-		AlertScreen::AlertScreen(UIElement* owner, const std::string& text, float height)
-		    : MessageBoxScreen(owner, text, {_Tr("MessageBox", "OK")}, height) {}
+		AlertScreen::AlertScreen(UIElement* owner, const std::string& text, float height,
+		                         bool showOverlay)
+		    : MessageBoxScreen(owner, text, {_Tr("MessageBox", "OK")}, height, showOverlay) {}
 
 		void AlertScreen::HotKey(const std::string& key) {
 			if (IsEnabled() && (key == "Enter" || key == "Escape")) {
@@ -136,9 +146,11 @@ namespace spades {
 
 		// -- ConfirmScreen --
 
-		ConfirmScreen::ConfirmScreen(UIElement* owner, const std::string& text, float height)
+		ConfirmScreen::ConfirmScreen(UIElement* owner, const std::string& text, float height,
+		                             bool showOverlay)
 		    : MessageBoxScreen(owner, text,
-		                       {_Tr("MessageBox", "OK"), _Tr("MessageBox", "Cancel")}, height) {}
+		                       {_Tr("MessageBox", "OK"), _Tr("MessageBox", "Cancel")}, height,
+		                       showOverlay) {}
 
 		void ConfirmScreen::HotKey(const std::string& key) {
 			if (IsEnabled() && key == "Enter") {

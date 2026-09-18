@@ -43,7 +43,8 @@ namespace spades {
 			int resultIndex = -1;
 
 			MessageBoxScreen(ui::UIElement* owner, const std::string& text,
-			                 const std::vector<std::string>& buttons, float height = 200.0F);
+			                 const std::vector<std::string>& buttons, float height = 200.0F,
+			                 bool showOverlay = false);
 
 			void EndDialog(int result);
 			void Close();
@@ -54,14 +55,16 @@ namespace spades {
 		/** A message box with a single OK button. */
 		class AlertScreen : public MessageBoxScreen {
 		public:
-			AlertScreen(ui::UIElement* owner, const std::string& text, float height = 200.0F);
+			AlertScreen(ui::UIElement* owner, const std::string& text, float height = 200.0F,
+			            bool showOverlay = false);
 			void HotKey(const std::string& key) override;
 		};
 
 		/** A message box with OK / Cancel buttons; `GetResult()` is true for OK. */
 		class ConfirmScreen : public MessageBoxScreen {
 		public:
-			ConfirmScreen(ui::UIElement* owner, const std::string& text, float height = 200.0F);
+			ConfirmScreen(ui::UIElement* owner, const std::string& text, float height = 200.0F,
+			              bool showOverlay = false);
 
 			bool GetResult() const { return resultIndex == 0; }
 

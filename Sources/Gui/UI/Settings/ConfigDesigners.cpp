@@ -469,7 +469,7 @@ namespace spades {
 			float x = (sw - 16.0F) * safeZoneX;
 			float y = (sh - 16.0F) * safeZoneY;
 
-			SetColorNP(r, MakeVector4(0.0F, 0.0F, 0.0F, 0.5F));
+			SetColorNP(r, MakeVector4(0.0F, 0.0F, 0.0F, 0.7F));
 			r.DrawFilledRect(0, 0, sw, sh - y);
 			r.DrawFilledRect(0, y, sw, sh);
 			r.DrawFilledRect(0, sh - y, sw - x, y);

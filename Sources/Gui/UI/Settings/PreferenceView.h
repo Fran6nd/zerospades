@@ -41,6 +41,7 @@ namespace spades {
 		/** Options controlling a `PreferenceView` (in-game flag + persisted state). */
 		struct PreferenceViewOptions {
 			bool gameActive = false;
+			bool showOverlay = false;
 			Handle<PreferenceViewPersistedState> persistedState; // null = don't remember
 		};
 
