@@ -85,6 +85,16 @@ namespace spades {
 				button->activated = [this](UIElement& s) { OnDisconnect(s); };
 				AddChild(button.GetPointerOrNull());
 			}
+
+			// add resume game hint
+			{
+				Handle<Label> escHint = Handle<Label>::New(manager);
+				escHint->text = _Tr("Client", "[Esc] Back to Game");
+				escHint->textColor = MakeVector4(1, 1, 1, 0.7F);
+				escHint->SetBounds(AABB2(winX - 8.0F, (winY + winH + 20.0F) - 8.0F, 200.0F, 20.0F));
+				AddChild(escHint.GetPointerOrNull());
+				this->escHint = escHint.GetPointerOrNull();
+			}
 		}
 
 		void ClientMenu::OnBackToGame(UIElement&) { ui->SetActiveUI(nullptr); }
@@ -94,8 +104,15 @@ namespace spades {
 			opt.gameActive = true;
 			opt.persistedState = preferenceState;
 
+			if (escHint)
+				escHint->visible = false; // hide while in settings
+
 			Handle<PreferenceView> al =
-			    Handle<PreferenceView>::New(this, opt, &ui->GetFontManager());
+				Handle<PreferenceView>::New(this, opt, &ui->GetFontManager());
+			al->closed = [this](UIElement&) {
+				if (escHint)
+					escHint->visible = true; // restore on close
+			};
 			al->Run();
 		}
 
