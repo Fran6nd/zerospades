@@ -189,11 +189,10 @@ namespace spades {
 			virtual void SetStatus(const std::string&) = 0;
 
 			// --- Undo / redo --------------------------------------------------
-			// Edits made through this context are journaled automatically. Wrap a
-			// multi-step operation in BeginUndoGroup/EndUndoGroup so it undoes as a
-			// single step; nested brackets coalesce.
-			virtual void BeginUndoGroup(const std::string& label) = 0;
-			virtual void EndUndoGroup() = 0;
+			// Edits made through this context are journaled automatically. The
+			// editor merges everything done during one user action (a press to its
+			// release, a key press) into a single undo step, so a stroke or a
+			// multi-step scripted edit undoes at once without the tool grouping it.
 			virtual void Undo() = 0;
 			virtual void Redo() = 0;
 			virtual bool CanUndo() const = 0;

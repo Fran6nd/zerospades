@@ -20,6 +20,7 @@
 
 #include "KV6UndoStack.h"
 
+#include <iterator>
 #include <utility>
 
 namespace spades {
@@ -76,19 +77,38 @@ namespace spades {
 			pending.hasGeometry = true; // the pivot is saved to the file -> dirties it
 		}
 
+		void KV6UndoStack::BeginAction() {
+			action = ++nextAction;
+			if (action == 0)
+				action = ++nextAction; // 0 means "no action"; skip it on wrap-around
+		}
+
 		void KV6UndoStack::Commit() {
 			pending.geomBefore = geomId;
 			// Only geometry edits advance the geometry id (drives the dirty flag);
 			// selection-only steps share the surrounding geometry state.
 			pending.geomAfter = pending.hasGeometry ? ++nextGeomId : geomId;
 			geomId = pending.geomAfter;
+			pending.action = action;
 
 			for (const Group& g : redoGroups)
 				totalRecords -= g.records.size();
 			redoGroups.clear(); // a fresh edit invalidates the redo branch
 
 			totalRecords += pending.records.size();
-			undoGroups.push_back(std::move(pending));
+			if (action != 0 && !undoGroups.empty() && undoGroups.back().action == action) {
+				// Later in the same user action: extend its step, which keeps the
+				// label and the "before" state of the action's first edit.
+				Group& step = undoGroups.back();
+				step.records.insert(step.records.end(),
+				                    std::make_move_iterator(pending.records.begin()),
+				                    std::make_move_iterator(pending.records.end()));
+				step.selAfter = std::move(pending.selAfter);
+				step.hasGeometry = step.hasGeometry || pending.hasGeometry;
+				step.geomAfter = pending.geomAfter;
+			} else {
+				undoGroups.push_back(std::move(pending));
+			}
 			pending = Group();
 
 			// Evict the oldest history past either cap, but never the last step.
@@ -134,6 +154,7 @@ namespace spades {
 		bool KV6UndoStack::Undo() {
 			if (depth != 0 || undoGroups.empty())
 				return false;
+			action = 0; // nothing done after this merges into what came before
 			Group g = std::move(undoGroups.back());
 			undoGroups.pop_back();
 			ApplyInverse(g);
@@ -145,6 +166,7 @@ namespace spades {
 		bool KV6UndoStack::Redo() {
 			if (depth != 0 || redoGroups.empty())
 				return false;
+			action = 0;
 			Group g = std::move(redoGroups.back());
 			redoGroups.pop_back();
 			ApplyForward(g);
@@ -158,6 +180,7 @@ namespace spades {
 			redoGroups.clear();
 			pending = Group();
 			depth = 0;
+			action = 0;
 			geomId = 0;
 			nextGeomId = 0;
 			totalRecords = 0;
