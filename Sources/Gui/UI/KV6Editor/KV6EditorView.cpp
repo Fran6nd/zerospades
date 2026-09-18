@@ -71,6 +71,8 @@ namespace spades {
 
 			// Keys that form an editor shortcut together with Ctrl.
 			bool IsCtrlShortcut(const std::string& key) {
+				// Ctrl is also the descend key, so a chord here costs the movement
+				// key bound to the same letter: keep this set clear of them.
 				for (const char* k : {"s", "c", "x", "v", "z", "y"}) {
 					if (EqualsIgnoringCase(key, k))
 						return true;
