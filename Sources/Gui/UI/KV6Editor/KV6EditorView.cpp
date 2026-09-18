@@ -395,6 +395,8 @@ namespace spades {
 
 		void KV6EditorView::NewModel(int n, const std::string& path) {
 			DropPlacement(); // it belongs to the document being replaced
+			previewedOrigin.reset();
+			previewedMirrorPlane.reset();
 			cubeSize = n;
 			model = Handle<VoxelModel>::New(n, n, n);
 			model->SetSolid(n / 2, n / 2, n / 2, currentColor);
@@ -415,6 +417,8 @@ namespace spades {
 
 		void KV6EditorView::LoadModel(const std::string& path) {
 			DropPlacement(); // it belongs to the document being replaced
+			previewedOrigin.reset();
+			previewedMirrorPlane.reset();
 			VoxelModel* loaded = io->Load(path);
 			if (!loaded) {
 				NewModel(cubeSize, path);
@@ -1333,8 +1337,10 @@ namespace spades {
 		}
 
 		KV6EditorView::DocumentCommand::DocumentCommand(KV6EditorView& editor) : editor(editor) {
-			if (editor.documentCommandDepth++ == 0)
+			if (editor.documentCommandDepth++ == 0) {
+				editor.EndPreviews();
 				editor.ApplyPlacement();
+			}
 		}
 
 		KV6EditorView::DocumentCommand::~DocumentCommand() {
@@ -1826,6 +1832,7 @@ namespace spades {
 		// Undo and redo replay the one history, pending voxels included: a
 		// move or a turn is a step like any edit, so nothing is placed first.
 		void KV6EditorView::Undo() {
+			EndPreviews(); // the history holds only what was committed
 			std::string label = undo.UndoLabel();
 			if (!undo.Undo()) {
 				SetStatus("Nothing to undo");
@@ -1835,6 +1842,7 @@ namespace spades {
 			HistoryReplayed();
 		}
 		void KV6EditorView::Redo() {
+			EndPreviews(); // the history holds only what was committed
 			std::string label = undo.RedoLabel();
 			if (!undo.Redo()) {
 				SetStatus("Nothing to redo");
@@ -1876,7 +1884,11 @@ namespace spades {
 
 		// Live, non-journaled pivot move for a drag in progress; the tool commits the
 		// net change with one SetPivot on release.
-		void KV6EditorView::PreviewPivot(const Vector3& pivot) { ApplyOriginRaw(pivot * -1.0F); }
+		void KV6EditorView::PreviewPivot(const Vector3& pivot) {
+			if (!previewedOrigin)
+				previewedOrigin = model->GetOrigin();
+			ApplyOriginRaw(pivot * -1.0F);
+		}
 
 		void KV6EditorView::BeginPivotEntry() {
 			Vector3 p = GetPivot();
@@ -2196,7 +2208,7 @@ namespace spades {
 			// flags already include this press and exclude this release.)
 			if (e.IsDown() && !(lmbHeld && rmbHeld))
 				undo.BeginAction();
-			KV6UndoStack::ActionEnd end(undo, e.IsUp() && !lmbHeld && !rmbHeld);
+			UserActionEnd end(*this, e.IsUp() && !lmbHeld && !rmbHeld);
 			if (EditorTool* t = ActiveTool())
 				t->OnPointer(*this, e);
 		}
@@ -2204,7 +2216,23 @@ namespace spades {
 		void KV6EditorView::CancelToolInteraction() {
 			if (EditorTool* t = ActiveTool())
 				t->CancelInteraction(*this);
-			undo.EndAction(); // whatever comes next is a separate step
+			EndUserAction(); // whatever comes next is a separate step
+		}
+
+		void KV6EditorView::EndUserAction() {
+			EndPreviews();
+			undo.EndAction();
+		}
+
+		void KV6EditorView::EndPreviews() {
+			if (previewedOrigin) {
+				ApplyOriginRaw(*previewedOrigin);
+				previewedOrigin.reset();
+			}
+			if (previewedMirrorPlane) {
+				mirror.plane = *previewedMirrorPlane;
+				previewedMirrorPlane.reset();
+			}
 		}
 
 		void KV6EditorView::NotifyDocumentChanged() {
@@ -2275,7 +2303,11 @@ namespace spades {
 			PlaceMirrorPlane(plane);
 		}
 
-		void KV6EditorView::PreviewMirrorPlane(const Vector3& plane) { PlaceMirrorPlane(plane); }
+		void KV6EditorView::PreviewMirrorPlane(const Vector3& plane) {
+			if (!previewedMirrorPlane)
+				previewedMirrorPlane = mirror.plane;
+			PlaceMirrorPlane(plane);
+		}
 
 		void KV6EditorView::ResetMirrorPlane() {
 			DocumentCommand command(*this);
@@ -2589,7 +2621,7 @@ namespace spades {
 				const bool ownAction = !lmbHeld && !rmbHeld;
 				if (ownAction)
 					undo.BeginAction();
-				KV6UndoStack::ActionEnd end(undo, ownAction);
+				UserActionEnd end(*this, ownAction);
 				t->OnKey(*this, e);
 			}
 		}
