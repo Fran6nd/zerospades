@@ -115,7 +115,6 @@ SPADES_SETTING(cg_keyPaletteUp);
 SPADES_SETTING(cg_keyPaletteDown);
 SPADES_SETTING(cg_keyExtendedPalette);
 
-SPADES_SETTING(cg_smallFont);
 SPADES_SETTING(cg_minimapSize);
 
 namespace spades {
@@ -649,9 +648,7 @@ namespace spades {
 					str += buf;
 				}
 
-				IFont& font = cg_smallFont
-					? fontManager->GetSmallFont()
-					: fontManager->GetGuiFont();
+				IFont& font = fontManager->GetGuiFont();
 
 				Vector2 size = font.Measure(str);
 				scrPos.x -= size.x * 0.5F;
@@ -782,9 +779,7 @@ namespace spades {
 
 			Vector3 eye = lastSceneDef.viewOrigin;
 
-			IFont& font = cg_smallFont
-				? fontManager->GetSmallFont()
-				: fontManager->GetGuiFont();
+			IFont& font = fontManager->GetGuiFont();
 
 			for (size_t i = 0; i < world->GetNumPlayerSlots(); i++) {
 				auto maybePlayer = world->GetPlayer(static_cast<unsigned int>(i));
@@ -1004,9 +999,7 @@ namespace spades {
 
 			float sw = renderer->ScreenWidth();
 
-			IFont& font = cg_smallFont
-				? fontManager->GetSmallFont()
-				: fontManager->GetGuiFont();
+			IFont& font = fontManager->GetGuiFont();
 
 			std::vector<std::string> lines;
 			lines.push_back(_Tr("Client", "[{0}] Grab color", TrKey(cg_keyCaptureColor)));
@@ -1026,7 +1019,7 @@ namespace spades {
 					std::string(buf), color.x, color.y, color.z));
 			}
 
-			float lh = cg_smallFont ? 14.0F : 20.0F;
+			float lh = 20.0F;
 			float totalHeight = (int)lines.size() * lh;
 
 			float x = sw - 8.0F;
@@ -1049,9 +1042,7 @@ namespace spades {
 
 			Player& p = world->GetLocalPlayer().value();
 
-			IFont& font = cg_smallFont
-				? fontManager->GetSmallFont()
-				: fontManager->GetGuiFont();
+			IFont& font = fontManager->GetGuiFont();
 
 			float sh = renderer->ScreenHeight();
 
@@ -1062,7 +1053,7 @@ namespace spades {
 			Vector4 color = MakeVector4(1, 1, 1, 1);
 			Vector4 shadow = MakeVector4(0, 0, 0, 0.7F);
 
-			float lh = cg_smallFont ? 14.0F : 20.0F;
+			float lh = 20.0F;
 			auto addLine = [&](const std::string& text) {
 				Vector2 pos = MakeVector2(x, y);
 				y += lh;
@@ -1605,9 +1596,7 @@ namespace spades {
 		void Client::DrawSpectateHUD() {
 			SPADES_MARK_FUNCTION();
 
-			IFont& font = cg_smallFont
-				? fontManager->GetSmallFont()
-				: fontManager->GetGuiFont();
+			IFont& font = fontManager->GetGuiFont();
 
 			float sw = renderer->ScreenWidth();
 			float sh = renderer->ScreenHeight();
@@ -1633,7 +1622,7 @@ namespace spades {
 			Vector4 color = MakeVector4(1, 1, 1, 1);
 			Vector4 shadow = MakeVector4(0, 0, 0, 0.7F);
 
-			float lh = cg_smallFont ? 14.0F : 20.0F;
+			float lh = 20.0F;
 			auto addLine = [&](const std::string& text) {
 				Vector2 pos = MakeVector2(x, y);
 				pos.x -= font.Measure(text).x;

@@ -65,7 +65,6 @@ DEFINE_SPADES_SETTING(cg_killfeedStreaks, "1");
 DEFINE_SPADES_SETTING(cg_classicSprinting, "0");
 DEFINE_SPADES_SETTING(cg_spectatorNoclip, "0");
 
-SPADES_SETTING(cg_smallFont);
 SPADES_SETTING(cg_centerMessage);
 SPADES_SETTING(cg_holdAimDownSight);
 SPADES_SETTING(cg_damageIndicators);
@@ -1231,7 +1230,7 @@ namespace spades {
 			// create a killfeed message
 			std::string s, cause;
 
-			bool killfeedIcons = cg_killfeedIcons && !cg_smallFont;
+			bool killfeedIcons = cg_killfeedIcons;
 
 			// add colored killer name
 			s += ChatWindow::TeamColorMessage(killer.GetName(), killer.GetTeamId());

@@ -36,8 +36,6 @@ DEFINE_SPADES_SETTING(cg_killfeedHeight, "26");
 DEFINE_SPADES_SETTING(cg_chatFadeTime, "10");
 DEFINE_SPADES_SETTING(cg_killfeedFadeTime, "20");
 
-SPADES_SETTING(cg_smallFont);
-
 SPADES_SETTING(cg_stats);
 SPADES_SETTING(cg_statsSmallFont);
 
@@ -83,7 +81,7 @@ namespace spades {
 			}
 		}
 
-		float ChatWindow::GetLineHeight() { return cg_smallFont ? 14.0F : 20.0F; }
+		float ChatWindow::GetLineHeight() { return 20.0F; }
 
 		std::string ChatWindow::KillImage(int kt, int weapon) {
 			std::string tmp = "xx";
