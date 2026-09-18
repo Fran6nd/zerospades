@@ -592,11 +592,10 @@ namespace spades {
 
 			// Legs
 			{
-				model = renderer.RegisterModel((modelPath + "Leg.kv6").c_str());
-
 				const Vector3 leg1Base = (torso * MakeVector3(0.25F, 0.0F, 0.9F)).GetXYZ();
 				const Vector3 leg2Base = (torso * MakeVector3(-0.25F, 0.0F, 0.9F)).GetXYZ();
 
+				model = renderer.RegisterModel((modelPath + "LegRight.kv6").c_str());
 				Vector3 aX, aY, aZ;
 				aZ = (nodes[Leg1].pos - nodes[Torso3].pos).Normalize();
 				aY = Vector3::Cross(tX1, aZ).Normalize();
@@ -604,11 +603,11 @@ namespace spades {
 				param.matrix = Matrix4::FromAxis(aX, aY, aZ, leg1Base) * scaler;
 				renderer.RenderModel(*model, param);
 
+				model = renderer.RegisterModel((modelPath + "Leg.kv6").c_str());
 				aZ = (nodes[Leg2].pos - nodes[Torso4].pos).Normalize();
 				aY = Vector3::Cross(tX1, aZ).Normalize();
 				aX = Vector3::Cross(aY, aZ).Normalize();
-				param.matrix = Matrix4::FromAxis(aX, aY, aZ, leg2Base) * scaler
-					* Matrix4::Scale(-1, 1, 1); // mirror
+				param.matrix = Matrix4::FromAxis(aX, aY, aZ, leg2Base) * scaler;
 				renderer.RenderModel(*model, param);
 			}
 		}
