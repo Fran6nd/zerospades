@@ -110,6 +110,7 @@ namespace spades {
 						if (toggle)
 							toggled = !toggled;
 
+						hover = false;
 						OnActivated();
 						if (GetManager().time - lastActivate < 0.35F &&
 						    (clientPosition - lastActivatePosition).GetManhattanLength() < 10.0F) {
