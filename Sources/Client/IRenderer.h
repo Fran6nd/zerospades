@@ -296,6 +296,12 @@ namespace spades {
 				}
 			}
 			virtual void DrawFilledTriangle(const Vector2& v0, const Vector2& v1, const Vector2& v2) = 0;
+			/** Draws a triangle whose colour is interpolated between its vertices.
+			 *  Colours are alpha premultiplied, and the current draw colour is not
+			 *  used. A backend that cannot interpolate fills it with the average. */
+			virtual void DrawShadedTriangle(const Vector2& v0, const Vector2& v1,
+			                                const Vector2& v2, const Vector4& c0,
+			                                const Vector4& c1, const Vector4& c2) = 0;
 		};
 	} // namespace client
 } // namespace spades
