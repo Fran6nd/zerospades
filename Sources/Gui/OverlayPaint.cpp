@@ -51,9 +51,15 @@ namespace spades {
                 return MakeVector4(c.x * c.w, c.y * c.w, c.z * c.w, c.w);
             }
 
+            // Segments per circle, by radius: smooth at any size, bounded cost.
+            std::size_t CircleSegments(float radius) {
+                return std::size_t(std::max(12, std::min(64, int(radius * 0.75F))));
+            }
+
             // Polygons up to this many points are worked on without touching the
-            // heap; every overlay shape drawn per frame (lines, cube facets) fits.
-            constexpr std::size_t kInlinePolygonPoints = 16;
+            // heap; every overlay shape drawn per frame (lines, facets, circles, a
+            // gizmo ring) fits.
+            constexpr std::size_t kInlinePolygonPoints = 128;
 
             // Working storage for one polygon's points: on the stack for the small
             // shapes drawn every frame, on the heap only for a larger one.
@@ -80,27 +86,55 @@ namespace spades {
                 Vector2* data;
             };
 
+            // Copies `points`, dropping each one that repeats the one before it,
+            // and returns how many are left.
+            std::size_t CopyDistinct(const Vector2* points, std::size_t count, PointScratch& out) {
+                std::size_t n = 0;
+                for (std::size_t i = 0; i < count; i++) {
+                    if (n == 0 || (points[i] - out[n - 1]).GetLength() > kPolygonEpsilon)
+                        out[n++] = points[i];
+                }
+                return n;
+            }
+
+            // `count` points evenly round a circle.
+            void CirclePoints(const Vector2& center, float radius, std::size_t count,
+                              PointScratch& out) {
+                const float step = 2.0F * M_PI_F / float(count);
+                for (std::size_t i = 0; i < count; i++) {
+                    const float a = float(i) * step;
+                    out[i] = center + MakeVector2(std::cos(a), std::sin(a)) * radius;
+                }
+            }
+
+            // A quad fading from `solid` along the edge solid0-solid1 to nothing
+            // along clear0-clear1, where clear0 lies across from solid0.
+            void FadeQuad(client::IRenderer& renderer, const Vector2& solid0,
+                          const Vector2& solid1, const Vector2& clear0, const Vector2& clear1,
+                          const Vector4& solid) {
+                const Vector4 clear = MakeVector4(0.0F, 0.0F, 0.0F, 0.0F);
+                renderer.DrawShadedTriangle(solid0, solid1, clear1, solid, solid, clear);
+                renderer.DrawShadedTriangle(solid0, clear1, clear0, solid, clear, clear);
+            }
+
             // Draws a polygon given as its solid core (`inner`) and the outline its
             // anti-aliased rim fades out to (`outer`), point for point: the core as
             // a fan, then each edge's rim as a quad fading from `solid` to nothing.
             void DrawFringedPolygon(client::IRenderer& renderer, const Vector2* inner,
                                     const Vector2* outer, std::size_t n, const Vector4& solid) {
-                const Vector4 clear = MakeVector4(0.0F, 0.0F, 0.0F, 0.0F);
-
                 for (std::size_t i = 1; i + 1 < n; i++)
                     renderer.DrawShadedTriangle(inner[0], inner[i], inner[i + 1], solid, solid,
                                                 solid);
 
                 for (std::size_t i = 0; i < n; i++) {
                     const std::size_t j = (i + 1) % n;
-                    renderer.DrawShadedTriangle(inner[i], inner[j], outer[j], solid, solid, clear);
-                    renderer.DrawShadedTriangle(inner[i], outer[j], outer[i], solid, clear, clear);
+                    FadeQuad(renderer, inner[i], inner[j], outer[i], outer[j], solid);
                 }
             }
         } // namespace
 
         void OverlayColorNP(client::IRenderer& renderer, const Vector4& c) {
-            renderer.SetColorAlphaPremultiplied(MakeVector4(c.x * c.w, c.y * c.w, c.z * c.w, c.w));
+            renderer.SetColorAlphaPremultiplied(Premultiply(c));
         }
         void OverlayFillRect(client::IRenderer& renderer, float x, float y, float w, float h) {
             renderer.DrawImage((client::IImage*)NULL, AABB2(x, y, w, h));
@@ -119,11 +153,7 @@ namespace spades {
                 return;
 
             PointScratch pts(count);
-            std::size_t n = 0;
-            for (std::size_t i = 0; i < count; i++) {
-                if (n == 0 || (points[i] - pts[n - 1]).GetLength() > kPolygonEpsilon)
-                    pts[n++] = points[i];
-            }
+            std::size_t n = CopyDistinct(points, count, pts);
             while (n > 1 && (pts[n - 1] - pts[0]).GetLength() <= kPolygonEpsilon)
                 n--;
             if (n < 3)
@@ -167,10 +197,26 @@ namespace spades {
 
         void OverlayStrokeLine(client::IRenderer& renderer, const Vector2& a, const Vector2& b,
                                float width, const Vector4& c) {
-            const Vector2 d = b - a;
-            const float len = d.GetLength();
-            if (len <= kPolygonEpsilon || width <= 0.0F)
+            const Vector2 ends[2] = {a, b};
+            OverlayStrokePolyline(renderer, ends, 2, width, c, false);
+        }
+
+        void OverlayStrokePolyline(client::IRenderer& renderer, const Vector2* points,
+                                   std::size_t count, float width, const Vector4& c,
+                                   bool closed) {
+            if (width <= 0.0F || c.w <= 0.0F)
                 return;
+
+            PointScratch pts(count);
+            std::size_t n = CopyDistinct(points, count, pts);
+            if (closed) {
+                while (n > 1 && (pts[n - 1] - pts[0]).GetLength() <= kPolygonEpsilon)
+                    n--;
+            }
+            if (n < 2)
+                return;
+            if (n < 3)
+                closed = false; // two points close into the one segment between them
 
             Vector4 col = c;
             const float pixel = PixelSize(renderer);
@@ -178,32 +224,96 @@ namespace spades {
                 col.w *= width / pixel;
                 width = pixel;
             }
-
-            if (col.w <= 0.0F)
-                return;
-
-            // The same geometry OverlayFillConvexPolygon gives the line's rectangle,
-            // built directly: every side moves half a pixel in for the core and
-            // half a pixel out for the rim. The core stops at zero rather than
-            // turning inside out when the line is shorter or thinner than a pixel.
             const float half = pixel * 0.5F;
-            const Vector2 along = d * (1.0F / len);
-            const Vector2 across = MakeVector2(-along.y, along.x);
-            const Vector2 centre = (a + b) * 0.5F;
-            const float halfLength = len * 0.5F, halfWidth = width * 0.5F;
+            // The core reaches half a pixel short of each side of the stroke, the
+            // rim half a pixel past it.
+            const float innerReach = std::max(width * 0.5F - half, 0.0F);
+            const float outerReach = width * 0.5F + half;
 
-            const Vector2 innerAlong = along * std::max(halfLength - half, 0.0F);
-            const Vector2 innerAcross = across * std::max(halfWidth - half, 0.0F);
-            const Vector2 outerAlong = along * (halfLength + half);
-            const Vector2 outerAcross = across * (halfWidth + half);
+            // Left-hand unit normal of segment s (from point s to point s + 1).
+            const std::size_t segments = closed ? n : n - 1;
+            PointScratch normal(segments);
+            for (std::size_t s = 0; s < segments; s++) {
+                const Vector2 d = pts[(s + 1) % n] - pts[s];
+                normal[s] = MakeVector2(-d.y, d.x) * (1.0F / d.GetLength());
+            }
 
-            const Vector2 inner[4] = {
-              centre - innerAlong + innerAcross, centre + innerAlong + innerAcross,
-              centre + innerAlong - innerAcross, centre - innerAlong - innerAcross};
-            const Vector2 outer[4] = {
-              centre - outerAlong + outerAcross, centre + outerAlong + outerAcross,
-              centre + outerAlong - outerAcross, centre - outerAlong - outerAcross};
-            DrawFringedPolygon(renderer, inner, outer, 4, Premultiply(col));
+            // Each point is offset along the mitre of the segments meeting there, so
+            // neighbouring segments share the edge across their joint and no pixel
+            // is covered twice. An open end is squared off instead: the core stops
+            // half a pixel inside it (never past the segment's middle) and the rim
+            // half a pixel beyond it.
+            PointScratch innerL(n), innerR(n), outerL(n), outerR(n);
+            for (std::size_t i = 0; i < n; i++) {
+                Vector2 m;
+                Vector2 innerShift = MakeVector2(0.0F, 0.0F);
+                Vector2 outerShift = MakeVector2(0.0F, 0.0F);
+                if (!closed && (i == 0 || i == n - 1)) {
+                    const std::size_t s = (i == 0) ? 0 : segments - 1;
+                    m = normal[s];
+                    // Unit direction pointing from this end into the stroke.
+                    const Vector2 inward = MakeVector2(m.y, -m.x) * ((i == 0) ? 1.0F : -1.0F);
+                    const float length = (pts[s + 1] - pts[s]).GetLength();
+                    innerShift = inward * std::min(half, length * 0.5F);
+                    outerShift = inward * -half;
+                } else {
+                    const Vector2& before = normal[(i + n - 1) % n];
+                    const Vector2& after = normal[i];
+                    m = (before + after) * 0.5F;
+                    const float len2 = m.x * m.x + m.y * m.y;
+                    if (len2 > kPolygonEpsilon)
+                        m *= std::min(1.0F / len2, kMaxMiterScale);
+                    else
+                        m = after; // the path doubles back on itself
+                }
+                innerL[i] = pts[i] + innerShift + m * innerReach;
+                innerR[i] = pts[i] + innerShift - m * innerReach;
+                outerL[i] = pts[i] + outerShift + m * outerReach;
+                outerR[i] = pts[i] + outerShift - m * outerReach;
+            }
+
+            const Vector4 solid = Premultiply(col);
+            for (std::size_t s = 0; s < segments; s++) {
+                const std::size_t i = s, j = (s + 1) % n;
+                if (innerReach > 0.0F) {
+                    renderer.DrawShadedTriangle(innerL[i], innerL[j], innerR[j], solid, solid,
+                                                solid);
+                    renderer.DrawShadedTriangle(innerL[i], innerR[j], innerR[i], solid, solid,
+                                                solid);
+                }
+                FadeQuad(renderer, innerL[i], innerL[j], outerL[i], outerL[j], solid);
+                FadeQuad(renderer, innerR[i], innerR[j], outerR[i], outerR[j], solid);
+            }
+            if (!closed) {
+                FadeQuad(renderer, innerL[0], innerR[0], outerL[0], outerR[0], solid);
+                FadeQuad(renderer, innerL[n - 1], innerR[n - 1], outerL[n - 1], outerR[n - 1],
+                         solid);
+            }
+        }
+
+        void OverlayFillCircle(client::IRenderer& renderer, const Vector2& center, float radius,
+                               const Vector4& c) {
+            if (radius <= 0.0F)
+                return;
+            const std::size_t count = CircleSegments(radius);
+            PointScratch pts(count);
+            CirclePoints(center, radius, count, pts);
+            OverlayFillConvexPolygon(renderer, pts.Data(), count, c);
+        }
+
+        void OverlayStrokeCircle(client::IRenderer& renderer, const Vector2& center,
+                                 float radius, float width, const Vector4& c) {
+            if (width <= 0.0F)
+                return;
+            const float outer = radius + width * 0.5F;
+            if (radius <= width * 0.5F) {
+                OverlayFillCircle(renderer, center, outer, c); // the ring's hole has closed
+                return;
+            }
+            const std::size_t count = CircleSegments(outer);
+            PointScratch pts(count);
+            CirclePoints(center, radius, count, pts);
+            OverlayStrokePolyline(renderer, pts.Data(), count, width, c, true);
         }
 
         bool OverlayInRect(const Vector2& p, float x, float y, float w, float h) {
