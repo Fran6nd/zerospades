@@ -168,6 +168,11 @@ namespace spades {
 			virtual void OnGizmoEnd(IEditorContext&, const GizmoTransform& total) { (void)total; }
 			/** The drag was abandoned; `undo` reverses every step it reported. */
 			virtual void OnGizmoCancel(IEditorContext&, const GizmoTransform& undo) { (void)undo; }
+			/**
+			 * A left press landed off every handle: the user is done with the
+			 * gizmo, so work it left pending is completed here.
+			 */
+			virtual void OnClickAway(IEditorContext&) {}
 
 		private:
 			bool SyncPose(IEditorContext& ed);
@@ -182,10 +187,10 @@ namespace spades {
 		 *
 		 * The first move or turn lifts the selected voxels out of the document;
 		 * a paste or an import arrives already pending. Nothing is written back
-		 * until Place, leaving the tool, or another command that needs the
-		 * document as it stands, so voxels dragged over others never destroy
-		 * them; Cancel or Escape puts them back instead. Every move and turn is
-		 * an undo step. With nothing
+		 * until a click away from the gizmo, Place, leaving the tool, or another
+		 * command that needs the document as it stands, so voxels dragged over
+		 * others never destroy them; Cancel or Escape puts them back instead.
+		 * Every move and turn is an undo step. With nothing
 		 * pending, the next move takes whatever is selected at that moment.
 		 */
 		class TransformSubTool : public GizmoSubTool {
@@ -202,6 +207,8 @@ namespace spades {
 			// A drag only previews: the voxels move once, on release.
 			bool CurrentPose(IEditorContext& ed, GizmoPose& pose) override;
 			void OnGizmoEnd(IEditorContext& ed, const GizmoTransform& total) override;
+			// Places the pending voxels where they are.
+			void OnClickAway(IEditorContext& ed) override;
 		};
 
 		// Moves the model pivot with the gizmo, in 0.1 steps. Voxels stay put. The

@@ -157,9 +157,9 @@ namespace spades {
 			// --- Pending placement (floating voxels) --------------------------
 			// Paste, import and Transform park their voxels here first: nothing
 			// reaches the document until the placement is applied, so dragging
-			// voxels over others never destroys what they pass across. Place, or
-			// leaving the Transform tool, applies the placement; Cancel or Escape
-			// puts it back. Every edit of the
+			// voxels over others never destroys what they pass across. A click
+			// away from the gizmo, Place, or leaving the Transform tool applies
+			// the placement; Cancel or Escape puts it back. Every edit of the
 			// voxels, the selection or the pivot (and the editor's copy, cut and
 			// save) applies it first, so it acts on the document as it stands.
 			// Lifting, moving, turning, applying and cancelling are undo steps.

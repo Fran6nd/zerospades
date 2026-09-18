@@ -1287,7 +1287,7 @@ namespace spades {
 				SetStatus(label + ": could not open the Transform tool");
 				return;
 			}
-			SetStatus(label + ": position it with the gizmo, then Place");
+			SetStatus(label + ": position it with the gizmo, then click away to place it");
 		}
 
 		bool KV6EditorView::ActivateTransformTool() {

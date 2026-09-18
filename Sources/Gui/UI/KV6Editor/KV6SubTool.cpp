@@ -368,7 +368,14 @@ namespace spades {
 			if (!e.IsLeft())
 				return;
 			if (e.IsDown()) {
-				if (!gizmo.IsDragging() && SyncPose(ed) && gizmo.Begin(ed.GetGizmoView(), e.pos))
+				if (gizmo.IsDragging() || !SyncPose(ed))
+					return;
+				const GizmoView view = ed.GetGizmoView();
+				// Off the handles is away from the gizmo. A press on a handle that
+				// cannot be grabbed right now (an axis seen end-on) is not.
+				if (gizmo.HandleAt(view, e.pos) == GizmoHandle::None)
+					OnClickAway(ed);
+				else if (gizmo.Begin(view, e.pos))
 					OnGizmoBegin(ed);
 			} else if (e.IsDrag()) {
 				if (!gizmo.IsDragging())
@@ -413,7 +420,7 @@ namespace spades {
 			                   "[PgUp/PgDn] nudge";
 			hint += kGizmoDragHint;
 			if (ed.HasPlacement())
-				hint += "  |  [Esc] put them back";
+				hint += "  |  [LMB] away from the gizmo places them  |  [Esc] puts them back";
 			return hint;
 		}
 
@@ -438,6 +445,12 @@ namespace spades {
 
 		void TransformSubTool::OnGizmoEnd(IEditorContext& ed, const GizmoTransform& total) {
 			ed.TransformPlacement(WholeStep(total)); // one undo step, still only pending
+		}
+
+		void TransformSubTool::OnClickAway(IEditorContext& ed) {
+			// With nothing pending (a selection not yet moved) there is nothing to finish.
+			if (ed.HasPlacement())
+				ed.ApplyPlacement();
 		}
 
 		void TransformSubTool::OnKey(IEditorContext& ed, const KeyInput& e) {
