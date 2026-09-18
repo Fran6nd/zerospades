@@ -94,6 +94,13 @@ namespace spades {
 						return;
 					}
 			}
+			void SetColor(const std::string& id, uint32_t color) {
+				for (ToolOption& o : items)
+					if (o.id == id) {
+						o.color = color;
+						return;
+					}
+			}
 
 			int Count() const { return int(items.size()); }
 			ToolOption& At(int i) { return items[i]; }

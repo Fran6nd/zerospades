@@ -312,27 +312,23 @@ namespace spades {
 				if (!opts || idx < 0 || idx >= opts->Count()) return;
 				const ToolOption& opt = opts->At(idx);
 				if (opt.type != ToolOption::Type::Color) return;
-				colorOptionIdx = idx;
 				// The brush swatch edits the shared colour; any other swatch (a
-				// future second colour) edits its own value.
-				ui->GetColorPicker()->SetColor(opt.id == kBrushColorOption ? currentColor
-				                                                          : opt.color);
+				// future second colour) edits its own value, in its own tool.
+				bool brush = opt.id == kBrushColorOption;
+				colorTargetTool = brush ? nullptr : tool;
+				colorTargetOption = brush ? std::string() : opt.id;
+				ui->GetColorPicker()->SetColor(brush ? currentColor : opt.color);
 				ui->GetColorPicker()->Open();
 			};
 
 			// Wire up color picker callbacks
 			ui->GetColorPicker()->OnColorChanged = [this](uint32_t c) {
-				// A swatch of its own keeps the value; the brush swatch (and the
-				// picker opened on nothing in particular) sets the shared colour.
-				if (colorOptionIdx >= 0) {
-					EditorTool* tool = ActiveTool();
-					ToolOptions* opts = tool ? tool->Options() : nullptr;
-					if (opts && colorOptionIdx < opts->Count()) {
-						ToolOption& opt = opts->At(colorOptionIdx);
-						opt.color = c;
-						if (opt.id != kBrushColorOption)
-							return;
-					}
+				// The picker stays open across tool switches, so the edit goes to the
+				// swatch it was opened on, whichever tool is active now.
+				if (colorTargetTool) {
+					if (ToolOptions* opts = colorTargetTool->Options())
+						opts->SetColor(colorTargetOption, c);
+					return;
 				}
 				currentColor = c;
 			};
