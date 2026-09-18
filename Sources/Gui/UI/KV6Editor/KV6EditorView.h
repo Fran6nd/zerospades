@@ -99,6 +99,8 @@ namespace spades {
 			bool HasPlacement() const override { return placementActive; }
 			void TransformPlacement(const PlacementTransform& t) override;
 			bool TransformPivot(IntVector3& out) const override;
+			bool TurnsAboutModelPivot() const override { return turnsAboutModelPivot; }
+			void SetTurnsAboutModelPivot(bool on) override { turnsAboutModelPivot = on; }
 			void ApplyPlacement() override;
 			void CancelPlacement() override;
 			void DrawPlacementTransformed(const PlacementTransform& t,
@@ -262,6 +264,10 @@ namespace spades {
 			// like any edit.
 			bool placementActive = false;
 			PendingPlacement placement;
+			// Turns go round the model's pivot rather than the voxels' middle.
+			bool turnsAboutModelPivot = false;
+			// The voxel `group` turns about, per the setting above.
+			IntVector3 TurnCentre(const PendingPlacement& group) const;
 			// Voxels in the document, counting those lifted by Transform (they only float).
 			int DocumentVoxelCount() const {
 				return voxelCount + (placementActive ? int(placement.lifted.size()) : 0);

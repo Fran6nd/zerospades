@@ -1457,20 +1457,24 @@ namespace spades {
 			if (t.Turns()) {
 				// A quarter turn takes the axis after `t.axis` onto the one after
 				// that, which is the right-handed sense about `t.axis`. Offsets from
-				// a whole-voxel pivot stay whole, so every voxel lands on a voxel.
+				// a whole-voxel centre stay whole, so every voxel lands on a voxel.
 				const int turns = ((t.quarterTurns % 4) + 4) % 4;
 				const int u = (t.axis + 1) % 3, v = (t.axis + 2) % 3;
-				std::vector<IntVector3> cells(out.voxels.size());
-				IntVector3 lo = MakeIntVector3(INT_MAX, INT_MAX, INT_MAX);
-				for (size_t i = 0; i < out.voxels.size(); i++) {
-					const IntVector3 at = from.anchor + out.voxels[i].rel - from.pivot;
-					int c[3] = {at.x, at.y, at.z};
+				const IntVector3 centre = TurnCentre(from);
+				auto turned = [&](const IntVector3& p) {
+					const IntVector3 d = p - centre;
+					int c[3] = {d.x, d.y, d.z};
 					for (int k = 0; k < turns; k++) {
 						const int cu = c[u];
 						c[u] = -c[v];
 						c[v] = cu;
 					}
-					cells[i] = from.pivot + MakeIntVector3(c[0], c[1], c[2]);
+					return centre + MakeIntVector3(c[0], c[1], c[2]);
+				};
+				std::vector<IntVector3> cells(out.voxels.size());
+				IntVector3 lo = MakeIntVector3(INT_MAX, INT_MAX, INT_MAX);
+				for (size_t i = 0; i < out.voxels.size(); i++) {
+					cells[i] = turned(from.anchor + out.voxels[i].rel);
 					lo.x = std::min(lo.x, cells[i].x);
 					lo.y = std::min(lo.y, cells[i].y);
 					lo.z = std::min(lo.z, cells[i].z);
@@ -1478,6 +1482,9 @@ namespace spades {
 				out.anchor = lo;
 				for (size_t i = 0; i < out.voxels.size(); i++)
 					out.voxels[i].rel = cells[i] - lo;
+				// Their middle turns with them, so it is still their middle
+				// whichever centre they turned about.
+				out.pivot = turned(from.pivot);
 			}
 
 			out.anchor = out.anchor + t.shift;
@@ -1521,14 +1528,24 @@ namespace spades {
 
 		bool KV6EditorView::TransformPivot(IntVector3& out) const {
 			if (placementActive) {
-				out = placement.pivot;
+				out = TurnCentre(placement);
 				return true;
 			}
 			PendingPlacement selected;
 			if (!PlacementFromSelection(selected))
 				return false;
-			out = selected.pivot;
+			out = TurnCentre(selected);
 			return true;
+		}
+
+		IntVector3 KV6EditorView::TurnCentre(const PendingPlacement& group) const {
+			if (!turnsAboutModelPivot)
+				return group.pivot;
+			// The voxel nearest the pivot; on a tie the lower one, as for the
+			// middle of a group.
+			const Vector3 p = GetPivot();
+			auto nearest = [](float c) { return int(std::ceil(c - 0.5F)); };
+			return MakeIntVector3(nearest(p.x), nearest(p.y), nearest(p.z));
 		}
 
 		bool KV6EditorView::ClampPlacementAnchor(const std::vector<ClipVoxel>& voxels,

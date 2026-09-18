@@ -28,6 +28,8 @@ namespace spades {
 		namespace {
 			const char* const kPlaceOption = "transform.place";
 			const char* const kCancelOption = "transform.cancel";
+			const char* const kAboutSelectionOption = "transform.about.selection";
+			const char* const kAboutPivotOption = "transform.about.pivot";
 			const char* const kReadoutOption = "transform.readout";
 		} // namespace
 
@@ -35,6 +37,8 @@ namespace spades {
 			subs.push_back(std::unique_ptr<EditorTool>(new TransformSubTool()));
 			options.AddAction(kPlaceOption, "Place");
 			options.AddAction(kCancelOption, "Cancel");
+			options.AddBool(kAboutSelectionOption, "Selection", "Turn about");
+			options.AddBool(kAboutPivotOption, "Pivot", "Turn about");
 			options.AddLabel(kReadoutOption);
 		}
 
@@ -45,14 +49,29 @@ namespace spades {
 			options.SetEnabled(kPlaceOption, pending);
 			options.SetEnabled(kCancelOption, pending);
 
-			IntVector3 pivot;
-			if (ed.TransformPivot(pivot)) {
+			// The turn centre is the editor's setting; the pair only shows it.
+			const bool aboutPivot = ed.TurnsAboutModelPivot();
+			options.SetBool(kAboutSelectionOption, !aboutPivot);
+			options.SetBool(kAboutPivotOption, aboutPivot);
+
+			IntVector3 centre;
+			if (ed.TransformPivot(centre)) {
 				char buf[80];
-				std::snprintf(buf, sizeof(buf), "Pivot  %d, %d, %d", pivot.x, pivot.y, pivot.z);
+				std::snprintf(buf, sizeof(buf), "Centre  %d, %d, %d", centre.x, centre.y,
+				              centre.z);
 				options.SetLabel(kReadoutOption, buf);
 			} else {
 				options.SetLabel(kReadoutOption, "Nothing to move");
 			}
+		}
+
+		void TransformTool::OnOptionToggled(IEditorContext& ed, const std::string& id, bool) {
+			// The pair acts as radio buttons: a click picks its choice, whatever
+			// the toggle it landed on was showing.
+			if (id == kAboutSelectionOption)
+				ed.SetTurnsAboutModelPivot(false);
+			else if (id == kAboutPivotOption)
+				ed.SetTurnsAboutModelPivot(true);
 		}
 
 		void TransformTool::OnAction(IEditorContext& ed, const std::string& id) {
