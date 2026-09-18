@@ -65,6 +65,13 @@ namespace spades {
 			// whatever is listed, so tools never touch the toolbar code directly.
 			virtual ToolOptions* Options() { return nullptr; }
 
+			// A ToolOption of type Bool was clicked; it has already been flipped to
+			// `value`. Tools that mirror a toggle into other state react here.
+			virtual void OnOptionToggled(IEditorContext&, const std::string& id, bool value) {
+				(void)id;
+				(void)value;
+			}
+
 			// A ToolOption of type Action was clicked; `id` is that option's id.
 			virtual void OnAction(IEditorContext&, const std::string& id) { (void)id; }
 
