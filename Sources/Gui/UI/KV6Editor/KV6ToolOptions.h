@@ -20,6 +20,7 @@
 
 #pragma once
 
+#include <cstdint>
 #include <string>
 #include <vector>
 
@@ -43,6 +44,7 @@ namespace spades {
 			std::string group; // shared group label ("Mirror"); empty = ungrouped
 			Type type = Type::Bool;
 			bool bvalue = false;     // Bool value
+			bool enabled = true;     // false greys a Bool or Action out (nothing to act on)
 			uint32_t color = 0xFFFFFFFF; // Color value (ARGB)
 		};
 
@@ -88,18 +90,16 @@ namespace spades {
 				items.push_back(o);
 			}
 			void SetLabel(const std::string& id, const std::string& text) {
-				for (ToolOption& o : items)
-					if (o.id == id) {
-						o.label = text;
-						return;
-					}
+				if (ToolOption* o = Find(id))
+					o->label = text;
 			}
 			void SetColor(const std::string& id, uint32_t color) {
-				for (ToolOption& o : items)
-					if (o.id == id) {
-						o.color = color;
-						return;
-					}
+				if (ToolOption* o = Find(id))
+					o->color = color;
+			}
+			void SetEnabled(const std::string& id, bool enabled) {
+				if (ToolOption* o = Find(id))
+					o->enabled = enabled;
 			}
 
 			int Count() const { return int(items.size()); }
@@ -113,15 +113,19 @@ namespace spades {
 				return false;
 			}
 			void SetBool(const std::string& id, bool value) {
-				for (ToolOption& o : items)
-					if (o.id == id) {
-						o.bvalue = value;
-						return;
-					}
+				if (ToolOption* o = Find(id))
+					o->bvalue = value;
 			}
 
 		private:
 			std::vector<ToolOption> items;
+
+			ToolOption* Find(const std::string& id) {
+				for (ToolOption& o : items)
+					if (o.id == id)
+						return &o;
+				return nullptr;
+			}
 		};
 	} // namespace gui
 } // namespace spades

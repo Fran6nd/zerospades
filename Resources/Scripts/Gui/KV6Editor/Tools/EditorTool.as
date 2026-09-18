@@ -56,6 +56,11 @@ namespace spades {
 		// Abort an in-progress operation (Esc); return true if it was consumed.
 		bool OnEscape(EditorContext@ ctx);
 
+		// What the mouse and keys do right now, in "  |  " separated parts; the
+		// editor shows it under the viewport after the tool's name. Queried each
+		// frame, so it can follow the tool's progress. Empty for no hint.
+		string Hint(EditorContext@ ctx);
+
 		// 3D preview, drawn each frame while active.
 		void DrawScene(EditorContext@ ctx);
 	}

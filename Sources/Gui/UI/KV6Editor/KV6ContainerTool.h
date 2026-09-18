@@ -48,6 +48,7 @@ namespace spades {
 			bool OnEscape(IEditorContext&) override;
 			void CancelInteraction(IEditorContext&) override;
 			void OnDocumentChanged(IEditorContext&) override;
+			std::string Hint(IEditorContext&) override;
 			void DrawScene(IEditorContext&) override;
 			void DrawOverlay(IEditorContext&) override;
 

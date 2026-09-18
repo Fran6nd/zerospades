@@ -22,6 +22,7 @@
 
 #include <cstdint>
 #include <functional>
+#include <string>
 #include <vector>
 
 #include <Core/Math.h>
@@ -36,57 +37,64 @@ namespace spades {
 		/**
 		 * Unified top toolbar: modes on the left, a separator, then the tools
 		 * available in the current mode, then undo/redo buttons on the right.
+		 *
+		 * The host describes every button, so the toolbar holds no editor
+		 * policy: a disabled button draws greyed out and ignores clicks. Tool
+		 * buttons sharing a `group` sit together, and a separator divides one
+		 * group from the next.
 		 */
 		class Toolbar {
 		public:
-			enum class ClickType { None, Mode, Tool, Undo, Redo };
-
-			struct ClickResult {
-				ClickType type = ClickType::None;
-				int index = -1;
-			};
-
 			struct ToolbarButton {
 				std::string label;
+				std::string hotKey; // drawn on the button's right; empty for none
 				bool enabled = true;
 				bool active = false;
+				int group = 0; // tool buttons only
 			};
 
 			Toolbar(client::IAudioDevice* audioDevice = nullptr);
 
-			void SetModeButtons(const std::vector<std::string>& labels);
-			void SetActiveModeButton(int index);
+			void SetModeButtons(const std::vector<ToolbarButton>& buttons);
 			void SetToolButtons(const std::vector<ToolbarButton>& buttons);
 			void SetUndoButton(bool enabled);
 			void SetRedoButton(bool enabled);
 
-			ClickResult HitTest(const Vector2& p, float screenWidth);
+			/** Runs the callback of the enabled button under `p`; false if there is none. */
+			bool Click(const Vector2& p, float screenWidth);
 			void Draw(client::IRenderer& renderer, client::FontManager& fontManager,
 			         const Vector2& cursorPos, bool menuActive, float screenWidth);
-			void PlayButtonActivateSound() { PlayClickSound(); }
 
-			// Callbacks (optional; called instead of modifying state)
+			// Called with the clicked button's index.
 			std::function<void(int)> OnModeClicked;
 			std::function<void(int)> OnToolClicked;
 			std::function<void()> OnUndoClicked;
 			std::function<void()> OnRedoClicked;
 
 		private:
+			enum class Kind { Mode, Tool, Undo, Redo };
+
+			// One button placed on the bar; `index` is into its kind's list.
+			struct Slot {
+				Kind kind;
+				int index;
+				float x, width;
+				bool separatorBefore;
+			};
+
 			client::IAudioDevice* audioDevice = nullptr;
-			std::vector<std::string> modeButtons;
+			std::vector<ToolbarButton> modeButtons;
 			std::vector<ToolbarButton> toolButtons;
-			std::vector<bool> previousHoverState; // track hover transitions for sound
 			bool undoEnabled = false;
 			bool redoEnabled = false;
-			bool previousUndoHover = false;
-			bool previousRedoHover = false;
-			int activeModeButton = 0;
+			std::vector<bool> previousHoverState; // per slot, for the hover sound
 
 			void PlayHoverSound() const;
 			void PlayClickSound() const;
-			float ToolbarX(int slot) const;
-			float UndoButtonX(float sw, bool redo) const;
-			bool InRect(const Vector2& p, float x, float y, float w, float h) const;
+			// Every button in drawing order, shared by Draw and Click so a click
+			// always lands on the button drawn under it.
+			std::vector<Slot> Layout(float screenWidth) const;
+			ToolbarButton ButtonOf(const Slot& slot) const;
 		};
 	} // namespace gui
 } // namespace spades

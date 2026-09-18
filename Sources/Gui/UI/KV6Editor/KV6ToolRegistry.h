@@ -22,11 +22,21 @@
 
 #include <functional>
 #include <memory>
+#include <string>
 #include <vector>
+
+#include "KV6EditorTool.h"
 
 namespace spades {
 	namespace gui {
-		class EditorTool;
+		/** A tool as the editor holds it: the instance, and its toolbar button's place. */
+		struct ToolSlot {
+			std::unique_ptr<EditorTool> tool;
+			// Buttons of one group sit together, a separator apart from the next.
+			int group = 0;
+			// The key that activates the tool; empty for none.
+			std::string hotKey;
+		};
 
 		/**
 		 * The set of editor tools, as factories.
@@ -47,13 +57,17 @@ namespace spades {
 			static ToolRegistry& Instance();
 
 			// Append a tool factory; registration order is toolbar order.
-			void Register(Factory f);
+			void Register(Factory f, int group, const std::string& hotKey);
 			// Instantiate every registered tool into `out` (cleared first).
-			void BuildAll(std::vector<std::unique_ptr<EditorTool>>& out) const;
-			int Count() const { return int(factories.size()); }
+			void BuildAll(std::vector<ToolSlot>& out) const;
 
 		private:
-			std::vector<Factory> factories;
+			struct Entry {
+				Factory make;
+				int group;
+				std::string hotKey;
+			};
+			std::vector<Entry> entries;
 		};
 	} // namespace gui
 } // namespace spades

@@ -18,25 +18,22 @@
 
  */
 
-#include "KV6PaintTool.h"
-#include "KV6EditorContext.h"
-#include "KV6SubToolRegistry.h"
+#include "KV6BrushTool.h"
+#include "KV6MirrorTool.h"
 
 namespace spades {
 	namespace gui {
-		PaintTool::PaintTool() {
-			// Box recolours every existing voxel it spans with the current colour.
-			// Recolouring has no inverse, so the right button does nothing.
-			auto paint = [](IEditorContext& ed, const std::vector<IntVector3>& cells) {
-				ed.PaintCells(cells, ed.CurrentColor());
-			};
-			subs.push_back(std::unique_ptr<EditorTool>(new PaintVoxelSubTool()));
-			subs.push_back(std::unique_ptr<EditorTool>(
-			  new BoxSubTool({paint, "paint"}, BoxSubTool::Action(), true)));
+		BrushTool::BrushTool() {
+			// The swatch opens the colour picker; the editor keeps it showing the
+			// one brush colour every tool shares.
+			options.AddColor("color");
+			AddMirrorToggles(options);
+		}
 
-			// Sub-tools contributed by scripts (targeting Paint), appended after the
-			// built-in ones.
-			SubToolRegistry::Instance().BuildFor(SubToolTarget::Paint, subs);
+		void BrushTool::UpdateOptions(IEditorContext& ed) { SyncMirrorToggles(options, ed); }
+
+		void BrushTool::OnOptionToggled(IEditorContext& ed, const std::string& id, bool value) {
+			ApplyMirrorToggle(ed, id, value);
 		}
 	} // namespace gui
 } // namespace spades

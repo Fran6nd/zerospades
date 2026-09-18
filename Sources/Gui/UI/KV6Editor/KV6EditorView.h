@@ -30,6 +30,7 @@
 
 #include "KV6EditorContext.h"
 #include "KV6ToolEvent.h"
+#include "KV6ToolRegistry.h"
 #include "KV6UndoStack.h"
 #include <Gui/UI/Components/EditorMenu.h>
 #include <Gui/UI/Components/SoftwareCursor.h>
@@ -110,7 +111,6 @@ namespace spades {
 			uint32_t CurrentColor() const override { return currentColor; }
 
 			// Selection (a set of solid-voxel coords, shared across tools).
-			void ToggleSelect(int x, int y, int z) override;
 			bool IsSelected(int x, int y, int z) const override;
 			void ClearSelection() override;
 			void DeleteSelection() override;
@@ -118,11 +118,14 @@ namespace spades {
 			int SelectionCount() const override {
 				return int(selection.size() + (placementActive ? placement.lifted.size() : 0));
 			}
-			// Flood-fill: add all 6-connected voxels sharing (x,y,z)'s colour.
-			void SelectLinkedColor(int x, int y, int z) override;
+			// Flood-fill over the 6-connected voxels sharing (x,y,z)'s colour.
+			std::vector<IntVector3> LinkedColorRegion(int x, int y, int z) const override;
 
-			bool PickModeActive() const override { return pickMode; }
-			void ClearPickMode() override { pickMode = false; }
+			// Clipboard (also driven by Ctrl+C/X/V).
+			void CopySelection() override;
+			bool CutSelection() override;
+			void Paste() override;
+			bool CanPaste() const override { return !clipboard.empty(); }
 
 			// Pivot (= -origin); moving it keeps the voxels fixed. Undoable.
 			Vector3 GetPivot() const override;
@@ -137,7 +140,6 @@ namespace spades {
 			bool CanRedo() const override { return undo.CanRedo(); }
 			void PlaceCube() override;
 			void DeleteCube() override;
-			void Eyedropper() override;
 			void SetStatus(const std::string&) override;
 			void DrawCellOutline(int x, int y, int z, const Vector4& color) override;
 			// 3D wireframe over the inclusive voxel range [lo, hi].
@@ -218,19 +220,27 @@ namespace spades {
 			void WriteVoxelRaw(int x, int y, int z, bool solid, uint32_t color);
 
 			// --- Mode (Blender-style) -----------------------------------------
-			// KV6 documents only support Edit mode for now; Object/Animation are
-			// shown but disabled.
+			// A .kv6 holds one model, so it is only edited in Edit mode. Object and
+			// Animation are shown greyed out: they arrive with .2kv6 scenes.
 			enum class EditorMode { Object, Edit, Animation };
 			EditorMode currentMode = EditorMode::Edit;
+			static bool ModeSupported(EditorMode mode) { return mode == EditorMode::Edit; }
 
 			// --- Tools (available in Edit mode) -------------------------------
-			std::vector<std::unique_ptr<EditorTool>> tools;
+			std::vector<ToolSlot> tools;
 			int activeTool = 0;
 			EditorTool* ActiveTool(); // active tool in Edit mode, else null
 			// Switching tools or modes deactivates the outgoing tool, which is where
 			// a pending placement is applied.
 			void SetActiveTool(int index);
 			void SetMode(EditorMode mode);
+			// Keys 1-9 pick the active tool's sub-tools, in bar order.
+			static std::string SubToolHotKey(int index);
+			// Switches tool or sub-tool when `key` is one's hot key; false if not.
+			bool SwitchByHotKey(const std::string& key);
+			// Whether the editor already handles `key` itself (movement, sprint,
+			// delete, screenshot), so it cannot serve as a tool's hot key.
+			bool KeyIsTaken(const std::string& key) const;
 
 			// --- Selection ----------------------------------------------------
 			std::set<int64_t> selection; // packed voxel keys
@@ -310,15 +320,12 @@ namespace spades {
 			// the Transform tool, and the active tool catches up.
 			void HistoryReplayed();
 
-			void CopySelection();
-			bool CutSelection(); // false when refused (nothing selected, or it would empty it)
 			// Cut and Delete share these: how many selected cells hold a voxel,
 			// whether removing them is allowed (saying why not on the status line),
 			// and the removal itself as one undo step, returning how many went.
 			int SelectedVoxelCount() const;
 			bool CanEraseSelection();
 			int EraseSelection(const std::string& label);
-			void StartPaste();
 			// Starts a placement of `voxels` with its min corner at `anchor`, and
 			// switches to the Transform tool so it can be positioned.
 			void StartPlacement(std::vector<ClipVoxel> voxels, const std::string& label,
@@ -340,7 +347,12 @@ namespace spades {
 			// picker reports.
 			EditorTool* colorTargetTool = nullptr;
 			std::string colorTargetOption;
-			bool pickMode = false; // for eyedropper tool (not color picker UI)
+			// Sampling a colour is the editor's, not a tool's: Alt+click, or a
+			// click while the picker's eyedropper is armed, samples in any tool.
+			bool SamplingArmed() const;
+			// Takes the colour of the voxel under the cursor as the brush colour,
+			// disarming the eyedropper; false (and still armed) over empty space.
+			bool SampleColor();
 
 			// --- Mirror modelling (reflect each edit across the mirror planes) ---
 			// Owned here rather than by a tool, so an edit mirrors whichever tool
@@ -501,6 +513,11 @@ namespace spades {
 			// corner -> ortho / 45deg / isometric). Returns false if not over the cube.
 			bool NaviCubeDir(const Vector2& p, Vector3& dir);
 			void SnapCameraDir(const Vector3& dir); // animate to look from `dir`
+			// "Tool › Sub-tool:  hint" for the active tool, or what a click does
+			// while sampling a colour.
+			std::string ToolHintLine();
+			// Under the viewport, bottom up: the editor's keys, the tool hint and
+			// the transient status message, each wrapped to the free width.
 			void DrawOverlay(float sw, float sh);
 			void DrawRibbon(float sw); // full-width title/filename bar above the toolbar
 			void DrawCursor();

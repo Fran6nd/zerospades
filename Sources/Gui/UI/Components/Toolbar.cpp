@@ -57,12 +57,8 @@ namespace spades {
 			audioDevice->PlayLocal(chunk.GetPointerOrNull(), client::AudioParam());
 		}
 
-		void Toolbar::SetModeButtons(const std::vector<std::string>& labels) {
-			modeButtons = labels;
-		}
-
-		void Toolbar::SetActiveModeButton(int index) {
-			activeModeButton = index;
+		void Toolbar::SetModeButtons(const std::vector<ToolbarButton>& buttons) {
+			modeButtons = buttons;
 		}
 
 		void Toolbar::SetToolButtons(const std::vector<ToolbarButton>& buttons) {
@@ -73,104 +69,105 @@ namespace spades {
 
 		void Toolbar::SetRedoButton(bool enabled) { redoEnabled = enabled; }
 
-		float Toolbar::ToolbarX(int slot) const {
-			float x = kTbX0 + float(slot) * (kTbBtn + kTbGap);
-			int toolCount = int(toolButtons.size());
-			int toolStartSlot = int(modeButtons.size());
-			if (slot >= toolStartSlot && toolCount > 0)
-				x += kTbSep;
-			return x;
-		}
-
-		float Toolbar::UndoButtonX(float sw, bool redo) const {
-			float undoX = sw - 12.0F - 2.0F * kUndoBtnW - kTbGap;
-			return redo ? undoX + kUndoBtnW + kTbGap : undoX;
-		}
-
-		bool Toolbar::InRect(const Vector2& p, float x, float y, float w, float h) const {
-			return OverlayInRect(p, x, y, w, h);
-		}
-
-		Toolbar::ClickResult Toolbar::HitTest(const Vector2& p, float screenWidth) {
+		std::vector<Toolbar::Slot> Toolbar::Layout(float screenWidth) const {
+			std::vector<Slot> slots;
+			float x = kTbX0;
 			for (int i = 0; i < int(modeButtons.size()); i++) {
-				if (InRect(p, ToolbarX(i), kTbY, kTbBtn, kTbH))
-					return {ClickType::Mode, i};
+				slots.push_back({Kind::Mode, i, x, kTbBtn, false});
+				x += kTbBtn + kTbGap;
 			}
-			int toolStartSlot = int(modeButtons.size());
 			for (int i = 0; i < int(toolButtons.size()); i++) {
-				if (InRect(p, ToolbarX(toolStartSlot + i), kTbY, kTbBtn, kTbH))
-					return {ClickType::Tool, i};
+				// The first tool is set apart from the modes, and every later one
+				// from its predecessor when it starts another group.
+				bool separator = (i == 0) ? !modeButtons.empty()
+				                          : toolButtons[i].group != toolButtons[i - 1].group;
+				if (separator)
+					x += kTbSep;
+				slots.push_back({Kind::Tool, i, x, kTbBtn, separator});
+				x += kTbBtn + kTbGap;
 			}
-			// Undo / Redo buttons on the right edge
-			float undoX = UndoButtonX(screenWidth, false);
-			float redoX = UndoButtonX(screenWidth, true);
-			if (InRect(p, undoX, kTbY, kUndoBtnW, kTbH))
-				return {ClickType::Undo, -1};
-			if (InRect(p, redoX, kTbY, kUndoBtnW, kTbH))
-				return {ClickType::Redo, -1};
-			return {};
+			// Undo / Redo on the right edge
+			float undoX = screenWidth - 12.0F - 2.0F * kUndoBtnW - kTbGap;
+			slots.push_back({Kind::Undo, -1, undoX, kUndoBtnW, false});
+			slots.push_back({Kind::Redo, -1, undoX + kUndoBtnW + kTbGap, kUndoBtnW, false});
+			return slots;
+		}
+
+		Toolbar::ToolbarButton Toolbar::ButtonOf(const Slot& slot) const {
+			if (slot.kind == Kind::Mode)
+				return modeButtons[slot.index];
+			if (slot.kind == Kind::Tool)
+				return toolButtons[slot.index];
+			const bool undo = slot.kind == Kind::Undo;
+			ToolbarButton history;
+			history.label = undo ? "Undo" : "Redo";
+			history.enabled = undo ? undoEnabled : redoEnabled;
+			return history;
+		}
+
+		bool Toolbar::Click(const Vector2& p, float screenWidth) {
+			for (const Slot& slot : Layout(screenWidth)) {
+				if (!OverlayInRect(p, slot.x, kTbY, slot.width, kTbH))
+					continue;
+				if (!ButtonOf(slot).enabled)
+					return false; // greyed out: the click does nothing
+				switch (slot.kind) {
+					case Kind::Mode:
+						if (OnModeClicked)
+							OnModeClicked(slot.index);
+						break;
+					case Kind::Tool:
+						if (OnToolClicked)
+							OnToolClicked(slot.index);
+						break;
+					case Kind::Undo:
+						if (OnUndoClicked)
+							OnUndoClicked();
+						break;
+					case Kind::Redo:
+						if (OnRedoClicked)
+							OnRedoClicked();
+						break;
+				}
+				PlayClickSound();
+				return true;
+			}
+			return false;
 		}
 
 		void Toolbar::Draw(client::IRenderer& renderer, client::FontManager& fontManager,
 		                    const Vector2& cursorPos, bool menuActive, float screenWidth) {
 			client::IFont& font = fontManager.GetSmallGuiFont();
-			float s = 1.0F;
-			int toolCount = int(toolButtons.size());
-			int totalButtons = int(modeButtons.size()) + toolCount;
-
-			// Ensure previousHoverState is sized correctly
-			if (previousHoverState.size() != (size_t)totalButtons)
-				previousHoverState.resize(totalButtons, false);
+			const std::vector<Slot> slots = Layout(screenWidth);
+			previousHoverState.resize(slots.size(), false);
 
 			// Full-width toolbar band background
 			OverlayColorNP(renderer, MakeVector4(0.10F, 0.10F, 0.12F, 1.0F));
 			OverlayFillRect(renderer, 0.0F, kRibbonH, screenWidth, kToolbarH);
 
-			// Helper to paint a button and track hover state for audio
-			auto button = [&](float x, const char* label, bool active, bool enabled, int index) {
-				bool hover = !menuActive && InRect(cursorPos, x, kTbY, kTbBtn, kTbH);
-				// Play sound on hover transition (false → true)
-				if (hover && index >= 0 && index < (int)previousHoverState.size() && !previousHoverState[index])
-					PlayHoverSound();
-				if (index >= 0 && index < (int)previousHoverState.size())
-					previousHoverState[index] = hover;
-				widgets::PaintButton(renderer, font, MakeVector2(x, kTbY),
-				                     MakeVector2(kTbBtn, kTbH), label, MakeVector2(0.5F, 0.5F), "",
-				                     MakeVector2(1.0F, 0.5F), enabled, hover, false, active, s);
-			};
-
-			// Draw mode buttons (only Edit mode is available for now)
-			for (int i = 0; i < int(modeButtons.size()); i++) {
-				bool active = (i == activeModeButton);
-				bool enabled = (i == 1); // Only Edit mode (index 1) is available
-				button(ToolbarX(i), modeButtons[i].c_str(), active, enabled, i);
-			}
-
-			// Draw separator and tool buttons
-			if (toolCount > 0) {
-				int toolStartSlot = int(modeButtons.size());
-				float sx = ToolbarX(toolStartSlot) - kTbSep * 0.5F - kTbGap;
-				OverlayColorNP(renderer, MakeVector4(0.5F, 0.5F, 0.5F, 0.5F));
-				OverlayFillRect(renderer, sx, kTbY + 3.0F, 1.0F, kTbH - 6.0F);
-				for (int i = 0; i < toolCount; i++) {
-					const ToolbarButton& btn = toolButtons[i];
-					button(ToolbarX(toolStartSlot + i), btn.label.c_str(), btn.active, btn.enabled,
-					       toolStartSlot + i);
+			for (size_t i = 0; i < slots.size(); i++) {
+				const Slot& slot = slots[i];
+				const ToolbarButton button = ButtonOf(slot);
+				if (slot.separatorBefore) {
+					float sx = slot.x - (kTbSep + kTbGap) * 0.5F;
+					OverlayColorNP(renderer, MakeVector4(0.5F, 0.5F, 0.5F, 0.5F));
+					OverlayFillRect(renderer, sx, kTbY + 3.0F, 1.0F, kTbH - 6.0F);
 				}
-			}
 
-			// Undo / Redo buttons on the right edge
-			auto urButton = [&](float x, const char* label, bool enabled, bool& prevHover) {
-				bool hover = !menuActive && InRect(cursorPos, x, kTbY, kUndoBtnW, kTbH);
-				if (hover && !prevHover)
+				bool hover = !menuActive && button.enabled &&
+				             OverlayInRect(cursorPos, slot.x, kTbY, slot.width, kTbH);
+				if (hover && !previousHoverState[i])
 					PlayHoverSound();
-				prevHover = hover;
-				widgets::PaintButton(renderer, font, MakeVector2(x, kTbY),
-				                     MakeVector2(kUndoBtnW, kTbH), label, MakeVector2(0.5F, 0.5F), "",
-				                     MakeVector2(1.0F, 0.5F), enabled, hover, false, false, s);
-			};
-			urButton(UndoButtonX(screenWidth, false), "Undo", undoEnabled, previousUndoHover);
-			urButton(UndoButtonX(screenWidth, true), "Redo", redoEnabled, previousRedoHover);
+				previousHoverState[i] = hover;
+
+				// A hot key takes the right edge, so the label moves left to make room.
+				Vector2 labelAlign =
+				  button.hotKey.empty() ? MakeVector2(0.5F, 0.5F) : MakeVector2(0.0F, 0.5F);
+				widgets::PaintButton(renderer, font, MakeVector2(slot.x, kTbY),
+				                     MakeVector2(slot.width, kTbH), button.label, labelAlign,
+				                     button.hotKey, MakeVector2(1.0F, 0.5F), button.enabled, hover,
+				                     false, button.active, 1.0F);
+			}
 		}
 	} // namespace gui
 } // namespace spades
