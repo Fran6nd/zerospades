@@ -30,7 +30,7 @@ namespace spades {
 			if (depth == 0) {
 				pending = Group();
 				pending.label = label;
-				pending.selBefore = sink.UndoSnapshotSelection();
+				pending.before = sink.UndoSnapshotState();
 			}
 			depth++;
 		}
@@ -40,8 +40,8 @@ namespace spades {
 				return; // unbalanced End; ignore defensively
 			if (--depth > 0)
 				return; // still inside an outer group
-			pending.selAfter = sink.UndoSnapshotSelection();
-			bool changed = !pending.records.empty() || pending.selBefore != pending.selAfter;
+			pending.after = sink.UndoSnapshotState();
+			bool changed = !pending.records.empty() || pending.before != pending.after;
 			if (changed)
 				Commit();
 			else
@@ -86,7 +86,8 @@ namespace spades {
 		void KV6UndoStack::Commit() {
 			pending.geomBefore = geomId;
 			// Only geometry edits advance the geometry id (drives the dirty flag);
-			// selection-only steps share the surrounding geometry state.
+			// steps that change only the rest of the edit state share the
+			// surrounding geometry state.
 			pending.geomAfter = pending.hasGeometry ? ++nextGeomId : geomId;
 			geomId = pending.geomAfter;
 			pending.action = action;
@@ -103,9 +104,13 @@ namespace spades {
 				step.records.insert(step.records.end(),
 				                    std::make_move_iterator(pending.records.begin()),
 				                    std::make_move_iterator(pending.records.end()));
-				step.selAfter = std::move(pending.selAfter);
+				step.after = std::move(pending.after);
 				step.hasGeometry = step.hasGeometry || pending.hasGeometry;
 				step.geomAfter = pending.geomAfter;
+				// An action that put everything back (select, then deselect) leaves
+				// nothing to undo, so it leaves no step either.
+				if (step.records.empty() && step.before == step.after)
+					undoGroups.pop_back();
 			} else {
 				undoGroups.push_back(std::move(pending));
 			}
@@ -130,7 +135,7 @@ namespace spades {
 				else
 					sink.UndoApplyOrigin(MakeVector3(r.o.ax, r.o.ay, r.o.az));
 			}
-			sink.UndoRestoreSelection(g.selAfter);
+			sink.UndoRestoreState(g.after);
 			sink.UndoReplayed();
 		}
 
@@ -147,7 +152,7 @@ namespace spades {
 				else
 					sink.UndoApplyOrigin(MakeVector3(r.o.bx, r.o.by, r.o.bz));
 			}
-			sink.UndoRestoreSelection(g.selBefore);
+			sink.UndoRestoreState(g.before);
 			sink.UndoReplayed();
 		}
 

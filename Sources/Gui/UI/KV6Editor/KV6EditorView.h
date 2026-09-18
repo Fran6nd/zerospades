@@ -146,8 +146,9 @@ namespace spades {
 			                    const Vector4& color) override;
 			bool MirrorEnabled(int axis) const override;
 			void SetMirrorEnabled(int axis, bool on) override;
-			Vector3 MirrorPlane() const override { return mirrorPlane; }
+			Vector3 MirrorPlane() const override { return mirror.plane; }
 			void SetMirrorPlane(const Vector3& plane) override;
+			void PreviewMirrorPlane(const Vector3& plane) override;
 			void ResetMirrorPlane() override;
 			// As above, but also drawing the mirror images for the enabled axes.
 			void DrawCellOutlineMirrored(int x, int y, int z, const Vector4& color) override;
@@ -204,8 +205,8 @@ namespace spades {
 			void UndoApplyVoxel(int x, int y, int z, bool solid, uint32_t color) override;
 			void UndoApplyReframe(int w, int h, int d, int ox, int oy, int oz) override;
 			void UndoApplyOrigin(const Vector3& origin) override;
-			std::set<int64_t> UndoSnapshotSelection() const override { return selection; }
-			void UndoRestoreSelection(const std::set<int64_t>& sel) override { selection = sel; }
+			EditState UndoSnapshotState() const override;
+			void UndoRestoreState(const EditState& state) override;
 			void UndoReplayed() override { RebuildRenderModel(); }
 
 			// The single voxel-write choke point. `WriteVoxel` journals the change for
@@ -362,11 +363,12 @@ namespace spades {
 			// Owned here rather than by a tool, so an edit mirrors whichever tool
 			// made it and the planes survive switching tools. The Mirror tool is
 			// the UI over this state.
-			bool mirrorEnabled[3] = {false, false, false};
-			// Plane position per axis, in voxel coordinates. Starts on the pivot.
-			// MirrorIdx only sees whole half steps, so SetMirrorPlane keeps it on
-			// that grid, and ReframeRaw shifts it along with the voxels.
-			Vector3 mirrorPlane = MakeVector3(0.0F, 0.0F, 0.0F);
+			// The planes start on the pivot. MirrorIdx only sees whole half steps,
+			// so PlaceMirrorPlane keeps them on that grid, and ReframeRaw shifts
+			// them along with the voxels.
+			MirrorSetup mirror;
+			// Moves the planes without journaling (the setters journal).
+			void PlaceMirrorPlane(const Vector3& plane);
 			bool MirrorOn(int axis) const; // shorthand for MirrorEnabled
 
 			// Orientation gizmo.

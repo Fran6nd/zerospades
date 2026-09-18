@@ -128,8 +128,14 @@ namespace spades {
 			virtual bool MirrorEnabled(int axis) const = 0;
 			virtual void SetMirrorEnabled(int axis, bool on) = 0;
 			virtual Vector3 MirrorPlane() const = 0;
+			// The axes and planes are journaled: each change below is an undo step.
 			/** Moves the planes; each coordinate is quantised to 0.5. */
 			virtual void SetMirrorPlane(const Vector3& plane) = 0;
+			/**
+			 * Moves the planes live without recording undo, for a drag in progress;
+			 * commit the result with a single SetMirrorPlane on release.
+			 */
+			virtual void PreviewMirrorPlane(const Vector3& plane) = 0;
 			/** Puts the planes back on the pivot, where they start. */
 			virtual void ResetMirrorPlane() = 0;
 

@@ -528,13 +528,21 @@ namespace spades {
 			return true;
 		}
 
+		void MirrorGizmoSubTool::OnGizmoBegin(IEditorContext& ed) { startPlane = ed.MirrorPlane(); }
+
 		void MirrorGizmoSubTool::OnGizmoDrag(IEditorContext& ed) {
-			// The planes are editor state, not document state: nothing to journal.
-			ed.SetMirrorPlane(ed.MirrorPlane() + gizmo.Step().translation);
+			// The planes follow the drag live, without journaling each step.
+			ed.PreviewMirrorPlane(startPlane + gizmo.Total().translation);
 		}
 
-		void MirrorGizmoSubTool::OnGizmoCancel(IEditorContext& ed, const GizmoTransform& undo) {
-			ed.SetMirrorPlane(ed.MirrorPlane() + undo.translation);
+		void MirrorGizmoSubTool::OnGizmoEnd(IEditorContext& ed, const GizmoTransform& total) {
+			ed.PreviewMirrorPlane(startPlane); // rewind the preview...
+			if (!total.IsIdentity())
+				ed.SetMirrorPlane(startPlane + total.translation); // ...then apply as one step
+		}
+
+		void MirrorGizmoSubTool::OnGizmoCancel(IEditorContext& ed, const GizmoTransform&) {
+			ed.PreviewMirrorPlane(startPlane); // restore the planes, commit nothing
 		}
 
 		// --- PivotValuesSubTool (type the pivot) -----------------------------

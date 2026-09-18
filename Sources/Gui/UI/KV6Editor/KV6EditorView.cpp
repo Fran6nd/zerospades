@@ -403,7 +403,7 @@ namespace spades {
 			float c = float(n / 2);
 			model->SetOrigin(MakeVector3(-c, -c, -c));
 			voxelCount = 1;
-			ResetMirrorPlane();
+			PlaceMirrorPlane(GetPivot()); // the history starts afresh below
 			RebuildRenderModel();
 			filePath = path;
 			FrameCamera();
@@ -424,7 +424,7 @@ namespace spades {
 			model = Handle<VoxelModel>(loaded, false); // adopt (Load returns a ref)
 			cubeSize = std::max(model->GetWidth(), std::max(model->GetHeight(), model->GetDepth()));
 			voxelCount = CountSolids();
-			ResetMirrorPlane();
+			PlaceMirrorPlane(GetPivot()); // the history starts afresh below
 			RebuildRenderModel();
 			filePath = path;
 			FrameCamera();
@@ -849,9 +849,9 @@ namespace spades {
 				int xs[2] = {c.x, c.x}, nx = 1;
 				int ys[2] = {c.y, c.y}, ny = 1;
 				int zs[2] = {c.z, c.z}, nz = 1;
-				if (mx) { int m = MirrorIdx(c.x, mirrorPlane.x); if (m != c.x) { xs[1] = m; nx = 2; } }
-				if (my) { int m = MirrorIdx(c.y, mirrorPlane.y); if (m != c.y) { ys[1] = m; ny = 2; } }
-				if (mz) { int m = MirrorIdx(c.z, mirrorPlane.z); if (m != c.z) { zs[1] = m; nz = 2; } }
+				if (mx) { int m = MirrorIdx(c.x, mirror.plane.x); if (m != c.x) { xs[1] = m; nx = 2; } }
+				if (my) { int m = MirrorIdx(c.y, mirror.plane.y); if (m != c.y) { ys[1] = m; ny = 2; } }
+				if (mz) { int m = MirrorIdx(c.z, mirror.plane.z); if (m != c.z) { zs[1] = m; nz = 2; } }
 				for (int a = 0; a < nx; a++)
 				for (int b = 0; b < ny; b++)
 				for (int d = 0; d < nz; d++)
@@ -880,7 +880,7 @@ namespace spades {
 			orbitTarget += shift;
 			// The mirror planes are in voxel coordinates too. The shift is whole
 			// voxels, so they stay on the half-step grid.
-			mirrorPlane += shift;
+			mirror.plane += shift;
 			cubeSize = std::max(nw, std::max(nh, nd));
 			ShiftSelection(ox, oy, oz); // keep selected voxel coords aligned
 			// A pending placement stores document coordinates too, so it has to
@@ -926,9 +926,9 @@ namespace spades {
 			// Target plus its mirror images across the mirror planes. The mirror —
 			// or a placement past an edge — may land outside, so grow to fit them all.
 			bool mx = MirrorOn(0), my = MirrorOn(1), mz = MirrorOn(2);
-			int xb = mx ? MirrorIdx(tx, mirrorPlane.x) : tx; int nx = (mx && xb != tx) ? 2 : 1;
-			int yb = my ? MirrorIdx(ty, mirrorPlane.y) : ty; int ny = (my && yb != ty) ? 2 : 1;
-			int zb = mz ? MirrorIdx(tz, mirrorPlane.z) : tz; int nz = (mz && zb != tz) ? 2 : 1;
+			int xb = mx ? MirrorIdx(tx, mirror.plane.x) : tx; int nx = (mx && xb != tx) ? 2 : 1;
+			int yb = my ? MirrorIdx(ty, mirror.plane.y) : ty; int ny = (my && yb != ty) ? 2 : 1;
+			int zb = mz ? MirrorIdx(tz, mirror.plane.z) : tz; int nz = (mz && zb != tz) ? 2 : 1;
 
 			int loX = std::min(0, tx); int hiX = std::max(model->GetWidth(), tx + 1);
 			if (nx == 2) { loX = std::min(loX, xb); hiX = std::max(hiX, xb + 1); }
@@ -969,9 +969,9 @@ namespace spades {
 				return;
 			int hx = pickHX, hy = pickHY, hz = pickHZ;
 			bool mx = MirrorOn(0), my = MirrorOn(1), mz = MirrorOn(2);
-			int xb = mx ? MirrorIdx(hx, mirrorPlane.x) : hx; int nx = (mx && xb != hx) ? 2 : 1;
-			int yb = my ? MirrorIdx(hy, mirrorPlane.y) : hy; int ny = (my && yb != hy) ? 2 : 1;
-			int zb = mz ? MirrorIdx(hz, mirrorPlane.z) : hz; int nz = (mz && zb != hz) ? 2 : 1;
+			int xb = mx ? MirrorIdx(hx, mirror.plane.x) : hx; int nx = (mx && xb != hx) ? 2 : 1;
+			int yb = my ? MirrorIdx(hy, mirror.plane.y) : hy; int ny = (my && yb != hy) ? 2 : 1;
+			int zb = mz ? MirrorIdx(hz, mirror.plane.z) : hz; int nz = (mz && zb != hz) ? 2 : 1;
 
 			int n = 0;
 			for (int ia = 0; ia < nx; ia++) { int X = (ia == 0) ? hx : xb;
@@ -1638,11 +1638,11 @@ namespace spades {
 			for (int my = 0; my <= (MirrorOn(1) ? 1 : 0); my++)
 			for (int mz = 0; mz <= (MirrorOn(2) ? 1 : 0); mz++) {
 				IntVector3 a = lo, b = hi;
-				if (mx) { int p = MirrorIdx(lo.x, mirrorPlane.x), q = MirrorIdx(hi.x, mirrorPlane.x);
+				if (mx) { int p = MirrorIdx(lo.x, mirror.plane.x), q = MirrorIdx(hi.x, mirror.plane.x);
 				          a.x = std::min(p, q); b.x = std::max(p, q); }
-				if (my) { int p = MirrorIdx(lo.y, mirrorPlane.y), q = MirrorIdx(hi.y, mirrorPlane.y);
+				if (my) { int p = MirrorIdx(lo.y, mirror.plane.y), q = MirrorIdx(hi.y, mirror.plane.y);
 				          a.y = std::min(p, q); b.y = std::max(p, q); }
-				if (mz) { int p = MirrorIdx(lo.z, mirrorPlane.z), q = MirrorIdx(hi.z, mirrorPlane.z);
+				if (mz) { int p = MirrorIdx(lo.z, mirror.plane.z), q = MirrorIdx(hi.z, mirror.plane.z);
 				          a.z = std::min(p, q); b.z = std::max(p, q); }
 				DrawBoxOutline(a, b, color);
 			}
@@ -1796,6 +1796,18 @@ namespace spades {
 				voxelCount++;
 		}
 
+		EditState KV6EditorView::UndoSnapshotState() const {
+			EditState state;
+			state.selection = selection;
+			state.mirror = mirror;
+			return state;
+		}
+
+		void KV6EditorView::UndoRestoreState(const EditState& state) {
+			selection = state.selection;
+			mirror = state.mirror;
+		}
+
 		// KV6UndoStack::Sink — the stack replays records through these.
 		void KV6EditorView::UndoApplyVoxel(int x, int y, int z, bool solid, uint32_t color) {
 			WriteVoxelRaw(x, y, z, solid, color);
@@ -1939,7 +1951,7 @@ namespace spades {
 			float hiZ = float(stop(d)) - 0.5F;
 
 			if (MirrorOn(0)) {
-				float px = mirrorPlane.x;
+				float px = mirror.plane.x;
 				Vector4 col = MakeVector4(1.0F, 0.35F, 0.35F, 0.25F);
 				for (int i = -2; i <= stop(h); i += 2)
 					renderer->AddDebugLine(MakeVector3(px, float(i) - 0.5F, lo),
@@ -1949,7 +1961,7 @@ namespace spades {
 					                       MakeVector3(px, hiY, float(i) - 0.5F), col);
 			}
 			if (MirrorOn(1)) {
-				float py = mirrorPlane.y;
+				float py = mirror.plane.y;
 				Vector4 col = MakeVector4(0.4F, 1.0F, 0.4F, 0.25F);
 				for (int i = -2; i <= stop(w); i += 2)
 					renderer->AddDebugLine(MakeVector3(float(i) - 0.5F, py, lo),
@@ -1959,7 +1971,7 @@ namespace spades {
 					                       MakeVector3(hiX, py, float(i) - 0.5F), col);
 			}
 			if (MirrorOn(2)) {
-				float pz = mirrorPlane.z;
+				float pz = mirror.plane.z;
 				Vector4 col = MakeVector4(0.45F, 0.6F, 1.0F, 0.25F);
 				for (int i = -2; i <= stop(w); i += 2)
 					renderer->AddDebugLine(MakeVector3(float(i) - 0.5F, lo, pz),
@@ -2231,23 +2243,39 @@ namespace spades {
 			// reshape anything while another mode is driving the document.
 			if (currentMode != EditorMode::Edit)
 				return false;
-			return mirrorEnabled[axis];
+			return mirror.enabled[axis];
 		}
 
+		// The mirror setup is journaled like the selection (each undo step
+		// restores it), so changing it is a command like any edit.
 		void KV6EditorView::SetMirrorEnabled(int axis, bool on) {
 			if (axis < 0 || axis > 2)
 				return;
-			mirrorEnabled[axis] = on;
+			DocumentCommand command(*this);
+			KV6UndoStack::Step step(undo, "Mirror Axis");
+			mirror.enabled[axis] = on;
 		}
 
 		void KV6EditorView::SetMirrorPlane(const Vector3& plane) {
+			DocumentCommand command(*this);
+			KV6UndoStack::Step step(undo, "Move Mirror");
+			PlaceMirrorPlane(plane);
+		}
+
+		void KV6EditorView::PreviewMirrorPlane(const Vector3& plane) { PlaceMirrorPlane(plane); }
+
+		void KV6EditorView::ResetMirrorPlane() {
+			DocumentCommand command(*this);
+			KV6UndoStack::Step step(undo, "Reset Mirror");
+			PlaceMirrorPlane(GetPivot());
+		}
+
+		void KV6EditorView::PlaceMirrorPlane(const Vector3& plane) {
 			// MirrorIdx only sees whole half steps, so anything finer would move the
 			// handle without moving the reflection.
 			auto snap = [](float v) { return float(HalfSteps(v)) * 0.5F; };
-			mirrorPlane = MakeVector3(snap(plane.x), snap(plane.y), snap(plane.z));
+			mirror.plane = MakeVector3(snap(plane.x), snap(plane.y), snap(plane.z));
 		}
-
-		void KV6EditorView::ResetMirrorPlane() { SetMirrorPlane(GetPivot()); }
 
 		void KV6EditorView::DrawSubToolbar(float sw) {
 			(void)sw;

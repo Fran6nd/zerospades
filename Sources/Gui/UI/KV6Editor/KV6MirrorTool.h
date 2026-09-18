@@ -39,6 +39,7 @@ namespace spades {
 			const char* Label() const override { return "Mirror"; }
 
 			void OnActivate(IEditorContext& ed) override;
+			void OnDocumentChanged(IEditorContext& ed) override;
 			ToolOptions* Options() override { return &options; }
 			void OnOptionToggled(IEditorContext& ed, const std::string& id, bool value) override;
 			void OnAction(IEditorContext& ed, const std::string& id) override;
@@ -46,6 +47,8 @@ namespace spades {
 
 		private:
 			ToolOptions options; // X/Y/Z toggles, Reset to Pivot, the plane readout
+			// Show the editor's axis state on the toggles.
+			void SyncAxisToggles(IEditorContext& ed);
 		};
 	} // namespace gui
 } // namespace spades

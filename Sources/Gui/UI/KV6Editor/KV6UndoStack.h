@@ -28,6 +28,8 @@
 
 #include <Core/Math.h>
 
+#include "KV6EditState.h"
+
 namespace spades {
 	namespace gui {
 		/**
@@ -42,11 +44,12 @@ namespace spades {
 		 *
 		 * Each edit records into a `Step`, a scope that lives no longer than the
 		 * call making the edit; nested steps coalesce, and a step is committed only
-		 * if it actually changed the voxels or the selection. Steps committed during
-		 * one user action (a press-drag-release, a key press) then merge into a
-		 * single undo step, so a paint stroke or a scripted multi-step edit undoes
-		 * at once. Nothing stays open between events, so undo and redo work at any
-		 * moment. The history is capped at `kMaxGroups`, evicting the oldest.
+		 * if it actually changed the voxels or the rest of the edit state.
+		 * Steps committed during one user action (a press-drag-release, a key
+		 * press) then merge into a single undo step, so a paint stroke or a
+		 * scripted multi-step edit undoes at once. Nothing stays open between
+		 * events, so undo and redo work at any moment. The history is capped at
+		 * `kMaxGroups`, evicting the oldest.
 		 */
 		class KV6UndoStack {
 		public:
@@ -66,9 +69,9 @@ namespace spades {
 				// Set the model's origin (pivot = -origin) and rebuild what depends
 				// on it. Used to replay a pivot change.
 				virtual void UndoApplyOrigin(const Vector3& origin) = 0;
-				// Read / replace the current selection (packed voxel keys).
-				virtual std::set<int64_t> UndoSnapshotSelection() const = 0;
-				virtual void UndoRestoreSelection(const std::set<int64_t>& sel) = 0;
+				// Read / replace everything besides the voxels that a step restores.
+				virtual EditState UndoSnapshotState() const = 0;
+				virtual void UndoRestoreState(const EditState& state) = 0;
 				// Called once after a group has been applied, to refresh derived state
 				// (the render model, etc.).
 				virtual void UndoReplayed() = 0;
@@ -187,7 +190,7 @@ namespace spades {
 			struct Group {
 				std::string label;
 				std::vector<Record> records;
-				std::set<int64_t> selBefore, selAfter;
+				EditState before, after;
 				bool hasGeometry = false;
 				long geomBefore = 0, geomAfter = 0;
 				unsigned action = 0; // the user action it was recorded in, 0 for none
