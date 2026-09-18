@@ -33,19 +33,22 @@ namespace spades {
 		 * Flat 2D shapes in screen pixels, drawn over the finished scene.
 		 *
 		 * The primitives a manipulator needs — thick lines, polylines, filled convex
-		 * polygons, discs and circles — built on the renderer's triangle fill.
+		 * polygons, discs and circles — anti-aliased by the overlay helpers.
 		 * Colours use straight (non-premultiplied) alpha.
 		 */
 		class GizmoCanvas {
 		public:
 			explicit GizmoCanvas(client::IRenderer& renderer);
 
+			/** Hard-edged on purpose, so a fan of triangles tiles a larger shape
+			 *  without the seams anti-aliased edges would leave between them. */
 			void Triangle(const Vector2& a, const Vector2& b, const Vector2& c,
 			              const Vector4& color);
 			/** Fills a convex polygon given in either winding order. */
 			void Convex(const Vector2* points, int count, const Vector4& color);
 			void Line(const Vector2& a, const Vector2& b, float width, const Vector4& color);
-			/** Consecutive segments joined without gaps; `closed` links last to first. */
+			/** Consecutive segments mitred at the joints, so a translucent stroke
+			 *  doesn't darken where they meet; `closed` links last to first. */
 			void Polyline(const std::vector<Vector2>& points, float width, const Vector4& color,
 			              bool closed);
 			void Disc(const Vector2& center, float radius, const Vector4& color);
@@ -54,11 +57,6 @@ namespace spades {
 
 		private:
 			client::IRenderer& renderer;
-
-			void SetColor(const Vector4& color);
-			// One stroke segment, lengthened by `extend` at both ends so consecutive
-			// segments of a polyline overlap instead of leaving a notch at the joint.
-			void Segment(const Vector2& a, const Vector2& b, float width, float extend);
 		};
 	} // namespace gui
 } // namespace spades
