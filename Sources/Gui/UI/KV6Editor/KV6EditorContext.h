@@ -101,6 +101,8 @@ namespace spades {
 			virtual void AddSelect(int x, int y, int z) = 0;
 			virtual bool IsSelected(int x, int y, int z) const = 0;
 			virtual void ClearSelection() = 0;
+			// Removes the selected voxels from the model (never the last one).
+			virtual void DeleteSelection() = 0;
 			virtual int SelectionCount() const = 0;
 			// Flood-fill: add all 6-connected voxels sharing (x,y,z)'s colour.
 			virtual void SelectLinkedColor(int x, int y, int z) = 0;

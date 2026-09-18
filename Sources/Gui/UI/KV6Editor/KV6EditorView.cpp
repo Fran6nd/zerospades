@@ -60,6 +60,8 @@ SPADES_SETTING(cg_keyCrouch);
 SPADES_SETTING(cg_keySprint);
 SPADES_SETTING(cg_keyScreenshot);
 
+DEFINE_SPADES_SETTING(cg_keyDelete, "Delete");
+
 namespace spades {
 	namespace gui {
 		namespace {
@@ -108,6 +110,8 @@ namespace spades {
 			constexpr int kMaxModelHeight = 4096;
 			constexpr int kMaxModelDepth = 64;
 			const char* const kMaxModelSizeMessage = "Reached the maximum model size";
+			// Every edit that removes voxels refuses to take the last one.
+			const char* const kLastVoxelMessage = "A model keeps at least one voxel";
 
 			bool FitsModelSize(int w, int h, int d) {
 				return w <= kMaxModelWidth && h <= kMaxModelHeight && d <= kMaxModelDepth;
@@ -973,8 +977,12 @@ namespace spades {
 				if (InBounds(X, Y, Z) && model->IsSolid(X, Y, Z))
 					n++;
 			}}}
-			if (n == 0 || voxelCount - n < 1)
+			if (n == 0)
 				return;
+			if (voxelCount - n < 1) {
+				SetStatus(kLastVoxelMessage);
+				return;
+			}
 			KV6UndoStack::Step step(undo, "Delete");
 			for (int ia = 0; ia < nx; ia++) { int X = (ia == 0) ? hx : xb;
 			for (int ib = 0; ib < ny; ib++) { int Y = (ib == 0) ? hy : yb;
@@ -1129,37 +1137,62 @@ namespace spades {
 
 		bool KV6EditorView::CutSelection() {
 			DocumentCommand command(*this);
-			if (selection.empty()) {
+			if (!CanEraseSelection())
+				return false;
+			CopySelection();
+			SetStatus("Cut " + std::to_string(EraseSelection("Cut")) + " voxels");
+			return true;
+		}
+
+		void KV6EditorView::DeleteSelection() {
+			DocumentCommand command(*this);
+			if (!CanEraseSelection())
+				return;
+			SetStatus("Deleted " + std::to_string(EraseSelection("Delete")) + " voxels");
+		}
+
+		int KV6EditorView::SelectedVoxelCount() const {
+			int count = 0;
+			for (int64_t k : selection) {
+				int x, y, z;
+				SelDecode(k, x, y, z);
+				if (InBounds(x, y, z) && model->IsSolid(x, y, z))
+					count++;
+			}
+			return count;
+		}
+
+		bool KV6EditorView::CanEraseSelection() {
+			const int count = SelectedVoxelCount();
+			if (count == 0) {
 				SetStatus("Nothing selected");
 				return false;
 			}
-			int cut = 0;
-			for (int64_t k : selection) {
-				int x, y, z;
-				SelDecode(k, x, y, z);
-				if (InBounds(x, y, z) && model->IsSolid(x, y, z))
-					cut++;
-			}
-			if (voxelCount - cut < 1) {
-				SetStatus("Cannot cut every voxel");
+			if (voxelCount - count < 1) {
+				SetStatus(kLastVoxelMessage);
 				return false;
 			}
-			CopySelection();
-			KV6UndoStack::Step step(undo, "Cut");
+			return true;
+		}
+
+		int KV6EditorView::EraseSelection(const std::string& label) {
+			KV6UndoStack::Step step(undo, label);
+			int erased = 0;
 			for (int64_t k : selection) {
 				int x, y, z;
 				SelDecode(k, x, y, z);
-				if (InBounds(x, y, z) && model->IsSolid(x, y, z))
+				if (InBounds(x, y, z) && model->IsSolid(x, y, z)) {
 					WriteVoxel(x, y, z, false, 0);
+					erased++;
+				}
 			}
 			selection.clear();
 			TrimVolume();
 			RebuildRenderModel();
-			SetStatus("Cut " + std::to_string(clipboard.size()) + " voxels");
-			return true;
+			return erased;
 		}
 
-void KV6EditorView::StartPaste() {
+		void KV6EditorView::StartPaste() {
 			if (clipboard.empty()) {
 				SetStatus("Clipboard is empty");
 				return;
@@ -1680,7 +1713,7 @@ void KV6EditorView::StartPaste() {
 			if (count == 0)
 				return;
 			if (voxelCount - count < 1) {
-				SetStatus("Cannot remove every voxel");
+				SetStatus(kLastVoxelMessage);
 				return;
 			}
 			KV6UndoStack::Step step(undo, "Erase");
@@ -2078,10 +2111,14 @@ void KV6EditorView::StartPaste() {
 				font.Draw(statusMessage, MakeVector2(16.0F, sh - 50.0F), 1.0F,
 				          MakeVector4(0.5F, 1.0F, 0.6F, 1.0F));
 
-			font.Draw("[LMB] use tool  |  [RMB] delete/cancel  |  [MMB] look  |  [Shift+MMB] pan  |  [WASD/Space/Ctrl] move (+Shift faster)"
-			          "  |  [Wheel] zoom  |  [Ctrl+C/X/V] copy/cut/paste  |  [Ctrl+Z/Y] undo/redo"
-			          "  |  [Esc] menu",
-			          MakeVector2(16.0F, sh - 28.0F), 1.0F, grey);
+			std::string help =
+			  "[LMB] use tool  |  [RMB] delete/cancel  |  [MMB] look  |  [Shift+MMB] pan  |  [WASD/Space/Ctrl] move (+Shift faster)"
+			  "  |  [Wheel] zoom  |  [Ctrl+C/X/V] copy/cut/paste  |  [Ctrl+Z/Y] undo/redo";
+			const std::string deleteKey = cg_keyDelete;
+			if (!deleteKey.empty())
+				help += "  |  [" + deleteKey + "] delete selection";
+			help += "  |  [Esc] menu";
+			font.Draw(help, MakeVector2(16.0F, sh - 28.0F), 1.0F, grey);
 		}
 
 		void KV6EditorView::SetActiveTool(int index) {
@@ -2474,6 +2511,12 @@ void KV6EditorView::StartPaste() {
 			}
 
 			if (down && KV6CheckKey(cg_keyScreenshot, key)) { wantScreenShot = true; return; }
+			if (down && KV6CheckKey(cg_keyDelete, key)) {
+				// Like a Ctrl shortcut, it edits behind the tool's back.
+				CancelToolInteraction();
+				DeleteSelection();
+				return;
+			}
 
 			std::string fwd = cg_keyMoveForward, bk = cg_keyMoveBackward, lf = cg_keyMoveLeft;
 			std::string rt = cg_keyMoveRight, jp = cg_keyJump, cr = cg_keyCrouch;

@@ -114,6 +114,7 @@ namespace spades {
 			void AddSelect(int x, int y, int z) override;
 			bool IsSelected(int x, int y, int z) const override;
 			void ClearSelection() override;
+			void DeleteSelection() override;
 			// Voxels lifted by Transform are still what is selected; they only float.
 			int SelectionCount() const override {
 				return int(selection.size() + (placementActive ? placement.lifted.size() : 0));
@@ -326,7 +327,13 @@ namespace spades {
 			void NotifyDocumentChanged();
 
 			void CopySelection();
-			bool CutSelection(); // returns false if it would empty the document
+			bool CutSelection(); // false when refused (nothing selected, or it would empty it)
+			// Cut and Delete share these: how many selected cells hold a voxel,
+			// whether removing them is allowed (saying why not on the status line),
+			// and the removal itself as one undo step, returning how many went.
+			int SelectedVoxelCount() const;
+			bool CanEraseSelection();
+			int EraseSelection(const std::string& label);
 			void StartPaste();
 			// Starts a placement of `voxels` with its min corner at `anchor`, and
 			// switches to the Transform tool so it can be positioned.
