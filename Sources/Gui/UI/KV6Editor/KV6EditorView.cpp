@@ -401,6 +401,7 @@ namespace spades {
 			RebuildRenderModel();
 			filePath = path;
 			FrameCamera();
+			selection.clear(); // it named voxels of the previous document
 			undo.Clear();
 			savedGeomId = -1; // a fresh, never-saved document starts dirty
 		}
@@ -420,6 +421,7 @@ namespace spades {
 			RebuildRenderModel();
 			filePath = path;
 			FrameCamera();
+			selection.clear(); // it named voxels of the previous document
 			undo.Clear();
 			savedGeomId = undo.GeometryStateId(); // a freshly loaded document is clean
 		}
