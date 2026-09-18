@@ -97,6 +97,18 @@ namespace spades {
                 return n;
             }
 
+            // Twice the signed area of the polygon `points`: positive when they run
+            // counter-clockwise in a y-up frame.
+            float SignedArea2(const Vector2* points, std::size_t n) {
+                float area2 = 0.0F;
+                for (std::size_t i = 0; i < n; i++) {
+                    const Vector2& p = points[i];
+                    const Vector2& q = points[(i + 1) % n];
+                    area2 += p.x * q.y - q.x * p.y;
+                }
+                return area2;
+            }
+
             // `count` points evenly round a circle.
             void CirclePoints(const Vector2& center, float radius, std::size_t count,
                               PointScratch& out) {
@@ -161,12 +173,7 @@ namespace spades {
 
             // Twice the signed area gives the winding, so normals can be made to
             // point outwards whichever way the caller listed the points.
-            float area2 = 0.0F;
-            for (std::size_t i = 0; i < n; i++) {
-                const Vector2& p = pts[i];
-                const Vector2& q = pts[(i + 1) % n];
-                area2 += p.x * q.y - q.x * p.y;
-            }
+            const float area2 = SignedArea2(pts.Data(), n);
             if (std::fabs(area2) <= kPolygonEpsilon)
                 return;
             const float orient = area2 > 0.0F ? 1.0F : -1.0F;
@@ -192,7 +199,30 @@ namespace spades {
                 outer[i] = pts[i] + m * half;
             }
 
-            DrawFringedPolygon(renderer, inner.Data(), outer.Data(), n, Premultiply(c));
+            // A polygon under a pixel across has no room for a core: moving its
+            // sides half a pixel in turns the inner outline inside out, which
+            // would cover far more than the shape. Shrink the core to the centre
+            // instead, and fade the colour so the ink laid down (a cone over the
+            // outer outline holds a third of its area) still matches the shape's.
+            Vector4 col = c;
+            bool collapsed = SignedArea2(inner.Data(), n) * orient <= 0.0F;
+            for (std::size_t i = 0; i < n && !collapsed; i++) {
+                const std::size_t j = (i + 1) % n;
+                collapsed = Vector2::Dot(inner[j] - inner[i], pts[j] - pts[i]) <= 0.0F;
+            }
+            if (collapsed) {
+                Vector2 centre = MakeVector2(0.0F, 0.0F);
+                for (std::size_t i = 0; i < n; i++)
+                    centre += pts[i];
+                centre *= 1.0F / float(n);
+                for (std::size_t i = 0; i < n; i++)
+                    inner[i] = centre;
+                const float outerArea2 = std::fabs(SignedArea2(outer.Data(), n));
+                if (outerArea2 > kPolygonEpsilon)
+                    col.w *= std::min(1.0F, 3.0F * std::fabs(area2) / outerArea2);
+            }
+
+            DrawFringedPolygon(renderer, inner.Data(), outer.Data(), n, Premultiply(col));
         }
 
         void OverlayStrokeLine(client::IRenderer& renderer, const Vector2& a, const Vector2& b,
