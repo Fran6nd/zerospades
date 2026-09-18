@@ -131,11 +131,6 @@ namespace spades {
 			void BeginPivotEntry() override;
 
 			// --- Undo / redo (also driven by Ctrl+Z/Y and the toolbar buttons) ---
-			// Tools and scripts bracket a multi-step edit so it undoes as one step;
-			// nested brackets coalesce. Edits made between Begin/End (incl. plain
-			// FillCells/PaintCells/SelectCells calls) are captured automatically.
-			void BeginUndoGroup(const std::string& label) override { undo.Begin(label); }
-			void EndUndoGroup() override { undo.End(); }
 			void Undo() override;
 			void Redo() override;
 			bool CanUndo() const override { return undo.CanUndo(); }

@@ -672,7 +672,9 @@ namespace spades {
 			keyFwd = keyBack = keyLeft = keyRight = keyUp = keyDown = false;
 			ctrlDescent = MakeVector3(0, 0, 0);
 			lookActive = false;
-			// The button release that would end a drag may be swallowed too.
+			// The release of a held button may be swallowed too, so the press it
+			// began is over: the tool drops its drag and nothing reads as dragged.
+			lmbHeld = rmbHeld = false;
 			CancelToolInteraction();
 		}
 
@@ -934,7 +936,7 @@ namespace spades {
 				return;
 			}
 			int ox = -loX, oy = -loY, oz = -loZ;
-			undo.Begin("Place");
+			KV6UndoStack::Step step(undo, "Place");
 			if (ox != 0 || oy != 0 || oz != 0 || nw != model->GetWidth() ||
 			    nh != model->GetHeight() || nd != model->GetDepth())
 				RebuildVolume(nw, nh, nd, ox, oy, oz);
@@ -949,7 +951,6 @@ namespace spades {
 					any = true;
 				}
 			}}}
-			undo.End();
 			if (any)
 				RebuildRenderModel();
 		}
@@ -974,7 +975,7 @@ namespace spades {
 			}}}
 			if (n == 0 || voxelCount - n < 1)
 				return;
-			undo.Begin("Delete");
+			KV6UndoStack::Step step(undo, "Delete");
 			for (int ia = 0; ia < nx; ia++) { int X = (ia == 0) ? hx : xb;
 			for (int ib = 0; ib < ny; ib++) { int Y = (ib == 0) ? hy : yb;
 			for (int ic = 0; ic < nz; ic++) { int Z = (ic == 0) ? hz : zb;
@@ -984,7 +985,6 @@ namespace spades {
 				}
 			}}}
 			TrimVolume();
-			undo.End();
 			RebuildRenderModel();
 		}
 
@@ -1032,14 +1032,13 @@ namespace spades {
 
 		void KV6EditorView::ToggleSelect(int x, int y, int z) {
 			DocumentCommand command(*this);
-			undo.Begin("Select");
+			KV6UndoStack::Step step(undo, "Select");
 			int64_t k = SelKey(x, y, z);
 			auto it = selection.find(k);
 			if (it == selection.end())
 				selection.insert(k);
 			else
 				selection.erase(it);
-			undo.End();
 		}
 		void KV6EditorView::AddSelect(int x, int y, int z) { selection.insert(SelKey(x, y, z)); }
 		bool KV6EditorView::IsSelected(int x, int y, int z) const {
@@ -1047,16 +1046,15 @@ namespace spades {
 		}
 		void KV6EditorView::ClearSelection() {
 			DocumentCommand command(*this);
-			undo.Begin("Clear Selection");
+			KV6UndoStack::Step step(undo, "Clear Selection");
 			selection.clear();
-			undo.End();
 		}
 
 		void KV6EditorView::SelectLinkedColor(int x, int y, int z) {
 			DocumentCommand command(*this);
 			if (!InBounds(x, y, z) || !model->IsSolid(x, y, z))
 				return;
-			undo.Begin("Select Colour");
+			KV6UndoStack::Step step(undo, "Select Colour");
 			uint32_t target = model->GetColor(x, y, z) & 0xFFFFFF;
 			std::set<int64_t> visited;
 			std::vector<IntVector3> stack;
@@ -1081,7 +1079,6 @@ namespace spades {
 				stack.push_back(MakeIntVector3(c.x, c.y, c.z + 1));
 				stack.push_back(MakeIntVector3(c.x, c.y, c.z - 1));
 			}
-			undo.End();
 			SetStatus("Selected " + std::to_string(added) + " linked voxels");
 		}
 
@@ -1148,7 +1145,7 @@ namespace spades {
 				return false;
 			}
 			CopySelection();
-			undo.Begin("Cut");
+			KV6UndoStack::Step step(undo, "Cut");
 			for (int64_t k : selection) {
 				int x, y, z;
 				SelDecode(k, x, y, z);
@@ -1157,7 +1154,6 @@ namespace spades {
 			}
 			selection.clear();
 			TrimVolume();
-			undo.End();
 			RebuildRenderModel();
 			SetStatus("Cut " + std::to_string(clipboard.size()) + " voxels");
 			return true;
@@ -1488,7 +1484,7 @@ void KV6EditorView::StartPaste() {
 			if (!changes)
 				return; // the voxels and their selection are back as they were
 
-			undo.Begin(pending.label);
+			KV6UndoStack::Step step(undo, pending.label);
 			// Clear where the voxels came from first, so a move that overlaps its own
 			// source keeps the overlapping cells.
 			for (const IntVector3& v : pending.lifted) {
@@ -1511,7 +1507,6 @@ void KV6EditorView::StartPaste() {
 				placed++;
 			}
 			TrimVolume();
-			undo.End();
 			RebuildRenderModel();
 			SetStatus(pending.label + ": placed " + std::to_string(placed) + " voxels");
 		}
@@ -1619,24 +1614,22 @@ void KV6EditorView::StartPaste() {
 
 		void KV6EditorView::SelectBox(const IntVector3& lo, const IntVector3& hi) {
 			DocumentCommand command(*this);
-			undo.Begin("Select");
+			KV6UndoStack::Step step(undo, "Select");
 			for (int x = lo.x; x <= hi.x; x++)
 			for (int y = lo.y; y <= hi.y; y++)
 			for (int z = lo.z; z <= hi.z; z++) {
 				if (InBounds(x, y, z) && model->IsSolid(x, y, z))
 					AddSelect(x, y, z);
 			}
-			undo.End();
 		}
 
 		void KV6EditorView::SelectCells(const std::vector<IntVector3>& cells) {
 			DocumentCommand command(*this);
-			undo.Begin("Select");
+			KV6UndoStack::Step step(undo, "Select");
 			for (const IntVector3& c : cells) {
 				if (InBounds(c.x, c.y, c.z) && model->IsSolid(c.x, c.y, c.z))
 					AddSelect(c.x, c.y, c.z);
 			}
-			undo.End();
 		}
 
 		void KV6EditorView::FillCells(const std::vector<IntVector3>& cellsIn, uint32_t color) {
@@ -1659,7 +1652,7 @@ void KV6EditorView::StartPaste() {
 				return;
 			}
 			int ox = -loX, oy = -loY, oz = -loZ;
-			undo.Begin("Fill");
+			KV6UndoStack::Step step(undo, "Fill");
 			if (ox != 0 || oy != 0 || oz != 0 || nw != model->GetWidth() ||
 			    nh != model->GetHeight() || nd != model->GetDepth())
 				RebuildVolume(nw, nh, nd, ox, oy, oz);
@@ -1671,7 +1664,6 @@ void KV6EditorView::StartPaste() {
 					any = true;
 				}
 			}
-			undo.End();
 			if (any)
 				RebuildRenderModel();
 		}
@@ -1691,7 +1683,7 @@ void KV6EditorView::StartPaste() {
 				SetStatus("Cannot remove every voxel");
 				return;
 			}
-			undo.Begin("Erase");
+			KV6UndoStack::Step step(undo, "Erase");
 			for (const IntVector3& c : cells) {
 				if (InBounds(c.x, c.y, c.z) && model->IsSolid(c.x, c.y, c.z)) {
 					WriteVoxel(c.x, c.y, c.z, false, 0);
@@ -1699,16 +1691,14 @@ void KV6EditorView::StartPaste() {
 				}
 			}
 			TrimVolume();
-			undo.End();
 			RebuildRenderModel();
 		}
 
 		void KV6EditorView::DeselectCells(const std::vector<IntVector3>& cells) {
 			DocumentCommand command(*this);
-			undo.Begin("Deselect");
+			KV6UndoStack::Step step(undo, "Deselect");
 			for (const IntVector3& c : cells)
 				selection.erase(SelKey(c.x, c.y, c.z));
-			undo.End();
 		}
 
 		void KV6EditorView::PaintCells(const std::vector<IntVector3>& cellsIn, uint32_t color) {
@@ -1716,7 +1706,7 @@ void KV6EditorView::StartPaste() {
 			std::vector<IntVector3> cells = cellsIn;
 			ExpandMirrors(cells); // also recolour the mirror images, if enabled
 			uint32_t rgb = color & 0xFFFFFF;
-			undo.Begin("Paint");
+			KV6UndoStack::Step step(undo, "Paint");
 			bool any = false;
 			for (const IntVector3& c : cells) {
 				if (!InBounds(c.x, c.y, c.z) || !model->IsSolid(c.x, c.y, c.z))
@@ -1726,7 +1716,6 @@ void KV6EditorView::StartPaste() {
 				WriteVoxel(c.x, c.y, c.z, true, rgb);
 				any = true;
 			}
-			undo.End();
 			if (any)
 				RebuildRenderModel();
 		}
@@ -1817,10 +1806,9 @@ void KV6EditorView::StartPaste() {
 			Vector3 after = pivot * -1.0F;
 			if (after.x == before.x && after.y == before.y && after.z == before.z)
 				return;
-			undo.Begin("Set Pivot");
+			KV6UndoStack::Step step(undo, "Set Pivot");
 			ApplyOriginRaw(after);
 			undo.RecordOrigin(before, after);
-			undo.End();
 		}
 
 		void KV6EditorView::UndoApplyOrigin(const Vector3& origin) { ApplyOriginRaw(origin); }
@@ -2138,13 +2126,21 @@ void KV6EditorView::StartPaste() {
 		}
 
 		void KV6EditorView::DispatchPointer(const PointerInput& e) {
+			// A press starts one user action and the release of the last held
+			// button ends it, so a stroke or a drag undoes as one step. (The held
+			// flags already include this press and exclude this release.)
+			if (e.IsDown() && !(lmbHeld && rmbHeld))
+				undo.BeginAction();
 			if (EditorTool* t = ActiveTool())
 				t->OnPointer(*this, e);
+			if (e.IsUp() && !lmbHeld && !rmbHeld)
+				undo.EndAction();
 		}
 
 		void KV6EditorView::CancelToolInteraction() {
 			if (EditorTool* t = ActiveTool())
 				t->CancelInteraction(*this);
+			undo.EndAction(); // whatever comes next is a separate step
 		}
 
 		void KV6EditorView::NotifyDocumentChanged() {
@@ -2502,7 +2498,14 @@ void KV6EditorView::StartPaste() {
 				e.alt = altHeld;
 				e.ctrl = ctrlHeld;
 				e.shift = shiftHeld;
+				// A key press is one user action of its own, unless it comes during
+				// a press of a mouse button, whose action it then joins.
+				const bool ownAction = !lmbHeld && !rmbHeld;
+				if (ownAction)
+					undo.BeginAction();
 				t->OnKey(*this, e);
+				if (ownAction)
+					undo.EndAction();
 			}
 		}
 
