@@ -65,6 +65,9 @@ namespace spades {
 			// whatever is listed, so tools never touch the toolbar code directly.
 			virtual ToolOptions* Options() { return nullptr; }
 
+			// A ToolOption of type Action was clicked; `id` is that option's id.
+			virtual void OnAction(IEditorContext&, const std::string& id) { (void)id; }
+
 			// Optional sub-tools, shown in a secondary toolbar under the main one
 			// while this tool is active (e.g. Select's Point / Rect / By-Colour).
 			virtual int SubToolCount() const { return 0; }

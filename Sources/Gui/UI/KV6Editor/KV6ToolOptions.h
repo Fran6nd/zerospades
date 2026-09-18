@@ -34,7 +34,8 @@ namespace spades {
 			enum class Type {
 				Bool,  // a toggle button; value lives in `bvalue`
 				Color, // colour swatch; opens picker on click; value lives in `color`
-				Label  // a read-only text readout; the tool updates `label` each frame
+				Label, // a read-only text readout; the tool updates `label` each frame
+				Action // a one-shot button; clicking calls EditorTool::OnAction(id)
 			};
 
 			std::string id;    // stable key, e.g. "mirror.x"
@@ -65,6 +66,17 @@ namespace spades {
 				o.group = group;
 				o.type = ToolOption::Type::Color;
 				o.color = initial;
+				items.push_back(o);
+			}
+			// A one-shot button: it holds no state, and a click is reported to the
+			// tool as OnAction(id) rather than flipping a value.
+			void AddAction(const std::string& id, const std::string& label,
+			               const std::string& group = "") {
+				ToolOption o;
+				o.id = id;
+				o.label = label;
+				o.group = group;
+				o.type = ToolOption::Type::Action;
 				items.push_back(o);
 			}
 			// A read-only readout; the tool refreshes its text via SetLabel each frame.
