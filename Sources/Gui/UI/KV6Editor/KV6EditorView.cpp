@@ -294,6 +294,15 @@ namespace spades {
 				if (opt.type != ToolOption::Type::Bool) return;
 				opts->At(idx).bvalue = !opts->At(idx).bvalue;
 			};
+			ui->GetOptionBar()->OnActionClicked = [this](int idx) {
+				EditorTool* tool = ActiveTool();
+				if (!tool) return;
+				ToolOptions* opts = tool->Options();
+				if (!opts || idx < 0 || idx >= opts->Count()) return;
+				const ToolOption& opt = opts->At(idx);
+				if (opt.type != ToolOption::Type::Action) return;
+				tool->OnAction(*this, opt.id);
+			};
 			ui->GetOptionBar()->OnColorClicked = [this](int idx) {
 				EditorTool* tool = ActiveTool();
 				if (!tool) return;
@@ -2132,8 +2141,9 @@ void KV6EditorView::StartPaste() {
 					OptionBar::Option opt;
 					opt.group = op.group;
 					opt.label = op.label;
-					opt.type = (op.type == ToolOption::Type::Color) ? OptionBar::OptionType::Color
-							 : (op.type == ToolOption::Type::Label) ? OptionBar::OptionType::Label
+					opt.type = (op.type == ToolOption::Type::Color)  ? OptionBar::OptionType::Color
+							 : (op.type == ToolOption::Type::Label)  ? OptionBar::OptionType::Label
+							 : (op.type == ToolOption::Type::Action) ? OptionBar::OptionType::Action
 							 : OptionBar::OptionType::Bool;
 					opt.bvalue = op.bvalue;
 					opt.color = op.color;
@@ -2321,6 +2331,10 @@ void KV6EditorView::StartPaste() {
 									} else if (opt.type == ToolOption::Type::Color) {
 										if (ui->GetOptionBar()->OnColorClicked)
 											ui->GetOptionBar()->OnColorClicked(idx);
+										ui->GetOptionBar()->PlayButtonActivateSound();
+									} else if (opt.type == ToolOption::Type::Action) {
+										if (ui->GetOptionBar()->OnActionClicked)
+											ui->GetOptionBar()->OnActionClicked(idx);
 										ui->GetOptionBar()->PlayButtonActivateSound();
 									}
 								}
