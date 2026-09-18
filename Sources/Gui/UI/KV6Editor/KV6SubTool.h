@@ -173,13 +173,12 @@ namespace spades {
 		 * their pivot. The arrow keys move them too (Page Up/Down for the third
 		 * axis).
 		 *
-		 * Entering the tool lifts the selection into a placement, and a paste or an
-		 * import arrives with one already pending. Nothing is written to the
-		 * document until the tool is left, so voxels dragged over others never
-		 * destroy them; Escape drops the placement instead. Any other command
-		 * (select all, copy, save, undo, ...) lands the placement first and then
-		 * the tool lifts the selection again: while it is active, what is selected
-		 * is what moves.
+		 * The first move or turn lifts the selected voxels out of the document;
+		 * a paste or an import arrives already pending. Nothing is written back
+		 * until the tool is left (or another command needs the document as it
+		 * stands), so voxels dragged over others never destroy them; Escape puts
+		 * them back instead. Every move and turn is an undo step. With nothing
+		 * pending, the next move takes whatever is selected at that moment.
 		 */
 		class TransformSubTool : public GizmoSubTool {
 		public:
@@ -187,13 +186,12 @@ namespace spades {
 			const char* Label() const override { return "Transform"; }
 			void OnActivate(IEditorContext&) override;
 			void OnDeactivate(IEditorContext&) override;
-			void OnDocumentChanged(IEditorContext&) override;
 			void OnKey(IEditorContext&, const KeyInput&) override;
 			bool OnEscape(IEditorContext&) override;
 			void DrawScene(IEditorContext&) override;
 
 		protected:
-			// A drag only previews: the placement moves once, on release.
+			// A drag only previews: the voxels move once, on release.
 			bool CurrentPose(IEditorContext& ed, GizmoPose& pose) override;
 			void OnGizmoEnd(IEditorContext& ed, const GizmoTransform& total) override;
 		};

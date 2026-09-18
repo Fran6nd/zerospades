@@ -64,9 +64,9 @@ namespace spades {
 			// taking the input), so no gesture outlives the state it started from.
 			virtual void CancelInteraction(IEditorContext&) {}
 
-			// A command changed the document or the selection (an edit, a shortcut,
-			// an option, undo). A tool holding state derived from them refreshes it
-			// here; the Transform tool, for one, picks the selection up again.
+			// A command changed the document or the edit state (an edit, a shortcut,
+			// an option, undo, redo). A tool holding anything derived from them
+			// refreshes it here: a gizmo drops its drag, the Mirror tool its toggles.
 			virtual void OnDocumentChanged(IEditorContext&) {}
 
 			// Declarative options shown in the secondary toolbar next to this tool's

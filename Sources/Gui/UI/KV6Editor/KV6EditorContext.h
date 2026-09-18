@@ -145,27 +145,32 @@ namespace spades {
 			                                    const Vector4& color) = 0;
 
 			// --- Pending placement (floating voxels) --------------------------
-			// Paste, import and Transform park their voxels here first: nothing reaches
-			// the document until the placement is applied, so dragging voxels over
-			// others never destroys what they pass across. Leaving the Transform
-			// tool applies the placement; Escape drops it. Every edit of the voxels,
-			// the selection or the pivot (and the editor's copy, cut, save and
-			// undo) applies it first, so it acts on the document as it stands.
+			// Paste, import and Transform park their voxels here first: nothing
+			// reaches the document until the placement is applied, so dragging
+			// voxels over others never destroys what they pass across. Leaving the
+			// Transform
+			// tool applies the placement; Escape puts it back. Every edit of the
+			// voxels, the selection or the pivot (and the editor's copy, cut and
+			// save) applies it first, so it acts on the document as it stands.
+			// Lifting, moving, turning, applying and cancelling are undo steps.
 			virtual bool HasPlacement() const = 0;
-			/** Lifts the selection into a placement; false if nothing solid is selected. */
-			virtual bool BeginPlacementFromSelection() = 0;
 			/**
-			 * Turns and shifts the pending voxels; a shift stops at the model size
-			 * limit. Turns are about the pivot, which moves only with a shift.
+			 * Turns and shifts the pending voxels, lifting the selected voxels out
+			 * of the document first when none are pending; one undo step. A shift
+			 * stops at the model size limit. Turns are about the pivot, which
+			 * moves only with a shift.
 			 */
 			virtual void TransformPlacement(const PlacementTransform& t) = 0;
-			/** The voxel the pending voxels turn about; false if none pending. */
-			virtual bool PlacementPivot(IntVector3& out) const = 0;
+			/**
+			 * The voxel a transform turns about: the pending voxels' pivot, or the
+			 * one the selection would get; false when there is nothing to move.
+			 */
+			virtual bool TransformPivot(IntVector3& out) const = 0;
 			/** Writes the pending voxels into the document as one undo step. */
 			virtual void ApplyPlacement() = 0;
-			/** Drops the pending voxels, changing nothing. */
+			/** Puts lifted voxels back where they came from, or drops a paste. */
 			virtual void CancelPlacement() = 0;
-			/** Outlines the pending voxels as they would land after `t`. */
+			/** Outlines the pending voxels (or the selection) as they would land after `t`. */
 			virtual void DrawPlacementTransformed(const PlacementTransform& t,
 			                                      const Vector4& color) = 0;
 			// Opaque, shaded cube of half-size `half` centred at `center`. This is a

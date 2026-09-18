@@ -412,13 +412,12 @@ namespace spades {
 
 		void TransformSubTool::OnActivate(IEditorContext& ed) {
 			GizmoSubTool::OnActivate(ed);
-			if (ed.HasPlacement())
-				return; // a paste or import is already waiting to be positioned
-			if (ed.BeginPlacementFromSelection())
-				ed.SetStatus("Transform: drag an arrow to move or a ring to turn (90 degrees), or use"
-				             " the arrow keys; leaving Transform applies it");
-			else
+			if (!ed.HasPlacement() && ed.SelectionCount() == 0) {
 				ed.SetStatus("Transform: select some voxels first");
+				return;
+			}
+			ed.SetStatus("Transform: drag an arrow to move or a ring to turn (90 degrees), or use"
+			             " the arrow keys; leaving Transform places them");
 		}
 
 		void TransformSubTool::OnDeactivate(IEditorContext& ed) {
@@ -427,17 +426,9 @@ namespace spades {
 			ed.ApplyPlacement();
 		}
 
-		void TransformSubTool::OnDocumentChanged(IEditorContext& ed) {
-			GizmoSubTool::OnDocumentChanged(ed);
-			// The command landed the placement; carry on with what is selected now.
-			// Quietly, so the command's own status stays up.
-			if (!ed.HasPlacement())
-				ed.BeginPlacementFromSelection();
-		}
-
 		bool TransformSubTool::CurrentPose(IEditorContext& ed, GizmoPose& pose) {
 			IntVector3 pivot;
-			if (!ed.PlacementPivot(pivot))
+			if (!ed.TransformPivot(pivot))
 				return false;
 			// The placement itself stays put until release; the gizmo rides the
 			// previewed change, turned axes included.
@@ -449,11 +440,11 @@ namespace spades {
 		}
 
 		void TransformSubTool::OnGizmoEnd(IEditorContext& ed, const GizmoTransform& total) {
-			ed.TransformPlacement(WholeStep(total)); // still only pending
+			ed.TransformPlacement(WholeStep(total)); // one undo step, still only pending
 		}
 
 		void TransformSubTool::OnKey(IEditorContext& ed, const KeyInput& e) {
-			if (e.phase != KeyPhase::Down || !ed.HasPlacement())
+			if (e.phase != KeyPhase::Down)
 				return;
 			PlacementTransform t;
 			if (e.key == "Left") t.shift.x = -1;
@@ -470,7 +461,7 @@ namespace spades {
 			if (GizmoSubTool::OnEscape(ed))
 				return true; // cancelled the drag, the placement stays where it was
 			if (ed.HasPlacement()) {
-				ed.CancelPlacement(); // nothing was written, so nothing to undo
+				ed.CancelPlacement(); // puts them back, as an undo step of its own
 				return true;
 			}
 			return false;
