@@ -114,7 +114,9 @@ namespace spades {
 		struct GizmoTransform {
 			Vector3 translation = MakeVector3(0.0F, 0.0F, 0.0F);
 			// Right-handed rotation in world space: a positive angle about an axis
-			// turns counter-clockwise when that axis points at the viewer.
+			// turns counter-clockwise when that axis points at the viewer, as
+			// `Quaternion::Apply` sees it. `Quaternion::MakeRotation` builds the
+			// opposite sense, so don't mix it into this.
 			Quaternion rotation = Quaternion(0.0F, 0.0F, 0.0F, 1.0F);
 			// Factors along the pose axes.
 			Vector3 scale = MakeVector3(1.0F, 1.0F, 1.0F);
