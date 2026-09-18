@@ -20,6 +20,8 @@
 
 #pragma once
 
+#include <cstddef>
+
 #include <Core/Math.h>
 
 namespace spades {
@@ -31,6 +33,16 @@ namespace spades {
         void OverlayFillRect(client::IRenderer& renderer, float x, float y, float w, float h);
         void OverlayStrokeRect(client::IRenderer& renderer, float x, float y, float w, float h,
                                float thickness, const Vector4& c);
+        /** Fills a convex polygon (either winding) with an anti-aliased edge: a
+         *  fringe one framebuffer pixel wide straddles the outline, fading from
+         *  the colour to transparent. `c` is not alpha premultiplied. */
+        void OverlayFillConvexPolygon(client::IRenderer& renderer, const Vector2* points,
+                                      std::size_t count, const Vector4& c);
+        /** An anti-aliased straight line `width` 2D units thick. Lines thinner
+         *  than a framebuffer pixel are drawn a pixel wide and proportionally
+         *  fainter, so they keep their weight instead of breaking up. */
+        void OverlayStrokeLine(client::IRenderer& renderer, const Vector2& a, const Vector2& b,
+                               float width, const Vector4& c);
         bool OverlayInRect(const Vector2& p, float x, float y, float w, float h);
     } // namespace gui
 } // namespace spades
