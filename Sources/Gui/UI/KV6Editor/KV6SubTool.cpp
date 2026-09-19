@@ -217,11 +217,11 @@ namespace spades {
 			if (seq.Count() == 0)
 				return "click a corner on a voxel face";
 			if (seq.Count() == 1)
-				return "click the opposite corner  |  [Esc] cancel";
+				return "click the opposite corner";
 			std::string hint = std::string("click the depth: [LMB] ") + primary.verb;
 			if (secondary.apply)
 				hint += std::string("  |  [RMB] ") + secondary.verb;
-			return hint + "  |  [Esc] cancel";
+			return hint;
 		}
 
 		void BoxSubTool::OnActivate(IEditorContext&) { seq.Reset(); }
@@ -303,12 +303,11 @@ namespace spades {
 			(rmb ? secondary : primary).apply(ed, cells);
 		}
 
-		bool BoxSubTool::OnEscape(IEditorContext&) {
-			if (!seq.Active())
-				return false;
-			seq.Reset();
-			return true;
+		std::string BoxSubTool::EscapeLabel(IEditorContext&) {
+			return seq.Active() ? "cancel the box" : std::string();
 		}
+
+		void BoxSubTool::OnEscape(IEditorContext&) { seq.Reset(); }
 
 		void BoxSubTool::DrawScene(IEditorContext& ed) {
 			if (seq.Count() == 0) {
@@ -392,12 +391,11 @@ namespace spades {
 			}
 		}
 
-		bool GizmoSubTool::OnEscape(IEditorContext& ed) {
-			if (!gizmo.IsDragging())
-				return false;
-			CancelDrag(ed);
-			return true;
+		std::string GizmoSubTool::EscapeLabel(IEditorContext&) {
+			return gizmo.IsDragging() ? "cancel the drag" : std::string();
 		}
+
+		void GizmoSubTool::OnEscape(IEditorContext& ed) { CancelDrag(ed); }
 
 		void GizmoSubTool::SetTranslationSnap(float step, bool toGrid) {
 			GizmoSnap snap = gizmo.Snap();
@@ -427,7 +425,7 @@ namespace spades {
 			                   "[PgUp/PgDn] nudge";
 			hint += kGizmoDragHint;
 			if (ed.HasPlacement())
-				hint += "  |  [LMB] away from the gizmo places them  |  [Esc] puts them back";
+				hint += "  |  [LMB] away from the gizmo places them";
 			return hint;
 		}
 
@@ -472,16 +470,6 @@ namespace spades {
 			else if (e.key == "PageUp") t.shift.z = 1;
 			else return;
 			ed.TransformPlacement(t);
-		}
-
-		bool TransformSubTool::OnEscape(IEditorContext& ed) {
-			if (GizmoSubTool::OnEscape(ed))
-				return true; // cancelled the drag, the placement stays where it was
-			if (ed.HasPlacement()) {
-				ed.CancelPlacement(); // puts them back, as an undo step of its own
-				return true;
-			}
-			return false;
 		}
 
 		void TransformSubTool::DrawScene(IEditorContext& ed) {

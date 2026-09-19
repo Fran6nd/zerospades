@@ -30,10 +30,10 @@ namespace spades {
 			const char* const kReadoutOption = "pivot.readout";
 		} // namespace
 
-		// The pivot is a point anywhere, so it takes every step, finest first.
+		// The pivot is a point anywhere, on no grid: it takes every step, finest first.
 		PivotTool::PivotTool()
 		    : GizmoTool(std::unique_ptr<GizmoSubTool>(new PivotGizmoSubTool()), {0.1F, 0.5F, 1.0F},
-		                true) {
+		                0.0F) {
 			options.AddAction(kSetOption, "Set...");
 			AddSnapOptions();
 			options.AddLabel(kReadoutOption);

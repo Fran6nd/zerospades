@@ -20,8 +20,11 @@
 
 #include "KV6UndoStack.h"
 
+#include <exception>
 #include <iterator>
 #include <utility>
+
+#include <Core/Debug.h>
 
 namespace spades {
 	namespace gui {
@@ -35,17 +38,30 @@ namespace spades {
 			depth++;
 		}
 
-		void KV6UndoStack::End() {
+		void KV6UndoStack::End() noexcept {
 			if (depth == 0)
 				return; // unbalanced End; ignore defensively
 			if (--depth > 0)
 				return; // still inside an outer group
-			pending.after = sink.UndoSnapshotState();
-			bool changed = !pending.records.empty() || pending.before != pending.after;
-			if (changed)
-				Commit();
-			else
-				pending = Group();
+			// Runs from a destructor, possibly while an exception unwinds, so
+			// nothing may escape. The edit itself has happened either way: a step
+			// that cannot be kept would leave undo replaying into the wrong
+			// document, so the history starts afresh instead.
+			try {
+				pending.after = sink.UndoSnapshotState();
+				bool changed = !pending.records.empty() || pending.before != pending.after;
+				if (changed)
+					Commit();
+				else
+					pending = Group();
+			} catch (const std::exception& ex) {
+				SPLog("Undo history cleared: could not record '%s': %s", pending.label.c_str(),
+				      ex.what());
+				Clear();
+			} catch (...) {
+				SPLog("Undo history cleared: could not record '%s'", pending.label.c_str());
+				Clear();
+			}
 		}
 
 		void KV6UndoStack::RecordVoxel(int x, int y, int z, bool oldSolid, uint32_t oldColor,
@@ -93,14 +109,14 @@ namespace spades {
 			pending.action = action;
 
 			for (const Group& g : redoGroups)
-				totalRecords -= g.records.size();
+				totalBytes -= g.bytes;
 			redoGroups.clear(); // a fresh edit invalidates the redo branch
 
-			totalRecords += pending.records.size();
 			if (action != 0 && !undoGroups.empty() && undoGroups.back().action == action) {
 				// Later in the same user action: extend its step, which keeps the
 				// label and the "before" state of the action's first edit.
 				Group& step = undoGroups.back();
+				totalBytes -= step.bytes;
 				step.records.insert(step.records.end(),
 				                    std::make_move_iterator(pending.records.begin()),
 				                    std::make_move_iterator(pending.records.end()));
@@ -109,19 +125,30 @@ namespace spades {
 				step.geomAfter = pending.geomAfter;
 				// An action that put everything back (select, then deselect) leaves
 				// nothing to undo, so it leaves no step either.
-				if (step.records.empty() && step.before == step.after)
+				if (step.records.empty() && step.before == step.after) {
 					undoGroups.pop_back();
+				} else {
+					step.bytes = BytesOf(step);
+					totalBytes += step.bytes;
+				}
 			} else {
+				pending.bytes = BytesOf(pending);
+				totalBytes += pending.bytes;
 				undoGroups.push_back(std::move(pending));
 			}
 			pending = Group();
 
 			// Evict the oldest history past either cap, but never the last step.
-			while ((undoGroups.size() > kMaxGroups || totalRecords > kMaxRecords) &&
+			while ((undoGroups.size() > kMaxGroups || totalBytes > kMaxBytes) &&
 			       undoGroups.size() > 1) {
-				totalRecords -= undoGroups.front().records.size();
+				totalBytes -= undoGroups.front().bytes;
 				undoGroups.pop_front();
 			}
+		}
+
+		std::size_t KV6UndoStack::BytesOf(const Group& g) {
+			return g.records.size() * sizeof(Record) + g.before.UnsharedBytes(g.after) +
+			       g.after.UnsharedBytes(g.before);
 		}
 
 		// Replay a group's records forward (redo): frames then their dependent voxels,
@@ -180,7 +207,7 @@ namespace spades {
 			return true;
 		}
 
-		void KV6UndoStack::Clear() {
+		void KV6UndoStack::Clear() noexcept {
 			undoGroups.clear();
 			redoGroups.clear();
 			pending = Group();
@@ -188,7 +215,7 @@ namespace spades {
 			action = 0;
 			geomId = 0;
 			nextGeomId = 0;
-			totalRecords = 0;
+			totalBytes = 0;
 		}
 
 	} // namespace gui

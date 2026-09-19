@@ -21,11 +21,10 @@
 #include "OptionBar.h"
 
 #include <algorithm>
+#include <utility>
 
 #include <Gui/OverlayPaint.h>
 #include <Gui/UIWidgetPainter.h>
-#include <Client/IAudioChunk.h>
-#include <Client/IAudioDevice.h>
 #include <Client/IRenderer.h>
 #include <Client/Fonts.h>
 #include <Core/Math.h>
@@ -57,36 +56,25 @@ namespace spades {
 		static const float kActionPad = 24.0F;
 		static const float kActionMinW = 56.0F;
 
-		OptionBar::OptionBar(client::IAudioDevice* audioDevice) : audioDevice(audioDevice) {}
+		OptionBar::OptionBar(client::IAudioDevice* audioDevice) : sounds(audioDevice) {}
 
-		void OptionBar::PlayHoverSound() const {
-			if (!audioDevice)
-				return;
-			Handle<client::IAudioChunk> chunk(audioDevice->RegisterSound("Sounds/Feedback/Limbo/Hover.opus"));
-			audioDevice->PlayLocal(chunk.GetPointerOrNull(), client::AudioParam());
+		void OptionBar::SetContent(const void* newOwner, std::vector<SubToolButton> buttons,
+		                           std::vector<Option> newOptions) {
+			owner = newOwner;
+			subToolButtons = std::move(buttons);
+			options = std::move(newOptions);
 		}
-
-		void OptionBar::PlayClickSound() const {
-			if (!audioDevice)
-				return;
-			Handle<client::IAudioChunk> chunk(audioDevice->RegisterSound("Sounds/Feedback/Limbo/Select.opus"));
-			audioDevice->PlayLocal(chunk.GetPointerOrNull(), client::AudioParam());
-		}
-
-		void OptionBar::SetSubToolButtons(const std::vector<SubToolButton>& buttons) {
-			subToolButtons = buttons;
-		}
-
-		void OptionBar::SetOptions(const std::vector<Option>& options) { this->options = options; }
 
 		bool OptionBar::Click(const Vector2& p) {
+			if (CurrentOwner && CurrentOwner() != drawnOwner)
+				return false; // what is on screen belongs to an owner no longer current
 			for (size_t i = 0; i < subToolSpans.size() && i < subToolButtons.size(); i++) {
 				const Span& span = subToolSpans[i];
 				if (!OverlayInRect(p, span.x, kBtnY, span.width, kTbH))
 					continue;
 				if (OnSubToolClicked)
 					OnSubToolClicked(int(i));
-				PlayClickSound();
+				sounds.Activate();
 				return true;
 			}
 			for (size_t i = 0; i < optionSpans.size() && i < options.size(); i++) {
@@ -94,7 +82,7 @@ namespace spades {
 				if (!OverlayInRect(p, span.x, kBtnY, span.width, kTbH))
 					continue;
 				const Option& op = options[i];
-				const std::function<void(int)>* handler = nullptr;
+				const std::function<void(const std::string&)>* handler = nullptr;
 				switch (op.type) {
 					case OptionType::Bool: handler = &OnBoolToggled; break;
 					case OptionType::Color: handler = &OnColorClicked; break;
@@ -103,9 +91,10 @@ namespace spades {
 				}
 				if (!handler || !op.enabled)
 					return false; // a readout, or greyed out
+				const std::string id = op.id; // the handler may change the options
 				if (*handler)
-					(*handler)(int(i));
-				PlayClickSound();
+					(*handler)(id);
+				sounds.Activate();
 				return true;
 			}
 			return false;
@@ -119,6 +108,7 @@ namespace spades {
 
 			previousSubToolHoverState.resize(subToolButtons.size(), false);
 			previousOptionHoverState.resize(options.size(), false);
+			drawnOwner = owner;
 			subToolSpans.clear();
 			optionSpans.clear();
 
@@ -149,9 +139,7 @@ namespace spades {
 			                   size_t i) {
 				bool hover = !menuActive && enabled &&
 				             OverlayInRect(cursorPos, span.x, kBtnY, span.width, kTbH);
-				if (hover && !previous[i])
-					PlayHoverSound();
-				previous[i] = hover;
+				previous[i] = sounds.HoverEdge(hover, previous[i]);
 				return hover;
 			};
 
@@ -196,10 +184,7 @@ namespace spades {
 					font.Draw(op.label, MakeVector2(x, kBtnY + (kTbH - textSize.y) * 0.5F), 1.0F,
 					          textColor);
 				} else if (op.type == OptionType::Color) {
-					Vector4 color = MakeVector4(float(op.color & 0xFF) / 255.0F,
-					                            float((op.color >> 8) & 0xFF) / 255.0F,
-					                            float((op.color >> 16) & 0xFF) / 255.0F, 1.0F);
-					OverlayColorNP(renderer, color);
+					OverlayColorNP(renderer, ConvertColorRGBA(IntVectorFromColor(op.color)));
 					OverlayFillRect(renderer, x, kBtnY, width, kTbH);
 					OverlayStrokeRect(renderer, x, kBtnY, width, kTbH, 1.0F,
 					                  MakeVector4(0.8F, 0.8F, 0.8F, 0.7F));

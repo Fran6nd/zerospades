@@ -26,6 +26,7 @@
 #include <vector>
 
 #include <Core/Math.h>
+#include <Gui/UI/Framework/FeedbackSounds.h>
 
 namespace spades {
 	namespace client {
@@ -41,12 +42,19 @@ namespace spades {
 		 * Buttons are as wide as their text, so the layout is made while
 		 * drawing, where the font is at hand, and clicks are tested against the
 		 * frame last drawn: always what the user sees.
+		 *
+		 * The content belongs to an owner (whose options they are: the active
+		 * tool). A click only counts while that owner is still the host's
+		 * current one, so a click landing just after the host switched owners
+		 * never acts on the new owner through the old one's buttons. Options
+		 * are reported by id, sub-tool buttons by position within their owner.
 		 */
 		class OptionBar {
 		public:
 			enum class OptionType { Bool, Color, Label, Action };
 
 			struct Option {
+				std::string id;    // reported when clicked
 				std::string group; // consecutive options of one group sit together
 				std::string label;
 				OptionType type = OptionType::Label;
@@ -63,8 +71,9 @@ namespace spades {
 
 			OptionBar(client::IAudioDevice* audioDevice = nullptr);
 
-			void SetSubToolButtons(const std::vector<SubToolButton>& buttons);
-			void SetOptions(const std::vector<Option>& options);
+			/** Fills the bar with `owner`'s sub-tool buttons and options. */
+			void SetContent(const void* owner, std::vector<SubToolButton> subToolButtons,
+			                std::vector<Option> options);
 
 			/**
 			 * Runs the callback of the enabled sub-tool button or option under
@@ -74,11 +83,14 @@ namespace spades {
 			void Draw(client::IRenderer& renderer, client::FontManager& fontManager,
 			         const Vector2& cursorPos, bool menuActive, float screenWidth);
 
-			// Called with the clicked sub-tool's or option's index.
-			std::function<void(int)> OnSubToolClicked;
-			std::function<void(int)> OnBoolToggled;
-			std::function<void(int)> OnColorClicked;
-			std::function<void(int)> OnActionClicked;
+			/** The host's current owner, asked on each click; unset, every click counts. */
+			std::function<const void*()> CurrentOwner;
+
+			// Called with the clicked sub-tool's index, or the clicked option's id.
+			std::function<void(int index)> OnSubToolClicked;
+			std::function<void(const std::string& id)> OnBoolToggled;
+			std::function<void(const std::string& id)> OnColorClicked;
+			std::function<void(const std::string& id)> OnActionClicked;
 
 		private:
 			// Horizontal extent of something drawn on the bar.
@@ -86,17 +98,16 @@ namespace spades {
 				float x, width;
 			};
 
-			client::IAudioDevice* audioDevice = nullptr;
+			ui::FeedbackSounds sounds;
+			const void* owner = nullptr;
 			std::vector<SubToolButton> subToolButtons;
 			std::vector<Option> options;
-			// Where each sub-tool button and option was last drawn.
+			// What was last drawn: whose content, and where each item went.
+			const void* drawnOwner = nullptr;
 			std::vector<Span> subToolSpans;
 			std::vector<Span> optionSpans;
 			std::vector<bool> previousSubToolHoverState;
 			std::vector<bool> previousOptionHoverState;
-
-			void PlayHoverSound() const;
-			void PlayClickSound() const;
 		};
 	} // namespace gui
 } // namespace spades

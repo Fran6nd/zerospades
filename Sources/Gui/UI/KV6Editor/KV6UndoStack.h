@@ -20,6 +20,7 @@
 
 #pragma once
 
+#include <cstddef>
 #include <cstdint>
 #include <deque>
 #include <set>
@@ -49,7 +50,11 @@ namespace spades {
 		 * press) then merge into a single undo step, so a paint stroke or a
 		 * scripted multi-step edit undoes at once. Nothing stays open between
 		 * events, so undo and redo work at any moment. The history is capped at
-		 * `kMaxGroups`, evicting the oldest.
+		 * `kMaxGroups` steps and `kMaxBytes` of memory, evicting the oldest.
+		 *
+		 * Recording never fails a command half way: a step that cannot be kept
+		 * (out of memory) would leave the history unable to replay back to the
+		 * document, so the history is cleared instead of left inconsistent.
 		 */
 		class KV6UndoStack {
 		public:
@@ -90,7 +95,7 @@ namespace spades {
 				Step(KV6UndoStack& stack, const std::string& label) : stack(stack) {
 					stack.Begin(label);
 				}
-				~Step() { stack.End(); }
+				~Step() { stack.End(); } // never throws, so it is safe while unwinding
 				Step(const Step&) = delete;
 				Step& operator=(const Step&) = delete;
 
@@ -123,7 +128,7 @@ namespace spades {
 			std::string RedoLabel() const { return redoGroups.empty() ? "" : redoGroups.back().label; }
 			bool Undo(); // false if there was nothing to undo
 			bool Redo();
-			void Clear();
+			void Clear() noexcept;
 
 			// Monotonic id of the current *geometry* state, for the document's
 			// dirty/clean flag. Selection-only steps leave it unchanged, so merely
@@ -171,6 +176,7 @@ namespace spades {
 				std::string label;
 				std::vector<Record> records;
 				EditState before, after;
+				std::size_t bytes = 0; // what keeping it costs; see BytesOf
 				bool hasGeometry = false;
 				long geomBefore = 0, geomAfter = 0;
 				unsigned action = 0; // the user action it was recorded in, 0 for none
@@ -178,8 +184,11 @@ namespace spades {
 
 			// Open / close the pending group; only through Step, so they pair up.
 			void Begin(const std::string& label);
-			void End();
+			void End() noexcept;
 			void Commit();
+			// Approximate memory a group holds: its records, plus whatever of its
+			// before and after states the two do not share.
+			static std::size_t BytesOf(const Group& g);
 			void ApplyForward(const Group& g); // redo direction
 			void ApplyInverse(const Group& g); // undo direction
 
@@ -190,13 +199,13 @@ namespace spades {
 			int depth = 0;
 			unsigned action = 0, nextAction = 0;
 			long geomId = 0, nextGeomId = 0;
-			size_t totalRecords = 0; // deltas held across undo + redo (for the byte cap)
+			std::size_t totalBytes = 0; // BytesOf every group held, undo + redo
 
-			static const size_t kMaxGroups = 256;
-			// Cap the total deltas too, so one or many big edits can't grow the
-			// history without bound (~240 MB at ~40 bytes/record). The most recent
-			// step is always kept, even if it alone exceeds this.
-			static const size_t kMaxRecords = 6000000;
+			static const std::size_t kMaxGroups = 256;
+			// Cap the memory too, so neither big edits nor the selections and
+			// pending voxels kept per step grow the history without bound. The
+			// most recent step is always kept, even if it alone exceeds this.
+			static const std::size_t kMaxBytes = std::size_t(256) << 20;
 		};
 	} // namespace gui
 } // namespace spades

@@ -33,10 +33,7 @@ namespace spades {
 			presetColumns = std::max(1, cols);
 		}
 
-		void ColorPicker::SetColor(uint32_t rgb) {
-			RGBToHSV(rgb);
-			SyncColor();
-		}
+		void ColorPicker::SetColor(uint32_t rgb) { RGBToHSV(rgb); }
 
 		void ColorPicker::Open() {
 			open = true;
@@ -100,14 +97,12 @@ namespace spades {
 		}
 
 		Vector4 ColorPicker::ColorToVec(uint32_t c) const {
-			return MakeVector4(float(c & 0xFF) / 255.0F, float((c >> 8) & 0xFF) / 255.0F,
-			                   float((c >> 16) & 0xFF) / 255.0F, 1.0F);
+			return ConvertColorRGBA(IntVectorFromColor(c));
 		}
 
 		void ColorPicker::RGBToHSV(uint32_t c) {
-			float r = float(c & 0xFF) / 255.0F;
-			float g = float((c >> 8) & 0xFF) / 255.0F;
-			float b = float((c >> 16) & 0xFF) / 255.0F;
+			const Vector3 rgb = ConvertColorRGB(IntVectorFromColor(c));
+			const float r = rgb.x, g = rgb.y, b = rgb.z;
 			float mx = std::max(r, std::max(g, b));
 			float mn = std::min(r, std::min(g, b));
 			float d = mx - mn;
@@ -185,7 +180,8 @@ namespace spades {
 					break;
 				case ClickType::Preset:
 					if (result.presetIndex >= 0 && result.presetIndex < int(presets.size())) {
-						SetColor(presets[result.presetIndex]);
+						RGBToHSV(presets[result.presetIndex]);
+						SyncColor();
 						if (OnColorPicked)
 							OnColorPicked(GetColor());
 					}

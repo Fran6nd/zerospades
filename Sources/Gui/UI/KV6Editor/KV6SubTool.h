@@ -109,7 +109,8 @@ namespace spades {
 			std::string Hint(IEditorContext&) override;
 			void OnActivate(IEditorContext&) override;
 			void OnPointer(IEditorContext&, const PointerInput&) override;
-			bool OnEscape(IEditorContext&) override;
+			std::string EscapeLabel(IEditorContext&) override;
+			void OnEscape(IEditorContext&) override;
 			void DrawScene(IEditorContext&) override;
 
 		private:
@@ -142,7 +143,8 @@ namespace spades {
 			void OnActivate(IEditorContext&) override;
 			void OnDeactivate(IEditorContext&) override;
 			void OnPointer(IEditorContext&, const PointerInput&) override;
-			bool OnEscape(IEditorContext&) override;
+			std::string EscapeLabel(IEditorContext&) override;
+			void OnEscape(IEditorContext&) override;
 			void CancelInteraction(IEditorContext&) override;
 			// What the gizmo handles moved under it, so a drag in progress is void.
 			void OnDocumentChanged(IEditorContext&) override;
@@ -206,7 +208,6 @@ namespace spades {
 			std::string Hint(IEditorContext&) override;
 			void OnDeactivate(IEditorContext&) override;
 			void OnKey(IEditorContext&, const KeyInput&) override;
-			bool OnEscape(IEditorContext&) override;
 			void DrawScene(IEditorContext&) override;
 
 		protected:

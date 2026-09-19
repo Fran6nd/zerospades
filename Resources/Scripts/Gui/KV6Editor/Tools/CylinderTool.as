@@ -27,7 +27,7 @@ namespace spades {
 	// recolours under Paint and selects under Select, via ctx.ApplyCells (which
 	// routes by the active tool). The right button on the last click applies the
 	// inverse (erase, deselect); Paint has none, so the editor keeps it from us.
-	class CylinderTool : EditorTool {
+	class CylinderTool : EditorToolBase {
 		private int stage = 0; // 0 none, 1 centre set, 2 radius set
 		private int normalAxis = 2;
 		private IntVector3 p0; // centre
@@ -35,28 +35,20 @@ namespace spades {
 		private IntVector3 cur; // point under the cursor for the current stage
 
 		string Label() { return "Cylinder"; }
-		int Targets() {
-			return int(EditorTarget::TargetDraw) | int(EditorTarget::TargetSelect) |
-			       int(EditorTarget::TargetPaint);
-		}
+		// Every container, as EditorToolBase offers by default.
 
 		void OnActivate(EditorContext@ ctx) { stage = 0; }
 		void OnDeactivate(EditorContext@ ctx) { stage = 0; }
-		void OnKey(EditorContext@ ctx, string key, bool down) {}
 
-		bool OnEscape(EditorContext@ ctx) {
-			if (stage == 0)
-				return false;
-			stage = 0;
-			return true;
-		}
+		string EscapeLabel(EditorContext@ ctx) { return stage == 0 ? "" : "cancel the cylinder"; }
+		void OnEscape(EditorContext@ ctx) { stage = 0; }
 
 		string Hint(EditorContext@ ctx) {
 			if (stage == 0)
 				return "click the centre on a voxel face";
 			if (stage == 1)
-				return "click a point on the rim  |  [Esc] cancel";
-			return "click the depth  |  [Esc] cancel";
+				return "click a point on the rim";
+			return "click the depth";
 		}
 
 		void OnPointer(EditorContext@ ctx, int button, int phase, bool alt, bool ctrl, bool shift) {

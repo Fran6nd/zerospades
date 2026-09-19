@@ -35,7 +35,8 @@ namespace spades {
 		 * 1, 0.5 or 0.1, and Snap to Grid, which lands what is moved on multiples
 		 * of the step (with 1, on voxel centres) instead of moving it by them. A
 		 * tool offers only the steps what it moves can take, and Snap to Grid
-		 * only when it can be off the grid at all; the rest shows greyed out.
+		 * only with a step coarser than the grid it always sits on anyway; the
+		 * rest shows greyed out.
 		 */
 		class GizmoTool : public ContainerTool {
 		public:
@@ -47,10 +48,11 @@ namespace spades {
 		protected:
 			/**
 			 * `gizmo` becomes the only sub-tool. `steps` are the steps (of 1, 0.5
-			 * and 0.1) it can take, the first being the one it starts on;
-			 * `gridSnap` says whether Snap to Grid means anything for it.
+			 * and 0.1) it can take, the first being the one it starts on. `grid`
+			 * is the grid what it moves always sits on (0 for none), which Snap
+			 * to Grid cannot improve on.
 			 */
-			GizmoTool(std::unique_ptr<GizmoSubTool> gizmo, std::vector<float> steps, bool gridSnap);
+			GizmoTool(std::unique_ptr<GizmoSubTool> gizmo, std::vector<float> steps, float grid);
 
 			/** Adds Step and Snap to Grid at this point of the bar. */
 			void AddSnapOptions();
@@ -60,11 +62,13 @@ namespace spades {
 		private:
 			GizmoSubTool* gizmo; // owned by `subs`
 			std::vector<float> steps;
-			bool gridSnap;
+			float grid;
 			float step;
 			bool toGrid = false;
 
 			bool Offers(float candidate) const;
+			// Whether Snap to Grid changes anything at the current step.
+			bool GridSnapApplies() const;
 			// Hands the current step and grid setting to the gizmo.
 			void ApplySnap();
 		};

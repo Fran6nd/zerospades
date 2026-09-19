@@ -57,9 +57,13 @@ namespace spades {
 			virtual void OnActivate(IEditorContext&) {}
 			virtual void OnDeactivate(IEditorContext&) {}
 
-			// Abort an in-progress operation (Esc). Returns true if it consumed the
-			// key (so the editor doesn't also open the pause menu).
-			virtual bool OnEscape(IEditorContext&) { return false; }
+			// What Escape would back out of in this tool now, as a short phrase
+			// for the hint line ("cancel the box"); empty when nothing is in
+			// progress. The editor shows it and, when Escape reaches the tool,
+			// calls OnEscape: one answer drives both, so they always agree.
+			virtual std::string EscapeLabel(IEditorContext&) { return std::string(); }
+			// Back out of what EscapeLabel named.
+			virtual void OnEscape(IEditorContext&) {}
 
 			// Abandon a gesture in progress (a drag) without applying it. The editor
 			// calls this before it acts behind the tool's back (a shortcut, a dialog

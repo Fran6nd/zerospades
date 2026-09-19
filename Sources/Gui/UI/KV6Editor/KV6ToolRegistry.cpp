@@ -50,18 +50,19 @@ namespace spades {
 				// initialisers in each tool's TU) keeps the order deterministic.
 				// The keys lean on common editor conventions (Q select, B brush,
 				// T transform) and keep clear of the default WASD movement keys.
-				registry.Register(Make<SelectTool>(), kEditingGroup, "Q");
-				registry.Register(Make<DrawTool>(), kEditingGroup, "B");
-				registry.Register(Make<PaintTool>(), kEditingGroup, "P");
-				registry.Register(Make<TransformTool>(), kEditingGroup, "T");
-				registry.Register(Make<MirrorTool>(), kSetupGroup, "M");
-				registry.Register(Make<PivotTool>(), kSetupGroup, "O");
+				registry.Register(Make<SelectTool>(), "select", kEditingGroup, "Q");
+				registry.Register(Make<DrawTool>(), "draw", kEditingGroup, "B");
+				registry.Register(Make<PaintTool>(), "paint", kEditingGroup, "P");
+				registry.Register(Make<TransformTool>(), "transform", kEditingGroup, "T");
+				registry.Register(Make<MirrorTool>(), "mirror", kSetupGroup, "M");
+				registry.Register(Make<PivotTool>(), "pivot", kSetupGroup, "O");
 			}
 			return registry;
 		}
 
-		void ToolRegistry::Register(Factory f, int group, const std::string& hotKey) {
-			entries.push_back({std::move(f), group, hotKey});
+		void ToolRegistry::Register(Factory f, const std::string& id, int group,
+		                            const std::string& hotKey) {
+			entries.push_back({std::move(f), id, group, hotKey});
 		}
 
 		void ToolRegistry::BuildAll(std::vector<ToolSlot>& out) const {
@@ -70,6 +71,7 @@ namespace spades {
 			for (const Entry& entry : entries) {
 				ToolSlot slot;
 				slot.tool = entry.make();
+				slot.id = entry.id;
 				slot.group = entry.group;
 				slot.hotKey = entry.hotKey;
 				out.push_back(std::move(slot));

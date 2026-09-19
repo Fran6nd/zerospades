@@ -22,8 +22,6 @@
 
 #include <Gui/OverlayPaint.h>
 #include <Gui/UIWidgetPainter.h>
-#include <Client/IAudioChunk.h>
-#include <Client/IAudioDevice.h>
 #include <Client/IRenderer.h>
 #include <Client/Fonts.h>
 #include <Core/Math.h>
@@ -41,21 +39,7 @@ namespace spades {
 		static const float kTbX0 = 12.0F;
 		static const float kTbY = kRibbonH + (kToolbarH - kTbH) * 0.5F;
 
-		Toolbar::Toolbar(client::IAudioDevice* audioDevice) : audioDevice(audioDevice) {}
-
-		void Toolbar::PlayHoverSound() const {
-			if (!audioDevice)
-				return;
-			Handle<client::IAudioChunk> chunk(audioDevice->RegisterSound("Sounds/Feedback/Limbo/Hover.opus"));
-			audioDevice->PlayLocal(chunk.GetPointerOrNull(), client::AudioParam());
-		}
-
-		void Toolbar::PlayClickSound() const {
-			if (!audioDevice)
-				return;
-			Handle<client::IAudioChunk> chunk(audioDevice->RegisterSound("Sounds/Feedback/Limbo/Select.opus"));
-			audioDevice->PlayLocal(chunk.GetPointerOrNull(), client::AudioParam());
-		}
+		Toolbar::Toolbar(client::IAudioDevice* audioDevice) : sounds(audioDevice) {}
 
 		void Toolbar::SetModeButtons(const std::vector<ToolbarButton>& buttons) {
 			modeButtons = buttons;
@@ -114,11 +98,11 @@ namespace spades {
 				switch (slot.kind) {
 					case Kind::Mode:
 						if (OnModeClicked)
-							OnModeClicked(slot.index);
+							OnModeClicked(modeButtons[slot.index].id);
 						break;
 					case Kind::Tool:
 						if (OnToolClicked)
-							OnToolClicked(slot.index);
+							OnToolClicked(toolButtons[slot.index].id);
 						break;
 					case Kind::Undo:
 						if (OnUndoClicked)
@@ -129,7 +113,7 @@ namespace spades {
 							OnRedoClicked();
 						break;
 				}
-				PlayClickSound();
+				sounds.Activate();
 				return true;
 			}
 			return false;
@@ -156,9 +140,7 @@ namespace spades {
 
 				bool hover = !menuActive && button.enabled &&
 				             OverlayInRect(cursorPos, slot.x, kTbY, slot.width, kTbH);
-				if (hover && !previousHoverState[i])
-					PlayHoverSound();
-				previousHoverState[i] = hover;
+				previousHoverState[i] = sounds.HoverEdge(hover, previousHoverState[i]);
 
 				// A hot key takes the right edge, so the label moves left to make room.
 				Vector2 labelAlign =

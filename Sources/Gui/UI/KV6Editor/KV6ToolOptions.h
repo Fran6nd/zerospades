@@ -102,16 +102,18 @@ namespace spades {
 					o->enabled = enabled;
 			}
 
+			/** The option with `id`, or null if there is none. */
+			ToolOption* Find(const std::string& id) {
+				for (ToolOption& o : items)
+					if (o.id == id)
+						return &o;
+				return nullptr;
+			}
+
 			int Count() const { return int(items.size()); }
 			ToolOption& At(int i) { return items[i]; }
 			const ToolOption& At(int i) const { return items[i]; }
 
-			bool GetBool(const std::string& id) const {
-				for (const ToolOption& o : items)
-					if (o.id == id)
-						return o.bvalue;
-				return false;
-			}
 			void SetBool(const std::string& id, bool value) {
 				if (ToolOption* o = Find(id))
 					o->bvalue = value;
@@ -119,13 +121,6 @@ namespace spades {
 
 		private:
 			std::vector<ToolOption> items;
-
-			ToolOption* Find(const std::string& id) {
-				for (ToolOption& o : items)
-					if (o.id == id)
-						return &o;
-				return nullptr;
-			}
 		};
 	} // namespace gui
 } // namespace spades

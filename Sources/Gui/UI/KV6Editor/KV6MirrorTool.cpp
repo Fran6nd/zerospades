@@ -53,11 +53,11 @@ namespace spades {
 			return false;
 		}
 
-		// A reflection only shifts at half a voxel, the finest step the planes
-		// take (PlaceMirrorPlane holds them to it), so 0.1 is not offered.
+		// A reflection only shifts at half a voxel, so the planes always sit on
+		// that grid (PlaceMirrorPlane holds them to it) and 0.1 is not offered.
 		MirrorTool::MirrorTool()
 		    : GizmoTool(std::unique_ptr<GizmoSubTool>(new MirrorGizmoSubTool()), {0.5F, 1.0F},
-		                true) {
+		                0.5F) {
 			AddMirrorToggles(options);
 			options.AddAction(kResetOption, "Reset to Pivot");
 			AddSnapOptions();

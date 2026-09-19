@@ -26,6 +26,7 @@
 #include <vector>
 
 #include <Core/Math.h>
+#include <Gui/UI/Framework/FeedbackSounds.h>
 
 namespace spades {
 	namespace client {
@@ -42,10 +43,15 @@ namespace spades {
 		 * policy: a disabled button draws greyed out and ignores clicks. Tool
 		 * buttons sharing a `group` sit together, and a separator divides one
 		 * group from the next.
+		 *
+		 * A click reports the id of the button drawn under it, never a position:
+		 * if the host changed its buttons since that frame was drawn, it looks
+		 * the id up in what it has now and ignores one it no longer has.
 		 */
 		class Toolbar {
 		public:
 			struct ToolbarButton {
+				std::string id; // reported when clicked
 				std::string label;
 				std::string hotKey; // drawn on the button's right; empty for none
 				bool enabled = true;
@@ -65,9 +71,9 @@ namespace spades {
 			void Draw(client::IRenderer& renderer, client::FontManager& fontManager,
 			         const Vector2& cursorPos, bool menuActive, float screenWidth);
 
-			// Called with the clicked button's index.
-			std::function<void(int)> OnModeClicked;
-			std::function<void(int)> OnToolClicked;
+			// Called with the clicked button's id.
+			std::function<void(const std::string& id)> OnModeClicked;
+			std::function<void(const std::string& id)> OnToolClicked;
 			std::function<void()> OnUndoClicked;
 			std::function<void()> OnRedoClicked;
 
@@ -82,15 +88,13 @@ namespace spades {
 				bool separatorBefore;
 			};
 
-			client::IAudioDevice* audioDevice = nullptr;
+			ui::FeedbackSounds sounds;
 			std::vector<ToolbarButton> modeButtons;
 			std::vector<ToolbarButton> toolButtons;
 			bool undoEnabled = false;
 			bool redoEnabled = false;
 			std::vector<bool> previousHoverState; // per slot, for the hover sound
 
-			void PlayHoverSound() const;
-			void PlayClickSound() const;
 			// Every button in drawing order, shared by Draw and Click so a click
 			// always lands on the button drawn under it.
 			std::vector<Slot> Layout(float screenWidth) const;

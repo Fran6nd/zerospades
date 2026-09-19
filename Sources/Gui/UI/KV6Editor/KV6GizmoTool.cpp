@@ -40,8 +40,8 @@ namespace spades {
 		} // namespace
 
 		GizmoTool::GizmoTool(std::unique_ptr<GizmoSubTool> gizmoTool, std::vector<float> offered,
-		                     bool gridSnap)
-		    : gizmo(gizmoTool.get()), steps(std::move(offered)), gridSnap(gridSnap),
+		                     float grid)
+		    : gizmo(gizmoTool.get()), steps(std::move(offered)), grid(grid),
 		      step(steps.empty() ? 0.0F : steps.front()) {
 			subs.push_back(std::move(gizmoTool));
 			ApplySnap();
@@ -61,7 +61,9 @@ namespace spades {
 			return false;
 		}
 
-		void GizmoTool::ApplySnap() { gizmo->SetTranslationSnap(step, gridSnap && toGrid); }
+		bool GizmoTool::GridSnapApplies() const { return step > grid && !SameStep(step, grid); }
+
+		void GizmoTool::ApplySnap() { gizmo->SetTranslationSnap(step, toGrid && GridSnapApplies()); }
 
 		void GizmoTool::UpdateOptions(IEditorContext&) {
 			// The steps act as radio buttons, so each shows whether it is the one
@@ -70,8 +72,9 @@ namespace spades {
 				options.SetBool(choice.id, SameStep(choice.step, step));
 				options.SetEnabled(choice.id, Offers(choice.step));
 			}
-			options.SetBool(kGridOption, gridSnap && toGrid);
-			options.SetEnabled(kGridOption, gridSnap);
+			// Kept while unavailable, so going back to a coarser step restores it.
+			options.SetBool(kGridOption, toGrid);
+			options.SetEnabled(kGridOption, GridSnapApplies());
 		}
 
 		void GizmoTool::OnOptionToggled(IEditorContext&, const std::string& id, bool value) {

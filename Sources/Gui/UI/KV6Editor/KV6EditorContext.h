@@ -100,30 +100,37 @@ namespace spades {
 			// --- Selection (a set of solid-voxel coords, shared across tools) ---
 			virtual bool IsSelected(int x, int y, int z) const = 0;
 			virtual void ClearSelection() = 0;
-			// Removes the selected voxels from the model (never the last one).
+			// Removes the selected voxels from the model, or drops the pending
+			// ones while there are some (never the last voxel).
 			virtual void DeleteSelection() = 0;
+			// How many voxels the selection commands act on: the pending ones
+			// while there are some (lifted, pasted or imported), else the selected.
 			virtual int SelectionCount() const = 0;
 			// The solid voxels 6-connected to (x,y,z) through its colour, itself
 			// included; empty if (x,y,z) holds no voxel. Changes nothing.
 			virtual std::vector<IntVector3> LinkedColorRegion(int x, int y, int z) const = 0;
 
-			// --- Clipboard ----------------------------------------------------
-			// Each reports what it did, or why not, on the status line.
-			virtual void CopySelection() = 0;
-			// False when refused (nothing selected, or it would empty the model).
-			virtual bool CutSelection() = 0;
-			// Starts placing the clipboard's voxels in the Transform tool.
-			virtual void Paste() = 0;
-			virtual bool CanPaste() const = 0;
 			// Add every solid voxel in [lo, hi] to the selection.
 			virtual void SelectBox(const IntVector3& lo, const IntVector3& hi) = 0;
 			// Add / remove the solid voxels among `cells`.
 			virtual void SelectCells(const std::vector<IntVector3>& cells) = 0;
 			virtual void DeselectCells(const std::vector<IntVector3>& cells) = 0;
 			// Apply `cells` with the active tool's action: fill (or erase, if
-			// `secondary`) under Draw, select (or deselect) under Select. Lets a
-			// sub-tool act correctly in whichever container hosts it.
+			// `secondary`) under Draw, select (or deselect) under Select, recolour
+			// under Paint (which has no inverse). Lets a sub-tool act correctly in
+			// whichever container hosts it.
 			virtual void ApplyCells(const std::vector<IntVector3>& cells, bool secondary) = 0;
+
+			// --- Clipboard ----------------------------------------------------
+			// Copy and Cut take the selection, or the pending voxels while there
+			// are some, which they leave where they are rather than place. Each
+			// reports what it did, or why not, on the status line.
+			virtual void CopySelection() = 0;
+			// False when refused (nothing selected, or it would empty the model).
+			virtual bool CutSelection() = 0;
+			// Starts placing the clipboard's voxels in the Transform tool.
+			virtual void Paste() = 0;
+			virtual bool CanPaste() const = 0;
 
 			// --- Overlay drawing (3D wireframe previews) ----------------------
 			virtual void DrawLine3D(const Vector3& a, const Vector3& b, const Vector4& color) = 0;

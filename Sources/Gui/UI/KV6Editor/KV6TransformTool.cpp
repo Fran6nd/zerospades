@@ -33,10 +33,10 @@ namespace spades {
 			const char* const kReadoutOption = "transform.readout";
 		} // namespace
 
-		// Voxels only ever land on voxels: they move by whole ones, and always
-		// sit on the grid, so neither a finer step nor Snap to Grid applies.
+		// Voxels only ever land on voxels: they move by whole ones and always sit
+		// on that grid, so neither a finer step nor Snap to Grid applies.
 		TransformTool::TransformTool()
-		    : GizmoTool(std::unique_ptr<GizmoSubTool>(new TransformSubTool()), {1.0F}, false) {
+		    : GizmoTool(std::unique_ptr<GizmoSubTool>(new TransformSubTool()), {1.0F}, 1.0F) {
 			options.AddAction(kPlaceOption, "Place");
 			options.AddAction(kCancelOption, "Cancel");
 			options.AddBool(kAboutSelectionOption, "Selection", "Turn about");

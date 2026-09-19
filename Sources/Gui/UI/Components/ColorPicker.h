@@ -54,6 +54,7 @@ namespace spades {
 			ColorPicker() = default;
 
 			void SetPresets(const std::vector<uint32_t>& presets, int presetColumns = 8);
+			/** Shows `rgb`. Only the user's changes are reported (OnColorChanged). */
 			void SetColor(uint32_t rgb);
 			void Open();
 			void Close();
