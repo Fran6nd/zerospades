@@ -44,7 +44,10 @@ namespace spades {
 			int Size() const { return int(keys->size()); }
 			bool Contains(const IntVector3& v) const { return keys->count(Key(v)) != 0; }
 
-			void Add(const IntVector3& v) { keys.Edit().insert(Key(v)); }
+			void Add(const IntVector3& v) {
+				if (!Contains(v)) // changing nothing must not unshare the set
+					keys.Edit().insert(Key(v));
+			}
 			void Remove(const IntVector3& v);
 			void Clear();
 			/** Moves every coordinate by `offset`, as the volume's are relabelled. */
