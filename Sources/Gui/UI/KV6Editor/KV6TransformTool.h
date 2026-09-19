@@ -18,25 +18,28 @@
 
  */
 
-#include "KV6PaintTool.h"
-#include "KV6EditorContext.h"
-#include "KV6SubToolRegistry.h"
+#pragma once
+
+#include "KV6GizmoTool.h"
 
 namespace spades {
 	namespace gui {
-		PaintTool::PaintTool() {
-			// Box recolours every existing voxel it spans with the current colour.
-			// Recolouring has no inverse, so the right button does nothing.
-			auto paint = [](IEditorContext& ed, const std::vector<IntVector3>& cells) {
-				ed.PaintCells(cells, ed.CurrentColor());
-			};
-			subs.push_back(std::unique_ptr<EditorTool>(new PaintVoxelSubTool()));
-			subs.push_back(std::unique_ptr<EditorTool>(
-			  new BoxSubTool({paint, "paint"}, BoxSubTool::Action(), true)));
-
-			// Sub-tools contributed by scripts (targeting Paint), appended after the
-			// built-in ones.
-			SubToolRegistry::Instance().BuildFor(SubToolTarget::Paint, subs);
-		}
+		/**
+		 * Move and turn the selection, or voxels being pasted or imported.
+		 *
+		 * Its one sub-tool is the gizmo (see TransformSubTool). Place writes the
+		 * pending voxels into the model and Cancel puts them back, so neither
+		 * waits on leaving the tool. "Turn about" picks whether turns go round
+		 * the middle of the voxels or the model's pivot; the readout names the
+		 * voxel they turn about.
+		 */
+		class TransformTool : public GizmoTool {
+		public:
+			TransformTool();
+			const char* Label() const override { return "Transform"; }
+			void UpdateOptions(IEditorContext& ed) override;
+			void OnOptionToggled(IEditorContext& ed, const std::string& id, bool value) override;
+			void OnAction(IEditorContext& ed, const std::string& id) override;
+		};
 	} // namespace gui
 } // namespace spades
