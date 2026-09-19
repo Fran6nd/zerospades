@@ -127,14 +127,19 @@ namespace spades {
 					continue;
 				if (!ButtonOf(slot).enabled)
 					return false; // greyed out: the click does nothing
+				// Ids are copied: a handler may change the buttons they belong to.
 				switch (slot.kind) {
 					case Kind::Mode:
-						if (OnModeClicked)
-							OnModeClicked(modeButtons[slot.index].id);
+						if (OnModeClicked) {
+							const std::string id = modeButtons[slot.index].id;
+							OnModeClicked(id);
+						}
 						break;
 					case Kind::Tool:
-						if (OnToolClicked)
-							OnToolClicked(toolButtons[slot.index].id);
+						if (OnToolClicked) {
+							const std::string id = toolButtons[slot.index].id;
+							OnToolClicked(id);
+						}
 						break;
 					case Kind::ColorSwatch:
 						if (OnColorSwatchClicked)
