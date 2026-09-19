@@ -36,6 +36,7 @@ namespace spades {
 		static const float kTbGap = 2.0F;
 		static const float kTbSep = 14.0F;
 		static const float kUndoBtnW = 50.0F;
+		static const float kSwatchW = 40.0F;
 		static const float kTbX0 = 12.0F;
 		static const float kTbY = kRibbonH + (kToolbarH - kTbH) * 0.5F;
 
@@ -52,6 +53,12 @@ namespace spades {
 		void Toolbar::SetUndoButton(bool enabled) { undoEnabled = enabled; }
 
 		void Toolbar::SetRedoButton(bool enabled) { redoEnabled = enabled; }
+
+		void Toolbar::SetColorSwatch(uint32_t color, bool open) {
+			hasSwatch = true;
+			swatchColor = color;
+			swatchOpen = open;
+		}
 
 		std::vector<Toolbar::Slot> Toolbar::Layout(float screenWidth) const {
 			std::vector<Slot> slots;
@@ -70,6 +77,14 @@ namespace spades {
 				slots.push_back({Kind::Tool, i, x, kTbBtn, separator});
 				x += kTbBtn + kTbGap;
 			}
+			if (hasSwatch) {
+				// Its own group: it belongs to no one tool.
+				const bool separator = !modeButtons.empty() || !toolButtons.empty();
+				if (separator)
+					x += kTbSep;
+				slots.push_back({Kind::ColorSwatch, -1, x, kSwatchW, separator});
+				x += kSwatchW + kTbGap;
+			}
 			// Undo / Redo on the right edge
 			float undoX = screenWidth - 12.0F - 2.0F * kUndoBtnW - kTbGap;
 			slots.push_back({Kind::Undo, -1, undoX, kUndoBtnW, false});
@@ -82,11 +97,28 @@ namespace spades {
 				return modeButtons[slot.index];
 			if (slot.kind == Kind::Tool)
 				return toolButtons[slot.index];
+			if (slot.kind == Kind::ColorSwatch) {
+				ToolbarButton swatch;
+				swatch.active = swatchOpen;
+				return swatch;
+			}
 			const bool undo = slot.kind == Kind::Undo;
 			ToolbarButton history;
 			history.label = undo ? "Undo" : "Redo";
 			history.enabled = undo ? undoEnabled : redoEnabled;
 			return history;
+		}
+
+		void Toolbar::DrawColorSwatch(client::IRenderer& renderer, const Slot& slot,
+		                              bool hover) const {
+			OverlayColorNP(renderer, ConvertColorRGBA(IntVectorFromColor(swatchColor)));
+			OverlayFillRect(renderer, slot.x, kTbY, slot.width, kTbH);
+			// A brighter, heavier frame while its picker is open, as a latched
+			// button reads; a lighter one on hover.
+			const float frame = swatchOpen ? 2.0F : 1.0F;
+			const float bright = swatchOpen ? 1.0F : (hover ? 0.9F : 0.7F);
+			OverlayStrokeRect(renderer, slot.x, kTbY, slot.width, kTbH, frame,
+			                  MakeVector4(bright, bright, bright, 0.9F));
 		}
 
 		bool Toolbar::Click(const Vector2& p, float screenWidth) {
@@ -103,6 +135,10 @@ namespace spades {
 					case Kind::Tool:
 						if (OnToolClicked)
 							OnToolClicked(toolButtons[slot.index].id);
+						break;
+					case Kind::ColorSwatch:
+						if (OnColorSwatchClicked)
+							OnColorSwatchClicked();
 						break;
 					case Kind::Undo:
 						if (OnUndoClicked)
@@ -141,6 +177,11 @@ namespace spades {
 				bool hover = !menuActive && button.enabled &&
 				             OverlayInRect(cursorPos, slot.x, kTbY, slot.width, kTbH);
 				previousHoverState[i] = sounds.HoverEdge(hover, previousHoverState[i]);
+
+				if (slot.kind == Kind::ColorSwatch) {
+					DrawColorSwatch(renderer, slot, hover);
+					continue;
+				}
 
 				// A hot key takes the right edge, so the label moves left to make room.
 				Vector2 labelAlign =

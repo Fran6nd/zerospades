@@ -23,12 +23,7 @@
 
 namespace spades {
 	namespace gui {
-		BrushTool::BrushTool() {
-			// The swatch opens the colour picker; the editor keeps it showing the
-			// one brush colour every tool shares.
-			options.AddColor("color");
-			AddMirrorToggles(options);
-		}
+		BrushTool::BrushTool() { AddMirrorToggles(options); }
 
 		void BrushTool::UpdateOptions(IEditorContext& ed) { SyncMirrorToggles(options, ed); }
 

@@ -28,8 +28,9 @@ namespace spades {
 		 * A tool that edits voxels in the brush colour, reflected across the
 		 * enabled mirror planes (Draw, Paint).
 		 *
-		 * Its options are the brush swatch and the mirror toggles, so the colour
-		 * and which axes reflect are both in sight while it is in use.
+		 * Its options are the mirror toggles, so which axes reflect is in sight
+		 * while it is in use. The brush colour belongs to the editor, not to a
+		 * tool: its swatch sits on the main toolbar, whichever tool is active.
 		 */
 		class BrushTool : public ContainerTool {
 		public:

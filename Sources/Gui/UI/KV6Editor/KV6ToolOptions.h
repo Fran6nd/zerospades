@@ -20,7 +20,6 @@
 
 #pragma once
 
-#include <cstdint>
 #include <string>
 #include <vector>
 
@@ -34,18 +33,16 @@ namespace spades {
 		struct ToolOption {
 			enum class Type {
 				Bool,  // a toggle button; value lives in `bvalue`
-				Color, // colour swatch; opens picker on click; value lives in `color`
 				Label, // a read-only text readout; the tool updates `label` each frame
 				Action // a one-shot button; clicking calls EditorTool::OnAction(id)
 			};
 
 			std::string id;    // stable key, e.g. "mirror.x"
-			std::string label; // short button text ("X"); empty for icon/swatch only
+			std::string label; // button text ("X"), or a readout's current text
 			std::string group; // shared group label ("Mirror"); empty = ungrouped
 			Type type = Type::Bool;
 			bool bvalue = false;     // Bool value
 			bool enabled = true;     // false greys a Bool or Action out (nothing to act on)
-			uint32_t color = 0xFFFFFFFF; // Color value (ARGB)
 		};
 
 		// An ordered list of a tool's options.
@@ -59,15 +56,6 @@ namespace spades {
 				o.group = group;
 				o.type = ToolOption::Type::Bool;
 				o.bvalue = initial;
-				items.push_back(o);
-			}
-			void AddColor(const std::string& id, const std::string& group = "",
-			             uint32_t initial = 0xFFFFFFFF) {
-				ToolOption o;
-				o.id = id;
-				o.group = group;
-				o.type = ToolOption::Type::Color;
-				o.color = initial;
 				items.push_back(o);
 			}
 			// A one-shot button: it holds no state, and a click is reported to the
@@ -92,10 +80,6 @@ namespace spades {
 			void SetLabel(const std::string& id, const std::string& text) {
 				if (ToolOption* o = Find(id))
 					o->label = text;
-			}
-			void SetColor(const std::string& id, uint32_t color) {
-				if (ToolOption* o = Find(id))
-					o->color = color;
 			}
 			void SetEnabled(const std::string& id, bool enabled) {
 				if (ToolOption* o = Find(id))

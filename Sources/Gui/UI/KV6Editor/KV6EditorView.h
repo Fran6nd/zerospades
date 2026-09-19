@@ -365,14 +365,14 @@ namespace spades {
 			void OpenImportDialog();
 
 			// --- Colour picker (managed by ColorPicker component) ----------------
+			// The brush colour, shared by every tool and edited by the picker. A
+			// setting of the editor, not of the document: it is no part of the
+			// edit state, so choosing a colour is never an undo step and undo
+			// never changes it. The picker's recent colours are the same.
 			uint32_t currentColor = 0xC8C8C8; // packed 0x00BBGGRR
-			// What the open picker edits: the shared brush colour when null, else
-			// swatch `colorTargetOption` of that tool. Held by identity rather than
-			// by option index, since an index shifts as a tool's options change
-			// and names a different option in whichever tool is active when the
-			// picker reports.
-			EditorTool* colorTargetTool = nullptr;
-			std::string colorTargetOption;
+			// `color` was just written into the model by an edit: it leads the
+			// picker's recent colours.
+			void NoteColorUsed(uint32_t color);
 			// Sampling a colour is the editor's, not a tool's: Alt+click, or a
 			// click while the picker's eyedropper is armed, samples in any tool.
 			bool SamplingArmed() const;
@@ -461,11 +461,13 @@ namespace spades {
 			void EndPreviews() noexcept;
 
 			// --- Escape ---------------------------------------------------------
-			// What Escape backs out of, top-most first: the eyedropper, the colour
-			// picker, the active tool's gesture, pending voxels, the selection.
-			// With none of them, it opens the menu. Escape does it and the hint
-			// line names it, both from here, so the line says what the key does.
-			enum class EscapeLayer { None, Eyedropper, ColorPicker, Tool, Placement, Selection };
+			// What Escape backs out of, top-most first: the eyedropper, the active
+			// tool's gesture, pending voxels, the selection. With none of them, it
+			// opens the menu. Escape does it and the hint line names it, both from
+			// here, so the line says what the key does. The colour picker is a
+			// panel kept open while in use, not a step to back out of: its swatch
+			// and its close button close it.
+			enum class EscapeLayer { None, Eyedropper, Tool, Placement, Selection };
 			EscapeLayer NextEscape();
 			std::string EscapeLabel(EscapeLayer layer);
 			void Escape(EscapeLayer layer);

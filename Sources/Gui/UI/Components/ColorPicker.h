@@ -33,8 +33,13 @@ namespace spades {
 	} // namespace client
 	namespace gui {
 		/**
-		 * HSV colour picker popup: SV grid + hue bar + eyedropper + presets + close button.
-		 * Positioned at bottom-right of the screen; can be opened/closed.
+		 * HSV colour picker popup: SV grid + hue bar + eyedropper, then preset
+		 * swatches (if any are set) and the colours used most recently, and a
+		 * close button. Positioned at bottom-right of the screen.
+		 *
+		 * The host says when a colour is used (AddRecentColor), since only it
+		 * knows: the recent row then holds the last colours actually applied,
+		 * newest first, one click away.
 		 *
 		 * The eyedropper button arms a one-shot pick that only the host can carry
 		 * out, since only it knows what is under the cursor. The picker holds the
@@ -44,18 +49,26 @@ namespace spades {
 		 */
 		class ColorPicker {
 		public:
-			enum class ClickType { None, SV, Hue, Close, Eyedropper, Preset };
+			enum class ClickType { None, SV, Hue, Close, Eyedropper, Preset, Recent };
 
 			struct ClickResult {
 				ClickType type = ClickType::None;
-				int presetIndex = -1;
+				int index = -1; // the swatch, for Preset and Recent
 			};
 
 			ColorPicker() = default;
 
-			void SetPresets(const std::vector<uint32_t>& presets, int presetColumns = 8);
+			/** Swatches to offer, `columns` per row. */
+			void SetPresets(const std::vector<uint32_t>& presets, int columns = 8);
 			/** Shows `rgb`. Only the user's changes are reported (OnColorChanged). */
 			void SetColor(uint32_t rgb);
+			/** How many recently used colours the picker keeps, in one row. */
+			static constexpr int kRecentSlots = 10;
+			/**
+			 * `rgb` was just used: it goes first in the recent row, moving up if it
+			 * was there already. The oldest drops off past kRecentSlots.
+			 */
+			void AddRecentColor(uint32_t rgb);
 			void Open();
 			void Close();
 			bool IsOpen() const { return open; }
@@ -63,6 +76,7 @@ namespace spades {
 			void UpdateLayout(float screenWidth, float screenHeight, float topClearance);
 
 			ClickResult HitTest(const Vector2& p);
+			/** A press on the panel, on whichever control is under it (if any). */
 			void MouseDown(const Vector2& p);
 			void MouseMove(const Vector2& p);
 			void MouseUp();
@@ -94,9 +108,21 @@ namespace spades {
 			// Drag tracking
 			int dragMode = 0; // 0 none, 1 SV square, 2 hue bar
 
-			// Presets
+			// Swatches: presets, and recently used colours (newest first)
 			std::vector<uint32_t> presets;
 			int presetColumns = 8;
+			std::vector<uint32_t> recent;
+
+			// A grid of square swatches, `columns` to a row, from (x, y).
+			struct SwatchGrid {
+				float x = 0.0F, y = 0.0F, size = 0.0F;
+				int columns = 1;
+				Vector2 Cell(int i) const;
+				// The swatch under `p` among the first `count`, or -1.
+				int At(const Vector2& p, int count) const;
+			};
+			SwatchGrid presetGrid, recentGrid;
+			float recentLabelY = 0.0F;
 
 			// Picker panel geometry
 			float pkX = 0.0F, pkY = 0.0F, pkW = 0.0F, pkH = 0.0F;
@@ -108,8 +134,6 @@ namespace spades {
 			float prevW = 0.0F, prevH = 0.0F;
 			float eyeX = 0.0F, eyeY = 0.0F;
 			float eyeS = 0.0F;
-			float presX = 0.0F, presY = 0.0F;
-			float presSwatch = 0.0F;
 			float closeX = 0.0F, closeY = 0.0F;
 			float closeS = 0.0F;
 
@@ -124,6 +148,12 @@ namespace spades {
 			bool InRect(const Vector2& p, float x, float y, float w, float h) const;
 			void UpdateSV(const Vector2& p);
 			void UpdateHue(const Vector2& p);
+			// Takes `rgb` as the user's choice: reported like any change they make.
+			void ChooseColor(uint32_t rgb);
+			// `colors` in `grid`; with `slots` above their count, the free cells
+			// are drawn empty, so a row that is filling up reads as one.
+			void DrawSwatches(client::IRenderer& renderer, const SwatchGrid& grid,
+			                  const std::vector<uint32_t>& colors, int slots) const;
 		};
 	} // namespace gui
 } // namespace spades

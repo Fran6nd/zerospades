@@ -37,7 +37,9 @@ namespace spades {
 	namespace gui {
 		/**
 		 * Unified top toolbar: modes on the left, a separator, then the tools
-		 * available in the current mode, then undo/redo buttons on the right.
+		 * available in the current mode, optionally a colour swatch (the colour
+		 * the tools draw with, whichever is active), then undo/redo buttons on
+		 * the right.
 		 *
 		 * The host describes every button, so the toolbar holds no editor
 		 * policy: a disabled button draws greyed out and ignores clicks. Tool
@@ -65,6 +67,12 @@ namespace spades {
 			void SetToolButtons(const std::vector<ToolbarButton>& buttons);
 			void SetUndoButton(bool enabled);
 			void SetRedoButton(bool enabled);
+			/**
+			 * Shows a swatch of `color` (0x00BBGGRR) after the tools, marked
+			 * while `open` (its picker is showing); clicking it calls
+			 * OnColorSwatchClicked. Hidden until set.
+			 */
+			void SetColorSwatch(uint32_t color, bool open);
 
 			/** Runs the callback of the enabled button under `p`; false if there is none. */
 			bool Click(const Vector2& p, float screenWidth);
@@ -76,9 +84,10 @@ namespace spades {
 			std::function<void(const std::string& id)> OnToolClicked;
 			std::function<void()> OnUndoClicked;
 			std::function<void()> OnRedoClicked;
+			std::function<void()> OnColorSwatchClicked;
 
 		private:
-			enum class Kind { Mode, Tool, Undo, Redo };
+			enum class Kind { Mode, Tool, ColorSwatch, Undo, Redo };
 
 			// One button placed on the bar; `index` is into its kind's list.
 			struct Slot {
@@ -93,12 +102,16 @@ namespace spades {
 			std::vector<ToolbarButton> toolButtons;
 			bool undoEnabled = false;
 			bool redoEnabled = false;
+			bool hasSwatch = false;
+			uint32_t swatchColor = 0;
+			bool swatchOpen = false;
 			std::vector<bool> previousHoverState; // per slot, for the hover sound
 
 			// Every button in drawing order, shared by Draw and Click so a click
 			// always lands on the button drawn under it.
 			std::vector<Slot> Layout(float screenWidth) const;
 			ToolbarButton ButtonOf(const Slot& slot) const;
+			void DrawColorSwatch(client::IRenderer& renderer, const Slot& slot, bool hover) const;
 		};
 	} // namespace gui
 } // namespace spades

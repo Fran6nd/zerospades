@@ -133,10 +133,6 @@ namespace spades {
 			constexpr float kViewDistanceFactor = 4.0F;
 			constexpr float kMinViewDistance = 1000.0F;
 
-			// Option id of the brush swatch, which mirrors the editor's current
-			// colour rather than holding a value of its own.
-			const char* const kBrushColorOption = "color";
-
 			// Edge length of the cube a new model's volume starts as.
 			constexpr int kNewModelSize = 32;
 
@@ -375,30 +371,20 @@ namespace spades {
 				if (ActiveOption(id, ToolOption::Type::Action))
 					ActiveTool()->OnAction(*this, id);
 			};
-			ui->GetOptionBar()->OnColorClicked = [this](const std::string& id) {
-				ToolOption* opt = ActiveOption(id, ToolOption::Type::Color);
-				if (!opt)
-					return;
-				// The brush swatch edits the shared colour; any other swatch (a
-				// future second colour) edits its own value, in its own tool.
-				bool brush = id == kBrushColorOption;
-				colorTargetTool = brush ? nullptr : ActiveTool();
-				colorTargetOption = brush ? std::string() : id;
-				ui->GetColorPicker()->SetColor(brush ? currentColor : opt->color);
-				ui->GetColorPicker()->Open();
-			};
 
-			// Wire up color picker callbacks
-			ui->GetColorPicker()->OnColorChanged = [this](uint32_t c) {
-				// The picker stays open across tool switches, so the edit goes to the
-				// swatch it was opened on, whichever tool is active now.
-				if (colorTargetTool) {
-					if (ToolOptions* opts = colorTargetTool->Options())
-						opts->SetColor(colorTargetOption, c);
-					return;
+			// The brush colour is the editor's, shared by every tool: its swatch
+			// sits on the main toolbar and opens or closes the picker, which
+			// edits it and stays up across tool switches until closed.
+			ui->GetToolbar()->OnColorSwatchClicked = [this] {
+				ColorPicker& picker = *ui->GetColorPicker();
+				if (picker.IsOpen()) {
+					picker.Close();
+				} else {
+					picker.SetColor(currentColor);
+					picker.Open();
 				}
-				currentColor = c;
 			};
+			ui->GetColorPicker()->OnColorChanged = [this](uint32_t c) { currentColor = c; };
 
 			// The Edit-mode tools come from the registry (toolbar order = registration).
 			// Open on Draw, so the user can start modelling; found by type, so
@@ -644,8 +630,6 @@ namespace spades {
 			const ColorPicker& picker = *ui->GetColorPicker();
 			if (picker.GetEyedropperMode())
 				return EscapeLayer::Eyedropper;
-			if (picker.IsOpen())
-				return EscapeLayer::ColorPicker;
 			if (EditorTool* tool = ActiveTool()) {
 				if (!tool->EscapeLabel(*this).empty())
 					return EscapeLayer::Tool;
@@ -660,7 +644,6 @@ namespace spades {
 		std::string KV6EditorView::EscapeLabel(EscapeLayer layer) {
 			switch (layer) {
 				case EscapeLayer::Eyedropper: return "stop picking";
-				case EscapeLayer::ColorPicker: return "close the colour picker";
 				case EscapeLayer::Tool: return ActiveTool()->EscapeLabel(*this);
 				case EscapeLayer::Placement:
 					return edit.placement.lifted->empty() ? "drop the pending voxels"
@@ -674,7 +657,6 @@ namespace spades {
 		void KV6EditorView::Escape(EscapeLayer layer) {
 			switch (layer) {
 				case EscapeLayer::Eyedropper: ui->GetColorPicker()->SetEyedropperMode(false); break;
-				case EscapeLayer::ColorPicker: ui->GetColorPicker()->Close(); break;
 				case EscapeLayer::Tool: ActiveTool()->OnEscape(*this); break;
 				case EscapeLayer::Placement: CancelPlacement(); break;
 				case EscapeLayer::Selection:
@@ -1068,11 +1050,16 @@ namespace spades {
 			}
 			KV6UndoStack::Step step(undo, label);
 			Reframe(frame);
+			bool wrote = false;
 			for (const IntVector3& c : cells) {
 				const IntVector3 at = c + frame.shift;
-				if (InBounds(at.x, at.y, at.z) && !model->IsSolid(at.x, at.y, at.z))
+				if (InBounds(at.x, at.y, at.z) && !model->IsSolid(at.x, at.y, at.z)) {
 					WriteVoxel(at.x, at.y, at.z, true, color);
+					wrote = true;
+				}
 			}
+			if (wrote)
+				NoteColorUsed(color);
 		}
 
 		void KV6EditorView::Erase(std::vector<IntVector3> cells, const std::string& label) {
@@ -1717,12 +1704,21 @@ namespace spades {
 			ExpandMirrors(cells); // also recolour the mirror images, if enabled
 			uint32_t rgb = color & 0xFFFFFF;
 			KV6UndoStack::Step step(undo, "Paint");
+			bool wrote = false;
 			for (const IntVector3& c : cells) {
 				if (!InBounds(c.x, c.y, c.z) || !model->IsSolid(c.x, c.y, c.z))
 					continue; // paint only existing voxels; never grows the volume
-				if ((model->GetColor(c.x, c.y, c.z) & 0xFFFFFF) != rgb)
+				if ((model->GetColor(c.x, c.y, c.z) & 0xFFFFFF) != rgb) {
 					WriteVoxel(c.x, c.y, c.z, true, rgb);
+					wrote = true;
+				}
 			}
+			if (wrote)
+				NoteColorUsed(rgb);
+		}
+
+		void KV6EditorView::NoteColorUsed(uint32_t color) {
+			ui->GetColorPicker()->AddRecentColor(color);
 		}
 
 		void KV6EditorView::ApplyCells(const std::vector<IntVector3>& cells, bool secondary) {
@@ -2338,6 +2334,8 @@ namespace spades {
 			}
 			ui->GetToolbar()->SetToolButtons(toolButtons);
 
+			ui->GetToolbar()->SetColorSwatch(currentColor, ui->GetColorPicker()->IsOpen());
+
 			// Set undo/redo state
 			ui->GetToolbar()->SetUndoButton(undo.CanUndo());
 			ui->GetToolbar()->SetRedoButton(undo.CanRedo());
@@ -2419,18 +2417,13 @@ namespace spades {
 				t->UpdateOptions(*this);
 			ToolOptions* opts = t ? t->Options() : nullptr;
 			if (opts) {
-				// The brush swatch is a view of the editor's single current colour,
-				// not a per-tool value: the picker, the eyedropper and every tool's
-				// swatch must always agree.
-				opts->SetColor(kBrushColorOption, currentColor);
 				for (int i = 0; i < opts->Count(); i++) {
 					const ToolOption& op = opts->At(i);
 					OptionBar::Option opt;
 					opt.id = op.id;
 					opt.group = op.group;
 					opt.label = op.label;
-					opt.type = (op.type == ToolOption::Type::Color)  ? OptionBar::OptionType::Color
-							 : (op.type == ToolOption::Type::Label)  ? OptionBar::OptionType::Label
+					opt.type = (op.type == ToolOption::Type::Label)  ? OptionBar::OptionType::Label
 							 : (op.type == ToolOption::Type::Action) ? OptionBar::OptionType::Action
 							 : OptionBar::OptionType::Bool;
 					opt.bvalue = op.bvalue;
@@ -2559,26 +2552,24 @@ namespace spades {
 
 			if (key == "MiddleMouseButton") { lookActive = down; return; }
 
+			// A release reaches the tool only when its press did: presses the
+			// picker, the bars, the navigation cube or colour sampling took are
+			// none of the tool's business, and start no user action to end.
 			if (key == "LeftMouseButton") {
 				if (!down) {
-					lmbHeld = false;
-					if (ui)
-						ui->GetColorPicker()->MouseUp();
-					DispatchPointer(MakePointer(PointerButton::Left, PointerPhase::Up));
+					ui->GetColorPicker()->MouseUp();
+					if (lmbHeld) {
+						lmbHeld = false;
+						DispatchPointer(MakePointer(PointerButton::Left, PointerPhase::Up));
+					}
 					return;
 				}
 
-				// Check if color picker handles this click
-				if (ui && ui->GetColorPicker()->IsOpen()) {
-					ColorPicker::ClickResult result = ui->GetColorPicker()->HitTest(cursor);
-					if (result.type != ColorPicker::ClickType::None) {
-						if (result.type == ColorPicker::ClickType::Close) {
-							ui->GetColorPicker()->Close();
-						} else {
-							ui->GetColorPicker()->MouseDown(cursor);
-						}
-						return;
-					}
+				// The open picker owns every press on its panel, gaps included, so
+				// nothing behind it is ever edited through it.
+				if (ui->GetColorPicker()->IsOverPicker(cursor)) {
+					ui->GetColorPicker()->MouseDown(cursor);
+					return;
 				}
 
 				// Over the bars, a click belongs to whichever button is under it
@@ -2607,8 +2598,10 @@ namespace spades {
 			}
 			if (key == "RightMouseButton") {
 				if (!down) {
-					rmbHeld = false;
-					DispatchPointer(MakePointer(PointerButton::Right, PointerPhase::Up));
+					if (rmbHeld) {
+						rmbHeld = false;
+						DispatchPointer(MakePointer(PointerButton::Right, PointerPhase::Up));
+					}
 					return;
 				}
 				// Don't allow RMB actions over the UI bars or color picker
