@@ -324,9 +324,13 @@ namespace spades {
 						tDelta[k] = std::fabs(1.0F / d[k]);
 					}
 					float tCell = tStart; // where the ray enters `cell`
+					// The voxel the eye is inside hides nothing: the renderer shows its
+					// faces from the outside only, so the scene behind it is in view.
+					bool eyeCell = tStart == 0.0F;
 					while (tCell < tEnd) {
-						if (Solid(cell[0], cell[1], cell[2]))
+						if (!eyeCell && Solid(cell[0], cell[1], cell[2]))
 							return true;
+						eyeCell = false;
 						const int k = (tNext[0] <= tNext[1] && tNext[0] <= tNext[2]) ? 0
 						              : (tNext[1] <= tNext[2])                      ? 1
 						                                                             : 2;
