@@ -2704,7 +2704,6 @@ namespace spades {
 							 : OptionBar::OptionType::Bool;
 					opt.bvalue = op.bvalue;
 					opt.enabled = op.enabled;
-					opt.color = op.color;
 					options.push_back(opt);
 				}
 			}
