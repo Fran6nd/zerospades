@@ -1142,7 +1142,7 @@ namespace spades {
 			spades::client::Player& victim, KillType kt) {
 
 			// only used in case of KillTypeWeapon
-			const auto& weaponType = killer.GetWeapon().GetWeaponType();
+			const auto& weaponType = killer.GetWeaponType();
 
 			const int victimId = victim.GetId();
 			const int killerId = killer.GetId();
@@ -1258,9 +1258,13 @@ namespace spades {
 			if (killfeedIcons) {
 				std::string killImg;
 				if (killerId != victimId && (kt == KillTypeWeapon || kt == KillTypeHeadshot)) {
-					if (!killer.IsOnGroundOrWade()) // air shots
+					bool isZoomed = killer.IsLocalPlayer() ? lastHitWasScoped : killer.GetWeaponInput().secondary;
+					bool isAirborne = killer.IsLocalPlayer() ? lastHitWasAirborne : !killer.IsOnGroundOrWade();
+					if (isAirborne) // air shots
 						killImg += ChatWindow::KillImage(7);
 					killImg += ChatWindow::KillImage(KillTypeWeapon, weaponType);
+					if (!isZoomed) // nonscoped shots
+						killImg += ChatWindow::KillImage(8);
 					if (kt == KillTypeHeadshot)
 						killImg += ChatWindow::KillImage(KillTypeHeadshot);
 				} else {
@@ -1418,7 +1422,7 @@ namespace spades {
 				if (isMeleeHit) { // Blunt
 					frontSpeed = 1.5F;
 				} else {
-					switch (by.GetWeapon().GetWeaponType()) {
+					switch (by.GetWeaponType()) {
 						case RIFLE_WEAPON: // Penetrating
 							frontSpeed = 1.0F;
 							backSpeed = 21.0F;
@@ -1603,6 +1607,8 @@ namespace spades {
 				hitFeedbackIconState = 1.0F;
 				hitFeedbackFriendly = by.IsTeammate(hurtPlayer);
 				lastHitTime = world->GetTime();
+				lastHitWasScoped = by.IsZoomed();
+				lastHitWasAirborne = !by.IsOnGroundOrWade();
 			}
 		}
 
@@ -1690,7 +1696,7 @@ namespace spades {
 
 			float vel;
 			bool shotgun = false;
-			switch (p.GetWeapon().GetWeaponType()) {
+			switch (p.GetWeaponType()) {
 				case RIFLE_WEAPON: vel = 700.0F; break;
 				case SMG_WEAPON: vel = 360.0F; break;
 				case SHOTGUN_WEAPON:
