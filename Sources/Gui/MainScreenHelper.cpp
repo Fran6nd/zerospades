@@ -481,6 +481,13 @@ namespace spades {
 			return mainScreen->OpenKV6Editor(path, isNew, cursor);
 		}
 
+		std::string MainScreenHelper::OpenMapEditor(const std::string& path,
+		                                            SoftwareCursor* cursor) {
+			if (mainScreen == NULL)
+				return "mainScreen == NULL";
+			return mainScreen->OpenMapEditor(path, cursor);
+		}
+
 		bool MainScreenHelper::DeleteDemo(const std::string& filename) {
 			return FileManager::RemoveFile(filename.c_str());
 		}

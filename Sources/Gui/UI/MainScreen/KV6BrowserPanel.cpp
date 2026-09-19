@@ -40,6 +40,12 @@ namespace {
 	const float kActionRowY = 200.0F;
 	const float kActionRowH = 30.0F;
 	const float kErrorRowH = 25.0F;
+
+	// A voxel terrain map, which opens in the map editor rather than the model
+	// editor.
+	bool IsMapFile(const std::string& name) {
+		return spades::LocalFileSystem::HasExtension(name, ".vxl");
+	}
 } // namespace
 
 namespace spades {
@@ -160,10 +166,11 @@ namespace spades {
 			options.showListHeader = true; // "Name", like the other tabs
 			// Line the rows up with the tab's own layout (action row, header, list).
 			options.listTopGap = headerPos - kActionRowY - kActionRowH;
-			// Only .kv6 can be edited so far; the rest are listed but greyed out.
+			// .kv6 opens in the model editor and .vxl in the map editor; the rest
+			// are listed but greyed out.
 			options.describeEntry = [](const LocalFileSystem::DirEntry& entry) {
 				FileEntryInfo info;
-				if (!entry.isFolder && !KV6IsEditable(entry.name)) {
+				if (!entry.isFolder && !KV6IsEditable(entry.name) && !IsMapFile(entry.name)) {
 					info.accepted = false;
 					info.hint = _Tr("MainScreen", "(not implemented)");
 				}
@@ -211,7 +218,8 @@ namespace spades {
 		void KV6BrowserPanel::Refresh() { browser->Refresh(); }
 
 		void KV6BrowserPanel::OpenModel(const std::string& absPath, bool isNew) {
-			std::string msg = helper->OpenKV6Editor(absPath, isNew);
+			std::string msg = IsMapFile(absPath) ? helper->OpenMapEditor(absPath)
+			                                     : helper->OpenKV6Editor(absPath, isNew);
 			if (msg.size() > 0) {
 				Handle<AlertScreen> al = Handle<AlertScreen>::New(modalOwner, msg);
 				al->Run();
@@ -221,7 +229,8 @@ namespace spades {
 		void KV6BrowserPanel::OnEntryRejected(const FileBrowserEntry&) {
 			Handle<AlertScreen> al = Handle<AlertScreen>::New(
 			  modalOwner,
-			  _Tr("MainScreen", "This file type is not supported yet. Only .kv6 files can be edited."),
+			  _Tr("MainScreen",
+			      "This file type is not supported yet. Only .kv6 and .vxl files can be edited."),
 			  120.0F);
 			al->Run();
 		}
