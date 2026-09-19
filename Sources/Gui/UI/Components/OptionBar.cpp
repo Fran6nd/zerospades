@@ -42,7 +42,6 @@ namespace spades {
 		static const float kBandY = kRibbonH + kToolbarH;
 		static const float kBtnY = kBandY + (kSubBarH - kTbH) * 0.5F;
 		static const float kSubBtn = 88.0F;
-		static const float kColorW = 46.0F;
 		// A readout is at least this wide, so the options after it hold still
 		// while its text changes.
 		static const float kLabelW = 190.0F;
@@ -85,7 +84,6 @@ namespace spades {
 				const std::function<void(const std::string&)>* handler = nullptr;
 				switch (op.type) {
 					case OptionType::Bool: handler = &OnBoolToggled; break;
-					case OptionType::Color: handler = &OnColorClicked; break;
 					case OptionType::Action: handler = &OnActionClicked; break;
 					case OptionType::Label: break;
 				}
@@ -170,24 +168,24 @@ namespace spades {
 				}
 
 				const Vector2 textSize = font.Measure(op.label);
-				float width = kColorW;
-				if (op.type == OptionType::Label)
-					width = std::max(kLabelW, textSize.x);
-				else if (op.type == OptionType::Bool)
-					width = std::max(kToggleMinW, textSize.x + kButtonTextInset);
-				else if (op.type == OptionType::Action)
-					width = std::max(kActionMinW, textSize.x + kActionPad);
+				float width = 0.0F;
+				switch (op.type) {
+					case OptionType::Label:
+						width = std::max(kLabelW, textSize.x);
+						break;
+					case OptionType::Bool:
+						width = std::max(kToggleMinW, textSize.x + kButtonTextInset);
+						break;
+					case OptionType::Action:
+						width = std::max(kActionMinW, textSize.x + kActionPad);
+						break;
+				}
 				const Span span{x, width};
 				optionSpans.push_back(span);
 
 				if (op.type == OptionType::Label) {
 					font.Draw(op.label, MakeVector2(x, kBtnY + (kTbH - textSize.y) * 0.5F), 1.0F,
 					          textColor);
-				} else if (op.type == OptionType::Color) {
-					OverlayColorNP(renderer, ConvertColorRGBA(IntVectorFromColor(op.color)));
-					OverlayFillRect(renderer, x, kBtnY, width, kTbH);
-					OverlayStrokeRect(renderer, x, kBtnY, width, kTbH, 1.0F,
-					                  MakeVector4(0.8F, 0.8F, 0.8F, 0.7F));
 				} else { // Bool toggle or Action button
 					bool hover = hovered(span, op.enabled, previousOptionHoverState, i);
 					// An action holds no state, so it never draws as toggled.

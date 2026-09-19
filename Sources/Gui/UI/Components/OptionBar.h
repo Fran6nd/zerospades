@@ -37,7 +37,7 @@ namespace spades {
 	namespace gui {
 		/**
 		 * Secondary toolbar showing the active tool's sub-tools and options
-		 * (toggles, colour swatch, labels). Sits below the main toolbar.
+		 * (toggles, actions, labels). Sits below the main toolbar.
 		 *
 		 * Buttons are as wide as their text, so the layout is made while
 		 * drawing, where the font is at hand, and clicks are tested against the
@@ -51,7 +51,7 @@ namespace spades {
 		 */
 		class OptionBar {
 		public:
-			enum class OptionType { Bool, Color, Label, Action };
+			enum class OptionType { Bool, Label, Action };
 
 			struct Option {
 				std::string id;    // reported when clicked
@@ -60,7 +60,6 @@ namespace spades {
 				OptionType type = OptionType::Label;
 				bool bvalue = false;
 				bool enabled = true; // false greys a toggle or action out and ignores clicks
-				uint32_t color = 0xC8C8C8;
 			};
 
 			struct SubToolButton {
@@ -89,7 +88,6 @@ namespace spades {
 			// Called with the clicked sub-tool's index, or the clicked option's id.
 			std::function<void(int index)> OnSubToolClicked;
 			std::function<void(const std::string& id)> OnBoolToggled;
-			std::function<void(const std::string& id)> OnColorClicked;
 			std::function<void(const std::string& id)> OnActionClicked;
 
 		private:
