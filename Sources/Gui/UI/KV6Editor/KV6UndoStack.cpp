@@ -147,8 +147,7 @@ namespace spades {
 		}
 
 		std::size_t KV6UndoStack::BytesOf(const Group& g) {
-			return g.records.size() * sizeof(Record) + g.before.UnsharedBytes(g.after) +
-			       g.after.UnsharedBytes(g.before);
+			return g.records.size() * sizeof(Record) + g.after.UnsharedBytes(g.before);
 		}
 
 		// Replay a group's records forward (redo): frames then their dependent voxels,

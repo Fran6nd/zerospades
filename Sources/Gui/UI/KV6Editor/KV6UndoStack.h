@@ -187,8 +187,10 @@ namespace spades {
 			void Begin(const std::string& label);
 			void End() noexcept;
 			void Commit();
-			// Approximate memory a group holds: its records, plus whatever of its
-			// before and after states the two do not share.
+			// Approximate memory a group adds: its records, plus whatever of its
+			// after state it does not share with its before state. The before state
+			// is the after state of the step below it, which counts it already;
+			// only the oldest step's before state goes uncounted.
 			static std::size_t BytesOf(const Group& g);
 			void ApplyForward(const Group& g); // redo direction
 			void ApplyInverse(const Group& g); // undo direction
