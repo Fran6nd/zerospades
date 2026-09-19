@@ -546,9 +546,9 @@ namespace spades {
 			// UI layout + hit testing
 			bool InRect(const Vector2& p, float x, float y, float w, float h) const;
 
-			// Editor overlay lines (cell/box outlines, gizmo) are drawn both as
-			// depth-tested 3D lines (bright where visible) and collected here to be
-			// re-drawn as dim 2D lines on top, so occluded parts still show through.
+			// Editor overlay lines (cell/box outlines, tool wires) are collected here
+			// and drawn over the finished scene as 2D strokes: a dark casing under a
+			// coloured core where in view, a dim core where voxels hide them.
 			struct OverlayLine { Vector3 a, b; Vector4 color; };
 			std::vector<OverlayLine> overlayLines;
 			void EmitLine(const Vector3& a, const Vector3& b, const Vector4& color);

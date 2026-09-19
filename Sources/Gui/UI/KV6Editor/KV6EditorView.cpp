@@ -39,6 +39,9 @@
 #include <cstdio>
 #include <exception>
 #include <initializer_list>
+#include <limits>
+#include <numeric>
+#include <tuple>
 
 #include <Client/Fonts.h>
 #include <Client/IFont.h>
@@ -190,6 +193,174 @@ namespace spades {
 				emit(MakeVector3(b.x, b.y, a.z), MakeVector3(b.x, b.y, b.z));
 				emit(MakeVector3(a.x, b.y, a.z), MakeVector3(a.x, b.y, b.z));
 			}
+
+			// The viewport camera's near plane, which also cuts overlay lines.
+			constexpr float kNearPlane = 0.1F;
+
+			// Overlay lines (outlines, tool wires) are drawn as two-tone strokes, the
+			// way editors keep selection outlines legible over any image: a dark
+			// casing under a coloured core, so a line reads against light voxels by
+			// its casing and against dark ones by its core. Widths in window units.
+			constexpr float kOverlayCoreWidth = 2.0F;
+			constexpr float kOverlayCasingWidth = 4.0F;
+			constexpr float kOverlayCasingAlpha = 0.8F;
+			// Where voxels hide a line it is drawn thin and dim, with no casing, so
+			// it shows through without being taken for a visible edge.
+			constexpr float kOverlayHiddenWidth = 1.0F;
+			constexpr float kOverlayHiddenAlpha = 0.35F;
+			// A line shorter than this on screen is drawn thinner, down to
+			// kOverlayMinWidthScale, so a distant voxel grid does not fill in with
+			// casing.
+			constexpr float kOverlayFullWidthLength = 16.0F;
+			constexpr float kOverlayMinWidthScale = 0.5F;
+			// Whether voxels hide a line is tested every this many window units
+			// along it, at least once and at most kOverlayMaxSamples times.
+			constexpr float kOverlaySampleSpacing = 6.0F;
+			constexpr int kOverlayMaxSamples = 256;
+			// How far short of a line point its occlusion ray stops, in world units,
+			// so the voxel whose edge the line follows never hides it.
+			constexpr float kOcclusionSlack = 0.01F;
+
+			// Cut off the part of segment a-b nearer to the eye than `depth`. False
+			// when nothing is left.
+			bool ClipToDepth(const GizmoView& view, float depth, Vector3& a, Vector3& b) {
+				const float da = view.Depth(a);
+				const float db = view.Depth(b);
+				if (da < depth && db < depth)
+					return false;
+				if (da < depth)
+					a = a + (b - a) * ((depth - da) / (db - da));
+				else if (db < depth)
+					b = b + (a - b) * ((depth - db) / (da - db));
+				return true;
+			}
+
+			// Segment a-b lengthened by `reach` at both ends, so strokes meeting at a
+			// corner overlap there instead of leaving a notch.
+			void Lengthen(Vector2& a, Vector2& b, float reach) {
+				const Vector2 d = b - a;
+				const float length = d.GetLength();
+				if (length <= 0.0F)
+					return;
+				const Vector2 step = d * (reach / length);
+				a -= step;
+				b += step;
+			}
+
+			// The voxels that hide overlay lines: the document's, and the pending ones
+			// rendered solid where they would land.
+			class OverlayOccluders {
+			public:
+				OverlayOccluders(const VoxelModel& model, const EditState& edit)
+				    : model(model),
+				      lo(MakeIntVector3(0, 0, 0)),
+				      hi(MakeIntVector3(model.GetWidth() - 1, model.GetHeight() - 1,
+				                        model.GetDepth() - 1)) {
+					if (!edit.placing)
+						return;
+					const PendingPlacement& placement = edit.placement;
+					pendingAnchor = placement.anchor;
+					pendingExtent = placement.Extent();
+					pending.assign(std::size_t(pendingExtent.x) * std::size_t(pendingExtent.y) *
+					                 std::size_t(pendingExtent.z),
+					               false);
+					for (const ClipVoxel& v : *placement.voxels)
+						pending[PendingIndex(v.rel)] = true;
+					const IntVector3 last = pendingAnchor + pendingExtent - MakeIntVector3(1, 1, 1);
+					lo = MakeIntVector3(std::min(lo.x, pendingAnchor.x), std::min(lo.y, pendingAnchor.y),
+					                    std::min(lo.z, pendingAnchor.z));
+					hi = MakeIntVector3(std::max(hi.x, last.x), std::max(hi.y, last.y),
+					                    std::max(hi.z, last.z));
+				}
+
+				// Whether a voxel lies between `eye` and `point`.
+				bool Hide(const Vector3& eye, const Vector3& point) const {
+					const Vector3 toPoint = point - eye;
+					const float distance = toPoint.GetLength();
+					float tEnd = distance - kOcclusionSlack;
+					if (tEnd <= 0.0F)
+						return false;
+					const Vector3 dir = toPoint * (1.0F / distance);
+					const float o[3] = {eye.x, eye.y, eye.z};
+					const float d[3] = {dir.x, dir.y, dir.z};
+					const int cellLo[3] = {lo.x, lo.y, lo.z};
+					const int cellHi[3] = {hi.x, hi.y, hi.z};
+
+					// Keep to the part of the ray inside the occluders' bounds. Voxel i
+					// is centred at i, so it spans i - 0.5 .. i + 0.5.
+					float tStart = 0.0F;
+					for (int k = 0; k < 3; k++) {
+						const float boundLo = float(cellLo[k]) - 0.5F;
+						const float boundHi = float(cellHi[k]) + 0.5F;
+						if (d[k] == 0.0F) {
+							if (o[k] < boundLo || o[k] > boundHi)
+								return false;
+							continue;
+						}
+						float t0 = (boundLo - o[k]) / d[k];
+						float t1 = (boundHi - o[k]) / d[k];
+						if (t0 > t1)
+							std::swap(t0, t1);
+						tStart = std::max(tStart, t0);
+						tEnd = std::min(tEnd, t1);
+					}
+					if (tStart >= tEnd)
+						return false;
+
+					// Walk the voxels the ray crosses, as DoPick does, in a space shifted
+					// by half a voxel where voxel i spans i .. i + 1.
+					int cell[3], step[3];
+					float tNext[3], tDelta[3];
+					for (int k = 0; k < 3; k++) {
+						const float at = o[k] + d[k] * tStart + 0.5F;
+						cell[k] = std::max(cellLo[k], std::min(cellHi[k], int(std::floor(at))));
+						step[k] = d[k] >= 0.0F ? 1 : -1;
+						if (d[k] == 0.0F) {
+							tNext[k] = tDelta[k] = std::numeric_limits<float>::infinity();
+							continue;
+						}
+						const float boundary = float(cell[k]) + (step[k] > 0 ? 1.0F : 0.0F);
+						tNext[k] = tStart + (boundary - at) / d[k];
+						tDelta[k] = std::fabs(1.0F / d[k]);
+					}
+					float tCell = tStart; // where the ray enters `cell`
+					while (tCell < tEnd) {
+						if (Solid(cell[0], cell[1], cell[2]))
+							return true;
+						const int k = (tNext[0] <= tNext[1] && tNext[0] <= tNext[2]) ? 0
+						              : (tNext[1] <= tNext[2])                      ? 1
+						                                                             : 2;
+						tCell = tNext[k];
+						tNext[k] += tDelta[k];
+						cell[k] += step[k];
+						if (cell[k] < cellLo[k] || cell[k] > cellHi[k])
+							return false;
+					}
+					return false;
+				}
+
+			private:
+				const VoxelModel& model;
+				IntVector3 lo, hi; // bounds of every occluding voxel, inclusive
+				IntVector3 pendingAnchor = MakeIntVector3(0, 0, 0);
+				IntVector3 pendingExtent = MakeIntVector3(0, 0, 0);
+				std::vector<bool> pending; // pending voxels, by position in their box
+
+				std::size_t PendingIndex(const IntVector3& rel) const {
+					return (std::size_t(rel.z) * std::size_t(pendingExtent.y) + std::size_t(rel.y)) *
+					         std::size_t(pendingExtent.x) +
+					       std::size_t(rel.x);
+				}
+
+				bool Solid(int x, int y, int z) const {
+					if (model.IsSolid(x, y, z))
+						return true;
+					const IntVector3 rel = MakeIntVector3(x, y, z) - pendingAnchor;
+					return rel.x >= 0 && rel.y >= 0 && rel.z >= 0 && rel.x < pendingExtent.x &&
+					       rel.y < pendingExtent.y && rel.z < pendingExtent.z &&
+					       pending[PendingIndex(rel)];
+				}
+			};
 
 			// The six voxels sharing a face with a voxel, as offsets.
 			const IntVector3 kFaceNeighbours[6] = {
@@ -782,7 +953,7 @@ namespace spades {
 			sceneDef.viewAxis[2] = dir;
 			sceneDef.fovY = 60.0F * M_PI_F / 180.0F;
 			sceneDef.fovX = 2.0F * atanf(tanf(sceneDef.fovY * 0.5F) * (vpW / vpH));
-			sceneDef.zNear = 0.1F;
+			sceneDef.zNear = kNearPlane;
 			sceneDef.zFar = ViewDistance();
 			sceneDef.viewportLeft = int(vpX);
 			sceneDef.viewportTop = int(vpY);
@@ -830,9 +1001,8 @@ namespace spades {
 			return screen;
 		}
 
-		// A bright depth-tested 3D line, also collected for the dim see-through pass.
+		// Collected for DrawOverlayLines2D, which draws it once the scene is done.
 		void KV6EditorView::EmitLine(const Vector3& a, const Vector3& b, const Vector4& color) {
-			renderer->AddDebugLine(a, b, color);
 			overlayLines.push_back({a, b, color});
 		}
 
@@ -840,20 +1010,126 @@ namespace spades {
 			EmitLine(a, b, color);
 		}
 
-		// Re-draw the collected overlay lines as dim 2D lines (always on top), so the
-		// parts hidden behind voxels still show. Cleared each frame.
+		// Draw the lines collected this frame over the finished scene: a casing and
+		// a core where they are in view, a dim core where voxels hide them.
+		// Visibility is worked out here against the voxels rather than left to the
+		// depth buffer, as outlines lie on voxel faces and would fight them for
+		// depth, and a 3D line cannot be given a casing or a width.
 		void KV6EditorView::DrawOverlayLines2D() {
-			for (const OverlayLine& l : overlayLines) {
-				bool ok1, ok2;
-				Vector2 pa = WorldToScreen(l.a, ok1);
-				Vector2 pb = WorldToScreen(l.b, ok2);
-				if (!ok1 || !ok2)
-					continue; // endpoint behind the camera
-				Vector4 c = l.color;
-				c.w *= 0.35F; // dimmer than the visible (depth-tested) line
-				DrawLine2D(pa, pb, 1.0F, c);
+			if (!camera.IsValid()) {
+				overlayLines.clear();
+				return;
+			}
+			struct Stroke {
+				Vector2 a, b;
+				float widthScale;
+				Vector4 color;
+			};
+			std::vector<Stroke> hidden, shown;
+
+			// The same edge is often emitted more than once (neighbouring cell
+			// outlines share theirs): it is tested and drawn once. A line's
+			// direction does not matter, so each is put the same way round first.
+			auto before = [](const Vector3& p, const Vector3& q) {
+				return std::tie(p.x, p.y, p.z) < std::tie(q.x, q.y, q.z);
+			};
+			for (OverlayLine& l : overlayLines) {
+				if (before(l.b, l.a))
+					std::swap(l.a, l.b);
+			}
+			auto key = [](const OverlayLine& l) {
+				return std::tie(l.a.x, l.a.y, l.a.z, l.b.x, l.b.y, l.b.z, l.color.x, l.color.y,
+				                l.color.z, l.color.w);
+			};
+			std::vector<std::size_t> order(overlayLines.size());
+			std::iota(order.begin(), order.end(), std::size_t(0));
+			std::stable_sort(order.begin(), order.end(), [&](std::size_t i, std::size_t j) {
+				return key(overlayLines[i]) < key(overlayLines[j]);
+			});
+			std::vector<bool> repeated(overlayLines.size(), false);
+			for (std::size_t k = 1; k < order.size(); k++) {
+				if (key(overlayLines[order[k]]) == key(overlayLines[order[k - 1]]))
+					repeated[order[k]] = true;
+			}
+
+			const float sw = renderer->ScreenWidth();
+			const float sh = renderer->ScreenHeight();
+			const OverlayOccluders occluders(*model, edit);
+			std::vector<Vector2> ends; // screen points splitting a line into pieces
+			for (std::size_t i = 0; i < overlayLines.size(); i++) {
+				if (repeated[i])
+					continue;
+				const OverlayLine& l = overlayLines[i];
+				Vector3 a = l.a, b = l.b;
+				if (!ClipToDepth(camera, kNearPlane, a, b))
+					continue;
+				Vector2 pa, pb;
+				if (!camera.Project(a, pa) || !camera.Project(b, pb))
+					continue;
+				const float margin = kOverlayCasingWidth;
+				if (std::max(pa.x, pb.x) < -margin || std::min(pa.x, pb.x) > sw + margin ||
+				    std::max(pa.y, pb.y) < -margin || std::min(pa.y, pb.y) > sh + margin)
+					continue;
+
+				const float screenLength = (pb - pa).GetLength();
+				const float widthScale =
+				  Clampf(screenLength / kOverlayFullWidthLength, kOverlayMinWidthScale, 1.0F);
+				const int pieces = std::max(
+				  1, std::min(kOverlayMaxSamples, int(std::ceil(screenLength / kOverlaySampleSpacing))));
+
+				// Each piece is in view or hidden as its middle is; neighbouring
+				// pieces alike make one stroke.
+				ends.assign(1, pa);
+				bool projected = true;
+				for (int p = 1; p < pieces && projected; p++) {
+					Vector2 s;
+					projected = camera.Project(a + (b - a) * (float(p) / float(pieces)), s);
+					ends.push_back(s);
+				}
+				if (!projected)
+					continue; // cannot happen past the near plane, but never draw a guess
+				ends.push_back(pb);
+
+				Vector4 hiddenColor = l.color;
+				hiddenColor.w *= kOverlayHiddenAlpha;
+				int runStart = 0;
+				bool runHidden = false;
+				for (int p = 0; p <= pieces; p++) {
+					bool pieceHidden = runHidden;
+					if (p < pieces) {
+						const Vector3 middle = a + (b - a) * ((float(p) + 0.5F) / float(pieces));
+						pieceHidden = occluders.Hide(camera.eye, middle);
+						if (p == 0)
+							runHidden = pieceHidden;
+					}
+					if (p == pieces || pieceHidden != runHidden) {
+						if (runHidden)
+							hidden.push_back({ends[runStart], ends[p], 1.0F, hiddenColor});
+						else
+							shown.push_back({ends[runStart], ends[p], widthScale, l.color});
+						runStart = p;
+						runHidden = pieceHidden;
+					}
+				}
 			}
 			overlayLines.clear();
+
+			// Hidden lines first, so every line in view is over them, and all the
+			// casings before any core, so no casing covers a core it meets.
+			for (const Stroke& s : hidden)
+				DrawLine2D(s.a, s.b, kOverlayHiddenWidth, s.color);
+			for (const Stroke& s : shown) {
+				const float width = kOverlayCasingWidth * s.widthScale;
+				Vector2 a = s.a, b = s.b;
+				Lengthen(a, b, width * 0.5F);
+				DrawLine2D(a, b, width, MakeVector4(0.0F, 0.0F, 0.0F, kOverlayCasingAlpha * s.color.w));
+			}
+			for (const Stroke& s : shown) {
+				const float width = kOverlayCoreWidth * s.widthScale;
+				Vector2 a = s.a, b = s.b;
+				Lengthen(a, b, width * 0.5F);
+				DrawLine2D(a, b, width, s.color);
+			}
 		}
 
 		void KV6EditorView::DoPick() {
@@ -2755,7 +3031,7 @@ namespace spades {
 				DrawPlacementPreview();
 			renderer->EndScene();
 
-			DrawOverlayLines2D(); // dim see-through pass for occluded outlines/gizmo
+			DrawOverlayLines2D(); // outlines and tool wires, over the finished scene
 			// The picker is laid out first: the text under the viewport keeps clear of it.
 			ui->GetColorPicker()->UpdateLayout(sw, sh, BarsH());
 			DrawOverlay(sw, sh);
