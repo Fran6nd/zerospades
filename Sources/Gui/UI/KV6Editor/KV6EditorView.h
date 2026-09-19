@@ -313,6 +313,9 @@ namespace spades {
 			// their temporary position while the document shows the gap they left.
 			// Rebuilt before a frame when the voxels changed (see RefreshRenderModels).
 			Handle<client::IModel> placementModel;
+			// The grid placementModel was made from, kept for the overlay lines to
+			// test what the pending voxels hide.
+			Handle<VoxelModel> placementVoxels;
 			std::uint64_t placementModelVersion = ~std::uint64_t(0); // voxels it shows
 			// Moves `anchor` to the nearest spot where voxels filling a box of
 			// `extent` land without the document outgrowing the model size limit;
@@ -492,7 +495,13 @@ namespace spades {
 			// them stale, which cannot fail, and RefreshRenderModels rebuilds
 			// them once, before the frame is drawn.
 			bool renderModelDirty = true;
-			void InvalidateRenderModel() noexcept { renderModelDirty = true; }
+			// Advances with every change to the document's voxels, as every change
+			// stales the render model; keys what else is derived from them.
+			std::uint64_t voxelsVersion = 0;
+			void InvalidateRenderModel() noexcept {
+				renderModelDirty = true;
+				voxelsVersion++;
+			}
 			void RefreshRenderModels();
 			void FrameCamera();
 			/** Writes the document to its path; false if there is none, or on error. */
@@ -553,6 +562,26 @@ namespace spades {
 			std::vector<OverlayLine> overlayLines;
 			void EmitLine(const Vector3& a, const Vector3& b, const Vector4& color);
 			void DrawOverlayLines2D();
+			// A piece of an overlay line on screen, in view or hidden throughout.
+			struct OverlayStroke {
+				Vector2 a, b;
+				float widthScale;
+				Vector4 color;
+			};
+			// What DrawOverlayLines2D worked out, reused while what it depends on
+			// holds still: the lines, the view, and the voxels that hide them.
+			struct OverlayCache {
+				std::vector<OverlayLine> emitted; // as emitted, to spot a change
+				std::vector<OverlayLine> lines;   // the same, each once
+				GizmoView view;
+				std::uint64_t voxelsVersion = 0;
+				bool placing = false;
+				std::uint64_t pendingVersion = 0;
+				IntVector3 pendingAnchor = IntVector3::Make(0, 0, 0);
+				bool valid = false; // strokes match everything above
+				std::vector<OverlayStroke> hidden, shown;
+			} overlayCache;
+			void UpdateOverlayLines(); // lines -> cached strokes
 
 			// Drawing
 			void ColorNP(const Vector4& c);

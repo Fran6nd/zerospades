@@ -40,7 +40,6 @@
 #include <exception>
 #include <initializer_list>
 #include <limits>
-#include <numeric>
 #include <tuple>
 
 #include <Client/Fonts.h>
@@ -221,18 +220,55 @@ namespace spades {
 			// so the voxel whose edge the line follows never hides it.
 			constexpr float kOcclusionSlack = 0.01F;
 
-			// Cut off the part of segment a-b nearer to the eye than `depth`. False
-			// when nothing is left.
-			bool ClipToDepth(const GizmoView& view, float depth, Vector3& a, Vector3& b) {
-				const float da = view.Depth(a);
-				const float db = view.Depth(b);
-				if (da < depth && db < depth)
+			// Cut segment a-b down to the part on the side of a plane through the eye
+			// where `In` is positive. False when nothing is left.
+			template <class In> bool ClipToPlane(In in, Vector3& a, Vector3& b) {
+				const float ia = in(a);
+				const float ib = in(b);
+				if (ia < 0.0F && ib < 0.0F)
 					return false;
-				if (da < depth)
-					a = a + (b - a) * ((depth - da) / (db - da));
-				else if (db < depth)
-					b = b + (a - b) * ((depth - db) / (da - db));
+				if (ia < 0.0F)
+					a = a + (b - a) * (ia / (ia - ib));
+				else if (ib < 0.0F)
+					b = b + (a - b) * (ib / (ib - ia));
 				return true;
+			}
+
+			// Cut segment a-b down to the part within `margin` window units of the
+			// viewport, the near plane included. False when nothing is left, so a
+			// line's screen length, and the work spent along it, covers what shows.
+			bool ClipToView(const GizmoView& view, float margin, Vector3& a, Vector3& b) {
+				const Vector3 eye = view.eye;
+				if (!ClipToPlane([&](const Vector3& p) { return view.Depth(p) - kNearPlane; }, a, b))
+					return false;
+				// The sides, widened by the margin, as planes through the eye: a point
+				// is inside when its offset across the view is within the frustum's
+				// half-width at its depth.
+				const float halfWidth =
+				  view.tanHalfFovX * (1.0F + 2.0F * margin / view.viewportWidth);
+				const float halfHeight =
+				  view.tanHalfFovY * (1.0F + 2.0F * margin / view.viewportHeight);
+				const Vector3 sides[4] = {view.right, view.right * -1.0F, view.up, view.up * -1.0F};
+				for (int k = 0; k < 4; k++) {
+					const Vector3& across = sides[k];
+					const float half = (k < 2) ? halfWidth : halfHeight;
+					if (!ClipToPlane(
+					      [&](const Vector3& p) {
+						      const Vector3 rel = p - eye;
+						      return Vector3::Dot(rel, view.forward) * half - Vector3::Dot(rel, across);
+					      },
+					      a, b))
+						return false;
+				}
+				return true;
+			}
+
+			// Whether two views would put everything in the same place on screen.
+			bool SameView(const GizmoView& a, const GizmoView& b) {
+				return a.eye == b.eye && a.right == b.right && a.up == b.up && a.forward == b.forward &&
+				       a.tanHalfFovX == b.tanHalfFovX && a.tanHalfFovY == b.tanHalfFovY &&
+				       a.viewportX == b.viewportX && a.viewportY == b.viewportY &&
+				       a.viewportWidth == b.viewportWidth && a.viewportHeight == b.viewportHeight;
 			}
 
 			// Segment a-b lengthened by `reach` at both ends, so strokes meeting at a
@@ -251,22 +287,21 @@ namespace spades {
 			// rendered solid where they would land.
 			class OverlayOccluders {
 			public:
-				OverlayOccluders(const VoxelModel& model, const EditState& edit)
+				// `pending`, when there is any, is the pending voxels' own grid, whose
+				// (0,0,0) sits at `pendingAnchor` in the document.
+				OverlayOccluders(const VoxelModel& model, const VoxelModel* pending,
+				                 const IntVector3& pendingAnchor)
 				    : model(model),
+				      pending(pending),
+				      pendingAnchor(pendingAnchor),
 				      lo(MakeIntVector3(0, 0, 0)),
 				      hi(MakeIntVector3(model.GetWidth() - 1, model.GetHeight() - 1,
 				                        model.GetDepth() - 1)) {
-					if (!edit.placing)
+					if (!pending)
 						return;
-					const PendingPlacement& placement = edit.placement;
-					pendingAnchor = placement.anchor;
-					pendingExtent = placement.Extent();
-					pending.assign(std::size_t(pendingExtent.x) * std::size_t(pendingExtent.y) *
-					                 std::size_t(pendingExtent.z),
-					               false);
-					for (const ClipVoxel& v : *placement.voxels)
-						pending[PendingIndex(v.rel)] = true;
-					const IntVector3 last = pendingAnchor + pendingExtent - MakeIntVector3(1, 1, 1);
+					const IntVector3 last =
+					  pendingAnchor + MakeIntVector3(pending->GetWidth() - 1, pending->GetHeight() - 1,
+					                                 pending->GetDepth() - 1);
 					lo = MakeIntVector3(std::min(lo.x, pendingAnchor.x), std::min(lo.y, pendingAnchor.y),
 					                    std::min(lo.z, pendingAnchor.z));
 					hi = MakeIntVector3(std::max(hi.x, last.x), std::max(hi.y, last.y),
@@ -345,24 +380,17 @@ namespace spades {
 
 			private:
 				const VoxelModel& model;
+				const VoxelModel* pending;
+				IntVector3 pendingAnchor;
 				IntVector3 lo, hi; // bounds of every occluding voxel, inclusive
-				IntVector3 pendingAnchor = MakeIntVector3(0, 0, 0);
-				IntVector3 pendingExtent = MakeIntVector3(0, 0, 0);
-				std::vector<bool> pending; // pending voxels, by position in their box
-
-				std::size_t PendingIndex(const IntVector3& rel) const {
-					return (std::size_t(rel.z) * std::size_t(pendingExtent.y) + std::size_t(rel.y)) *
-					         std::size_t(pendingExtent.x) +
-					       std::size_t(rel.x);
-				}
 
 				bool Solid(int x, int y, int z) const {
 					if (model.IsSolid(x, y, z))
 						return true;
+					if (!pending)
+						return false;
 					const IntVector3 rel = MakeIntVector3(x, y, z) - pendingAnchor;
-					return rel.x >= 0 && rel.y >= 0 && rel.z >= 0 && rel.x < pendingExtent.x &&
-					       rel.y < pendingExtent.y && rel.z < pendingExtent.z &&
-					       pending[PendingIndex(rel)];
+					return pending->IsSolid(rel.x, rel.y, rel.z); // bounds-checked
 				}
 			};
 
@@ -664,16 +692,18 @@ namespace spades {
 			// The pending voxels' model follows their voxels' version, so any
 			// change to them (a turn, an undo, a new paste) rebuilds it and
 			// nothing else does.
-			const std::uint64_t voxelsVersion = edit.placement.voxels.Version();
+			const std::uint64_t pendingVersion = edit.placement.voxels.Version();
 			if (!edit.placing) {
 				placementModel = Handle<client::IModel>();
-			} else if (!placementModel || placementModelVersion != voxelsVersion) {
+				placementVoxels = Handle<VoxelModel>();
+			} else if (!placementModel || placementModelVersion != pendingVersion) {
 				const IntVector3 extent = edit.placement.Extent();
 				Handle<VoxelModel> preview = Handle<VoxelModel>::New(extent.x, extent.y, extent.z);
 				for (const ClipVoxel& v : *edit.placement.voxels)
 					preview->SetSolid(v.rel.x, v.rel.y, v.rel.z, v.color);
 				placementModel = renderer->CreateModel(*preview);
-				placementModelVersion = voxelsVersion;
+				placementVoxels = preview;
+				placementModelVersion = pendingVersion;
 			}
 		}
 
@@ -1014,65 +1044,69 @@ namespace spades {
 			EmitLine(a, b, color);
 		}
 
-		// Draw the lines collected this frame over the finished scene: a casing and
-		// a core where they are in view, a dim core where voxels hide them.
-		// Visibility is worked out here against the voxels rather than left to the
-		// depth buffer, as outlines lie on voxel faces and would fight them for
-		// depth, and a 3D line cannot be given a casing or a width.
-		void KV6EditorView::DrawOverlayLines2D() {
-			if (!camera.IsValid()) {
-				overlayLines.clear();
-				return;
-			}
-			struct Stroke {
-				Vector2 a, b;
-				float widthScale;
-				Vector4 color;
-			};
-			std::vector<Stroke> hidden, shown;
-
+		// Work out where this frame's lines run on screen and what hides them, as
+		// the strokes to draw. Kept from frame to frame: the strokes only change
+		// when the lines, the view or the voxels do, and this is the costly part.
+		void KV6EditorView::UpdateOverlayLines() {
 			// The same edge is often emitted more than once (neighbouring cell
 			// outlines share theirs): it is tested and drawn once. A line's
 			// direction does not matter, so each is put the same way round first.
 			auto before = [](const Vector3& p, const Vector3& q) {
 				return std::tie(p.x, p.y, p.z) < std::tie(q.x, q.y, q.z);
 			};
-			for (OverlayLine& l : overlayLines) {
-				if (before(l.b, l.a))
-					std::swap(l.a, l.b);
-			}
 			auto key = [](const OverlayLine& l) {
 				return std::tie(l.a.x, l.a.y, l.a.z, l.b.x, l.b.y, l.b.z, l.color.x, l.color.y,
 				                l.color.z, l.color.w);
 			};
-			std::vector<std::size_t> order(overlayLines.size());
-			std::iota(order.begin(), order.end(), std::size_t(0));
-			std::stable_sort(order.begin(), order.end(), [&](std::size_t i, std::size_t j) {
-				return key(overlayLines[i]) < key(overlayLines[j]);
-			});
-			std::vector<bool> repeated(overlayLines.size(), false);
-			for (std::size_t k = 1; k < order.size(); k++) {
-				if (key(overlayLines[order[k]]) == key(overlayLines[order[k - 1]]))
-					repeated[order[k]] = true;
+			auto same = [&](const OverlayLine& l, const OverlayLine& r) {
+				return key(l) == key(r);
+			};
+			for (OverlayLine& l : overlayLines) {
+				if (before(l.b, l.a))
+					std::swap(l.a, l.b);
+			}
+			const bool linesChanged =
+			  overlayLines.size() != overlayCache.emitted.size() ||
+			  !std::equal(overlayLines.begin(), overlayLines.end(), overlayCache.emitted.begin(), same);
+			if (linesChanged) {
+				overlayCache.emitted = overlayLines;
+				overlayCache.lines = overlayLines;
+				std::stable_sort(overlayCache.lines.begin(), overlayCache.lines.end(),
+				                 [&](const OverlayLine& l, const OverlayLine& r) {
+					                 return key(l) < key(r);
+				                 });
+				overlayCache.lines.erase(
+				  std::unique(overlayCache.lines.begin(), overlayCache.lines.end(), same),
+				  overlayCache.lines.end());
 			}
 
-			const float sw = renderer->ScreenWidth();
-			const float sh = renderer->ScreenHeight();
-			const OverlayOccluders occluders(*model, edit);
+			const IntVector3 pendingAnchor =
+			  edit.placing ? edit.placement.anchor : IntVector3::Make(0, 0, 0);
+			if (overlayCache.valid && !linesChanged && SameView(overlayCache.view, camera) &&
+			    overlayCache.voxelsVersion == voxelsVersion && overlayCache.placing == edit.placing &&
+			    overlayCache.pendingVersion == placementModelVersion &&
+			    overlayCache.pendingAnchor == pendingAnchor)
+				return; // nothing the strokes depend on has moved
+			overlayCache.view = camera;
+			overlayCache.voxelsVersion = voxelsVersion;
+			overlayCache.placing = edit.placing;
+			overlayCache.pendingVersion = placementModelVersion;
+			overlayCache.pendingAnchor = pendingAnchor;
+			overlayCache.valid = true;
+			overlayCache.hidden.clear();
+			overlayCache.shown.clear();
+
+			std::vector<OverlayStroke>& hidden = overlayCache.hidden;
+			std::vector<OverlayStroke>& shown = overlayCache.shown;
+			const VoxelModel* pending = edit.placing ? placementVoxels.GetPointerOrNull() : nullptr;
+			const OverlayOccluders occluders(*model, pending, pendingAnchor);
 			std::vector<Vector2> ends; // screen points splitting a line into pieces
-			for (std::size_t i = 0; i < overlayLines.size(); i++) {
-				if (repeated[i])
-					continue;
-				const OverlayLine& l = overlayLines[i];
+			for (const OverlayLine& l : overlayCache.lines) {
 				Vector3 a = l.a, b = l.b;
-				if (!ClipToDepth(camera, kNearPlane, a, b))
+				if (!ClipToView(camera, kOverlayCasingWidth, a, b))
 					continue;
 				Vector2 pa, pb;
 				if (!camera.Project(a, pa) || !camera.Project(b, pb))
-					continue;
-				const float margin = kOverlayCasingWidth;
-				if (std::max(pa.x, pb.x) < -margin || std::min(pa.x, pb.x) > sw + margin ||
-				    std::max(pa.y, pb.y) < -margin || std::min(pa.y, pb.y) > sh + margin)
 					continue;
 
 				const float screenLength = (pb - pa).GetLength();
@@ -1116,19 +1150,32 @@ namespace spades {
 					}
 				}
 			}
+		}
+
+		// Draw the lines collected this frame over the finished scene: a casing and
+		// a core where they are in view, a dim core where voxels hide them.
+		// Visibility is worked out against the voxels rather than left to the depth
+		// buffer, as outlines lie on voxel faces and would fight them for depth, and
+		// a 3D line cannot be given a casing or a width.
+		void KV6EditorView::DrawOverlayLines2D() {
+			if (!camera.IsValid()) {
+				overlayLines.clear();
+				return;
+			}
+			UpdateOverlayLines();
 			overlayLines.clear();
 
 			// Hidden lines first, so every line in view is over them, and all the
 			// casings before any core, so no casing covers a core it meets.
-			for (const Stroke& s : hidden)
+			for (const OverlayStroke& s : overlayCache.hidden)
 				DrawLine2D(s.a, s.b, kOverlayHiddenWidth, s.color);
-			for (const Stroke& s : shown) {
+			for (const OverlayStroke& s : overlayCache.shown) {
 				const float width = kOverlayCasingWidth * s.widthScale;
 				Vector2 a = s.a, b = s.b;
 				Lengthen(a, b, width * 0.5F);
 				DrawLine2D(a, b, width, MakeVector4(0.0F, 0.0F, 0.0F, kOverlayCasingAlpha * s.color.w));
 			}
-			for (const Stroke& s : shown) {
+			for (const OverlayStroke& s : overlayCache.shown) {
 				const float width = kOverlayCoreWidth * s.widthScale;
 				Vector2 a = s.a, b = s.b;
 				Lengthen(a, b, width * 0.5F);
