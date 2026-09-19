@@ -213,8 +213,9 @@ namespace spades {
 			pending = Group();
 			depth = 0;
 			action = 0;
-			geomId = 0;
-			nextGeomId = 0;
+			// Ids are never reused: the geometry kept its unrecorded changes (when a
+			// step could not be recorded), so it must not match an id it was saved at.
+			geomId = ++nextGeomId;
 			totalBytes = 0;
 		}
 

@@ -130,9 +130,10 @@ namespace spades {
 			bool Redo();
 			void Clear() noexcept;
 
-			// Monotonic id of the current *geometry* state, for the document's
-			// dirty/clean flag. Selection-only steps leave it unchanged, so merely
-			// selecting voxels never marks the document modified.
+			// Id of the current *geometry* state, for the document's dirty/clean
+			// flag. Selection-only steps leave it unchanged, so merely selecting
+			// voxels never marks the document modified. A new state never takes an
+			// id used before, Clear included, so a stale saved id never matches it.
 			long GeometryStateId() const { return geomId; }
 
 		private:
