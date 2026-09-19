@@ -18,25 +18,31 @@
 
  */
 
-#include "KV6PaintTool.h"
-#include "KV6EditorContext.h"
-#include "KV6SubToolRegistry.h"
+#pragma once
+
+#include "KV6ContainerTool.h"
 
 namespace spades {
 	namespace gui {
-		PaintTool::PaintTool() {
-			// Box recolours every existing voxel it spans with the current colour.
-			// Recolouring has no inverse, so the right button does nothing.
-			auto paint = [](IEditorContext& ed, const std::vector<IntVector3>& cells) {
-				ed.PaintCells(cells, ed.CurrentColor());
-			};
-			subs.push_back(std::unique_ptr<EditorTool>(new PaintVoxelSubTool()));
-			subs.push_back(std::unique_ptr<EditorTool>(
-			  new BoxSubTool({paint, "paint"}, BoxSubTool::Action(), true)));
+		/**
+		 * A tool that edits voxels in the brush colour, reflected across the
+		 * enabled mirror planes (Draw, Paint).
+		 *
+		 * Its options are the mirror toggles, so which axes reflect is in sight
+		 * while it is in use. The brush colour belongs to the editor, not to a
+		 * tool: its swatch sits on the main toolbar, whichever tool is active.
+		 */
+		class BrushTool : public ContainerTool {
+		public:
+			ToolOptions* Options() override { return &options; }
+			void UpdateOptions(IEditorContext& ed) override;
+			void OnOptionToggled(IEditorContext& ed, const std::string& id, bool value) override;
 
-			// Sub-tools contributed by scripts (targeting Paint), appended after the
-			// built-in ones.
-			SubToolRegistry::Instance().BuildFor(SubToolTarget::Paint, subs);
-		}
+		protected:
+			BrushTool();
+
+		private:
+			ToolOptions options;
+		};
 	} // namespace gui
 } // namespace spades
