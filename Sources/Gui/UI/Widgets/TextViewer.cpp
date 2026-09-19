@@ -277,7 +277,8 @@ namespace spades {
 				}
 			}
 
-			void TextViewer::MouseLeave() { SetCursor(nullptr); }
+			void TextViewer::MouseLeave() { SetCursor(nullptr); }			
+			void TextViewer::MouseCaptureLost() { dragging = false; }
 
 			void TextViewer::KeyDown(const std::string& key) {
 				UIManager& manager = GetManager();

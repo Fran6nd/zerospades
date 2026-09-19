@@ -206,10 +206,13 @@ namespace spades {
 					mouseLeft(*this);
 			}
 
+			void UIElement::MouseCaptureLost() {
+				if (parent)
+					parent->MouseCaptureLost();
+			}
+
 			void UIElement::KeyDown(const std::string& key) { manager->ProcessHotKey(key); }
-
 			void UIElement::KeyUp(const std::string&) {}
-
 			void UIElement::KeyPress(const std::string&) {}
 
 			void UIElement::HotKey(const std::string& key) {

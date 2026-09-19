@@ -107,10 +107,9 @@ namespace spades {
 				if (pressed) {
 					pressed = false;
 					if (hover && !(repeat || activateOnMouseDown)) {
+						hover = false;
 						if (toggle)
 							toggled = !toggled;
-
-						hover = false;
 						OnActivated();
 						if (GetManager().time - lastActivate < 0.35F &&
 						    (clientPosition - lastActivatePosition).GetManhattanLength() < 10.0F) {
@@ -138,6 +137,16 @@ namespace spades {
 				if (pressed && repeat)
 					repeatTimer->Stop();
 				UIElement::MouseLeave();
+			}
+
+			void ButtonBase::MouseCaptureLost() {
+				// The element was detached from the tree while the mouse was still
+				// pressed on it. Reset press/hover state and stop any repeat timer,
+				// but do NOT call OnActivated(): this is not a real click.
+				pressed = false;
+				hover = false;
+				if (repeat)
+					repeatTimer->Stop();
 			}
 
 			void ButtonBase::KeyDown(const std::string& key) {

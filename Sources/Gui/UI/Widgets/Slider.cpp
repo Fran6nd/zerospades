@@ -75,6 +75,8 @@ namespace spades {
 				hover = false;
 				UIElement::MouseLeave();
 			}
+			
+			void SliderKnob::MouseCaptureLost() { dragging = false; }
 
 			void SliderKnob::Render() {
 				client::IRenderer& r = GetManager().GetRenderer();

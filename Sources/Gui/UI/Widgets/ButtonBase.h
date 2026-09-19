@@ -69,6 +69,7 @@ namespace spades {
 				void MouseUp(MouseButton button, Vector2 clientPosition) override;
 				void MouseEnter() override;
 				void MouseLeave() override;
+				void MouseCaptureLost() override;
 
 				void KeyDown(const std::string& key) override;
 				void KeyUp(const std::string& key) override;

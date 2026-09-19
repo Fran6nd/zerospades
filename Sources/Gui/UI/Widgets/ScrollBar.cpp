@@ -100,6 +100,8 @@ namespace spades {
 				hover = false;
 				UIElement::MouseLeave();
 			}
+			
+			void ScrollBarTrackBar::MouseCaptureLost() { dragging = false; }
 
 			void ScrollBarTrackBar::Render() {
 				client::IRenderer& r = GetManager().GetRenderer();

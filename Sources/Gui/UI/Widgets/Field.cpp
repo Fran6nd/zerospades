@@ -339,6 +339,8 @@ namespace spades {
 				dragging = false;
 			}
 
+			void FieldBase::MouseCaptureLost() { dragging = false; }
+
 			bool FieldBase::FitsInBox(const std::string& t) const {
 				client::IFont* font = GetFont();
 				if (!font)

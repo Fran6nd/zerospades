@@ -75,10 +75,16 @@ namespace spades {
 			void UIManager::DiscardElement(UIElement* element) {
 				if (activeElement && activeElement->IsSameOrDescendantOf(element))
 					activeElement = nullptr;
-				if (mouseCapturedElement && mouseCapturedElement->IsSameOrDescendantOf(element))
+				if (mouseCapturedElement && mouseCapturedElement->IsSameOrDescendantOf(element)) {
+					Handle<UIElement> e = mouseCapturedElement;
 					mouseCapturedElement = nullptr;
-				if (mouseHoverElement && mouseHoverElement->IsSameOrDescendantOf(element))
+					e->MouseCaptureLost();
+				}
+				if (mouseHoverElement && mouseHoverElement->IsSameOrDescendantOf(element)) {
+					Handle<UIElement> e = mouseHoverElement;
 					mouseHoverElement = nullptr;
+					e->MouseLeave();
+				}
 			}
 
 			UIElement* UIManager::GetMouseActiveElement() {

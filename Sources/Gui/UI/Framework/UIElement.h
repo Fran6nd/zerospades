@@ -138,6 +138,16 @@ namespace spades {
 				virtual void MouseEnter();
 				virtual void MouseLeave();
 
+				/**
+				 * Called instead of MouseUp() when this element loses the mouse
+				 * capture because it (or an ancestor) was detached from the UI tree
+				 * while still capturing the mouse. Unlike MouseUp(), this must NOT
+				 * trigger the element's normal activation behavior (click, toggle,
+				 * etc.) — the user never actually released the mouse over it. It
+				 * only resets transient press/drag state.
+				 */
+				virtual void MouseCaptureLost();
+
 				virtual void KeyDown(const std::string& key);
 				virtual void KeyUp(const std::string& key);
 				virtual void KeyPress(const std::string& text);

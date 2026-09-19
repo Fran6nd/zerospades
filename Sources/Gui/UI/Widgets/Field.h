@@ -116,6 +116,7 @@ namespace spades {
 				void MouseDown(MouseButton button, Vector2 clientPosition) override;
 				void MouseMove(Vector2 clientPosition) override;
 				void MouseUp(MouseButton button, Vector2 clientPosition) override;
+				void MouseCaptureLost() override;
 
 				void Render() override;
 			};
