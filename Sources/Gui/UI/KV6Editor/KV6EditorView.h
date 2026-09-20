@@ -24,6 +24,7 @@
 #include <functional>
 #include <memory>
 #include <optional>
+#include <map>
 #include <set>
 #include <string>
 #include <vector>
@@ -143,6 +144,21 @@ namespace spades {
 			void Redo() override;
 			bool CanUndo() const override { return undo.CanUndo(); }
 			bool CanRedo() const override { return undo.CanRedo(); }
+
+			// --- Scene objects (IEditorContext) ---
+			bool HasScene() const override { return isScene; }
+			int ObjectCount() const override { return int(edit.scene->Ids().size()); }
+			SceneObjectId ActiveObject() const override { return edit.activeObject; }
+			void SetActiveObject(SceneObjectId id) override;
+			SceneObjectId ObjectAtCursor() override { return SceneObjectAtCursor(); }
+			SceneObjectId CreateObject() override;
+			bool DeleteActiveObject() override { return DeleteActiveSceneObject(); }
+			bool GetObjectTransform(Vector3& position, Quaternion& rotation,
+			                        Vector3& scale) const override;
+			void PreviewObjectTransform(const Vector3& position, const Quaternion& rotation,
+			                            const Vector3& scale) override;
+			void CommitObjectTransform(const std::string& label) override;
+			void CancelObjectTransform() override;
 			void PlaceCube() override;
 			void DeleteCube() override;
 			void SetStatus(const std::string&) override;
@@ -187,7 +203,49 @@ namespace spades {
 			Handle<KV6ScreenHelper> io;
 
 			// --- Document -----------------------------------------------------
+			// What the tools edit: the whole file for a .kv6, and the scene's
+			// active object for a .2kv6.
 			Handle<VoxelModel> model;
+			// A .2kv6 document is a scene of named objects, each with its own
+			// transform and voxels. What names and places them is journaled with
+			// the rest of the edit state (see EditState::scene); their voxels
+			// live here, keyed by object id, as a .kv6's single model does, so
+			// the history stays small and a replay never rebuilds them.
+			bool isScene = false;
+			std::map<SceneObjectId, Handle<VoxelModel>> sceneModels;
+			/** The scene as it stands (empty for a .kv6). */
+			const Scene& CurrentScene() const { return *edit.scene; }
+			/** The voxels of `id`, or null when it holds none. */
+			VoxelModel* ModelOf(SceneObjectId id) const;
+			// Points `model` at the active object's voxels, after anything that
+			// changed which object is active or what it holds.
+			void RefreshActiveModel();
+			// Adds `voxels` to the scene as an object named `name` (numbered if
+			// that name is taken) and makes it active, as one undo step called
+			// `label`. Returns its id, or `kNoSceneObject` if there is no scene.
+			SceneObjectId AddSceneObject(const std::string& name, Handle<VoxelModel> voxels,
+			                             const std::string& label);
+			// Adds an object holding an empty model of `size` voxels, named
+			// `name`, and makes it active; returns its id (`kNoSceneObject` on
+			// failure). One journaled step.
+			SceneObjectId CreateSceneObject(const std::string& name, int size);
+			// Removes the active object and its children; false when there is none.
+			bool DeleteActiveSceneObject();
+			/** The object whose voxels the cursor is over, or `kNoSceneObject`. */
+			SceneObjectId SceneObjectAtCursor();
+			// Document paths for scenes, alongside NewModel / LoadModel.
+			void NewScene(int n, const std::string& path);
+			/** Opens `path` as a scene, leaving the open document alone and
+			 *  answering false when it cannot be read, as LoadModel does. */
+			bool LoadScene(const std::string& path);
+			/** Writes the document (a model, or every object of a scene) to `path`. */
+			bool SaveToPath(const std::string& path);
+			// One render model per object, rebuilt when its voxels change.
+			struct SceneRenderModel {
+				Handle<client::IModel> model;
+				const VoxelModel* builtFrom = nullptr;
+			};
+			std::map<SceneObjectId, SceneRenderModel> sceneRenderModels;
 			// Rebuilt from the model once per frame, when invalidated (see RefreshRenderModels).
 			Handle<client::IModel> renderModel;
 			int cubeSize = 32;
@@ -225,11 +283,19 @@ namespace spades {
 			void WriteVoxelRaw(int x, int y, int z, bool solid, uint32_t color);
 
 			// --- Mode (Blender-style) -----------------------------------------
-			// A .kv6 holds one model, so it is only edited in Edit mode. Object and
-			// Animation are shown greyed out: they arrive with .2kv6 scenes.
-			enum class EditorMode { Object, Edit, Animation };
+			// A .kv6 holds one model, so it is only edited in Edit mode. A .2kv6
+			// scene also has Object mode, where whole objects are picked and
+			// placed. Animation is shown greyed out until it arrives.
 			EditorMode currentMode = EditorMode::Edit;
-			static bool ModeSupported(EditorMode mode) { return mode == EditorMode::Edit; }
+			// Object mode needs a scene, and Edit mode something to edit: a scene
+			// whose objects were all deleted leaves nothing.
+			bool ModeSupported(EditorMode mode) const {
+				if (mode == EditorMode::Object)
+					return isScene;
+				if (mode == EditorMode::Edit)
+					return !isScene || edit.activeObject != kNoSceneObject;
+				return false;
+			}
 			// Each mode's toolbar button: its id and label.
 			struct ModeInfo {
 				EditorMode mode;
@@ -238,10 +304,15 @@ namespace spades {
 			};
 			static const std::vector<ModeInfo>& Modes();
 
-			// --- Tools (available in Edit mode) -------------------------------
+			// --- Tools --------------------------------------------------------
+			// Every registered tool, of every mode; the toolbar shows those of the
+			// current one, and each mode remembers which of its tools was in use.
 			std::vector<ToolSlot> tools;
 			int activeTool = 0;
-			EditorTool* ActiveTool(); // active tool in Edit mode, else null
+			std::map<EditorMode, int> activeToolByMode;
+			/** The indices of `tools` belonging to `mode`, in toolbar order. */
+			std::vector<int> ToolsIn(EditorMode mode) const;
+			EditorTool* ActiveTool(); // the current mode's active tool, or null
 			// The index of the tool with `id` (as the toolbar reports it), or -1.
 			int ToolIndex(const std::string& id) const;
 			// The active tool's option `id` if it is of `type`, else null: where a
@@ -465,6 +536,15 @@ namespace spades {
 			// so committing records from it and ending a preview puts it back.
 			std::optional<Vector3> previewedOrigin;
 			std::optional<Vector3> previewedMirrorPlane;
+			// An object being dragged in Object mode: which one, and where it sat
+			// before the drag, so ending the preview puts it back.
+			struct PreviewedObject {
+				SceneObjectId id = kNoSceneObject;
+				Vector3 position;
+				Vector4 rotation;
+				Vector3 scale;
+			};
+			std::optional<PreviewedObject> previewedObject;
 			void EndPreviews() noexcept;
 
 			// --- Escape ---------------------------------------------------------
@@ -633,7 +713,11 @@ namespace spades {
 
 			// --- Document commands behind the menu items ---
 			std::string GetDocumentPath() const { return filePath; }
-			std::string GetDocumentExtension() const { return KV6DocumentExtension(); }
+			/** The type this document is written as: a scene saves as a scene, a
+			 *  model as a model. */
+			std::string GetDocumentExtension() const {
+				return isScene ? KV6SceneExtension() : KV6DocumentExtension();
+			}
 			bool SaveDocument(const std::string& path);
 			/** Asks for a path with the shared file browser, then saves to it.
 			 *  `after` runs only once the document has actually been written. */

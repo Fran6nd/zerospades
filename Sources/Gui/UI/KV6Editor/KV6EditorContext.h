@@ -27,6 +27,8 @@
 #include <Core/Math.h>
 #include <Gui/UI/Components/Gizmo/GizmoView.h>
 
+#include "KV6Scene.h"
+
 namespace spades {
 	class VoxelModel;
 	namespace gui {
@@ -242,6 +244,41 @@ namespace spades {
 			virtual void Redo() = 0;
 			virtual bool CanUndo() const = 0;
 			virtual bool CanRedo() const = 0;
+
+			// --- Scene objects (a .2kv6 document) -----------------------------
+			// A scene holds several named objects, each with its own voxels and
+			// its own place in the world. Object mode picks one and moves it;
+			// Edit mode changes the voxels of whichever is active. A .kv6 is a
+			// single model, so it has no scene and Object mode is closed to it.
+			/** Whether the document is a scene, so these apply at all. */
+			virtual bool HasScene() const = 0;
+			/** How many objects the scene holds. */
+			virtual int ObjectCount() const = 0;
+			/** The object Edit mode works on; `kNoSceneObject` when there is none. */
+			virtual SceneObjectId ActiveObject() const = 0;
+			/** Makes `id` the active object, as one undo step. */
+			virtual void SetActiveObject(SceneObjectId id) = 0;
+			/** The object under the cursor, or `kNoSceneObject`. */
+			virtual SceneObjectId ObjectAtCursor() = 0;
+			/** Adds an object, makes it active, and returns it; one undo step. */
+			virtual SceneObjectId CreateObject() = 0;
+			/** Removes the active object; false when there is none. One undo step. */
+			virtual bool DeleteActiveObject() = 0;
+			/** Where the active object sits, and how it is turned and scaled. */
+			virtual bool GetObjectTransform(Vector3& position, Quaternion& rotation,
+			                                Vector3& scale) const = 0;
+			/**
+			 * Shows the active object at a transform while a drag runs. Nothing
+			 * is journaled until the drag is committed, and the object goes back
+			 * where it was if it is cancelled instead.
+			 */
+			virtual void PreviewObjectTransform(const Vector3& position,
+			                                    const Quaternion& rotation,
+			                                    const Vector3& scale) = 0;
+			/** Keeps what the preview shows, as one undo step named `label`. */
+			virtual void CommitObjectTransform(const std::string& label) = 0;
+			/** Drops the preview, putting the object back where it was. */
+			virtual void CancelObjectTransform() = 0;
 		};
 	} // namespace gui
 } // namespace spades

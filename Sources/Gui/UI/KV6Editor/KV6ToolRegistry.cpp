@@ -25,6 +25,7 @@
 #include "KV6PaintTool.h"
 #include "KV6PivotTool.h"
 #include "KV6SelectTool.h"
+#include "KV6ObjectTool.h"
 #include "KV6TransformTool.h"
 
 namespace spades {
@@ -50,19 +51,24 @@ namespace spades {
 				// initialisers in each tool's TU) keeps the order deterministic.
 				// The keys lean on common editor conventions (Q select, B brush,
 				// T transform) and keep clear of the default WASD movement keys.
-				registry.Register(Make<SelectTool>(), "select", kEditingGroup, "Q");
-				registry.Register(Make<DrawTool>(), "draw", kEditingGroup, "B");
-				registry.Register(Make<PaintTool>(), "paint", kEditingGroup, "P");
-				registry.Register(Make<TransformTool>(), "transform", kEditingGroup, "T");
-				registry.Register(Make<MirrorTool>(), "mirror", kSetupGroup, "M");
-				registry.Register(Make<PivotTool>(), "pivot", kSetupGroup, "O");
+				registry.Register(Make<SelectTool>(), "select", EditorMode::Edit, kEditingGroup, "Q");
+				registry.Register(Make<DrawTool>(), "draw", EditorMode::Edit, kEditingGroup, "B");
+				registry.Register(Make<PaintTool>(), "paint", EditorMode::Edit, kEditingGroup, "P");
+				registry.Register(Make<TransformTool>(), "transform", EditorMode::Edit, kEditingGroup,
+				                  "T");
+				registry.Register(Make<MirrorTool>(), "mirror", EditorMode::Edit, kSetupGroup, "M");
+				registry.Register(Make<PivotTool>(), "pivot", EditorMode::Edit, kSetupGroup, "O");
+				// Object mode has the one tool: it picks an object of a .2kv6 scene
+				// and places it, with every gizmo handle at once.
+				registry.Register(Make<ObjectSelectTool>(), "objectSelect", EditorMode::Object,
+				                  kEditingGroup, "Q");
 			}
 			return registry;
 		}
 
-		void ToolRegistry::Register(Factory f, const std::string& id, int group,
+		void ToolRegistry::Register(Factory f, const std::string& id, EditorMode mode, int group,
 		                            const std::string& hotKey) {
-			entries.push_back({std::move(f), id, group, hotKey});
+			entries.push_back({std::move(f), id, mode, group, hotKey});
 		}
 
 		void ToolRegistry::BuildAll(std::vector<ToolSlot>& out) const {
@@ -72,6 +78,7 @@ namespace spades {
 				ToolSlot slot;
 				slot.tool = entry.make();
 				slot.id = entry.id;
+				slot.mode = entry.mode;
 				slot.group = entry.group;
 				slot.hotKey = entry.hotKey;
 				out.push_back(std::move(slot));

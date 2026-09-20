@@ -29,6 +29,14 @@ namespace spades {
 	namespace gui {
 		class IEditorContext;
 
+		/**
+		 * The editor's modes, as Blender has them: Object mode picks and places
+		 * whole objects of a .2kv6 scene, Edit mode changes the voxels of the
+		 * active one (the whole file, for a .kv6), and Animation is to come.
+		 * Each tool belongs to the mode it makes sense in.
+		 */
+		enum class EditorMode { Object, Edit, Animation };
+
 		// What a top-level tool does with cells, so sub-tools (incl. scripted ones)
 		// can apply through IEditorContext::ApplyCells without knowing their host.
 		// The right button does the inverse of the left (erase, deselect); Paint

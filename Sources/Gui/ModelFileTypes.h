@@ -38,9 +38,16 @@ namespace spades {
 		/** The extension a document is saved with when its name names no type. */
 		const std::string& KV6DocumentExtension();
 
+		/** The same, for a document that is a scene of several named objects. */
+		const std::string& KV6SceneExtension();
+
 		/** Whether a file of this name can be opened as a document, as opposed to
 		 *  merely being listed. */
 		bool KV6IsEditable(const std::string& name);
+
+		/** Whether a file of this name is a scene of several named objects, rather
+		 *  than a single model. The editor opens a scene in Object mode. */
+		bool KV6IsScene(const std::string& name);
 
 		/** `name` with the document extension appended, unless it already names a
 		 *  type the editor lists. A name that is nothing but an extension would
@@ -48,8 +55,15 @@ namespace spades {
 		 *  and the caller's own validation rejects it. */
 		std::string KV6DocumentFileName(const std::string& name);
 
+		/** The same, for a caller that has already been told which type to create,
+		 *  such as a "new document" prompt that asked for the format first. */
+		std::string KV6DocumentFileName(const std::string& name, const std::string& extension);
+
 		/** The name a document that has never been saved is offered under. */
 		std::string KV6UntitledFileName();
+
+		/** The same, for a document of the type `extension` names. */
+		std::string KV6UntitledFileName(const std::string& extension);
 
 		/** The label the file browser shows for the model filter. */
 		std::string KV6ModelFilterLabel();

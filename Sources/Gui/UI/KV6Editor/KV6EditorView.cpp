@@ -638,6 +638,349 @@ namespace spades {
 			  1.8F;
 		}
 
+		// --- Scene documents (.2kv6) ------------------------------------------
+		//
+		// A .2kv6 holds several named objects, each with its own voxels and its
+		// own place in the world, so the editor works the way Blender does: in
+		// Object mode whole objects are picked and moved, and Edit mode changes
+		// the voxels of the active one while the rest stay in view around it.
+
+		namespace {
+			// The scene as the file format holds it, built from what the editor
+			// keeps apart: the journaled nodes, and the voxels by object id.
+			VoxelObject ToVoxelObject(const SceneNode& node,
+			                          const std::map<SceneObjectId, Handle<VoxelModel>>& models) {
+				VoxelObject object;
+				object.name = node.name;
+				object.position = node.position;
+				object.rotation = node.rotation;
+				object.scale = node.scale;
+				object.keyframes = node.keyframes;
+				if (node.hasModel) {
+					auto it = models.find(node.id);
+					if (it != models.end())
+						object.model = it->second;
+				}
+				for (const SceneNode& child : node.children)
+					object.children.push_back(ToVoxelObject(child, models));
+				return object;
+			}
+
+			// The reverse: a loaded object becomes a node, and its voxels go to
+			// `models` under the id this hands out.
+			SceneNode ToSceneNode(const VoxelObject& object, Scene& scene,
+			                      std::map<SceneObjectId, Handle<VoxelModel>>& models) {
+				SceneNode node;
+				node.id = scene.nextId++;
+				node.name = object.name;
+				node.position = object.position;
+				node.rotation = object.rotation;
+				node.scale = object.scale;
+				node.keyframes = object.keyframes;
+				node.hasModel = static_cast<bool>(object.model);
+				if (node.hasModel)
+					models[node.id] = object.model;
+				for (const VoxelObject& child : object.children)
+					node.children.push_back(ToSceneNode(child, scene, models));
+				return node;
+			}
+
+			// The first solid voxel of `voxels` a ray meets, in the model's own space
+			// where voxel (x,y,z) is centred on (x,y,z). `hit` is that voxel, `before`
+			// the cell the ray was in just before it (where a voxel placed against
+			// that face would go), and `distance` how far along `dir` the hit lies.
+			// False when the ray meets nothing.
+			bool RayVoxelHit(const VoxelModel& voxels, const Vector3& eye, const Vector3& dir,
+			                 IntVector3& hit, IntVector3& before, float& distance) {
+				// Traverse in a +0.5-shifted space, where each integer cell maps to a
+				// voxel index.
+				const Vector3 o = eye + MakeVector3(0.5F, 0.5F, 0.5F);
+
+				int cx = int(std::floor(o.x));
+				int cy = int(std::floor(o.y));
+				int cz = int(std::floor(o.z));
+
+				const int stepX = (dir.x >= 0.0F) ? 1 : -1;
+				const int stepY = (dir.y >= 0.0F) ? 1 : -1;
+				const int stepZ = (dir.z >= 0.0F) ? 1 : -1;
+
+				const float big = 1.0e30F;
+				const float tDeltaX = (dir.x != 0.0F) ? std::fabs(1.0F / dir.x) : big;
+				const float tDeltaY = (dir.y != 0.0F) ? std::fabs(1.0F / dir.y) : big;
+				const float tDeltaZ = (dir.z != 0.0F) ? std::fabs(1.0F / dir.z) : big;
+
+				float tMaxX = (dir.x != 0.0F)
+				  ? ((float(cx) + (stepX > 0 ? 1.0F : 0.0F) - o.x) / dir.x) : big;
+				float tMaxY = (dir.y != 0.0F)
+				  ? ((float(cy) + (stepY > 0 ? 1.0F : 0.0F) - o.y) / dir.y) : big;
+				float tMaxZ = (dir.z != 0.0F)
+				  ? ((float(cz) + (stepZ > 0 ? 1.0F : 0.0F) - o.z) / dir.z) : big;
+
+				int px = cx, py = cy, pz = cz;
+				float travelled = 0.0F;
+				const int limit =
+				  (voxels.GetWidth() + voxels.GetHeight() + voxels.GetDepth()) * 3 + 8;
+				for (int i = 0; i < limit; i++) {
+					if (voxels.IsSolid(cx, cy, cz)) { // bounds-checked
+						hit = MakeIntVector3(cx, cy, cz);
+						before = MakeIntVector3(px, py, pz);
+						distance = travelled;
+						return true;
+					}
+					px = cx; py = cy; pz = cz;
+					if (tMaxX <= tMaxY && tMaxX <= tMaxZ) {
+						travelled = tMaxX; cx += stepX; tMaxX += tDeltaX;
+					} else if (tMaxY <= tMaxZ) {
+						travelled = tMaxY; cy += stepY; tMaxY += tDeltaY;
+					} else {
+						travelled = tMaxZ; cz += stepZ; tMaxZ += tDeltaZ;
+					}
+				}
+				return false;
+			}
+
+			// "Object", "Object.001", ... : the first name of that shape the scene
+			// does not already use, as Blender numbers duplicates.
+			std::string UnusedObjectName(const Scene& scene, const std::string& base) {
+				auto taken = [&](const std::string& name) {
+					for (SceneObjectId id : scene.Ids()) {
+						const SceneNode* node = scene.Find(id);
+						if (node && node->name == name)
+							return true;
+					}
+					return false;
+				};
+				if (!taken(base))
+					return base;
+				for (int n = 1; n < 1000; n++) {
+					char suffix[8];
+					std::snprintf(suffix, sizeof(suffix), ".%03d", n);
+					if (!taken(base + suffix))
+						return base + suffix;
+				}
+				return base;
+			}
+		} // namespace
+
+		VoxelModel* KV6EditorView::ModelOf(SceneObjectId id) const {
+			auto it = sceneModels.find(id);
+			return (it == sceneModels.end()) ? nullptr : it->second.GetPointerOrNull();
+		}
+
+		void KV6EditorView::RefreshActiveModel() {
+			if (!isScene)
+				return;
+			Handle<VoxelModel> active;
+			auto it = sceneModels.find(edit.activeObject);
+			if (it != sceneModels.end())
+				active = it->second;
+			if (!active) {
+				// Nothing to edit: an empty stand-in keeps every path that reads
+				// the model valid, and Object mode is the only one that applies.
+				active = Handle<VoxelModel>::New(1, 1, 1);
+				if (currentMode == EditorMode::Edit)
+					SetMode(EditorMode::Object);
+			}
+			if (model.GetPointerOrNull() == active.GetPointerOrNull())
+				return;
+			model = active;
+			cubeSize = std::max(model->GetWidth(), std::max(model->GetHeight(), model->GetDepth()));
+			voxelCount = CountSolids();
+			InvalidateRenderModel();
+		}
+
+		void KV6EditorView::SetActiveObject(SceneObjectId id) {
+			if (!isScene || id == edit.activeObject || !edit.scene->Find(id))
+				return;
+			DocumentCommand command(*this);
+			KV6UndoStack::Step step(undo, "Select Object");
+			// A selection names voxels of the object it was made in.
+			edit.selection.Clear();
+			edit.activeObject = id;
+			RefreshActiveModel();
+			NotifyDocumentChanged();
+		}
+
+		SceneObjectId KV6EditorView::AddSceneObject(const std::string& name,
+		                                            Handle<VoxelModel> voxels,
+		                                            const std::string& label) {
+			if (!isScene || !voxels)
+				return kNoSceneObject;
+			DocumentCommand command(*this);
+			KV6UndoStack::Step step(undo, label);
+			SceneNode node;
+			{
+				Scene& scene = edit.scene.Edit();
+				node.id = scene.nextId++;
+				node.name = UnusedObjectName(scene, name.empty() ? "Object" : name);
+				node.hasModel = true;
+				// New objects land where the user is looking, on whole voxels, so
+				// one never hides inside another at the origin.
+				node.position = MakeVector3(std::round(orbitTarget.x), std::round(orbitTarget.y),
+				                            std::round(orbitTarget.z));
+				scene.roots.push_back(node);
+			}
+			sceneModels[node.id] = voxels;
+			// The new object is the one being worked on, as it is in Blender.
+			edit.selection.Clear();
+			edit.activeObject = node.id;
+			RefreshActiveModel();
+			NotifyDocumentChanged();
+			return node.id;
+		}
+
+		SceneObjectId KV6EditorView::CreateSceneObject(const std::string& name, int size) {
+			Handle<VoxelModel> fresh = Handle<VoxelModel>::New(size, size, size);
+			fresh->SetSolid(size / 2, size / 2, size / 2, currentColor);
+			// Anchor the pivot on the seed voxel, as a new document does.
+			const float centre = float(size / 2);
+			fresh->SetOrigin(MakeVector3(-centre, -centre, -centre));
+			return AddSceneObject(name, fresh, "New Object");
+		}
+
+		bool KV6EditorView::DeleteActiveSceneObject() {
+			if (!isScene || edit.activeObject == kNoSceneObject)
+				return false;
+			DocumentCommand command(*this);
+			KV6UndoStack::Step step(undo, "Delete Object");
+			// The voxels stay in `sceneModels`: the history brings the object
+			// back by id, and nothing else refers to them meanwhile.
+			SceneObjectId next = kNoSceneObject;
+			{
+				Scene& scene = edit.scene.Edit();
+				if (!scene.Remove(edit.activeObject))
+					return false;
+				const std::vector<SceneObjectId> left = scene.Ids();
+				if (!left.empty())
+					next = left.front();
+			}
+			edit.selection.Clear();
+			edit.activeObject = next;
+			RefreshActiveModel();
+			NotifyDocumentChanged();
+			return true;
+		}
+
+		SceneObjectId KV6EditorView::SceneObjectAtCursor() {
+			if (!isScene || !camera.IsValid())
+				return kNoSceneObject;
+			Vector3 eye, dir;
+			camera.Ray(softwareCursor->GetPosition(), eye, dir);
+
+			SceneObjectId hit = kNoSceneObject;
+			float nearest = std::numeric_limits<float>::infinity();
+			for (SceneObjectId id : edit.scene->Ids()) {
+				const VoxelModel* voxels = ModelOf(id);
+				const SceneNode* node = edit.scene->Find(id);
+				if (!voxels || !node || !node->hasModel)
+					continue;
+				// A scale of zero flattens the object away: it has no inverse, and
+				// nothing of it is on screen to be picked.
+				if (node->scale.x == 0.0F || node->scale.y == 0.0F || node->scale.z == 0.0F)
+					continue;
+				// Trace in the object's own voxel space, so its transform costs
+				// one matrix inverse rather than a ray per voxel. The model's
+				// pivot is part of that space: it shifts the voxels on screen
+				// (see the render pass), so a ray must cross it too.
+				const Matrix4 world = edit.scene->WorldTransform(id) *
+				                      Matrix4::Translate(voxels->GetOrigin() * -1.0F);
+				const Matrix4 toLocal = world.Inversed();
+				const Vector3 localEye = (toLocal * MakeVector4(eye.x, eye.y, eye.z, 1.0F)).GetXYZ();
+				const Vector3 localDir = (toLocal * MakeVector4(dir.x, dir.y, dir.z, 0.0F)).GetXYZ();
+				IntVector3 cell, before;
+				float localDistance = 0.0F;
+				if (!RayVoxelHit(*voxels, localEye, localDir, cell, before, localDistance))
+					continue;
+				// Back to world space: objects may be scaled differently, so a
+				// local distance says nothing about which one is in front.
+				const Vector3 localHit = localEye + localDir * localDistance;
+				const Vector3 worldHit =
+				  (world * MakeVector4(localHit.x, localHit.y, localHit.z, 1.0F)).GetXYZ();
+				const float distance = Vector3::Dot(worldHit - eye, dir);
+				if (distance >= 0.0F && distance < nearest) {
+					nearest = distance;
+					hit = id;
+				}
+			}
+			return hit;
+		}
+
+		SceneObjectId KV6EditorView::CreateObject() {
+			return CreateSceneObject(std::string(), kNewModelSize);
+		}
+
+		bool KV6EditorView::GetObjectTransform(Vector3& position, Quaternion& rotation,
+		                                       Vector3& scale) const {
+			const SceneNode* node = edit.scene->Find(edit.activeObject);
+			if (!node)
+				return false;
+			position = node->position;
+			rotation = Quaternion(node->rotation);
+			scale = node->scale;
+			return true;
+		}
+
+		void KV6EditorView::PreviewObjectTransform(const Vector3& position,
+		                                           const Quaternion& rotation,
+		                                           const Vector3& scale) {
+			SceneNode* node = edit.scene.Edit().Find(edit.activeObject);
+			if (!node)
+				return;
+			// The first preview of a drag remembers where the object was, so
+			// cancelling it (or leaving the tool) puts it back untouched.
+			if (!previewedObject || previewedObject->id != edit.activeObject) {
+				EndPreviews();
+				node = edit.scene.Edit().Find(edit.activeObject);
+				if (!node)
+					return;
+				previewedObject = PreviewedObject{edit.activeObject, node->position, node->rotation,
+				                                  node->scale};
+			}
+			node->position = position;
+			node->rotation = rotation.v;
+			node->scale = scale;
+			InvalidateRenderModel();
+		}
+
+		void KV6EditorView::CommitObjectTransform(const std::string& label) {
+			if (!previewedObject)
+				return;
+			// Journal the move from where the object was to where the drag left
+			// it: put it back, then make the change inside a step.
+			const PreviewedObject before = *previewedObject;
+			SceneNode* node = edit.scene.Edit().Find(before.id);
+			if (!node) {
+				previewedObject.reset();
+				return;
+			}
+			const Vector3 position = node->position;
+			const Vector4 rotation = node->rotation;
+			const Vector3 scale = node->scale;
+			node->position = before.position;
+			node->rotation = before.rotation;
+			node->scale = before.scale;
+			previewedObject.reset();
+			if (position == before.position && rotation == before.rotation &&
+			    scale == before.scale)
+				return; // the drag changed nothing
+			{
+				KV6UndoStack::Step step(undo, label);
+				SceneNode* target = edit.scene.Edit().Find(before.id);
+				if (target) {
+					target->position = position;
+					target->rotation = rotation;
+					target->scale = scale;
+				}
+			}
+			InvalidateRenderModel();
+			NotifyDocumentChanged();
+		}
+
+		void KV6EditorView::CancelObjectTransform() {
+			EndPreviews();
+			InvalidateRenderModel();
+		}
+
 		void KV6EditorView::ResetDocumentState() {
 			// Nothing of the old document's edit state carries over but which
 			// axes mirror: that is how the user works, not part of the document.
@@ -648,11 +991,19 @@ namespace spades {
 			edit.mirror = kept;
 			previewedOrigin.reset();
 			previewedMirrorPlane.reset();
+			isScene = false;
+			sceneModels.clear();
+			sceneRenderModels.clear();
+			currentMode = EditorMode::Edit;
 			undo.Clear();
 			InvalidateRenderModel(); // a new model is on its way
 		}
 
 		void KV6EditorView::NewModel(int n, const std::string& path) {
+			if (KV6IsScene(path)) {
+				NewScene(n, path);
+				return;
+			}
 			ResetDocumentState();
 			cubeSize = n;
 			model = Handle<VoxelModel>::New(n, n, n);
@@ -669,7 +1020,61 @@ namespace spades {
 			NotifyDocumentChanged();
 		}
 
+		void KV6EditorView::NewScene(int n, const std::string& path) {
+			ResetDocumentState();
+			isScene = true;
+			filePath = path;
+			// A scene opens with one object, so there is something to edit; it is
+			// created outside the history, as the document's starting state.
+			SceneNode node;
+			Scene& scene = edit.scene.Edit();
+			node.id = scene.nextId++;
+			node.name = "Object";
+			node.hasModel = true;
+			scene.roots.push_back(node);
+			Handle<VoxelModel> fresh = Handle<VoxelModel>::New(n, n, n);
+			fresh->SetSolid(n / 2, n / 2, n / 2, currentColor);
+			const float centre = float(n / 2);
+			fresh->SetOrigin(MakeVector3(-centre, -centre, -centre));
+			sceneModels[node.id] = fresh;
+			edit.activeObject = node.id;
+			RefreshActiveModel();
+			PlaceMirrorPlane(GetPivot());
+			FrameCamera();
+			SetMode(EditorMode::Object); // a scene opens on its objects, as Blender does
+			savedGeomId = -1; // a fresh, never-saved document starts dirty
+			NotifyDocumentChanged();
+		}
+
+		bool KV6EditorView::LoadScene(const std::string& path) {
+			std::vector<VoxelObject> objects = io->Load2KV6(path);
+			if (objects.empty()) {
+				// The document that is open is not the one that failed to load, so it
+				// stays exactly as it is; the caller says how to break the news.
+				SetStatus("Could not load " + path);
+				return false;
+			}
+			ResetDocumentState();
+			isScene = true;
+			{
+				Scene& scene = edit.scene.Edit();
+				for (const VoxelObject& object : objects)
+					scene.roots.push_back(ToSceneNode(object, scene, sceneModels));
+			}
+			edit.activeObject = edit.scene->FirstModelObject();
+			RefreshActiveModel();
+			PlaceMirrorPlane(GetPivot());
+			filePath = path;
+			FrameCamera();
+			SetMode(EditorMode::Object); // a scene opens on its objects, as Blender does
+			savedGeomId = undo.GeometryStateId(); // a freshly loaded document is clean
+			NotifyDocumentChanged();
+			return true;
+		}
+
 		bool KV6EditorView::LoadModel(const std::string& path) {
+			if (KV6IsScene(path))
+				return LoadScene(path);
 			VoxelModel* loaded = io->Load(path);
 			if (!loaded) {
 				// The document that is open is not the one that failed to load, so it
@@ -710,6 +1115,21 @@ namespace spades {
 				renderModel = renderer->CreateModel(*model);
 				renderModelDirty = false;
 			}
+			if (isScene) {
+				// Every object but the active one is drawn from its own render
+				// model, rebuilt only when its voxels are swapped (a load, an
+				// object created, an undo bringing one back).
+				for (SceneObjectId id : edit.scene->Ids()) {
+					const VoxelModel* voxels = ModelOf(id);
+					if (!voxels || id == edit.activeObject)
+						continue;
+					SceneRenderModel& entry = sceneRenderModels[id];
+					if (entry.model && entry.builtFrom == voxels)
+						continue;
+					entry.model = renderer->CreateModel(const_cast<VoxelModel&>(*voxels));
+					entry.builtFrom = voxels;
+				}
+			}
 			// The pending voxels' model follows their voxels' version, so any
 			// change to them (a turn, an undo, a new paste) rebuilds it and
 			// nothing else does.
@@ -744,13 +1164,24 @@ namespace spades {
 
 			// Saving writes the document, so anything still pending belongs in it.
 			DocumentCommand command(*this);
-			if (!io->Save(&*model, filePath)) {
+			if (!SaveToPath(filePath)) {
 				SetStatus("Save failed");
 				return false;
 			}
 			savedGeomId = undo.GeometryStateId(); // this geometry state is now clean
 			SetStatus("Saved " + filePath);
 			return true;
+		}
+
+		bool KV6EditorView::SaveToPath(const std::string& path) {
+			if (!isScene)
+				return io->Save(&*model, path);
+			// The file holds objects with their voxels; the editor keeps the two
+			// apart, so they are put back together here.
+			std::vector<VoxelObject> objects;
+			for (const SceneNode& root : edit.scene->roots)
+				objects.push_back(ToVoxelObject(root, sceneModels));
+			return io->Save2KV6(objects, path);
 		}
 
 		std::string KV6EditorView::GetMenuTitle() {
@@ -840,7 +1271,7 @@ namespace spades {
 			if (purpose != FileBrowserPurpose::Open) {
 				options.filters.clear();
 				options.filters.push_back(
-				  FileFilter{KV6ModelFilterLabel(), {KV6DocumentExtension()}});
+				  FileFilter{KV6ModelFilterLabel(), {GetDocumentExtension()}});
 			}
 			options.homeDir = io->DefaultDir();
 			// The document's own folder is where this document's dialogs belong;
@@ -877,8 +1308,10 @@ namespace spades {
 		}
 
 		void KV6EditorView::OpenSaveAsDialog(std::function<void()> after) {
-			const std::string name =
-			  filePath.empty() ? KV6UntitledFileName() : LocalFileSystem::GetFileName(filePath);
+			// A scene saves as a scene, a model as a model.
+			const std::string name = filePath.empty()
+			                           ? KV6UntitledFileName(GetDocumentExtension())
+			                           : LocalFileSystem::GetFileName(filePath);
 			ShowModelFileDialog("Save As", FileBrowserPurpose::Save, name,
 			                    [this, after](const std::string& path) {
 				                    if (SaveDocument(path) && after)
@@ -892,11 +1325,24 @@ namespace spades {
 		}
 
 		bool KV6EditorView::SaveDocument(const std::string& path) {
+			// The document decides the format, so the name it is saved under says
+			// what is in the file: a scene never lands in a .kv6, nor a model in
+			// a .2kv6.
+			const std::string wanted = GetDocumentExtension();
+			std::string target = path;
+			if (!LocalFileSystem::HasExtension(target, wanted)) {
+				const std::string name = LocalFileSystem::GetFileName(target);
+				const std::size_t dot = name.rfind('.');
+				if (dot != std::string::npos && dot > 0)
+					target.resize(target.size() - (name.size() - dot));
+				target += wanted;
+			}
+
 			// The document only moves to the new path once the write has succeeded:
 			// a failed Save As leaves it where it was, rather than pointing it at a
 			// file it could not produce and offering to "save" there again.
 			const std::string previousPath = filePath;
-			filePath = path;
+			filePath = target;
 			if (Save())
 				return true;
 
@@ -1265,49 +1711,23 @@ namespace spades {
 
 			Vector3 eye, dir;
 			camera.Ray(softwareCursor->GetPosition(), eye, dir);
-
-			// The renderer centres voxel (x,y,z) at world (x,y,z), so traverse in a
-			// +0.5-shifted space where each integer cell maps to a voxel index.
-			Vector3 o = eye + MakeVector3(0.5F, 0.5F, 0.5F);
-
-			int cx = int(std::floor(o.x));
-			int cy = int(std::floor(o.y));
-			int cz = int(std::floor(o.z));
-
-			int stepX = (dir.x >= 0.0F) ? 1 : -1;
-			int stepY = (dir.y >= 0.0F) ? 1 : -1;
-			int stepZ = (dir.z >= 0.0F) ? 1 : -1;
-
-			float big = 1.0e30F;
-			float tDeltaX = (dir.x != 0.0F) ? std::fabs(1.0F / dir.x) : big;
-			float tDeltaY = (dir.y != 0.0F) ? std::fabs(1.0F / dir.y) : big;
-			float tDeltaZ = (dir.z != 0.0F) ? std::fabs(1.0F / dir.z) : big;
-
-			float tMaxX = (dir.x != 0.0F)
-			  ? ((float(cx) + (stepX > 0 ? 1.0F : 0.0F) - o.x) / dir.x) : big;
-			float tMaxY = (dir.y != 0.0F)
-			  ? ((float(cy) + (stepY > 0 ? 1.0F : 0.0F) - o.y) / dir.y) : big;
-			float tMaxZ = (dir.z != 0.0F)
-			  ? ((float(cz) + (stepZ > 0 ? 1.0F : 0.0F) - o.z) / dir.z) : big;
-
-			int px = cx, py = cy, pz = cz;
-			int limit = (model->GetWidth() + model->GetHeight() + model->GetDepth()) * 3 + 8;
-			for (int i = 0; i < limit; i++) {
-				if (InBounds(cx, cy, cz) && model->IsSolid(cx, cy, cz)) {
-					pickHit = true;
-					pickHX = cx; pickHY = cy; pickHZ = cz;
-					pickPX = px; pickPY = py; pickPZ = pz;
-					return;
-				}
-				px = cx; py = cy; pz = cz;
-				if (tMaxX <= tMaxY && tMaxX <= tMaxZ) {
-					cx += stepX; tMaxX += tDeltaX;
-				} else if (tMaxY <= tMaxZ) {
-					cy += stepY; tMaxY += tDeltaY;
-				} else {
-					cz += stepZ; tMaxZ += tDeltaZ;
-				}
+			// A scene's objects sit where their transforms put them, so the cursor
+			// meets the active object in its own space.
+			if (isScene && edit.activeObject != kNoSceneObject) {
+				const Matrix4 toLocal = (edit.scene->WorldTransform(edit.activeObject) *
+				                         Matrix4::Translate(model->GetOrigin() * -1.0F))
+				                          .Inversed();
+				eye = (toLocal * MakeVector4(eye.x, eye.y, eye.z, 1.0F)).GetXYZ();
+				dir = (toLocal * MakeVector4(dir.x, dir.y, dir.z, 0.0F)).GetXYZ().Normalize();
 			}
+
+			IntVector3 hit, before;
+			float distance = 0.0F;
+			if (!RayVoxelHit(*model, eye, dir, hit, before, distance))
+				return;
+			pickHit = true;
+			pickHX = hit.x; pickHY = hit.y; pickHZ = hit.z;
+			pickPX = before.x; pickPY = before.y; pickPZ = before.z;
 		}
 
 		int KV6EditorView::MirrorIdx(int i, float plane) const { return HalfSteps(plane) - i; }
@@ -1358,6 +1778,10 @@ namespace spades {
 			Vector3 shift = MakeVector3(float(ox), float(oy), float(oz));
 			dst->SetOrigin(model->GetOrigin() - shift);
 			model = dst;
+			// The scene holds the active object's voxels, so it follows the swap;
+			// a replay reframes before the state is restored, and finds this.
+			if (isScene && edit.activeObject != kNoSceneObject)
+				sceneModels[edit.activeObject] = model;
 			InvalidateRenderModel();
 			orbitTarget += shift;
 			cubeSize = std::max(nw, std::max(nh, nd));
@@ -1691,6 +2115,23 @@ namespace spades {
 			Handle<VoxelModel> imported(io->Load(path), false); // adopt (Load returns a ref)
 			if (!imported) {
 				SetStatus("Could not load " + path);
+				return;
+			}
+
+			// Object mode works on whole objects, so a model imported there joins
+			// the scene as another object, under its own undo step. In Edit mode it
+			// arrives as voxels for the object being edited, as any other import
+			// does.
+			if (isScene && currentMode == EditorMode::Object) {
+				std::string name = LocalFileSystem::GetFileName(path);
+				const std::size_t dot = name.rfind('.');
+				if (dot != std::string::npos && dot > 0)
+					name.resize(dot);
+				if (AddSceneObject(name, imported, "Import Object") == kNoSceneObject) {
+					SetStatus("Could not import " + path);
+					return;
+				}
+				SetStatus("Imported " + name);
 				return;
 			}
 
@@ -2190,7 +2631,12 @@ namespace spades {
 		// as its large parts are shared until changed.
 		EditState KV6EditorView::UndoSnapshotState() const { return edit; }
 
-		void KV6EditorView::UndoRestoreState(const EditState& state) { edit = state; }
+		void KV6EditorView::UndoRestoreState(const EditState& state) {
+			edit = state;
+			// The step may have been one that changed which object is edited, so
+			// what the tools work on follows the state back.
+			RefreshActiveModel();
+		}
 
 		// KV6UndoStack::Sink — the stack replays records through these.
 		void KV6EditorView::UndoApplyVoxel(int x, int y, int z, bool solid, uint32_t color) {
@@ -2560,10 +3006,25 @@ namespace spades {
 
 		void KV6EditorView::SetActiveTool(int index) {
 			if (index >= 0 && index < int(tools.size()))
-				Activate(index, currentMode);
+				Activate(index, tools[index].mode);
 		}
 
-		void KV6EditorView::SetMode(EditorMode mode) { Activate(activeTool, mode); }
+		void KV6EditorView::SetMode(EditorMode mode) {
+			if (mode == currentMode || !ModeSupported(mode))
+				return;
+			// Each mode comes back to the tool it was left in, or to its first.
+			int toolIndex = -1;
+			auto remembered = activeToolByMode.find(mode);
+			if (remembered != activeToolByMode.end() && remembered->second < int(tools.size()) &&
+			    tools[remembered->second].mode == mode)
+				toolIndex = remembered->second;
+			if (toolIndex < 0) {
+				const std::vector<int> available = ToolsIn(mode);
+				if (!available.empty())
+					toolIndex = available.front();
+			}
+			Activate(toolIndex < 0 ? activeTool : toolIndex, mode);
+		}
 
 		void KV6EditorView::Activate(int toolIndex, EditorMode mode) {
 			if (toolIndex == activeTool && mode == currentMode)
@@ -2578,8 +3039,17 @@ namespace spades {
 			// placement reaches the document.
 			if (EditorTool* previous = ActiveTool())
 				previous->OnDeactivate(*this);
+			const bool modeChanged = mode != currentMode;
 			activeTool = toolIndex;
 			currentMode = mode;
+			activeToolByMode[mode] = toolIndex;
+			// A selection names voxels of one object, in the mode that edits
+			// them: leaving that mode drops it rather than carrying it into
+			// work on whole objects.
+			if (modeChanged && !edit.selection.Empty()) {
+				KV6UndoStack::Step step(undo, "Change Mode");
+				edit.selection.Clear();
+			}
 			if (EditorTool* current = ActiveTool())
 				current->OnActivate(*this);
 		}
@@ -2625,9 +3095,9 @@ namespace spades {
 			// Never mid-press: the tool taking over would see a drag it never saw start.
 			if (key.empty() || lmbHeld || rmbHeld || KeyIsTaken(key))
 				return false;
-			for (size_t i = 0; i < tools.size(); i++) {
+			for (int i : ToolsIn(currentMode)) {
 				if (!tools[i].hotKey.empty() && EqualsIgnoringCase(tools[i].hotKey, key)) {
-					SetActiveTool(int(i));
+					SetActiveTool(i);
 					return true;
 				}
 			}
@@ -2643,10 +3113,23 @@ namespace spades {
 			return false;
 		}
 
+		std::vector<int> KV6EditorView::ToolsIn(EditorMode mode) const {
+			std::vector<int> indices;
+			for (int i = 0; i < int(tools.size()); i++) {
+				if (tools[i].mode == mode)
+					indices.push_back(i);
+			}
+			return indices;
+		}
+
 		EditorTool* KV6EditorView::ActiveTool() {
-			if (currentMode == EditorMode::Edit && activeTool >= 0 && activeTool < int(tools.size()))
-				return tools[activeTool].tool.get();
-			return nullptr;
+			if (activeTool < 0 || activeTool >= int(tools.size()))
+				return nullptr;
+			// A tool only acts in the mode it belongs to: switching modes hands
+			// over to that mode's own tool.
+			if (tools[activeTool].mode != currentMode)
+				return nullptr;
+			return tools[activeTool].tool.get();
 		}
 
 		PointerInput KV6EditorView::MakePointer(PointerButton b, PointerPhase ph,
@@ -2699,6 +3182,14 @@ namespace spades {
 				edit.mirror.plane = *previewedMirrorPlane;
 				previewedMirrorPlane.reset();
 			}
+			if (previewedObject) {
+				if (SceneNode* node = edit.scene.Edit().Find(previewedObject->id)) {
+					node->position = previewedObject->position;
+					node->rotation = previewedObject->rotation;
+					node->scale = previewedObject->scale;
+				}
+				previewedObject.reset();
+			}
 		}
 
 		void KV6EditorView::NotifyDocumentChanged() {
@@ -2729,9 +3220,8 @@ namespace spades {
 
 			// Tool buttons. A hot key the editor already uses for something else
 			// never reaches the tool, so the button does not claim it.
-			int toolCount = (currentMode == EditorMode::Edit) ? int(tools.size()) : 0;
 			std::vector<Toolbar::ToolbarButton> toolButtons;
-			for (int i = 0; i < toolCount; i++) {
+			for (int i : ToolsIn(currentMode)) {
 				Toolbar::ToolbarButton btn;
 				btn.id = tools[i].id;
 				btn.label = tools[i].tool->Label();
@@ -3057,10 +3547,21 @@ namespace spades {
 					return;
 
 			if (down && KV6CheckKey(cg_keyScreenshot, key)) { wantScreenShot = true; return; }
+			// Tab moves between the scene's objects and the voxels of the active
+			// one, as it does in Blender. A .kv6 has only its voxels.
+			if (down && key == "Tab" && isScene) {
+				CancelToolInteraction();
+				SetMode(currentMode == EditorMode::Edit ? EditorMode::Object : EditorMode::Edit);
+				return;
+			}
 			if (down && KV6CheckKey(cg_keyDelete, key)) {
 				// Like a Ctrl shortcut, it edits behind the tool's back.
 				CancelToolInteraction();
-				DeleteSelection();
+				// The key removes what the mode is about: an object, or voxels.
+				if (currentMode == EditorMode::Object)
+					DeleteActiveSceneObject();
+				else
+					DeleteSelection();
 				return;
 			}
 
@@ -3173,9 +3674,27 @@ namespace spades {
 			renderer->StartScene(sceneDef);
 			if (renderModel) {
 				client::ModelRenderParam param;
-				// Cancel the KV6 pivot so the model sits in the editor's grid space.
+				// Cancel the KV6 pivot so the model sits in the editor's grid space,
+				// then place it where the scene puts the object being edited.
 				param.matrix = Matrix4::Translate(model->GetOrigin() * -1.0F);
+				if (isScene && edit.activeObject != kNoSceneObject)
+					param.matrix = edit.scene->WorldTransform(edit.activeObject) * param.matrix;
 				renderer->RenderModel(*renderModel, param);
+			}
+			// The rest of the scene stands around the object being edited, each
+			// object where its own transform puts it.
+			if (isScene) {
+				for (const auto& entry : sceneRenderModels) {
+					if (entry.first == edit.activeObject || !entry.second.model)
+						continue;
+					const VoxelModel* voxels = ModelOf(entry.first);
+					if (!voxels || !edit.scene->Find(entry.first))
+						continue; // deleted, or its voxels went with it
+					client::ModelRenderParam param;
+					param.matrix = edit.scene->WorldTransform(entry.first) *
+					               Matrix4::Translate(voxels->GetOrigin() * -1.0F);
+					renderer->RenderModel(*entry.second.model, param);
+				}
 			}
 			// Pending voxels (a paste, an import, or a selection being moved) render
 			// solid at their temporary position, in a document that no longer holds

@@ -39,12 +39,13 @@ namespace spades {
 			ui::Button* vxlButton;  // weak; owned as a child
 
 			void OnKV6(ui::UIElement& sender);
+			void OnScene(ui::UIElement& sender);
 			void OnVXL(ui::UIElement& sender);
 			void OnCancel(ui::UIElement& sender);
 
 		public:
 			ui::EventHandler closed;
-			int result = -1; // -1: cancelled, 0: KV6, 1: VXL
+			int result = -1; // -1: cancelled, 0: KV6, 1: .2kv6 scene, 2: VXL
 
 			KV6ModelTypePrompt(ui::UIElement* owner);
 
@@ -75,8 +76,13 @@ namespace spades {
 
 			/** Error message if `name` cannot be created in the browsed folder. */
 			std::string ValidateNewName(const std::string& name) const;
-			/** `name` with the .kv6 extension appended if it lacks one. */
-			static std::string ModelFileName(const std::string& name);
+			/** Which type the open name prompt is creating, as chosen in the type
+			 *  prompt before it. */
+			std::string newModelExtension = KV6DocumentExtension();
+			/** The file a typed name stands for: `extension` appended unless the name
+			 *  already names a type the editor lists. */
+			static std::string ModelFileName(const std::string& name,
+			                                 const std::string& extension = KV6DocumentExtension());
 
 		public:
 			KV6BrowserPanel(ui::UIManager* manager, MainScreenHelper* helper,

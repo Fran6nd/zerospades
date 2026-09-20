@@ -35,12 +35,16 @@ namespace spades {
 			struct ModelFileType {
 				const char* extension;
 				bool editable;
+				/** A scene holds several named objects with their own transforms,
+				 *  rather than one grid of voxels, so the editor opens it in Object
+				 *  mode instead of straight into Edit mode. */
+				bool scene;
 			};
 
 			const ModelFileType kModelFileTypes[] = {
-			  {".kv6", true},
-			  {".2kv6", false},
-			  {".vxl", false},
+			  {".kv6", true, false},
+			  {".2kv6", true, true},
+			  {".vxl", false, false},
 			};
 
 			const ModelFileType* FindType(const std::string& name) {
@@ -74,25 +78,60 @@ namespace spades {
 			return extension;
 		}
 
+		const std::string& KV6SceneExtension() {
+			// The first editable scene type is what a new scene is written as.
+			static const std::string extension = [] {
+				for (const ModelFileType& type : kModelFileTypes) {
+					if (type.editable && type.scene)
+						return std::string(type.extension);
+				}
+				return std::string();
+			}();
+			return extension;
+		}
+
 		bool KV6IsEditable(const std::string& name) {
 			const ModelFileType* type = FindType(name);
 			return type && type->editable;
 		}
 
-		std::string KV6DocumentFileName(const std::string& name) {
-			return FindType(name) ? name : name + KV6DocumentExtension();
+		bool KV6IsScene(const std::string& name) {
+			const ModelFileType* type = FindType(name);
+			return type && type->scene;
 		}
 
-		std::string KV6UntitledFileName() { return "untitled" + KV6DocumentExtension(); }
+		std::string KV6DocumentFileName(const std::string& name, const std::string& extension) {
+			return FindType(name) ? name : name + extension;
+		}
+
+		std::string KV6DocumentFileName(const std::string& name) {
+			return KV6DocumentFileName(name, KV6DocumentExtension());
+		}
+
+		std::string KV6UntitledFileName(const std::string& extension) {
+			return "untitled" + extension;
+		}
+
+		std::string KV6UntitledFileName() { return KV6UntitledFileName(KV6DocumentExtension()); }
 
 		std::string KV6ModelFilterLabel() { return _Tr("KV6Editor", "Voxel models"); }
 
 		std::string KV6UnsupportedHint() { return _Tr("KV6Editor", "(not implemented)"); }
 
 		std::string KV6UnsupportedMessage() {
+			// Name every type that can be opened, not just the one a new document is
+			// written as, so the message stays true as types become editable.
+			std::string editable;
+			for (const ModelFileType& type : kModelFileTypes) {
+				if (!type.editable)
+					continue;
+				if (!editable.empty())
+					editable += ", ";
+				editable += type.extension;
+			}
 			return _Tr("KV6Editor",
 					   "This file type is not supported yet. Only {0} files can be edited.",
-					   KV6DocumentExtension());
+					   editable);
 		}
 	} // namespace gui
 } // namespace spades

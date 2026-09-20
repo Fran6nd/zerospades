@@ -34,6 +34,8 @@ namespace spades {
 			std::unique_ptr<EditorTool> tool;
 			// Names the tool for the toolbar, whatever its label or position.
 			std::string id;
+			// The mode whose toolbar carries it.
+			EditorMode mode = EditorMode::Edit;
 			// Buttons of one group sit together, a separator apart from the next.
 			int group = 0;
 			// The key that activates the tool; empty for none.
@@ -58,8 +60,10 @@ namespace spades {
 			// The shared registry, seeded with the built-in tools on first use.
 			static ToolRegistry& Instance();
 
-			// Append a tool factory; registration order is toolbar order.
-			void Register(Factory f, const std::string& id, int group, const std::string& hotKey);
+			// Append a tool factory; registration order is toolbar order, within
+			// the mode the tool belongs to.
+			void Register(Factory f, const std::string& id, EditorMode mode, int group,
+			              const std::string& hotKey);
 			// Instantiate every registered tool into `out` (cleared first).
 			void BuildAll(std::vector<ToolSlot>& out) const;
 
@@ -67,6 +71,7 @@ namespace spades {
 			struct Entry {
 				Factory make;
 				std::string id;
+				EditorMode mode;
 				int group;
 				std::string hotKey;
 			};

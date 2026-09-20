@@ -29,6 +29,7 @@
 #include <Core/CopyOnWrite.h>
 #include <Core/Math.h>
 
+#include "KV6Scene.h"
 #include "KV6VoxelSelection.h"
 
 namespace spades {
@@ -160,16 +161,24 @@ namespace spades {
 			MirrorSetup mirror;
 			bool placing = false;       // whether `placement` holds voxels
 			PendingPlacement placement; // empty unless placing
+			// A .2kv6 document's objects and their transforms, and the one Edit
+			// mode works on. Empty for a .kv6, which is a single model. The
+			// voxels stay with the editor, keyed by object id, as a .kv6's are:
+			// only what names and places them is journaled here.
+			CopyOnWrite<Scene> scene;
+			SceneObjectId activeObject = kNoSceneObject;
 
 			/** Heap bytes this holds that `other` does not share: its cost on top of it. */
 			std::size_t UnsharedBytes(const EditState& other) const {
 				return selection.UnsharedBytes(other.selection) +
-				       (placing ? placement.UnsharedBytes(other.placement) : 0);
+				       (placing ? placement.UnsharedBytes(other.placement) : 0) +
+				       (scene.Shares(other.scene) ? 0 : scene->Bytes());
 			}
 
 			bool operator==(const EditState& o) const {
 				return selection == o.selection && mirror == o.mirror && placing == o.placing &&
-				       (!placing || placement == o.placement);
+				       (!placing || placement == o.placement) && scene == o.scene &&
+				       activeObject == o.activeObject;
 			}
 			bool operator!=(const EditState& o) const { return !(*this == o); }
 		};

@@ -60,7 +60,7 @@ namespace spades {
 			float sw = manager->screenWidth;
 			float sh = manager->screenHeight;
 			float w = std::min(sw - 16.0F, 500.0F);
-			float h = 160.0F;
+			float h = 200.0F;
 			float x = (sw - w) * 0.5F;
 			float y = (sh - h) * 0.5F;
 
@@ -86,9 +86,16 @@ namespace spades {
 			}
 			{
 				Handle<Button> btn = Handle<Button>::New(manager);
+				btn->caption = _Tr("MainScreen", "Scene (.2kv6)");
+				btn->SetBounds(AABB2(x + (w - 150.0F) * 0.5F, y + 110.0F, 150.0F, 30.0F));
+				btn->activated = [this](UIElement& s) { OnScene(s); };
+				AddChild(btn.GetPointerOrNull());
+			}
+			{
+				Handle<Button> btn = Handle<Button>::New(manager);
 				btn->caption = _Tr("MainScreen", "Map VXL");
 				vxlButton = btn.GetPointerOrNull();
-				btn->SetBounds(AABB2(x + (w - 150.0F) * 0.5F, y + 110.0F, 150.0F, 30.0F));
+				btn->SetBounds(AABB2(x + (w - 150.0F) * 0.5F, y + 150.0F, 150.0F, 30.0F));
 				btn->activated = [this](UIElement& s) { OnVXL(s); };
 				btn->enable = false; // Disabled until supported
 				AddChild(btn.GetPointerOrNull());
@@ -100,8 +107,13 @@ namespace spades {
 			Close();
 		}
 
-		void KV6ModelTypePrompt::OnVXL(UIElement&) {
+		void KV6ModelTypePrompt::OnScene(UIElement&) {
 			result = 1;
+			Close();
+		}
+
+		void KV6ModelTypePrompt::OnVXL(UIElement&) {
+			result = 2;
 			Close();
 		}
 
@@ -218,8 +230,9 @@ namespace spades {
 			return std::string();
 		}
 
-		std::string KV6BrowserPanel::ModelFileName(const std::string& name) {
-			return KV6DocumentFileName(name);
+		std::string KV6BrowserPanel::ModelFileName(const std::string& name,
+		                                           const std::string& extension) {
+			return KV6DocumentFileName(name, extension);
 		}
 
 		void KV6BrowserPanel::OnNewModel() {
@@ -233,14 +246,17 @@ namespace spades {
 			if (!p)
 				return;
 
-			if (p->result == 0) { // KV6 selected
+			if (p->result == 0 || p->result == 1) { // a model, or a scene of them
+				newModelExtension = (p->result == 1) ? ".2kv6" : ".kv6";
 				TextPromptScreen::Options options;
-				options.title = _Tr("MainScreen", "New KV6 Model");
+				options.title = (p->result == 1) ? _Tr("MainScreen", "New Scene")
+				                                 : _Tr("MainScreen", "New KV6 Model");
 				options.initialText = "untitled";
-				options.validate = [this](const std::string& name) {
+				const std::string extension = newModelExtension;
+				options.validate = [this, extension](const std::string& name) {
 					// An extension on its own would silently become a hidden, nameless file.
-					std::string file = ModelFileName(name);
-					if (file.size() <= KV6DocumentExtension().size())
+					std::string file = ModelFileName(name, extension);
+					if (file.size() <= extension.size())
 						return _Tr("MainScreen", "The name is empty.");
 					return ValidateNewName(file);
 				};
@@ -248,7 +264,7 @@ namespace spades {
 				    Handle<TextPromptScreen>::New(modalOwner, std::move(options));
 				namePrompt->closed = [this](UIElement& s) { OnNewModelNameClosed(s); };
 				namePrompt->Run();
-			} else if (p->result == 1) { // VXL selected
+			} else if (p->result == 2) { // VXL selected
 				Handle<AlertScreen> al = Handle<AlertScreen>::New(
 				    modalOwner,
 				    _Tr("MainScreen",
@@ -263,7 +279,7 @@ namespace spades {
 			if (!p || !p->GetResult())
 				return;
 			OpenModel(LocalFileSystem::Join(browser->GetDirectory(),
-			                                ModelFileName(p->GetText())),
+			                                ModelFileName(p->GetText(), newModelExtension)),
 			          true);
 		}
 	} // namespace gui

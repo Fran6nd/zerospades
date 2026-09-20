@@ -88,5 +88,61 @@ namespace spades {
 			return true;
 		}
 
+		std::vector<VoxelObject> KV6ScreenHelper::Load2KV6(const std::string& absPath) {
+			std::FILE* f = fs::OpenFile(absPath, "rb");
+			if (!f)
+				return {};
+			try {
+				StdStream stream(f, true); // takes ownership of the FILE*
+				return VoxelModel2KV6::Load(stream);
+			} catch (const std::exception&) {
+				return {};
+			}
+		}
+
+		bool KV6ScreenHelper::Save2KV6(const std::vector<VoxelObject>& scene,
+		                               const std::string& absPath) {
+			if (scene.empty())
+				return false;
+			// Same temp-then-replace dance as Save(), so a failure mid-write can
+			// never truncate or corrupt an existing scene.
+			std::string tmpPath = absPath + ".savetmp";
+			std::FILE* f = fs::OpenFile(tmpPath, "wb");
+			if (!f)
+				return false;
+			try {
+				StdStream stream(f, true); // takes ownership; closes/flushes at scope exit
+				VoxelModel2KV6::Save(stream, scene);
+			} catch (const std::exception&) {
+				fs::Delete(tmpPath);
+				return false;
+			}
+			if (!fs::Rename(tmpPath, absPath, true)) {
+				fs::Delete(tmpPath);
+				return false;
+			}
+			return true;
+		}
+
+		std::vector<VoxelObject> KV6ScreenHelper::NewScene2KV6(int sizeXYZ) {
+			std::vector<VoxelObject> scene;
+			VoxelObject root;
+			root.name = "";
+			root.model = Handle<VoxelModel>::New(sizeXYZ, sizeXYZ, sizeXYZ);
+			root.model->SetSolid(sizeXYZ / 2, sizeXYZ / 2, sizeXYZ / 2, 0xFFFFFF);
+			float c = float(sizeXYZ / 2);
+			root.model->SetOrigin(MakeVector3(-c, -c, -c));
+			scene.push_back(root);
+			return scene;
+		}
+
+		VoxelObject KV6ScreenHelper::LoadKV6AsObject(const std::string& absPath,
+		                                               const std::string& name) {
+			VoxelObject obj;
+			obj.name = name;
+			obj.model = Handle<VoxelModel>(Load(absPath), false);
+			return obj;
+		}
+
 	} // namespace gui
 } // namespace spades
