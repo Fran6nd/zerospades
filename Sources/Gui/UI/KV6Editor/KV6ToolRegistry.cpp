@@ -62,6 +62,11 @@ namespace spades {
 				// and places it, with every gizmo handle at once.
 				registry.Register(Make<ObjectSelectTool>(), "objectSelect", EditorMode::Object,
 				                  kEditingGroup, "Q");
+				// The same tool as Edit mode's: it moves the pivot of the model in
+				// hand, which in Object mode is the whole object's anchor -- what it
+				// turns and scales about, and what its transform is measured from.
+				registry.Register(Make<PivotTool>(), "objectPivot", EditorMode::Object, kSetupGroup,
+				                  "O");
 			}
 			return registry;
 		}

@@ -21,6 +21,7 @@
 #include "KV6Scene.h"
 
 #include <algorithm>
+#include <cmath>
 
 namespace spades {
 	namespace gui {
@@ -108,6 +109,35 @@ namespace spades {
 			return found;
 		}
 
+		const SceneNode* Scene::ParentOf(SceneObjectId id) const {
+			return const_cast<Scene*>(this)->ParentOf(id);
+		}
+
+		SceneNode* Scene::Root() {
+			// The root is a lone top-level node holding no voxels: infrastructure,
+			// not an object. A file may hold its objects at the top instead.
+			if (roots.size() == 1 && !roots.front().hasModel)
+				return &roots.front();
+			return nullptr;
+		}
+
+		const SceneNode* Scene::Root() const { return const_cast<Scene*>(this)->Root(); }
+
+		std::vector<SceneNode>& Scene::ObjectHome() {
+			SceneNode* root = Root();
+			return root ? root->children : roots;
+		}
+
+		std::vector<SceneObjectId> Scene::ObjectIds() const {
+			std::vector<SceneObjectId> ids;
+			Walk(const_cast<Scene*>(this)->roots, nullptr, [&](SceneNode& node, SceneNode*) {
+				if (node.hasModel)
+					ids.push_back(node.id);
+				return true;
+			});
+			return ids;
+		}
+
 		bool Scene::Remove(SceneObjectId id) {
 			if (id == kNoSceneObject)
 				return false;
@@ -185,14 +215,26 @@ namespace spades {
 		ObjectTransform Decompose(const Matrix4& matrix) {
 			ObjectTransform transform;
 			transform.position = matrix.GetOrigin();
-			const Vector3 axes[3] = {matrix.GetAxis(0), matrix.GetAxis(1), matrix.GetAxis(2)};
-			transform.scale =
-			  MakeVector3(axes[0].GetLength(), axes[1].GetLength(), axes[2].GetLength());
+			Vector3 axes[3] = {matrix.GetAxis(0), matrix.GetAxis(1), matrix.GetAxis(2)};
+			float lengths[3] = {axes[0].GetLength(), axes[1].GetLength(), axes[2].GetLength()};
+
+			// A drag may turn the frame inside out (a scale handle pulled through
+			// the middle). A turn cannot express that, so the flip is kept as a
+			// negative factor on the first axis and taken out of the frame, which
+			// leaves a proper rotation to read the turn from.
+			const bool flipped =
+			  Vector3::Dot(Vector3::Cross(axes[0], axes[1]), axes[2]) < 0.0F;
+			if (flipped) {
+				axes[0] = axes[0] * -1.0F;
+				lengths[0] = -lengths[0];
+			}
+			transform.scale = MakeVector3(lengths[0], lengths[1], lengths[2]);
+
 			// A flattened axis leaves no direction to read a turn from, so the
-			// turn it had is kept by normalising what is left.
+			// axis it had is kept.
 			Matrix4 rotation = Matrix4::Identity();
 			for (int k = 0; k < 3; k++) {
-				const float length = axes[k].GetLength();
+				const float length = std::fabs(lengths[k]);
 				const Vector3 unit =
 				  (length > 0.0F) ? axes[k] * (1.0F / length) : rotation.GetAxis(k);
 				rotation.m[k * 4 + 0] = unit.x;

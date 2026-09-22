@@ -147,7 +147,7 @@ namespace spades {
 
 			// --- Scene objects (IEditorContext) ---
 			bool HasScene() const override { return isScene; }
-			int ObjectCount() const override { return int(edit.scene->Ids().size()); }
+			int ObjectCount() const override { return int(edit.scene->ObjectIds().size()); }
 			std::vector<SceneObjectId> SelectedObjects() const override {
 				return *edit.selectedObjects;
 			}
@@ -223,6 +223,9 @@ namespace spades {
 			// reframe swaps the handle) is stored back under the right object
 			// even while the active one is being changed.
 			SceneObjectId activeModelOwner = kNoSceneObject;
+			// Stands in for the voxels when a scene has no object to edit, so the
+			// paths that read the model always have one.
+			Handle<VoxelModel> emptyModel;
 			// Bumped whenever an object's voxels change, so what is derived from
 			// them (its render model) knows to be rebuilt.
 			std::map<SceneObjectId, std::uint64_t> sceneModelRevision;
@@ -275,6 +278,12 @@ namespace spades {
 			Matrix4 EditToWorld() const;
 			/** Where the voxels the tools edit are drawn, from their own grid. */
 			Matrix4 ActiveModelMatrix() const;
+			/** Turns object `id`'s voxel coordinates into the space the tools work in. */
+			Matrix4 ObjectVoxelMatrix(SceneObjectId id) const;
+			/** Where object `id` is held: its model's pivot, in that same space. */
+			Vector3 ObjectPivot(SceneObjectId id) const;
+			/** A pivot given in the tools' space, back in the model's own grid. */
+			Vector3 PivotToVoxels(const Vector3& pivot) const;
 			// Moves the camera by `change`, so what it was looking at stays put
 			// when the space beneath it changes.
 			void CarryCamera(const Matrix4& change);
@@ -305,8 +314,8 @@ namespace spades {
 			// below. The document is dirty while its geometry state differs from the
 			// one captured at the last save (-1 = never saved).
 			KV6UndoStack undo{*this};
-			long savedGeomId = -1;
-			bool IsDirty() const { return undo.GeometryStateId() != savedGeomId; }
+			long savedDocumentId = -1;
+			bool IsDirty() const { return undo.DocumentStateId() != savedDocumentId; }
 			// What saving would change: the journaled edits, plus voxels still
 			// waiting to be placed (a paste leaves the document itself untouched).
 			bool HasUnsavedChanges() const { return IsDirty() || edit.placing; }
@@ -318,6 +327,13 @@ namespace spades {
 			EditState UndoSnapshotState() const override;
 			void UndoRestoreState(const EditState& state) override;
 			void UndoReplayed() override { InvalidateRenderModel(); }
+			// True while the stack is replaying a step into the document. Tool
+			// lifecycles run arbitrary code (a script tool's OnActivate, a
+			// pending placement being written out), which must not journal a step
+			// of its own inside a replay: that would commit into the group being
+			// replayed and clear the branch the stack is walking. Whatever the
+			// replay leaves to settle is settled once it is over.
+			bool replaying = false;
 
 			// The single voxel-write choke point. `WriteVoxel` journals the change for
 			// undo; `WriteVoxelRaw` only applies it (used by the stack's replay). Both
@@ -476,6 +492,8 @@ namespace spades {
 			// After undo or redo: pending voxels it brought back are positioned in
 			// the Transform tool, and the active tool catches up.
 			void HistoryReplayed();
+			// Runs an undo or a redo with `replaying` set; returns what it did.
+			bool WhileReplaying(const std::function<bool()>& replay);
 
 			// Cut and Delete share these: whether removing the selection is
 			// allowed (saying why not on the status line), and the removal itself
@@ -598,6 +616,11 @@ namespace spades {
 			struct PreviewedDrag {
 				std::vector<SceneObjectId> ids;
 				std::vector<ObjectTransform> before; // parallel to `ids`
+				// What each one's parents imposed when the drag began. Held from
+				// then on: the drag moves the objects, and reading their parents
+				// back out mid-drag would carry a child by its parent's move as
+				// well as its own.
+				std::vector<Matrix4> parent; // parallel to `ids`
 				Vector3 pivot = MakeVector3(0.0F, 0.0F, 0.0F);
 				Vector3 axes[3] = {MakeVector3(1.0F, 0.0F, 0.0F), MakeVector3(0.0F, 1.0F, 0.0F),
 				                   MakeVector3(0.0F, 0.0F, 1.0F)};
@@ -734,7 +757,10 @@ namespace spades {
 			void FillRect(float x, float y, float w, float h);
 			void StrokeRect(float x, float y, float w, float h, float t, const Vector4& c);
 			void DrawLine2D(const Vector2& a, const Vector2& b, float w, const Vector4& col);
-			void DrawHelpers();
+			// The ground grid, which every mode shows, and the box around the volume
+			// being edited, which only Edit mode does.
+			void DrawGround();
+			void DrawVolumeBox();
 			void DrawOriginAxes();
 			void DrawMirrorPlanes();
 			// FreeCAD-style navigation cube (replaces the orientation gizmo): a

@@ -85,6 +85,18 @@ namespace spades {
 			const SceneNode* Find(SceneObjectId id) const;
 			/** The parent of `id`, or null for a root (or an unknown id). */
 			SceneNode* ParentOf(SceneObjectId id);
+			const SceneNode* ParentOf(SceneObjectId id) const;
+			/**
+			 * The scene's root: the node every object hangs under, holding no
+			 * voxels of its own. A scene made here always has one; one loaded
+			 * from a file may not, and then objects sit at the top themselves.
+			 */
+			SceneNode* Root();
+			const SceneNode* Root() const;
+			/** Where a new object belongs: under the root, or at the top. */
+			std::vector<SceneNode>& ObjectHome();
+			/** The objects, which is every node holding voxels (never the root). */
+			std::vector<SceneObjectId> ObjectIds() const;
 			/** Removes `id` and everything under it; false when there is no such object. */
 			bool Remove(SceneObjectId id);
 			/** Every object, parents before their children. */

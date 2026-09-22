@@ -72,7 +72,7 @@ namespace spades {
 				return; // no-op
 			pending.records.push_back(
 			  Record::MakeVoxel(x, y, z, oldSolid, oldColor, newSolid, newColor));
-			pending.hasGeometry = true;
+			pending.changesDocument = true;
 		}
 
 		void KV6UndoStack::RecordReframe(int beforeW, int beforeH, int beforeD, int afterW,
@@ -81,7 +81,7 @@ namespace spades {
 				return;
 			pending.records.push_back(
 			  Record::MakeReframe(beforeW, beforeH, beforeD, afterW, afterH, afterD, ox, oy, oz));
-			pending.hasGeometry = true;
+			pending.changesDocument = true;
 		}
 
 		void KV6UndoStack::RecordOrigin(const Vector3& before, const Vector3& after) {
@@ -90,13 +90,13 @@ namespace spades {
 			if (before.x == after.x && before.y == after.y && before.z == after.z)
 				return; // no-op
 			pending.records.push_back(Record::MakeOrigin(before, after));
-			pending.hasGeometry = true; // the pivot is saved to the file -> dirties it
+			pending.changesDocument = true; // the pivot is saved to the file -> dirties it
 		}
 
 		void KV6UndoStack::RecordDocumentChange() {
 			if (depth == 0)
 				return; // only inside a group
-			pending.hasGeometry = true;
+			pending.changesDocument = true;
 		}
 
 		void KV6UndoStack::BeginAction() {
@@ -107,10 +107,10 @@ namespace spades {
 
 		void KV6UndoStack::Commit() {
 			pending.geomBefore = geomId;
-			// Only geometry edits advance the geometry id (drives the dirty flag);
-			// steps that change only the rest of the edit state share the
-			// surrounding geometry state.
-			pending.geomAfter = pending.hasGeometry ? ++nextGeomId : geomId;
+			// Only steps that change what is saved advance the id (which drives
+			// the dirty flag); steps that change only the rest of the edit state
+			// share the surrounding one.
+			pending.geomAfter = pending.changesDocument ? ++nextGeomId : geomId;
 			geomId = pending.geomAfter;
 			pending.action = action;
 
@@ -127,7 +127,7 @@ namespace spades {
 				                    std::make_move_iterator(pending.records.begin()),
 				                    std::make_move_iterator(pending.records.end()));
 				step.after = std::move(pending.after);
-				step.hasGeometry = step.hasGeometry || pending.hasGeometry;
+				step.changesDocument = step.changesDocument || pending.changesDocument;
 				step.geomAfter = pending.geomAfter;
 				// An action that put everything back (select, then deselect) leaves
 				// nothing to undo, so it leaves no step either.

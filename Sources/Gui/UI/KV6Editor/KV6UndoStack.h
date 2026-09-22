@@ -138,11 +138,12 @@ namespace spades {
 			bool Redo();
 			void Clear() noexcept;
 
-			// Id of the current *geometry* state, for the document's dirty/clean
-			// flag. Selection-only steps leave it unchanged, so merely selecting
-			// voxels never marks the document modified. A new state never takes an
-			// id used before, Clear included, so a stale saved id never matches it.
-			long GeometryStateId() const { return geomId; }
+			// Id of the document's current content, for its dirty/clean flag.
+			// Steps that change only what is not saved (a selection, the mode)
+			// leave it alone, so merely picking things never marks the document
+			// modified. A new state never takes an id used before, Clear
+			// included, so a stale saved id never matches it.
+			long DocumentStateId() const { return geomId; }
 
 		private:
 			struct Record {
@@ -186,7 +187,7 @@ namespace spades {
 				std::vector<Record> records;
 				EditState before, after;
 				std::size_t bytes = 0; // what keeping it costs; see BytesOf
-				bool hasGeometry = false;
+				bool changesDocument = false; // dirties the file (see RecordDocumentChange)
 				long geomBefore = 0, geomAfter = 0;
 				unsigned action = 0; // the user action it was recorded in, 0 for none
 			};

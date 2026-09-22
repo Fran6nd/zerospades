@@ -40,11 +40,7 @@ namespace spades {
 			// anywhere inside the rings, which would swallow the clicks that pick
 			// another object. The rings themselves still turn the object.
 			GizmoHandleSet ObjectHandles() {
-				return GizmoHandleSet::Translation() | GizmoHandleSet::Scaling() |
-				       GizmoHandleSet::Of(GizmoHandle::RotateX) |
-				       GizmoHandleSet::Of(GizmoHandle::RotateY) |
-				       GizmoHandleSet::Of(GizmoHandle::RotateZ) |
-				       GizmoHandleSet::Of(GizmoHandle::RotateView);
+				return GizmoHandleSet::All().Without(GizmoHandle::RotateTrackball);
 			}
 
 			/**
@@ -102,9 +98,6 @@ namespace spades {
 				// added to what is picked with Shift, or nothing at all over empty
 				// space.
 				void OnClickAway(IEditorContext& ed, const PointerInput& e) override {
-					// Anything a drag left pending is kept first, so picking
-					// another object never throws a move away.
-					ed.CommitObjectDrag("Place Object");
 					const SceneObjectId under = ed.ObjectAtCursor();
 					if (under == kNoSceneObject) {
 						if (!e.shift)

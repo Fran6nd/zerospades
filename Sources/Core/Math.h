@@ -895,6 +895,11 @@ namespace spades {
 						   0.0F, 0.0F, 0.0F, 1.0F);
 		}
 
+		/**
+		 * The rotation `m` describes. `m` must be a rotation (its axes
+		 * orthonormal and right-handed); `normalize` makes the axes unit first,
+		 * for a matrix that scales evenly as well.
+		 */
 		static inline Quaternion FromRotationMatrix(const Matrix4& m, bool normalize = true) {
 			auto axis1 = m.GetAxis(0);
 			auto axis2 = m.GetAxis(1);
@@ -906,19 +911,29 @@ namespace spades {
 				axis3 = axis3.Normalize();
 			}
 
-			auto trace = axis1.x + axis2.y + axis3.z + 1.0F;
-			auto trace2 = axis1.x - axis2.y - axis3.z + 1.0F;
-			if (trace > trace2) {
-				auto w = 0.5F * sqrtf(trace);
-				auto s = 0.25F / w;
-				return Quaternion(s * (axis2.z - axis3.y), s * (axis3.x - axis1.z),
-								  s * (axis1.y - axis2.x), w);
-			} else {
-				auto w = 0.5F * sqrtf(trace2);
-				auto s = 0.25F / w;
-				return Quaternion(w, s * (axis1.y + axis2.x), s * (axis3.x + axis1.z),
-								  s * (axis2.z - axis3.y));
+			// Rows of the rotation, from its columns.
+			const float r00 = axis1.x, r10 = axis1.y, r20 = axis1.z;
+			const float r01 = axis2.x, r11 = axis2.y, r21 = axis2.z;
+			const float r02 = axis3.x, r12 = axis3.y, r22 = axis3.z;
+
+			// Build from whichever part is largest, so no case divides by a
+			// vanishing value: a half turn leaves the real part at zero, which
+			// the trace alone cannot be read through.
+			const float trace = r00 + r11 + r22;
+			if (trace > 0.0F) {
+				const float s = sqrtf(trace + 1.0F) * 2.0F; // 4 * real part
+				return Quaternion((r21 - r12) / s, (r02 - r20) / s, (r10 - r01) / s, 0.25F * s);
 			}
+			if (r00 > r11 && r00 > r22) {
+				const float s = sqrtf(1.0F + r00 - r11 - r22) * 2.0F;
+				return Quaternion(0.25F * s, (r01 + r10) / s, (r02 + r20) / s, (r21 - r12) / s);
+			}
+			if (r11 > r22) {
+				const float s = sqrtf(1.0F + r11 - r00 - r22) * 2.0F;
+				return Quaternion((r01 + r10) / s, 0.25F * s, (r12 + r21) / s, (r02 - r20) / s);
+			}
+			const float s = sqrtf(1.0F + r22 - r00 - r11) * 2.0F;
+			return Quaternion((r02 + r20) / s, (r12 + r21) / s, 0.25F * s, (r10 - r01) / s);
 		}
 	};
 

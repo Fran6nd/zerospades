@@ -29,7 +29,7 @@
 #include <Core/CopyOnWrite.h>
 #include <Core/Math.h>
 
-#include "KV6EditorTool.h"
+#include "KV6EditorMode.h"
 #include "KV6Scene.h"
 #include "KV6VoxelSelection.h"
 
