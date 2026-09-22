@@ -35,6 +35,10 @@ namespace spades {
 		/** Every model file type the editor lists, whether or not it can open one. */
 		const std::vector<std::string>& KV6ModelExtensions();
 
+		/** Only those the editor can open as a document, for a dialog that has no
+		 *  use for the types it would merely grey out. */
+		const std::vector<std::string>& KV6EditableExtensions();
+
 		/** The extension a document is saved with when its name names no type. */
 		const std::string& KV6DocumentExtension();
 

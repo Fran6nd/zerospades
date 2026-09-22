@@ -93,6 +93,12 @@ namespace spades {
 			pending.hasGeometry = true; // the pivot is saved to the file -> dirties it
 		}
 
+		void KV6UndoStack::RecordDocumentChange() {
+			if (depth == 0)
+				return; // only inside a group
+			pending.hasGeometry = true;
+		}
+
 		void KV6UndoStack::BeginAction() {
 			action = ++nextAction;
 			if (action == 0)

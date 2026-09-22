@@ -52,8 +52,9 @@ namespace spades {
 			VoxelModel* Load(const std::string& absPath);
 			bool Save(VoxelModel* model, const std::string& absPath);
 
-			// Load / save .2kv6 scenes
-			std::vector<VoxelObject> Load2KV6(const std::string& absPath);
+			// Load / save .2kv6 scenes. A scene may legitimately hold no objects,
+			// so loading reports failure separately from what it read.
+			bool Load2KV6(const std::string& absPath, std::vector<VoxelObject>& out);
 			bool Save2KV6(const std::vector<VoxelObject>& scene, const std::string& absPath);
 
 			// Create a new .2kv6 scene with a single unnamed root object containing an empty KV6

@@ -182,10 +182,12 @@ namespace spades {
 			/** The drag was abandoned; `undo` reverses every step it reported. */
 			virtual void OnGizmoCancel(IEditorContext&, const GizmoTransform& undo) { (void)undo; }
 			/**
-			 * A left press landed off every handle: the user is done with the
-			 * gizmo, so work it left pending is completed here.
+			 * A left press landed off every handle (or there was no gizmo to
+			 * grab): the user is done with the gizmo, so work it left pending is
+			 * completed here. `e` is that press, so a tool can tell a plain
+			 * click from a modified one.
 			 */
-			virtual void OnClickAway(IEditorContext&) {}
+			virtual void OnClickAway(IEditorContext&, const PointerInput& e) { (void)e; }
 
 		private:
 			bool SyncPose(IEditorContext& ed);
@@ -220,7 +222,7 @@ namespace spades {
 			bool CurrentPose(IEditorContext& ed, GizmoPose& pose) override;
 			void OnGizmoEnd(IEditorContext& ed, const GizmoTransform& total) override;
 			// Places the pending voxels where they are.
-			void OnClickAway(IEditorContext& ed) override;
+			void OnClickAway(IEditorContext& ed, const PointerInput& e) override;
 		};
 
 		// Moves the model pivot with the gizmo, snapped as the Pivot tool sets it.

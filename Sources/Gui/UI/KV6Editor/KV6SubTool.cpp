@@ -370,13 +370,19 @@ namespace spades {
 			if (!e.IsLeft())
 				return;
 			if (e.IsDown()) {
-				if (gizmo.IsDragging() || !SyncPose(ed))
+				if (gizmo.IsDragging())
 					return;
+				if (!SyncPose(ed)) {
+					// There is no gizmo to grab, so the press lands away from
+					// every handle by definition: the tool may still want it.
+					OnClickAway(ed, e);
+					return;
+				}
 				const GizmoView view = ed.GetGizmoView();
 				// Off the handles is away from the gizmo. A press on a handle that
 				// cannot be grabbed right now (an axis seen end-on) is not.
 				if (gizmo.HandleAt(view, e.pos) == GizmoHandle::None)
-					OnClickAway(ed);
+					OnClickAway(ed, e);
 				else if (gizmo.Begin(view, e.pos))
 					OnGizmoBegin(ed);
 			} else if (e.IsDrag()) {
@@ -455,7 +461,7 @@ namespace spades {
 			ed.TransformPlacement(WholeStep(total)); // one undo step, still only pending
 		}
 
-		void TransformSubTool::OnClickAway(IEditorContext& ed) {
+		void TransformSubTool::OnClickAway(IEditorContext& ed, const PointerInput&) {
 			// With nothing pending (a selection not yet moved) there is nothing to finish.
 			if (ed.HasPlacement())
 				ed.ApplyPlacement();

@@ -29,6 +29,7 @@
 #include <Core/CopyOnWrite.h>
 #include <Core/Math.h>
 
+#include "KV6EditorTool.h"
 #include "KV6Scene.h"
 #include "KV6VoxelSelection.h"
 
@@ -157,6 +158,11 @@ namespace spades {
 		 * copy is cheap because the large parts are shared until changed.
 		 */
 		struct EditState {
+			// Which mode the editor is in. It belongs here so that switching
+			// modes undoes and redoes with everything else: the history and what
+			// is on screen can never drift apart, and a replay restores the mode
+			// the step was made in.
+			EditorMode mode = EditorMode::Edit;
 			VoxelSelection selection; // only ever solid voxels
 			MirrorSetup mirror;
 			bool placing = false;       // whether `placement` holds voxels
@@ -166,19 +172,33 @@ namespace spades {
 			// voxels stay with the editor, keyed by object id, as a .kv6's are:
 			// only what names and places them is journaled here.
 			CopyOnWrite<Scene> scene;
+			// The objects picked in Object mode, in the order they were picked.
+			// `activeObject` is the last of them: the one Edit mode works on, and
+			// the one whose axes the gizmo takes. Both are empty for a .kv6.
+			CopyOnWrite<std::vector<SceneObjectId>> selectedObjects;
 			SceneObjectId activeObject = kNoSceneObject;
+
+			/** Whether `id` is among the picked objects. */
+			bool IsObjectSelected(SceneObjectId id) const {
+				return std::find(selectedObjects->begin(), selectedObjects->end(), id) !=
+				       selectedObjects->end();
+			}
 
 			/** Heap bytes this holds that `other` does not share: its cost on top of it. */
 			std::size_t UnsharedBytes(const EditState& other) const {
 				return selection.UnsharedBytes(other.selection) +
 				       (placing ? placement.UnsharedBytes(other.placement) : 0) +
-				       (scene.Shares(other.scene) ? 0 : scene->Bytes());
+				       (scene.Shares(other.scene) ? 0 : scene->Bytes()) +
+				       (selectedObjects.Shares(other.selectedObjects)
+				          ? 0
+				          : selectedObjects->capacity() * sizeof(SceneObjectId));
 			}
 
 			bool operator==(const EditState& o) const {
-				return selection == o.selection && mirror == o.mirror && placing == o.placing &&
+				return mode == o.mode && selection == o.selection && mirror == o.mirror &&
+				       placing == o.placing &&
 				       (!placing || placement == o.placement) && scene == o.scene &&
-				       activeObject == o.activeObject;
+				       selectedObjects == o.selectedObjects && activeObject == o.activeObject;
 			}
 			bool operator!=(const EditState& o) const { return !(*this == o); }
 		};

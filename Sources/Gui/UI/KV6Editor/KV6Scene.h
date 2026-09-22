@@ -93,9 +93,43 @@ namespace spades {
 			SceneObjectId FirstModelObject() const;
 			/** Where `id` sits in the world: its transform with its parents' applied. */
 			Matrix4 WorldTransform(SceneObjectId id) const;
+			/** What the parents of `id` impose on it; identity for a root. */
+			Matrix4 ParentTransform(SceneObjectId id) const;
 		};
 
 		/** The local transform of one node (translate, then turn, then scale). */
 		Matrix4 LocalTransform(const SceneNode& node);
+
+		/** Where an object sits, and how it is turned and scaled, in its parent. */
+		struct ObjectTransform {
+			Vector3 position = MakeVector3(0.0F, 0.0F, 0.0F);
+			Vector4 rotation = MakeVector4(0.0F, 0.0F, 0.0F, 1.0F); // quaternion
+			Vector3 scale = MakeVector3(1.0F, 1.0F, 1.0F);
+		};
+
+		/** What `node` holds, as a transform. */
+		ObjectTransform TransformOf(const SceneNode& node);
+
+		/**
+		 * What a drag does to the world, as a matrix: scaling by `scale` about
+		 * `pivot` along `axes` (the gizmo's axes, which need not be any
+		 * object's), turning by `rotation` about it, then shifting.
+		 *
+		 * Objects dragged together are each carried by this one matrix, so they
+		 * keep their places relative to one another, as Blender's median-point
+		 * transform does.
+		 */
+		Matrix4 DragTransform(const Vector3& translation, const Quaternion& rotation,
+		                      const Vector3& scale, const Vector3& pivot, const Vector3 axes[3]);
+
+		/**
+		 * `matrix` split back into a position, a turn and three scale factors.
+		 *
+		 * An object holds its placing in those three parts, which cannot express
+		 * a shear: scaling a turned object along axes of its own gives one, and
+		 * the nearest thing without it is kept instead. Blender stores the same
+		 * three parts and makes the same compromise.
+		 */
+		ObjectTransform Decompose(const Matrix4& matrix);
 	} // namespace gui
 } // namespace spades

@@ -76,6 +76,16 @@ namespace spades {
 
 			/** The colour the model is tinted with where `xray` reveals it. */
 			Vector3 xrayColor = MakeVector3(1, 1, 1);
+
+			/**
+			 * Colour of the model's silhouette, in the outline pass the scene
+			 * asks for with `SceneDefinition::forceOutlines` (or the `r_outlines`
+			 * setting). Black, the default, is the outline models have always
+			 * had; another colour marks the model out, as an editor marks what
+			 * is selected. Ignored where the scene draws no outlines, and by
+			 * renderers that have none.
+			 */
+			Vector3 outlineColor = MakeVector3(0, 0, 0);
 		};
 
 		enum DynamicLightType {

@@ -158,6 +158,56 @@ namespace spades {
 			return world;
 		}
 
+		ObjectTransform TransformOf(const SceneNode& node) {
+			ObjectTransform transform;
+			transform.position = node.position;
+			transform.rotation = node.rotation;
+			transform.scale = node.scale;
+			return transform;
+		}
+
+		Matrix4 DragTransform(const Vector3& translation, const Quaternion& rotation,
+		                      const Vector3& scale, const Vector3& pivot, const Vector3 axes[3]) {
+			// Scale along the gizmo's own axes: into that frame, stretch, and back.
+			Matrix4 frame = Matrix4::Identity();
+			for (int k = 0; k < 3; k++) {
+				const Vector3 axis = axes[k];
+				frame.m[k * 4 + 0] = axis.x;
+				frame.m[k * 4 + 1] = axis.y;
+				frame.m[k * 4 + 2] = axis.z;
+			}
+			const Matrix4 stretch = frame * Matrix4::Scale(scale) * frame.Transposed();
+			const Matrix4 turn = rotation.Normalize().ToRotationMatrix();
+			return Matrix4::Translate(translation) * Matrix4::Translate(pivot) * turn * stretch *
+			       Matrix4::Translate(pivot * -1.0F);
+		}
+
+		ObjectTransform Decompose(const Matrix4& matrix) {
+			ObjectTransform transform;
+			transform.position = matrix.GetOrigin();
+			const Vector3 axes[3] = {matrix.GetAxis(0), matrix.GetAxis(1), matrix.GetAxis(2)};
+			transform.scale =
+			  MakeVector3(axes[0].GetLength(), axes[1].GetLength(), axes[2].GetLength());
+			// A flattened axis leaves no direction to read a turn from, so the
+			// turn it had is kept by normalising what is left.
+			Matrix4 rotation = Matrix4::Identity();
+			for (int k = 0; k < 3; k++) {
+				const float length = axes[k].GetLength();
+				const Vector3 unit =
+				  (length > 0.0F) ? axes[k] * (1.0F / length) : rotation.GetAxis(k);
+				rotation.m[k * 4 + 0] = unit.x;
+				rotation.m[k * 4 + 1] = unit.y;
+				rotation.m[k * 4 + 2] = unit.z;
+			}
+			transform.rotation = Quaternion::FromRotationMatrix(rotation).Normalize().v;
+			return transform;
+		}
+
+		Matrix4 Scene::ParentTransform(SceneObjectId id) const {
+			const SceneNode* parent = const_cast<Scene*>(this)->ParentOf(id);
+			return parent ? WorldTransform(parent->id) : Matrix4::Identity();
+		}
+
 		Matrix4 LocalTransform(const SceneNode& node) {
 			return Matrix4::Translate(node.position) *
 			       Quaternion(node.rotation).ToRotationMatrix() * Matrix4::Scale(node.scale);

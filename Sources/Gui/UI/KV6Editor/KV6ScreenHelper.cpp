@@ -88,22 +88,24 @@ namespace spades {
 			return true;
 		}
 
-		std::vector<VoxelObject> KV6ScreenHelper::Load2KV6(const std::string& absPath) {
+		bool KV6ScreenHelper::Load2KV6(const std::string& absPath,
+		                               std::vector<VoxelObject>& out) {
 			std::FILE* f = fs::OpenFile(absPath, "rb");
 			if (!f)
-				return {};
+				return false;
 			try {
 				StdStream stream(f, true); // takes ownership of the FILE*
-				return VoxelModel2KV6::Load(stream);
+				out = VoxelModel2KV6::Load(stream);
+				return true;
 			} catch (const std::exception&) {
-				return {};
+				return false;
 			}
 		}
 
 		bool KV6ScreenHelper::Save2KV6(const std::vector<VoxelObject>& scene,
 		                               const std::string& absPath) {
-			if (scene.empty())
-				return false;
+			// A scene with nothing in it is still a document: it saves, and opens
+			// again as the empty scene it was.
 			// Same temp-then-replace dance as Save(), so a failure mid-write can
 			// never truncate or corrupt an existing scene.
 			std::string tmpPath = absPath + ".savetmp";

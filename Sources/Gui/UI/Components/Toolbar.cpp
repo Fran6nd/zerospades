@@ -60,6 +60,8 @@ namespace spades {
 			swatchOpen = open;
 		}
 
+		void Toolbar::HideColorSwatch() { hasSwatch = false; }
+
 		std::vector<Toolbar::Slot> Toolbar::Layout(float screenWidth) const {
 			std::vector<Slot> slots;
 			float x = kTbX0;

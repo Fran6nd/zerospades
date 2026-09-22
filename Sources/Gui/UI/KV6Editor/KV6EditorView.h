@@ -148,17 +148,23 @@ namespace spades {
 			// --- Scene objects (IEditorContext) ---
 			bool HasScene() const override { return isScene; }
 			int ObjectCount() const override { return int(edit.scene->Ids().size()); }
+			std::vector<SceneObjectId> SelectedObjects() const override {
+				return *edit.selectedObjects;
+			}
 			SceneObjectId ActiveObject() const override { return edit.activeObject; }
-			void SetActiveObject(SceneObjectId id) override;
+			bool IsObjectSelected(SceneObjectId id) const override {
+				return edit.IsObjectSelected(id);
+			}
+			void SelectObject(SceneObjectId id) override;
+			void ToggleObjectSelected(SceneObjectId id) override;
 			SceneObjectId ObjectAtCursor() override { return SceneObjectAtCursor(); }
 			SceneObjectId CreateObject() override;
-			bool DeleteActiveObject() override { return DeleteActiveSceneObject(); }
-			bool GetObjectTransform(Vector3& position, Quaternion& rotation,
-			                        Vector3& scale) const override;
-			void PreviewObjectTransform(const Vector3& position, const Quaternion& rotation,
-			                            const Vector3& scale) override;
-			void CommitObjectTransform(const std::string& label) override;
-			void CancelObjectTransform() override;
+			bool DeleteSelectedObjects() override;
+			bool GetSelectionPose(Vector3& position, Quaternion& rotation) const override;
+			void BeginObjectDrag() override;
+			void PreviewObjectDrag(const GizmoTransform& change) override;
+			void CommitObjectDrag(const std::string& label) override;
+			void CancelObjectDrag() override;
 			void PlaceCube() override;
 			void DeleteCube() override;
 			void SetStatus(const std::string&) override;
@@ -213,6 +219,13 @@ namespace spades {
 			// the history stays small and a replay never rebuilds them.
 			bool isScene = false;
 			std::map<SceneObjectId, Handle<VoxelModel>> sceneModels;
+			// Which object's voxels `model` currently is, so a change to it (a
+			// reframe swaps the handle) is stored back under the right object
+			// even while the active one is being changed.
+			SceneObjectId activeModelOwner = kNoSceneObject;
+			// Bumped whenever an object's voxels change, so what is derived from
+			// them (its render model) knows to be rebuilt.
+			std::map<SceneObjectId, std::uint64_t> sceneModelRevision;
 			/** The scene as it stands (empty for a .kv6). */
 			const Scene& CurrentScene() const { return *edit.scene; }
 			/** The voxels of `id`, or null when it holds none. */
@@ -229,10 +242,42 @@ namespace spades {
 			// `name`, and makes it active; returns its id (`kNoSceneObject` on
 			// failure). One journaled step.
 			SceneObjectId CreateSceneObject(const std::string& name, int size);
-			// Removes the active object and its children; false when there is none.
-			bool DeleteActiveSceneObject();
+			// Brings a model file into the scene: a .kv6 as one object, a .2kv6
+			// as its own objects, each named apart from what is already there.
+			// One undo step; false (with a status line) when it cannot be read.
+			bool AddModelFileAsObjects(const std::string& path);
+			// Replaces the picked objects with `ids`, the last being the active
+			// one, as one journaled step named `label`. Does nothing when those
+			// objects are already the picked ones.
+			void SetSelectedObjects(std::vector<SceneObjectId> ids, const std::string& label);
+			// Picks `ids` (the last being active) and points the tools at what
+			// that makes editable, journaling nothing of itself: for the document
+			// paths, where the pick is part of the state being set up, and for
+			// SetSelectedObjects inside its step.
+			void PickObjectsRaw(std::vector<SceneObjectId> ids);
+			// Removes every picked object, and its children with it; false when
+			// none is picked.
+			bool DeleteSelectedSceneObjects();
 			/** The object whose voxels the cursor is over, or `kNoSceneObject`. */
 			SceneObjectId SceneObjectAtCursor();
+			/** The colour `id`'s silhouette is drawn in: black unless it is picked. */
+			Vector3 OutlineColorOf(SceneObjectId id) const;
+			/**
+			 * What turns the space the tools work in into the world.
+			 *
+			 * Voxel coordinates are the space of one model, and every tool, every
+			 * outline and every gizmo speaks them. A .kv6 is that space; in a
+			 * scene, Edit mode works inside the active object, so the scene is
+			 * shown through that object's transform and the rest of it stands
+			 * around at the right place. Object mode works on the scene itself,
+			 * where the two are the same.
+			 */
+			Matrix4 EditToWorld() const;
+			/** Where the voxels the tools edit are drawn, from their own grid. */
+			Matrix4 ActiveModelMatrix() const;
+			// Moves the camera by `change`, so what it was looking at stays put
+			// when the space beneath it changes.
+			void CarryCamera(const Matrix4& change);
 			// Document paths for scenes, alongside NewModel / LoadModel.
 			void NewScene(int n, const std::string& path);
 			/** Opens `path` as a scene, leaving the open document alone and
@@ -243,7 +288,7 @@ namespace spades {
 			// One render model per object, rebuilt when its voxels change.
 			struct SceneRenderModel {
 				Handle<client::IModel> model;
-				const VoxelModel* builtFrom = nullptr;
+				std::uint64_t revision = 0; // of the voxels it was built from
 			};
 			std::map<SceneObjectId, SceneRenderModel> sceneRenderModels;
 			// Rebuilt from the model once per frame, when invalidated (see RefreshRenderModels).
@@ -286,16 +331,22 @@ namespace spades {
 			// A .kv6 holds one model, so it is only edited in Edit mode. A .2kv6
 			// scene also has Object mode, where whole objects are picked and
 			// placed. Animation is shown greyed out until it arrives.
-			EditorMode currentMode = EditorMode::Edit;
+			// The mode is journaled state (see EditState::mode), so a mode switch
+			// is an undo step like any other change.
+			EditorMode CurrentMode() const { return edit.mode; }
 			// Object mode needs a scene, and Edit mode something to edit: a scene
 			// whose objects were all deleted leaves nothing.
-			bool ModeSupported(EditorMode mode) const {
-				if (mode == EditorMode::Object)
-					return isScene;
-				if (mode == EditorMode::Edit)
-					return !isScene || edit.activeObject != kNoSceneObject;
-				return false;
+			bool ModeSupported(EditorMode mode) const;
+			/** The mode to fall back to when the one in hand stops applying. */
+			EditorMode FallbackMode() const {
+				return isScene ? EditorMode::Object : EditorMode::Edit;
 			}
+			// Puts the mode back to one that applies, and the active tool to one
+			// of that mode. Journals nothing of itself: called inside a step it
+			// joins it, and called during a replay it only repairs what the
+			// restored state already says.
+			void ReconcileMode();
+			void ReconcileTool();
 			// Each mode's toolbar button: its id and label.
 			struct ModeInfo {
 				EditorMode mode;
@@ -321,10 +372,15 @@ namespace spades {
 			// Switching tools or modes deactivates the outgoing tool, which is where
 			// a pending placement is applied.
 			void SetActiveTool(int index);
+			// Switches mode as one journaled step, dropping a voxel selection that
+			// belonged to the mode being left. Refused when the mode does not
+			// apply to this document, or while a mouse button is held (the
+			// incoming tool would see a drag it never saw start).
 			void SetMode(EditorMode mode);
-			// Makes tool `toolIndex` in `mode` the active one, deactivating the
-			// outgoing tool and activating the incoming one.
-			void Activate(int toolIndex, EditorMode mode);
+			// Makes tool `toolIndex` the active one, deactivating the outgoing
+			// tool and activating the incoming one. The tool decides the mode:
+			// each belongs to exactly one.
+			void Activate(int toolIndex);
 			// Keys 1-9 pick the active tool's sub-tools, in bar order.
 			static std::string SubToolHotKey(int index);
 			// Switches tool or sub-tool when `key` is one's hot key; false if not.
@@ -536,15 +592,19 @@ namespace spades {
 			// so committing records from it and ending a preview puts it back.
 			std::optional<Vector3> previewedOrigin;
 			std::optional<Vector3> previewedMirrorPlane;
-			// An object being dragged in Object mode: which one, and where it sat
-			// before the drag, so ending the preview puts it back.
-			struct PreviewedObject {
-				SceneObjectId id = kNoSceneObject;
-				Vector3 position;
-				Vector4 rotation;
-				Vector3 scale;
+			// The objects being dragged in Object mode: where each sat before the
+			// drag (so ending the preview puts them back), and the frame the drag
+			// is measured in.
+			struct PreviewedDrag {
+				std::vector<SceneObjectId> ids;
+				std::vector<ObjectTransform> before; // parallel to `ids`
+				Vector3 pivot = MakeVector3(0.0F, 0.0F, 0.0F);
+				Vector3 axes[3] = {MakeVector3(1.0F, 0.0F, 0.0F), MakeVector3(0.0F, 1.0F, 0.0F),
+				                   MakeVector3(0.0F, 0.0F, 1.0F)};
 			};
-			std::optional<PreviewedObject> previewedObject;
+			std::optional<PreviewedDrag> previewedDrag;
+			/** Puts every object of `drag` back where it was. */
+			void RestoreDragged(const PreviewedDrag& drag);
 			void EndPreviews() noexcept;
 
 			// --- Escape ---------------------------------------------------------
@@ -728,8 +788,11 @@ namespace spades {
 			 * Shows the shared model file browser over the editor, starting in the
 			 * document's folder; `picked` gets the chosen path.
 			 */
+			// `extensions` are what the dialog lists and completes names with; the
+			// first is the one a typed name takes when it carries none.
 			void ShowModelFileDialog(const std::string& title, FileBrowserPurpose purpose,
 			                         const std::string& initialName,
+			                         const std::vector<std::string>& extensions,
 			                         std::function<void(const std::string&)> picked);
 			/** A plain message over the editor with a single way out. */
 			void ShowMessage(const std::string& text);

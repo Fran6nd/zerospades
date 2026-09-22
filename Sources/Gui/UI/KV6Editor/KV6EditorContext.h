@@ -26,6 +26,7 @@
 
 #include <Core/Math.h>
 #include <Gui/UI/Components/Gizmo/GizmoView.h>
+#include <Gui/UI/Components/Gizmo/TransformGizmo.h>
 
 #include "KV6Scene.h"
 
@@ -254,31 +255,37 @@ namespace spades {
 			virtual bool HasScene() const = 0;
 			/** How many objects the scene holds. */
 			virtual int ObjectCount() const = 0;
-			/** The object Edit mode works on; `kNoSceneObject` when there is none. */
+			/** The objects picked, in the order they were picked. */
+			virtual std::vector<SceneObjectId> SelectedObjects() const = 0;
+			/** The last one picked: what Edit mode works on, and whose axes the
+			 *  gizmo takes. `kNoSceneObject` when nothing is picked. */
 			virtual SceneObjectId ActiveObject() const = 0;
-			/** Makes `id` the active object, as one undo step. */
-			virtual void SetActiveObject(SceneObjectId id) = 0;
+			virtual bool IsObjectSelected(SceneObjectId id) const = 0;
+			/** Picks `id` and nothing else; `kNoSceneObject` picks nothing. One step. */
+			virtual void SelectObject(SceneObjectId id) = 0;
+			/** Adds `id` to the picked objects, or drops it if it is among them. */
+			virtual void ToggleObjectSelected(SceneObjectId id) = 0;
 			/** The object under the cursor, or `kNoSceneObject`. */
 			virtual SceneObjectId ObjectAtCursor() = 0;
-			/** Adds an object, makes it active, and returns it; one undo step. */
+			/** Adds an object, picks it, and returns it; one undo step. */
 			virtual SceneObjectId CreateObject() = 0;
-			/** Removes the active object; false when there is none. One undo step. */
-			virtual bool DeleteActiveObject() = 0;
-			/** Where the active object sits, and how it is turned and scaled. */
-			virtual bool GetObjectTransform(Vector3& position, Quaternion& rotation,
-			                                Vector3& scale) const = 0;
+			/** Removes every picked object; false when none is. One undo step. */
+			virtual bool DeleteSelectedObjects() = 0;
 			/**
-			 * Shows the active object at a transform while a drag runs. Nothing
-			 * is journaled until the drag is committed, and the object goes back
-			 * where it was if it is cancelled instead.
+			 * Where a gizmo on the picked objects belongs: the middle of them,
+			 * turned as the active one is. False when nothing is picked.
 			 */
-			virtual void PreviewObjectTransform(const Vector3& position,
-			                                    const Quaternion& rotation,
-			                                    const Vector3& scale) = 0;
-			/** Keeps what the preview shows, as one undo step named `label`. */
-			virtual void CommitObjectTransform(const std::string& label) = 0;
-			/** Drops the preview, putting the object back where it was. */
-			virtual void CancelObjectTransform() = 0;
+			virtual bool GetSelectionPose(Vector3& position, Quaternion& rotation) const = 0;
+			/**
+			 * A drag of the picked objects: `BeginObjectDrag` remembers where they
+			 * are, `PreviewObjectDrag` shows them moved by `change` from there
+			 * (journaling nothing), and the drag ends by keeping that as one undo
+			 * step or by putting them back.
+			 */
+			virtual void BeginObjectDrag() = 0;
+			virtual void PreviewObjectDrag(const GizmoTransform& change) = 0;
+			virtual void CommitObjectDrag(const std::string& label) = 0;
+			virtual void CancelObjectDrag() = 0;
 		};
 	} // namespace gui
 } // namespace spades

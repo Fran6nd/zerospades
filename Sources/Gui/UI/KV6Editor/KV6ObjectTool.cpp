@@ -36,18 +36,28 @@ namespace spades {
 			constexpr float kTurnedEnough = 1.0e-4F;
 			constexpr float kScaledEnough = 1.0e-4F;
 
+			// Every handle but the trackball: free rotation answers to a press
+			// anywhere inside the rings, which would swallow the clicks that pick
+			// another object. The rings themselves still turn the object.
+			GizmoHandleSet ObjectHandles() {
+				return GizmoHandleSet::Translation() | GizmoHandleSet::Scaling() |
+				       GizmoHandleSet::Of(GizmoHandle::RotateX) |
+				       GizmoHandleSet::Of(GizmoHandle::RotateY) |
+				       GizmoHandleSet::Of(GizmoHandle::RotateZ) |
+				       GizmoHandleSet::Of(GizmoHandle::RotateView);
+			}
+
 			/**
-			 * Places the active object with the gizmo: its arrows and squares move
-			 * it, its rings turn it, and its cubes scale it.
+			 * Picks objects, and places the picked ones with the gizmo: its arrows
+			 * and squares move them, its rings turn them, its cubes scale them.
 			 *
-			 * The object follows the drag as a preview and the release keeps it,
-			 * so a drag is one undo step however far it wandered, and Escape puts
-			 * the object back where it started. A press away from every handle
-			 * picks whatever object is under it instead.
+			 * They follow a drag as a preview and the release keeps it, so a drag
+			 * is one undo step however far it wandered, and Escape puts them back
+			 * where they started.
 			 */
 			class ObjectGizmoSubTool : public GizmoSubTool {
 			public:
-				ObjectGizmoSubTool() : GizmoSubTool(GizmoSnap(), GizmoHandleSet::All()) {}
+				ObjectGizmoSubTool() : GizmoSubTool(GizmoSnap(), ObjectHandles()) {}
 
 				const char* Label() const override { return "Place"; }
 				std::string Hint(IEditorContext&) override {
@@ -57,61 +67,57 @@ namespace spades {
 
 			protected:
 				bool CurrentPose(IEditorContext& ed, GizmoPose& pose) override {
-					Vector3 position, scale;
+					Vector3 position;
 					Quaternion rotation;
-					if (!ed.HasScene() || !ed.GetObjectTransform(position, rotation, scale))
-						return false; // no object to handle
-					// The gizmo sits on the object and turns with it, so its arrows
-					// point along the object's own axes as Blender's local gizmo does.
+					if (!ed.HasScene() || !ed.GetSelectionPose(position, rotation))
+						return false; // nothing picked to handle
+					// The gizmo sits at the middle of what is picked and turns with
+					// the active object, as Blender's local gizmo does.
 					pose.position = position;
-					pose.axes[0] = rotation.Apply(MakeVector3(1.0F, 0.0F, 0.0F));
-					pose.axes[1] = rotation.Apply(MakeVector3(0.0F, 1.0F, 0.0F));
-					pose.axes[2] = rotation.Apply(MakeVector3(0.0F, 0.0F, 1.0F));
+					for (int k = 0; k < 3; k++) {
+						pose.axes[k] = rotation.Apply(MakeVector3(
+						  k == 0 ? 1.0F : 0.0F, k == 1 ? 1.0F : 0.0F, k == 2 ? 1.0F : 0.0F));
+					}
 					return true;
 				}
 
-				void OnGizmoBegin(IEditorContext& ed) override {
-					ed.GetObjectTransform(startPosition, startRotation, startScale);
-				}
+				void OnGizmoBegin(IEditorContext& ed) override { ed.BeginObjectDrag(); }
 
-				void OnGizmoDrag(IEditorContext& ed) override { Apply(ed, gizmo.Total()); }
+				void OnGizmoDrag(IEditorContext& ed) override { ed.PreviewObjectDrag(gizmo.Total()); }
 
 				void OnGizmoEnd(IEditorContext& ed, const GizmoTransform& total) override {
 					if (total.IsIdentity()) {
-						ed.CancelObjectTransform();
+						ed.CancelObjectDrag();
 						return;
 					}
-					Apply(ed, total);
-					ed.CommitObjectTransform(StepLabel(total));
+					ed.PreviewObjectDrag(total);
+					ed.CommitObjectDrag(StepLabel(total));
 				}
 
 				void OnGizmoCancel(IEditorContext& ed, const GizmoTransform&) override {
-					ed.CancelObjectTransform(); // back to where the drag began
+					ed.CancelObjectDrag(); // back to where the drag began
 				}
 
-				// A press away from the handles picks the object under it, which is
-				// how an object is chosen in the first place.
-				void OnClickAway(IEditorContext& ed) override {
+				// A press away from the handles picks: the object under it alone,
+				// added to what is picked with Shift, or nothing at all over empty
+				// space.
+				void OnClickAway(IEditorContext& ed, const PointerInput& e) override {
+					// Anything a drag left pending is kept first, so picking
+					// another object never throws a move away.
+					ed.CommitObjectDrag("Place Object");
 					const SceneObjectId under = ed.ObjectAtCursor();
-					if (under != kNoSceneObject && under != ed.ActiveObject())
-						ed.SetActiveObject(under);
+					if (under == kNoSceneObject) {
+						if (!e.shift)
+							ed.SelectObject(kNoSceneObject); // empty space picks nothing
+						return;
+					}
+					if (e.shift)
+						ed.ToggleObjectSelected(under); // add to, or drop from, the picked
+					else
+						ed.SelectObject(under);
 				}
 
 			private:
-				Vector3 startPosition = MakeVector3(0.0F, 0.0F, 0.0F);
-				Quaternion startRotation = Quaternion(0.0F, 0.0F, 0.0F, 1.0F);
-				Vector3 startScale = MakeVector3(1.0F, 1.0F, 1.0F);
-
-				// Where the drag so far puts the object, from where it started.
-				void Apply(IEditorContext& ed, const GizmoTransform& change) {
-					const Vector3 position = startPosition + change.translation;
-					const Quaternion rotation = (change.rotation * startRotation).Normalize();
-					const Vector3 scale =
-					  MakeVector3(startScale.x * change.scale.x, startScale.y * change.scale.y,
-					              startScale.z * change.scale.z);
-					ed.PreviewObjectTransform(position, rotation, scale);
-				}
-
 				// One gizmo serves all three changes, so the step is named after
 				// the one the drag actually made.
 				static std::string StepLabel(const GizmoTransform& total) {
@@ -144,21 +150,21 @@ namespace spades {
 
 		void ObjectSelectTool::UpdateOptions(IEditorContext& ed) {
 			GizmoTool::UpdateOptions(ed);
+			const std::size_t picked = ed.SelectedObjects().size();
 			options.SetEnabled(kNewOption, ed.HasScene());
-			// The scene keeps at least one object: with none there is nothing to
-			// edit, and nothing worth saving either.
-			options.SetEnabled(kDeleteOption,
-			                   ed.ActiveObject() != kNoSceneObject && ed.ObjectCount() > 1);
+			options.SetEnabled(kDeleteOption, picked > 0);
 			const int count = ed.ObjectCount();
-			options.SetLabel(kCountOption,
-			                 std::to_string(count) + (count == 1 ? " object" : " objects"));
+			std::string readout = std::to_string(count) + (count == 1 ? " object" : " objects");
+			if (picked > 1)
+				readout += ", " + std::to_string(picked) + " picked";
+			options.SetLabel(kCountOption, readout);
 		}
 
 		void ObjectSelectTool::OnAction(IEditorContext& ed, const std::string& id) {
 			if (id == kNewOption)
 				ed.CreateObject();
 			else if (id == kDeleteOption)
-				ed.DeleteActiveObject();
+				ed.DeleteSelectedObjects();
 			else
 				GizmoTool::OnAction(ed, id);
 		}
@@ -166,10 +172,15 @@ namespace spades {
 		std::string ObjectSelectTool::Hint(IEditorContext& ed) {
 			if (ed.ObjectCount() == 0)
 				return "[New Object] adds the first object";
-			if (ed.ActiveObject() == kNoSceneObject)
-				return "[LMB] pick an object";
-			return std::string("[Tab] edit its voxels  |  ") +
-			       "[LMB] pick an object  |  drag a handle to move, turn or scale it";
+			const std::size_t picked = ed.SelectedObjects().size();
+			if (picked == 0)
+				return "[LMB] pick an object  |  [Shift+LMB] pick several";
+			std::string hint = "[LMB] pick  |  [Shift+LMB] pick several  |  "
+			                   "drag a handle to move, turn or scale";
+			// One object at a time is edited, so Tab is only offered for one.
+			if (picked == 1)
+				hint = "[Tab] edit its voxels  |  " + hint;
+			return hint;
 		}
 	} // namespace gui
 } // namespace spades

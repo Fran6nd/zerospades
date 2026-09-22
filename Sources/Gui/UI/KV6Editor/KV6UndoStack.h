@@ -120,6 +120,14 @@ namespace spades {
 			                   int afterD, int ox, int oy, int oz);
 			// Append a pivot (origin) change to the open group.
 			void RecordOrigin(const Vector3& before, const Vector3& after);
+			/**
+			 * Note that the open group changes the document, for changes the
+			 * state carries rather than the records: a scene's objects, their
+			 * names and where they sit. Without this such a step would replay
+			 * correctly but leave the document looking unmodified, and closing
+			 * it would throw the work away.
+			 */
+			void RecordDocumentChange();
 
 			// --- history ------------------------------------------------------
 			bool CanUndo() const { return !undoGroups.empty(); }

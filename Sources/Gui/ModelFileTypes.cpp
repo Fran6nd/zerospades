@@ -78,6 +78,18 @@ namespace spades {
 			return extension;
 		}
 
+		const std::vector<std::string>& KV6EditableExtensions() {
+			static const std::vector<std::string> extensions = [] {
+				std::vector<std::string> list;
+				for (const ModelFileType& type : kModelFileTypes) {
+					if (type.editable)
+						list.push_back(type.extension);
+				}
+				return list;
+			}();
+			return extensions;
+		}
+
 		const std::string& KV6SceneExtension() {
 			// The first editable scene type is what a new scene is written as.
 			static const std::string extension = [] {
