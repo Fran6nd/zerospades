@@ -1175,6 +1175,16 @@ namespace spades {
 			float sz = Clamp(sh * 0.014F, 10.0F, 26.0F);
 			float margin = sz * 2.0F;
 
+			// What is left of a marker the player is facing: enough to keep the callout
+			// on screen without hiding what it points at. Down the sights it thins
+			// further, since a shot being lined up is what a marker must least sit on,
+			// and it thins as the sights come up rather than stepping down when they
+			// arrive.
+			constexpr float kFacedAlpha = 0.2F;
+			constexpr float kScopedFacedAlpha = 0.05F;
+			float facedAlpha =
+			  Mix(kFacedAlpha, kScopedFacedAlpha, Clamp(GetAimDownState(), 0.0F, 1.0F));
+
 			for (const auto& entry : teamplay->GetPings()) {
 				const Teamplay::Ping& ping = entry.second;
 
@@ -1210,6 +1220,21 @@ namespace spades {
 
 				scrPos.x = Clamp(scrPos.x, margin, sw - margin);
 				scrPos.y = Clamp(scrPos.y, margin, sh - margin);
+
+				// A marker stands between the player and the thing it points at — often
+				// the marked enemy it was placed on — so it gets out of the way as the
+				// aim reaches it. Within half a diamond of the middle of the screen it
+				// is down to `facedAlpha`; by one and a half diamonds it is clear of the
+				// aim point and fully drawn. Nothing is lost by that: what is left is
+				// still legible, the copies on any other surface the ping asked for are
+				// untouched, and it is back in full the moment the aim moves off.
+				if (onScreen) {
+					float dist = (scrPos - MakeVector2(sw, sh) * 0.5F).GetLength();
+					alpha *= Mix(facedAlpha, 1.0F,
+								 SmoothStep(Clamp((dist - sz * 0.5F) / sz, 0.0F, 1.0F)));
+					if (alpha <= 0.0F)
+						continue;
+				}
 
 				// The colour the server chose, drawn as sent: which colour a ping should
 				// be is its business, and this client is never told what one means.
