@@ -2027,7 +2027,10 @@ namespace spades {
 			Player& p = world->GetPlayer(focusedPlayerId).value();
 			clientPlayers[focusedPlayerId]->Draw2D();
 
-			if (cg_hudCompassBar)
+			// The compass exists only where the server allows it: it is a client-side
+			// feature the extension governs, and a client never turns one on by itself.
+			// Where it is allowed, the player may still turn it off.
+			if (teamplay->IsCompassAllowed() && cg_hudCompassBar)
 				DrawCompassBar(p);
 
 			if (cg_debugAim && p.IsToolWeapon())
@@ -2235,16 +2238,9 @@ namespace spades {
 
 			IFont& font = fontManager->GetSmallFont();
 
-			auto toAngle = [](float y, float x) -> float {
-				float deg = RAD2DEG(atan2f(y, x));
-				deg = fmodf(deg + 180.0F, 360.0F);
-				if (deg < 0.0F)
-					deg += 360.0F;
-				return deg;
-			};
-
-			const auto& o = p.GetFront2D();
-			const float yawDeg = toAngle(o.y, o.x);
+			// Every bearing on the bar, the heading included, is read against the north
+			// the server last sent in the Teamplay Config.
+			const float yawDeg = teamplay->GetBearing(p.GetFront2D().GetXY());
 			const float range = 120.0F;
 
 			// draw labels and ticks
@@ -2310,7 +2306,7 @@ namespace spades {
 
 			auto drawIcon = [&](Handle<IImage>& icon, Vector3 targetPos, Vector4 color, float size = 12.0F) {
 				Vector2 delta = targetPos.GetXY() - pos2D;
-				float angle = toAngle(delta.y, delta.x);
+				float angle = teamplay->GetBearing(delta);
 				float yawDelta = std::remainderf(angle - roundf(yawDeg), 360.0F);
 				if (fabsf(yawDelta) > range * 0.5F)
 					return;
@@ -2338,6 +2334,94 @@ namespace spades {
 					if (!otherTeam.hasIntel)
 						drawIcon(intelIcon, team.flagPos, color);
 				}
+			} else if (mode && mode->ModeType() == IGameMode::m_TC) {
+				auto& tc = dynamic_cast<TCGameMode&>(mode.value());
+				Handle<IImage> baseIcon = renderer->RegisterImage("Gfx/Map/CommandPost.png");
+
+				// draw territories
+				for (int i = 0; i < tc.GetNumTerritories(); i++)
+					drawIcon(baseIcon, tc.GetTerritory(i).pos, color);
+			}
+
+			// The objectives above are on the compass by default; everything below is
+			// here because a ping or a mark asked for it. A bearing carries no distance
+			// and no position, only which way to turn, which is why a callout known by
+			// direction alone belongs on this surface.
+			//
+			// Where a bearing lands on the bar and how much the edge fade leaves of it;
+			// `false` when it is outside the visible range or fully faded.
+			auto locateBearing = [&](const Vector3& targetPos, float alpha, float& px,
+									 float& fade) {
+				Vector2 delta = targetPos.GetXY() - pos2D;
+				float angle = teamplay->GetBearing(delta);
+				float yawDelta = std::remainderf(angle - roundf(yawDeg), 360.0F);
+				if (fabsf(yawDelta) > range * 0.5F)
+					return false;
+
+				px = roundf(barX + barW * 0.5F + (yawDelta / range) * barW);
+				fade = 1.0F - Clamp((fabsf(yawDelta) - range * 0.42F) / (range * 0.06F),
+									0.0F, 1.0F);
+				fade *= alpha;
+				return fade > 0.0F;
+			};
+
+			// A mark follows a player, so it gets a full-height stripe rather than an
+			// icon: it reads as a direction, not as a thing sitting at a place.
+			auto drawBearing = [&](const Vector3& targetPos, const Vector3& col, float alpha) {
+				float px, fade;
+				if (!locateBearing(targetPos, alpha, px, fade))
+					return;
+
+				const float w = 2.0F;
+				renderer->SetColorAlphaPremultiplied(shadowP * fade);
+				renderer->DrawFilledRect(px, barY + 1.0F, px + w + 1.0F, barY + barH);
+				renderer->SetColorAlphaPremultiplied(
+				  MakeVector4(col.x * fade, col.y * fade, col.z * fade, fade));
+				renderer->DrawFilledRect(px, barY, px + w, barY + barH - 1.0F);
+			};
+
+			// A ping's pulse rings reach past the bar; keep them on it rather than over
+			// the heading readout underneath.
+			const bool clipPings = teamplay->HasPings();
+			if (clipPings)
+				renderer->BeginClippingRect(AABB2(barX, barY, barW, barH));
+
+			for (const auto& entry : teamplay->GetPings()) {
+				const Teamplay::Ping& ping = entry.second;
+				if (!(ping.surfaces & Teamplay::SurfaceCompass))
+					continue;
+
+				constexpr float kFadeOutTime = 0.75F;
+				float px, fade;
+				if (!locateBearing(ping.position, ping.GetFadeAlpha(kFadeOutTime), px, fade))
+					continue;
+
+				// The same diamond the ping wears in the world and on the minimap,
+				// centred on the bar and sized to sit inside it with its outline.
+				constexpr float kCompassPingHalfSize = 5.0F;
+				DrawPingDiamond(*renderer, MakeVector2(px, barY + barH * 0.5F),
+								kCompassPingHalfSize, Teamplay::ToRenderColor(ping.color), fade,
+								ping.age);
+			}
+
+			if (clipPings)
+				renderer->EndClippingRect();
+
+			for (const auto& entry : teamplay->GetMarks()) {
+				const Teamplay::Mark& mark = entry.second;
+				if (!(mark.surfaces & Teamplay::SurfaceCompass))
+					continue;
+
+				auto maybeMarked = world->GetPlayer(static_cast<unsigned int>(entry.first));
+				if (!maybeMarked)
+					continue;
+
+				Player& marked = maybeMarked.value();
+				if (marked.IsSpectator() || !marked.IsAlive())
+					continue;
+
+				// The blink runs on every surface the mark names, this one included.
+				drawBearing(marked.GetPosition(), ResolveMarkColor(marked, mark.color), 1.0F);
 			}
 		}
 

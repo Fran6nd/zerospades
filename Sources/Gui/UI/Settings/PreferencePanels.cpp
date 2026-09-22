@@ -175,6 +175,9 @@ namespace spades {
 			l.AddChoiceField(_Tr("Preferences", "HUD Ammo Style"), "cg_hudAmmoStyle",
 			                 {_Tr("Preferences", "NORMAL"), _Tr("Preferences", "SIMPLE")}, {0, 1});
 			l.AddToggleField(_Tr("Preferences", "Show Tool Hotbar"), "cg_hudHotbar");
+			// The compass also needs the server's permission, so turning this on does
+			// not put one on screen where the server does not allow it.
+			l.AddToggleField(_Tr("Preferences", "Show Compass Bar"), "cg_hudCompassBar");
 			l.AddChoiceField(_Tr("Preferences", "Show Alive Player Count"), "cg_hudPlayerCount",
 			                 {_Tr("Preferences", "OFF"), _Tr("Preferences", "Top"),
 			                  _Tr("Preferences", "Bottom")},
