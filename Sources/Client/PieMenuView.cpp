@@ -151,7 +151,7 @@ namespace spades {
 						xLoW = std::max(xLoW, yf * c2 / s2);
 					} else if (s2 < 0.0F) {
 						xHiW = std::min(xHiW, yf * c2 / s2);
-					} else if (yf * c2 < 0.0F) {
+					} else if (yf * c2 > 0.0F) {
 						continue;
 					}
 					if (xHiW <= xLoW)
