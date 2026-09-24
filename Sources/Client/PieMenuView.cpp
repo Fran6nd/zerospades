@@ -201,50 +201,56 @@ namespace spades {
 				bool pings[PieMenuView::kSliceCount];
 			};
 
-			// Layout rule, held across every ring: the vertical axis carries a pair
-			// of opposites, the right half is about them, the left half is about us.
-			// "Where" is deliberately subject-free so it chains onto any other call.
+			// Layout rule, held across every ring: slice 0 is at the top and the
+			// rest follow clockwise, the vertical axis carries a pair of opposites,
+			// the right half is about them and the left half is about us.
+			//
+			// The ring a message sits on is what says how it travels, so nobody has
+			// to remember it slice by slice: the first ring points at a place, the
+			// second one talks, the third one calls the game.
+
 			// Offered when the crosshair is on terrain rather than on a player.
 			const PageDef kWorldPages[] = {
-				// A reply is about a direction or an event rather than a point on
-				// the map, so this ring only talks; the rings that point at places
-				// carry the pings.
-				{"Reply", false,
-				 {"Affirmative", "Enemy Spotted!", "Behind Us!",
-				  "Negative", "Need Backup!", "On My Way!"},
-				 // Only the sighting names somewhere; the rest answer somebody or
-				 // say what the sender is doing.
-				 {false, true, false, false, false, false}},
-				// Every slice here is a direction relative to the team rather than
-				// a point the crosshair is on, so a marker would land somewhere it
-				// does not belong: this ring only talks.
-				{"Where", false,
-				 {"In Front of Us!", "On Our Right!", "Below Us!",
-				  "Behind Us!", "At Our Base!", "On Our Left!"},
+				// Every slice names somewhere, so every slice drops a marker there.
+				// A server without the extension gets the same words on team chat.
+				{"Point", false,
+				 {"Enemy Here!", "Tear It Down!", "Watch This Spot",
+				  "Go Here!", "Let's Dig Here", "Help Me Build"},
+				 {true, true, true, true, true, true}},
+				// Said to the team, about nowhere in particular: a marker would only
+				// put "thank you" on a piece of ground.
+				{"Social", false,
+				 {"Affirmative", "Thank You", "Hi!",
+				  "Negative", "Sorry!", "Help Me"},
 				 {false, false, false, false, false, false}},
-				{"Plan", false,
-				 {"Get the Intel!", "Tear It Down!", "Spawnkiller!",
-				  "Defend the Intel!", "Dig a Tunnel", "Help Me Build"},
-				 // Work to be done to a piece of ground: those point. The intel
-				 // has a place of its own, and a spawnkiller is an event.
-				 {false, true, false, false, false, true}},
+				// The objective rather than the ground: where the intel is and what
+				// to do about it is already known to everyone, so none of it points.
+				{"Tactics", false,
+				 {"Attack!", "Get the Intel!", "Enemy Has the Intel!",
+				  "Fall Back!", "Regroup on Me", "Defend the Intel!"},
+				 {false, false, false, false, false, false}},
 			};
 
-			// Directions here are relative to the teammate under the crosshair, which
-			// makes them exact in a way the broadcast ring's "our right" cannot be.
+			// Offered while the crosshair is on a teammate, and sent to them alone.
+			// A person is not a place, so nothing here points; the rings keep the
+			// order they have on terrain, and Social keeps the same six words, so
+			// the gesture is the same whoever it is aimed at.
 			const PageDef kTeammatePages[] = {
-				// Aimed at a person, who is not a place: nothing here points.
-				{"Reply", false,
-				 {"Affirmative", "Thank You", "Behind You!",
-				  "Negative", "Cover Me", "Follow Me"},
+				// Directions are relative to the teammate under the crosshair, which
+				// makes them exact in a way a broadcast "our right" cannot be. Up,
+				// down, left and right sit where they point; the two threats that
+				// have no direction take the lower corners.
+				{"Warn", false,
+				 {"Above You!", "On Your Right!", "Behind You!",
+				  "Below You!", "Sniper on You!", "On Your Left!"},
 				 {false, false, false, false, false, false}},
-				{"Enemy", false,
-				 {"Above You!", "On Your Right!", "Below You!",
-				  "Behind You!", "Sniper on You!", "On Your Left!"},
+				{"Social", false,
+				 {"Affirmative", "Thank You", "Hi!",
+				  "Negative", "Sorry!", "Help Me"},
 				 {false, false, false, false, false, false}},
-				{"Plan", false,
-				 {"Help Me Build", "Stay Here", "Sorry!",
-				  "Tear This Down", "Boost Me Up", "Let Me Through"},
+				{"Cooperate", false,
+				 {"Follow Me", "Cover Me", "Let Me Through",
+				  "Stay Here", "Boost Me Up", "Help Me Build"},
 				 {false, false, false, false, false, false}},
 			};
 
@@ -268,11 +274,10 @@ namespace spades {
 				for (size_t i = 0; i < count; i++) {
 					const PageDef& def = defs[i];
 					Page p;
-					p.name = _Tr("Client", def.name);
+					p.name = def.name;
 					p.global = def.global;
 					for (int s = 0; s < kSliceCount; s++) {
 						p.labels[static_cast<size_t>(s)] = def.labels[s];
-						p.displayLabels[static_cast<size_t>(s)] = _Tr("Client", def.labels[s]);
 						p.pings[static_cast<size_t>(s)] = def.pings[s];
 					}
 					pages.push_back(std::move(p));
@@ -418,7 +423,7 @@ namespace spades {
 			
 			Vector2 center = {sw * 0.5F, sh * 0.5F};
 
-			const auto& labels = CurrentPage().displayLabels;
+			const auto& labels = CurrentPage().labels;
 
 			// Ease-out open animation: scale from 0.85 → 1.0, alpha from 0 → 1.
 			float eased = 1.0F - (1.0F - openPhase) * (1.0F - openPhase);

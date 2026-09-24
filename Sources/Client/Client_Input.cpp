@@ -718,9 +718,8 @@ namespace spades {
 						// player is holding, and opening the menu must not break it.
 						weapInput.primary = false;
 					} else if (!down && pieMenuView->IsOpen()) {
-						PieMenuView::Variant v = pieMenuView->GetVariant();
 						int targetId = pieMenuView->GetTargetPlayerId();
-						// Both are read while the menu still stands: closing it
+						// All three are read while the menu still stands: closing it
 						// forgets which ring was on show, and the ring is what says
 						// whether the slice points at somewhere and which channel it
 						// speaks on.
@@ -729,29 +728,26 @@ namespace spades {
 						bool slicePings = pieMenuView->SlicePings(pieMenuView->GetSelection());
 						pieMenuView->Close();
 						if (!msg.empty() && net) {
-							if (v == PieMenuView::Variant::Teammate && targetId >= 0) {
-								char cmd[128];
-								std::snprintf(cmd, sizeof(cmd), "/pm #%d %s", targetId, msg.c_str());
-								net->SendChat(cmd, false);
-							} else {
-								// Name the target so a broadcast taunt still lands
-								// personally on the player it was aimed at.
-								if (v == PieMenuView::Variant::Enemy && targetId >= 0) {
-									std::string target = world->GetPlayerName(targetId);
-									if (!target.empty())
-										msg = target + ", " + msg;
-								}
+							// Where a message goes is decided by the message, not by
+							// what the menu was opened on: a slice that points at a
+							// place is for the team, and one that only talks is for
+							// whoever it was aimed at.
+							if (slicePings) {
 								// The marker says it better than the message does, but
 								// the message is what reaches a server without the
 								// extension — so the chat is the fallback, not a double.
 								// Either way the same words go out, as the ping's reason
-								// or as the chat line, on the channel the ring speaks on.
-								// Only a ring that points has pinging slices, so a taunt
-								// never drops a marker.
-								bool pinged = slicePings && pieMenuPingValid &&
-											  SendTeamplayPing(pieMenuPingPos, msg);
-								if (!pinged)
+								// or as the chat line.
+								if (!(pieMenuPingValid && SendTeamplayPing(pieMenuPingPos, msg)))
 									net->SendChat(msg, global);
+							} else if (targetId >= 0) {
+								// Said to the player under the crosshair rather than to
+								// the room, whichever team they are on.
+								char cmd[128];
+								std::snprintf(cmd, sizeof(cmd), "/pm #%d %s", targetId, msg.c_str());
+								net->SendChat(cmd, false);
+							} else {
+								net->SendChat(msg, global);
 							}
 						}
 						pieMenuPingValid = false;
