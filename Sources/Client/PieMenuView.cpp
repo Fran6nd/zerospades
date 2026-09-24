@@ -44,6 +44,8 @@ namespace spades {
 			constexpr float kRingOuter = 176.0F;
 			constexpr float kSliceGapDeg = 1.0F;
 			constexpr float kLabelRadius = 126.5F;
+			// How far past kRingOuter a slice reaches when it is fully highlighted.
+			constexpr float kHighlightReach = 10.0F;
 
 			// Normalized quarter-circle half-width table: table[i] = sqrt(1-(i/N)^2).
 			// Built once at program startup; radius-agnostic.
@@ -441,21 +443,32 @@ namespace spades {
 			renderer.SetColorAlphaPremultiplied(MakeVector4(0, 0, 0, 0.55F * alpha));
 			DrawDiscFill(renderer, center, rOuter);
 
+			// A highlighted slice reaches past the others, so how far out it goes
+			// is its own and is asked for in both passes below.
+			auto sliceOuter = [&](int i) { return rOuter + kHighlightReach * highlight[i]; };
+
 			// Slices
 			for (int i = 0; i < kSliceCount; i++) {
 				float h = highlight[i];
 				float fillA = (0.08F + (0.85F - 0.08F) * h) * alpha;
 				renderer.SetColorAlphaPremultiplied(MakeVector4(fillA, fillA, fillA, fillA));
-				float rOutSlice = rOuter + 10.0F * h;
 				const SliceRay& rr = sliceRays[i];
-				DrawSliceFill(renderer, center, rInner, rOutSlice,
+				DrawSliceFill(renderer, center, rInner, sliceOuter(i),
 							  rr.s1, rr.c1, rr.s2, rr.c2);
 			}
 
-			// Outer and inner outline rings (thin)
+			// Outer and inner outline rings (thin). The outer one is drawn slice by
+			// slice, along each one's own edge: a single ring across the whole pie
+			// would sit at the resting radius and cut over the top of whichever
+			// slice had reached past it.
 			renderer.SetColorAlphaPremultiplied(MakeVector4(alpha * 0.5F, alpha * 0.5F,
 															alpha * 0.5F, alpha * 0.5F));
-			DrawAnnulusFill(renderer, center, rOuter - 1.0F, rOuter);
+			for (int i = 0; i < kSliceCount; i++) {
+				const SliceRay& rr = sliceRays[i];
+				float rOutSlice = sliceOuter(i);
+				DrawSliceFill(renderer, center, rOutSlice - 1.0F, rOutSlice,
+							  rr.s1, rr.c1, rr.s2, rr.c2);
+			}
 			DrawAnnulusFill(renderer, center, rInner, rInner + 1.0F);
 
 			// Labels at kLabelRadius along each slice center
