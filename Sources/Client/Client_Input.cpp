@@ -714,9 +714,6 @@ namespace spades {
 				if (CheckKey(cg_keyPieMenu, name) && !localPlayerIsSpectating) {
 					if (down && !pieMenuView->IsOpen()) {
 						OpenPieMenu();
-						// Only firing is dropped. Aiming down sights is a stance the
-						// player is holding, and opening the menu must not break it.
-						weapInput.primary = false;
 					} else if (!down && pieMenuView->IsOpen()) {
 						int targetId = pieMenuView->GetTargetPlayerId();
 						// All three are read while the menu still stands: closing it
@@ -751,6 +748,11 @@ namespace spades {
 							}
 						}
 						pieMenuPingValid = false;
+						// The attack buttons were the menu's controls, so whatever is
+						// still held was held to browse rings, not to attack with. It
+						// takes a fresh press to mean that again: the menu can only
+						// ever cost an action, never invent one.
+						weapInput = WeaponInput();
 					}
 					return;
 				}
@@ -759,14 +761,14 @@ namespace spades {
 				// otherwise unusable while the menu is held. Right cycles forward,
 				// left cycles backward, so every ring is at most two taps away.
 				if (pieMenuView->IsOpen()) {
+					// The buttons belong to the menu while it is held, so a press
+					// here is a ring flip and nothing else: it is never written to
+					// `weapInput`, which the menu only ever clears (on closing).
+					// Recording it would make the button an attack again the moment
+					// the menu let go of it.
 					if (CheckKey(cg_keyAltAttack, name)) {
-						if (down) {
+						if (down)
 							pieMenuView->CyclePage(1);
-						} else if (cg_holdAimDownSight) {
-							// The release still has to land in hold mode, or a scope
-							// that was up when the menu opened stays stuck on.
-							weapInput.secondary = false;
-						}
 						return;
 					}
 					if (CheckKey(cg_keyAttack, name)) {
