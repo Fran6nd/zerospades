@@ -231,6 +231,14 @@ namespace spades {
 				 {"Attack!", "Get the Intel!", "Enemy Has the Intel!",
 				  "Fall Back!", "Regroup on Me", "Defend the Intel!"},
 				 {false, false, false, false, false, false}},
+				// Shouted at the whole server rather than said to anybody: a taunt
+				// that picked out the player under the crosshair could only do it by
+				// finding them first, and whether it found one is exactly what this
+				// menu must not tell the player who opened it.
+				{"Taunt", true,
+				 {"I See You", "Nice Try", "Miss Me?",
+				  "Too Easy", "Behind You...", "Say Goodbye"},
+				 {false, false, false, false, false, false}},
 			};
 
 			// Offered while the crosshair is on a teammate, and sent to them alone.
@@ -256,16 +264,6 @@ namespace spades {
 				 {false, false, false, false, false, false}},
 			};
 
-			// Offered only while the crosshair is on an enemy. Goes out on global chat
-			// so the whole server reads it, addressed to the player it was aimed at.
-			const PageDef kEnemyPages[] = {
-				// A taunt goes to the whole server, at the player it was aimed at;
-				// a team marker has no business carrying one.
-				{"Taunt", true,
-				 {"I See You", "Nice Try", "Miss Me?",
-				  "Too Easy", "Behind You...", "Say Goodbye"},
-				 {false, false, false, false, false, false}},
-			};
 		} // namespace
 
 		PieMenuView::PieMenuView(Client* c, IFont* f, IFont* big)
@@ -289,7 +287,6 @@ namespace spades {
 
 			worldPages = buildPages(kWorldPages, std::size(kWorldPages));
 			teammatePages = buildPages(kTeammatePages, std::size(kTeammatePages));
-			enemyPages = buildPages(kEnemyPages, std::size(kEnemyPages));
 
 			const float halfSliceRad = kSliceSpan * 0.5F - DEG2RAD(kSliceGapDeg) * 0.5F;
 			for (int i = 0; i < kSliceCount; i++) {

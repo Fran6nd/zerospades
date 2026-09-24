@@ -38,7 +38,7 @@ namespace spades {
 			// What the crosshair is on when the menu opens decides which set of rings
 			// is offered. It is fixed from then on: the aim is free to leave, and a
 			// message meant for someone must not need them held under the crosshair.
-			enum class Variant { World, Teammate, Enemy };
+			enum class Variant { World, Teammate };
 			enum Slice { None = -1 };
 
 			static constexpr int kSliceCount = 6;
@@ -84,11 +84,14 @@ namespace spades {
 
 			std::vector<Page> worldPages;
 			std::vector<Page> teammatePages;
-			std::vector<Page> enemyPages;
 
 			// Ring each context was last left on. A player who works out of one ring
 			// gets it back on the next open instead of paying for the flip every time.
-			static constexpr int kVariantCount = 3;
+			static constexpr int kVariantCount = 2;
+			// `lastPage` is indexed by Variant, so the two have to agree; adding a
+			// context without widening the array would write past the end of it.
+			static_assert(kVariantCount == static_cast<int>(Variant::Teammate) + 1,
+						  "kVariantCount must cover every Variant");
 			std::array<int, kVariantCount> lastPage{};
 
 			// Precomputed per-slice ray params (sin/cos of θ_c ± α).
@@ -98,11 +101,7 @@ namespace spades {
 			std::array<float, kSliceCount> sliceCenterAngles;
 
 			const std::vector<Page>& CurrentPages() const {
-				switch (variant) {
-					case Variant::Teammate: return teammatePages;
-					case Variant::Enemy: return enemyPages;
-					default: return worldPages;
-				}
+				return (variant == Variant::Teammate) ? teammatePages : worldPages;
 			}
 			const Page& CurrentPage() const;
 			void RestorePage();

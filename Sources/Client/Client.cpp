@@ -704,17 +704,22 @@ namespace spades {
 
 			Player& lp = maybePlayer.value();
 
+			// Teammates only, on the default that excludes enemies (see
+			// HotTrackedPlayer): the menu changes shape for whoever it resolves, and
+			// a menu that looked different when an enemy stood under the crosshair
+			// would say so through a wall, which is the aim aid the rest of the
+			// client is careful not to give. Aiming at an enemy is aiming at what is
+			// behind them.
+			//
 			// Hot tracking resolves against the camera target, so once dead it would
 			// follow whoever the spectated teammate is aiming at. Dead players broadcast.
 			int targetId = -1;
 			auto variant = PieMenuView::Variant::World;
 			if (lp.IsAlive()) {
-				auto hot = HotTrackedPlayer(true);
+				auto hot = HotTrackedPlayer();
 				if (hot) {
-					Player& target = std::get<0>(*hot);
-					targetId = target.GetId();
-					variant = lp.IsTeammate(target) ? PieMenuView::Variant::Teammate
-													: PieMenuView::Variant::Enemy;
+					targetId = std::get<0>(*hot).GetId();
+					variant = PieMenuView::Variant::Teammate;
 				}
 			}
 

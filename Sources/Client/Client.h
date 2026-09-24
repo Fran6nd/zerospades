@@ -445,9 +445,7 @@ namespace spades {
 			void ToggleLimboView();
 			void SpawnPressed();
 
-			// Enemies are excluded by default: naming whoever is under the crosshair
-			// would double as an aim aid. Opt in only where that is intended.
-			stmp::optional<std::tuple<Player&, hitTag_t>> HotTrackedPlayer(bool includeEnemies = false);
+			stmp::optional<std::tuple<Player&, hitTag_t>> HotTrackedPlayer();
 
 			// effects (local entity, etc)
 			std::vector<DynamicLightParam> flashDlights;

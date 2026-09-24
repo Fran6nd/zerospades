@@ -131,7 +131,7 @@ namespace spades {
 				bloodMarks->Clear();
 		}
 
-		stmp::optional<std::tuple<Player&, hitTag_t>> Client::HotTrackedPlayer(bool includeEnemies) {
+		stmp::optional<std::tuple<Player&, hitTag_t>> Client::HotTrackedPlayer() {
 			if (!IsFirstPerson(GetCameraMode()))
 				return {};
 
@@ -149,7 +149,7 @@ namespace spades {
 			Player& p = world->GetPlayer(res.playerId.value()).value();
 
 			// don't hot track enemies (non-spectator only)
-			if (!includeEnemies && !camTarget.IsTeammate(p) && !camTarget.IsSpectator())
+			if (!camTarget.IsTeammate(p) && !camTarget.IsSpectator())
 				return {};
 
 			return std::tuple<Player&, hitTag_t>{p, res.hitFlag};
