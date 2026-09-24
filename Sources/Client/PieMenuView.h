@@ -48,10 +48,14 @@ namespace spades {
 			// A single ring of messages. Rings are cycled in place while the menu is
 			// held, so every message stays exactly one gesture away from the centre.
 			struct Page {
-				std::string name;                                  // centre caption
-				bool global = false;                               // chat channel
-				std::array<std::string, kSliceCount> labels;        // sent verbatim
-				std::array<std::string, kSliceCount> displayLabels; // localized
+				std::string name;                            // centre caption
+				bool global = false;                         // chat channel
+				// Drawn as they are and sent as they are: one string, so what a
+				// player picks is character for character what everybody reads.
+				// A ring set is content rather than chrome — one day a server
+				// will supply its own, in whatever language its players speak —
+				// so none of it goes through the translation catalogue.
+				std::array<std::string, kSliceCount> labels;
 				// Slices that drop a Teamplay ping instead of chatting. A ring
 				// carries its own, so a "where" ring can point at places while
 				// the ring beside it only talks.
@@ -112,7 +116,6 @@ namespace spades {
 			int Close();
 
 			bool IsOpen() const { return open; }
-			Variant GetVariant() const { return variant; }
 			int GetTargetPlayerId() const { return targetPlayerId; }
 			int GetSelection() const { return selection; }
 			int GetPage() const { return page; }
@@ -122,8 +125,7 @@ namespace spades {
 			// the World variant; Player rings always go out as private messages.
 			bool IsCurrentPageGlobal() const { return CurrentPage().global; }
 
-			// Wire text of the highlighted slice. Deliberately untranslated: every
-			// client must read the same string regardless of the sender's locale.
+			// Text of the highlighted slice, as drawn and as sent.
 			const std::string& GetSelectionLabel() const;
 
 			// Move to the next (dir > 0) or previous (dir < 0) ring, wrapping around.
