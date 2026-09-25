@@ -93,6 +93,8 @@ namespace spades {
 
 			/** Unfolds every branch above `id` and scrolls it into view. */
 			void Reveal(ItemId id);
+			/** The item on the row under `p`, or kNoItem over blank space. */
+			ItemId ItemAt(const Vector2& p) const;
 
 			// --- Pointer ------------------------------------------------------
 			// `time` is in seconds, from any clock that only goes forward: it

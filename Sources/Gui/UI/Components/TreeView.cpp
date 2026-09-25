@@ -168,6 +168,13 @@ namespace spades {
 			ClampScroll();
 		}
 
+		TreeView::ItemId TreeView::ItemAt(const Vector2& p) const {
+			if (!Contains(p))
+				return kNoItem;
+			const int row = RowAt(p.y);
+			return row < 0 ? kNoItem : items[rows[std::size_t(row)].item].id;
+		}
+
 		bool TreeView::MouseDown(const Vector2& p, bool extend, float time) {
 			if (!Contains(p))
 				return false;
