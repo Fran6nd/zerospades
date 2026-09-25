@@ -28,6 +28,9 @@ namespace spades {
 		class GameMap;
 		class Player;
 		class IModel;
+		class CharacterRig;
+		class CharacterSkinLibrary;
+		struct ModelRenderParam;
 
 		class Corpse {
 			enum NodeType {
@@ -62,6 +65,7 @@ namespace spades {
 
 			IRenderer& renderer;
 			GameMap& map;
+			CharacterSkinLibrary& skins;
 			int playerId;
 			Vector3 color;
 			std::string weaponName;
@@ -83,6 +87,10 @@ namespace spades {
 				float minDot, float maxDot, float dt);
 			void AngularMomentum(int eId, NodeType a, NodeType b);
 			void ApplyConstraint(float dt);
+			// Draws the ragdoll with a character skin, given the torso's corners.
+			void AddSkinToScene(const CharacterRig& rig, const ModelRenderParam& param,
+			                    const Vector3& tX1, const Vector3& tX2, const Vector3& tY1,
+			                    const Vector3& tY2, const Vector3& center);
 			void LineCollision(NodeType a, NodeType b, float dt);
 
 		public:
@@ -93,8 +101,10 @@ namespace spades {
 			 * @param map The game map, used for physics. Must outlive `Corpse`.
 			 * @param p The player to create a corpse from. Can be destroyed
 			 *			after `Corpse` is constructed.
+			 * @param skins Where the character skin comes from. Must outlive `Corpse`.
 			 */
-			Corpse(IRenderer& renderer, GameMap& map, Player& p, bool isChristmasOn);
+			Corpse(IRenderer& renderer, GameMap& map, Player& p, bool isChristmasOn,
+			       CharacterSkinLibrary& skins);
 			~Corpse();
 
 			void Update(float dt);

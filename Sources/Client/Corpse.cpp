@@ -19,6 +19,7 @@
  */
 
 #include "Corpse.h"
+#include "CharacterRig.h"
 #include "GameMap.h"
 #include "IModel.h"
 #include "IRenderer.h"
@@ -37,8 +38,9 @@ SPADES_SETTING(cg_classicPlayerModels);
 
 namespace spades {
 	namespace client {
-		Corpse::Corpse(IRenderer& renderer, GameMap& map, Player& p, bool isChristmasOn)
-			: renderer{renderer}, map{map}, isChristmasOn{isChristmasOn} {
+		Corpse::Corpse(IRenderer& renderer, GameMap& map, Player& p, bool isChristmasOn,
+		               CharacterSkinLibrary& skins)
+			: renderer{renderer}, map{map}, skins{skins}, isChristmasOn{isChristmasOn} {
 			SPADES_MARK_FUNCTION();
 
 			playerId = p.GetId();
@@ -536,6 +538,14 @@ namespace spades {
 			const Vector3 tY2 = nodes[Torso4].pos + nodes[Torso3].pos;
 			const Vector3 center = tY1 * 0.5F;
 
+			// With a skin, it is all that is drawn: each joint takes the frame
+			// the matching classic part is drawn in below, so the skin falls
+			// the same way.
+			if (const CharacterRig* rig = skins.Find(modelPath)) {
+				AddSkinToScene(*rig, param, tX1, tX2, tY1, tY2, center);
+				return;
+			}
+
 			// Torso
 			{
 				model = renderer.RegisterModel((modelPath + "Torso.kv6").c_str());
@@ -612,6 +622,52 @@ namespace spades {
 				param.matrix = Matrix4::FromAxis(aX, aY, aZ, leg2Base) * scaler;
 				renderer.RenderModel(*model, param);
 			}
+		}
+
+		void Corpse::AddSkinToScene(const CharacterRig& rig, const ModelRenderParam& param,
+		                            const Vector3& tX1, const Vector3& tX2, const Vector3& tY1,
+		                            const Vector3& tY2, const Vector3& center) {
+			// Skin space already turns x and y round, where some classic parts
+			// were drawn unturned: those frames turn them back first.
+			const Matrix4 unturn = Matrix4::Scale(-1.0F, -1.0F, 1.0F);
+			CharacterPose pose;
+
+			Vector3 tX, tY, tZ;
+			tX = ((tX1 + tX2) * 0.5F).Normalize();
+			tY = ((tY2 - tY1) * 0.5F).Normalize();
+			tZ = Vector3::Cross(tX, tY).Normalize();
+			tY = Vector3::Cross(tX, tZ).Normalize();
+			const Matrix4 torso = Matrix4::FromAxis(tX, -tZ, -tY, center);
+			pose.Set(CharacterJoint::Waist, torso);
+
+			{
+				const Vector3 headBase = (torso * MakeVector3(0.0F, 0.0F, 0.0F)).GetXYZ();
+				Vector3 aX, aY, aZ;
+				aZ = ((nodes[Head].pos - center) - torso.GetAxis(2)).Normalize();
+				aY = Vector3::Cross(-tX1, aZ).Normalize();
+				aX = Vector3::Cross(aY, aZ).Normalize();
+				pose.Set(CharacterJoint::Neck, Matrix4::FromAxis(-aX, aY, -aZ, headBase) * unturn);
+			}
+
+			// Each limb hangs from its corner of the torso toward its node.
+			auto limb = [&](NodeType end, NodeType from, const Vector3& base) {
+				Vector3 aX, aY, aZ;
+				aZ = (nodes[end].pos - nodes[from].pos).Normalize();
+				aY = Vector3::Cross(tX1, aZ).Normalize();
+				aX = Vector3::Cross(aY, aZ).Normalize();
+				return Matrix4::FromAxis(aX, aY, aZ, base);
+			};
+			// The classic arms are drawn turned already; the legs are not.
+			pose.Set(CharacterJoint::ArmRight,
+			         limb(Arm1, Torso1, (torso * MakeVector3(0.4F, 0.0F, 0.1F)).GetXYZ()));
+			pose.Set(CharacterJoint::ArmLeft,
+			         limb(Arm2, Torso2, (torso * MakeVector3(-0.4F, 0.0F, 0.1F)).GetXYZ()));
+			pose.Set(CharacterJoint::HipRight,
+			         limb(Leg1, Torso3, (torso * MakeVector3(0.25F, 0.0F, 0.9F)).GetXYZ()) * unturn);
+			pose.Set(CharacterJoint::HipLeft,
+			         limb(Leg2, Torso4, (torso * MakeVector3(-0.25F, 0.0F, 0.9F)).GetXYZ()) * unturn);
+
+			rig.Render(renderer, pose, CharacterStance::Ragdoll, isChristmasOn, param);
 		}
 
 		Vector3 Corpse::GetCenter() {

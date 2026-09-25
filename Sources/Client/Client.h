@@ -77,6 +77,7 @@ namespace spades {
 		class TCProgressView;
 		class ClientPlayer;
 		class BloodMarks;
+		class CharacterSkinLibrary;
 		class ClientUI;
 		class PieMenuView;
 		class Teamplay;
@@ -154,6 +155,9 @@ namespace spades {
 			Handle<GameMap> map;
 			std::unique_ptr<GameMapWrapper> mapWrapper;
 			Handle<IRenderer> renderer;
+			// The character skins players are drawn with; lives as long as the
+			// renderer its models were made by.
+			std::unique_ptr<CharacterSkinLibrary> characterSkins;
 			Handle<IAudioDevice> audioDevice;
 			float time;
 			bool readyToClose;
@@ -786,6 +790,7 @@ namespace spades {
 			void MarkWorldUpdate();
 
 			IRenderer& GetRenderer() { return *renderer; }
+			CharacterSkinLibrary& GetCharacterSkins() { return *characterSkins; }
 			SceneDefinition GetLastSceneDef() { return lastSceneDef; }
 			IAudioDevice& GetAudioDevice() { return *audioDevice; }
 			gui::SoftwareCursor* GetCursor() { return cursor.get(); }

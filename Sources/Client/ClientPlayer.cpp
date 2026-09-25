@@ -24,6 +24,7 @@
 #include <cstdlib>
 
 #include "CTFGameMode.h"
+#include "CharacterRig.h"
 #include "Client.h"
 #include "ClientPlayer.h"
 #include "GameMap.h"
@@ -1003,8 +1004,26 @@ namespace spades {
 			Matrix4 const torso = lower
 				* Matrix4::Translate(0.0F, 1.0F, -torsoPosZ);
 
+			// With a skin, it is all that is drawn of the local player too.
+			const CharacterRig* rig = client.GetCharacterSkins().Find(modelPath);
+
 			// Legs and Torso
-			if (!cg_hideBody) {
+			if (!cg_hideBody && rig) {
+				// The skin's legs and waist, a block behind the eye as the
+				// classic ones are; the head and arms would fill the view.
+				CharacterMotion motion;
+				motion.feet = lower * Matrix4::Translate(0.0F, 1.0F, 0.0F);
+				motion.crouch = inp.crouch;
+				motion.legSwing = legsRot;
+				CharacterPose pose = rig->BodyPose(motion);
+				pose.Clear(CharacterJoint::Neck);
+				pose.Clear(CharacterJoint::Arms);
+				pose.Clear(CharacterJoint::ArmLeft);
+				pose.Clear(CharacterJoint::ArmRight);
+				rig->Render(renderer, pose,
+				            inp.crouch ? CharacterStance::Crouch : CharacterStance::Stand,
+				            client.isChristmasOn, param);
+			} else if (!cg_hideBody) {
 				model = inp.crouch
 					? renderer.RegisterModel((modelPath + "LegCrouch.kv6").c_str())
 					: renderer.RegisterModel((modelPath + "Leg.kv6").c_str());
@@ -1043,10 +1062,15 @@ namespace spades {
 				const float leftHandSqr = hands[0].GetSquaredLength();
 				const float rightHandSqr = hands[1].GetSquaredLength();
 				if (leftHandSqr > 0.01F || rightHandSqr > 0.01F) {
-					Handle<IModel> armModel = renderer.RegisterModel((modelPath + "Arm.kv6").c_str());
-					Handle<IModel> upperModel = renderer.RegisterModel((modelPath + "UpperArm.kv6").c_str());
-					Handle<IModel> armRightModel = renderer.RegisterModel((modelPath + "ArmRight.kv6").c_str());
-					Handle<IModel> upperRightModel = renderer.RegisterModel((modelPath + "UpperArmRight.kv6").c_str());
+					// The classic parts, only when there is no skin to draw instead.
+					Handle<IModel> armModel, upperModel, armRightModel, upperRightModel;
+					if (!rig) {
+						armModel = renderer.RegisterModel((modelPath + "Arm.kv6").c_str());
+						upperModel = renderer.RegisterModel((modelPath + "UpperArm.kv6").c_str());
+						armRightModel = renderer.RegisterModel((modelPath + "ArmRight.kv6").c_str());
+						upperRightModel =
+						  renderer.RegisterModel((modelPath + "UpperArmRight.kv6").c_str());
+					}
 
 					// manual adjustment
 					Vector3 trans = MakeVector3(0, 0, 0);
@@ -1063,7 +1087,8 @@ namespace spades {
 					const float armlenSqr = armlen * armlen;
 					const Matrix4 armsScale = Matrix4::Scale(0.05F);
 
-					auto getArmMatrix = [&](const Vector3& v1, const Vector3& v2) {
+					// The frame a piece of arm running from v2 to v1 is drawn in.
+					auto getArmFrame = [&](const Vector3& v1, const Vector3& v2) {
 						Vector3 axes[3];
 						axes[2] = (v1 - v2).Normalize();
 						axes[1] = Vector3::Cross(axes[2], MakeVector3(0, 0, 1)).Normalize();
@@ -1071,7 +1096,22 @@ namespace spades {
 						Matrix4 mat = Matrix4::FromAxis(axes[0], axes[1], axes[2], v2);
 						if (leftHanded)
 							mat = Matrix4::Scale(-1, 1, 1) * mat;
-						return eyeMatrix * mat * armsScale;
+						return eyeMatrix * mat;
+					};
+
+					// One piece of arm: the skin's joint when there is a skin (the
+					// left arm reflected as the classic one used to be), else the part of
+					// that side.
+					auto drawArmPiece = [&](const Vector3& v1, const Vector3& v2, bool isLeftArm,
+					                        CharacterJoint joint, IModel* classic) {
+						const Matrix4 frame = getArmFrame(v1, v2);
+						if (rig) {
+							rig->RenderJoint(renderer, joint, CharacterSlot::Stand, frame, isLeftArm,
+							                 param);
+							return;
+						}
+						param.matrix = frame * armsScale;
+						renderer.RenderModel(*classic, param);
 					};
 
 					auto renderArm = [&](int i) {
@@ -1090,12 +1130,12 @@ namespace spades {
 						const bool isLeftArm = leftHanded ? (i != 0) : (i == 0);
 
 						// draw arm
-						param.matrix = getArmMatrix(hand, elbow);
-						renderer.RenderModel(isLeftArm ? *armModel : *armRightModel, param);
+						drawArmPiece(hand, elbow, isLeftArm, CharacterJoint::ViewForearm,
+						             (isLeftArm ? armModel : armRightModel).GetPointerOrNull());
 
 						// draw upper arm
-						param.matrix = getArmMatrix(elbow, shoulder);
-						renderer.RenderModel(isLeftArm ? *upperModel : *upperRightModel, param);
+						drawArmPiece(elbow, shoulder, isLeftArm, CharacterJoint::ViewUpperArm,
+						             (isLeftArm ? upperModel : upperRightModel).GetPointerOrNull());
 					};
 
 					if (leftHandSqr > 0.01F)
@@ -1127,11 +1167,17 @@ namespace spades {
 
 			if (!p.IsAlive()) {
 				if (!cg_ragdoll) {
-					model = renderer.RegisterModel((modelPath + "Dead.kv6").c_str());
-					param.matrix = Matrix4::FromAxis(-right, front2D, -up, p.GetEye());
-					param.matrix = param.matrix * Matrix4::Translate(0.0F, 0.0F, -0.1F);
-					param.matrix = param.matrix * Matrix4::Scale(0.1F);
-					renderer.RenderModel(*model, param);
+					const Matrix4 lying = Matrix4::FromAxis(-right, front2D, -up, p.GetEye()) *
+					                      Matrix4::Translate(0.0F, 0.0F, -0.1F);
+					if (const CharacterRig* rig = client.GetCharacterSkins().Find(modelPath)) {
+						// The skin's own lying body, drawn where the classic one lies.
+						rig->RenderJoint(renderer, CharacterJoint::Player, CharacterSlot::Dead,
+						                 lying * Matrix4::Scale(-1.0F, -1.0F, 1.0F), false, param);
+					} else {
+						model = renderer.RegisterModel((modelPath + "Dead.kv6").c_str());
+						param.matrix = lying * Matrix4::Scale(0.1F);
+						renderer.RenderModel(*model, param);
+					}
 				}
 
 				return;
@@ -1251,55 +1297,77 @@ namespace spades {
 				* Matrix4::Translate(0.0F, 0.0F, armsPosZ)
 				* Matrix4::Rotate(MakeVector3(1, 0, 0), armPitch);
 
-			// Legs
-			{
-				model = inp.crouch
-					? renderer.RegisterModel((modelPath + "LegCrouch.kv6").c_str())
-					: renderer.RegisterModel((modelPath + "Leg.kv6").c_str());
+			// Where the tool is held and the intel carried: the classic arms and
+			// torso, or the skin's joints standing in for them.
+			Matrix4 toolFrame = arms;
+			Matrix4 carryFrame = torso;
 
-				param.matrix = legLeft * scaler;
-				renderer.RenderModel(*model, param);
+			if (const CharacterRig* rig = client.GetCharacterSkins().Find(modelPath)) {
+				// A skin is all that is drawn of this player: its joints move by
+				// the same numbers the classic parts do.
+				CharacterMotion motion;
+				motion.feet = lower;
+				motion.crouch = inp.crouch;
+				motion.legSwing = legsRot;
+				motion.pitch = pitch;
+				motion.armPitch = armPitch;
+				const CharacterPose pose = rig->BodyPose(motion);
+				rig->Render(renderer, pose,
+				            inp.crouch ? CharacterStance::Crouch : CharacterStance::Stand,
+				            client.isChristmasOn, param);
+				toolFrame = pose[CharacterJoint::Arms];
+				carryFrame = pose[CharacterJoint::Waist];
+			} else {
+				// Legs
+				{
+					model = inp.crouch
+						? renderer.RegisterModel((modelPath + "LegCrouch.kv6").c_str())
+						: renderer.RegisterModel((modelPath + "Leg.kv6").c_str());
 
-				model = inp.crouch
-					? renderer.RegisterModel((modelPath + "LegRightCrouch.kv6").c_str())
-					: renderer.RegisterModel((modelPath + "LegRight.kv6").c_str());
+					param.matrix = legLeft * scaler;
+					renderer.RenderModel(*model, param);
 
-				param.matrix = legRight * scaler;
-				renderer.RenderModel(*model, param);
-			}
+					model = inp.crouch
+						? renderer.RegisterModel((modelPath + "LegRightCrouch.kv6").c_str())
+						: renderer.RegisterModel((modelPath + "LegRight.kv6").c_str());
 
-			// Torso
-			{
-				model = inp.crouch
-					? renderer.RegisterModel((modelPath + "TorsoCrouch.kv6").c_str())
-					: renderer.RegisterModel((modelPath + "Torso.kv6").c_str());
+					param.matrix = legRight * scaler;
+					renderer.RenderModel(*model, param);
+				}
 
-				param.matrix = torso * scaler;
-				renderer.RenderModel(*model, param);
-			}
+				// Torso
+				{
+					model = inp.crouch
+						? renderer.RegisterModel((modelPath + "TorsoCrouch.kv6").c_str())
+						: renderer.RegisterModel((modelPath + "Torso.kv6").c_str());
 
-			// Arms
-			{
-				model = renderer.RegisterModel((modelPath + "Arms.kv6").c_str());
+					param.matrix = torso * scaler;
+					renderer.RenderModel(*model, param);
+				}
 
-				param.matrix = arms * scaler;
-				renderer.RenderModel(*model, param);
-			}
+				// Arms
+				{
+					model = renderer.RegisterModel((modelPath + "Arms.kv6").c_str());
 
-			// Head
-			{
-				model = client.isChristmasOn
-					? renderer.RegisterModel("Models/Player/XmasHat.kv6")
-					: renderer.RegisterModel((modelPath + "Head.kv6").c_str());
+					param.matrix = arms * scaler;
+					renderer.RenderModel(*model, param);
+				}
 
-				param.matrix = head * scaler;
-				renderer.RenderModel(*model, param);
+				// Head
+				{
+					model = client.isChristmasOn
+						? renderer.RegisterModel("Models/Player/XmasHat.kv6")
+						: renderer.RegisterModel((modelPath + "Head.kv6").c_str());
+
+					param.matrix = head * scaler;
+					renderer.RenderModel(*model, param);
+				}
 			}
 
 			// Tool
 			{
 				ScriptIThirdPersonToolSkin interface(curSkin);
-				interface.SetOriginMatrix(arms);
+				interface.SetOriginMatrix(toolFrame);
 			}
 			{
 				ScriptIToolSkin interface(curSkin);
@@ -1317,7 +1385,7 @@ namespace spades {
 						? renderer.RegisterModel("Models/MapObjects/XmasGift.kv6")
 						: renderer.RegisterModel("Models/MapObjects/Intel.kv6");
 					param.customColor = ConvertColorRGB(world->GetTeamColor(1 - p.GetTeamId()));
-					Matrix4 const briefcase = torso
+					Matrix4 const briefcase = carryFrame
 						* (inp.crouch ? Matrix4::Translate(0, 0.8F, 0.4F)
 							* Matrix4::Rotate(MakeVector3(1, 0, 0), -0.5F)
 						: Matrix4::Translate(0, 0.35F, 0.7F));
