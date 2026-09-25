@@ -800,11 +800,14 @@ namespace spades {
 			paletteView->Update(dt);
 
 			// Close the pie menu if the conditions that let it open no longer hold
-			// (changed team to spectator, entered limbo, opened scripted UI). Dying
-			// is not one of them — the menu stays usable through the respawn wait.
+			// (changed team to spectator, entered limbo, opened the console or a
+			// scripted UI). Dying is not one of them — the menu stays usable through
+			// the respawn wait.
 			if (pieMenuView->IsOpen()) {
 				bool shouldClose = true;
-				if (world && !scriptedUI->NeedsInput() && !inGameLimbo && !staffSpectating) {
+				// Anything that takes the mouse takes the menu with it — the console
+				// included, which swallows the key release that would have closed it.
+				if (!NeedsAbsoluteMouseCoordinate() && !staffSpectating) {
 					auto maybePlayer = world->GetLocalPlayer();
 					if (maybePlayer) {
 						Player& lp = maybePlayer.value();
