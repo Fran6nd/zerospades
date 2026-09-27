@@ -762,20 +762,6 @@ namespace spades {
 #pragma mark - Teamplay
 
 		namespace {
-			/** Strokes a screen-space segment as a quad, the only 2D primitive the
-			 * renderer exposes that is not axis-aligned. */
-			void StrokeSegment(IRenderer& renderer, const Vector2& a, const Vector2& b,
-							   float thickness, const Vector4& premultipliedColor) {
-				Vector2 d = b - a;
-				float len = d.GetLength();
-				if (len <= 0.0001F)
-					return;
-
-				Vector2 n = MakeVector2(-d.y / len, d.x / len) * (thickness * 0.5F);
-				renderer.SetColorAlphaPremultiplied(premultipliedColor);
-				renderer.DrawImage(nullptr, a - n, b - n, a + n, AABB2(0, 0, 1, 1));
-			}
-
 			/** Premultiplies a straight (non-premultiplied) colour. */
 			Vector4 Premultiply(const Vector4& c) {
 				return MakeVector4(c.x * c.w, c.y * c.w, c.z * c.w, c.w);
@@ -855,10 +841,12 @@ namespace spades {
 			Vector4 shadow = MakeVector4(0, 0, 0, 0.6F * alpha);
 			Vector4 outline = Premultiply(color);
 
-			StrokeSegment(*renderer, wingL, tip, thickShadow, shadow);
-			StrokeSegment(*renderer, tip, wingR, thickShadow, shadow);
-			StrokeSegment(*renderer, wingL, tip, thickOutline, outline);
-			StrokeSegment(*renderer, tip, wingR, thickOutline, outline);
+			renderer->SetColorAlphaPremultiplied(shadow);
+			renderer->DrawLine(wingL, tip, thickShadow);
+			renderer->DrawLine(tip, wingR, thickShadow);
+			renderer->SetColorAlphaPremultiplied(outline);
+			renderer->DrawLine(wingL, tip, thickOutline);
+			renderer->DrawLine(tip, wingR, thickOutline);
 
 			Vector4 nameCol = MakeVector4(color.x, color.y, color.z, alpha);
 			Vector4 textShadow = MakeVector4(0, 0, 0, 0.7F * alpha);
