@@ -1,14 +1,27 @@
 #!/bin/sh
 # This file should be run from the repository root (e.g. ~/zerospades)
-# TODO: Optimize and error-checking
 
-  FILES_H=`find . -iname *.h`
-FILES_CPP=`find . -iname *.cpp`
-  FILES_C=`find . -iname *.c`
- FILES_AS=`find . -iname *.as`
+SEARCH_DIRS="Resources Sources"
 
-FILES="${FILES_H} ${FILES_CPP} ${FILES_C} ${FILES_AS}"
-echo $FILES| tr " " "\n" > .translate.this # Convert spaces to newlines
+# Make sure we're running from the repo root
+for d in $SEARCH_DIRS; do
+	if [ ! -d "$d" ]; then
+		echo "Error: directory '$d' not found." >&2
+		echo "Please run this script from the repository root (e.g. ~/zerospades)." >&2
+		exit 1
+	fi
+done
+
+# Single find pass (all extensions at once), pre-filtered with grep so
+# xgettext only parses files that actually contain a translatable string.
+find $SEARCH_DIRS \( -iname '*.h' -o -iname '*.cpp' -o -iname '*.c' -o -iname '*.as' \) \
+	-exec grep -l -E '_Tr(N)?\(' {} + > .translate.this
+
+if [ ! -s .translate.this ]; then
+	echo "Error: no translatable source files found in ${SEARCH_DIRS}." >&2
+	rm -f .translate.this
+	exit 1
+fi
 
 OPTIONS_OUTPUT="-o Resources/Locales/pot/zerospades.pot"
 OPTIONS_CPP="--c++"
@@ -22,6 +35,14 @@ META_BUGS="--msgid-bugs-address=i@yvt.jp"
 METADATA="$META_PKG $META_COPYRIGHT $META_BUGS --omit-header"
 
 xgettext $OPTIONS $METADATA -f .translate.this
+
+if [ $? -ne 0 ]; then
+	echo "Error: xgettext failed." >&2
+	rm -f .translate.this
+	exit 1
+fi
+
+rm -f .translate.this
 
 echo "Gettext template file is now up-to-date."
 echo
