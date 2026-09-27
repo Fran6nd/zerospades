@@ -23,12 +23,18 @@
 
 #include <algorithm>
 #include <cmath>
+#include <iterator>
 #include <limits>
+#include <vector>
 
 #include "Client.h"
 #include "IFont.h"
 #include "IRenderer.h"
+#include <Core/Debug.h>
+#include <Core/Settings.h>
 #include <Core/Strings.h>
+
+SPADES_SETTING(cg_keyAltAttack);
 
 namespace spades {
 	namespace client {
@@ -39,190 +45,330 @@ namespace spades {
 			constexpr float kRingOuter = 176.0F;
 			constexpr float kSliceGapDeg = 1.0F;
 			constexpr float kLabelRadius = 126.5F;
+			// How far past kRingOuter a slice reaches when it is fully highlighted.
+			constexpr float kHighlightReach = 10.0F;
 
-			// Normalized quarter-circle half-width table: table[i] = sqrt(1-(i/N)^2).
-			// Built once at program startup; radius-agnostic.
-			constexpr int kHalfWidthN = 1024;
-			const std::array<float, kHalfWidthN + 1> kHalfWidthTable = []() {
-				std::array<float, kHalfWidthN + 1> t{};
-				for (int i = 0; i <= kHalfWidthN; i++) {
-					float v = static_cast<float>(i) / static_cast<float>(kHalfWidthN);
-					float s = 1.0F - v * v;
-					t[static_cast<size_t>(i)] = (s > 0.0F) ? sqrtf(s) : 0.0F;
-				}
-				return t;
-			}();
-
-			// sqrt(r*r - y*y) via linear interp of the normalized table.
-			float CircleHalfWidth(float yAbs, float r) {
-				if (r <= 0.0F || yAbs >= r)
-					return 0.0F;
-				float t = yAbs / r;
-				float idxf = t * static_cast<float>(kHalfWidthN);
-				int i = static_cast<int>(idxf);
-				if (i >= kHalfWidthN)
-					return 0.0F;
-				float frac = idxf - static_cast<float>(i);
-				float w = kHalfWidthTable[static_cast<size_t>(i)]
-						+ (kHalfWidthTable[static_cast<size_t>(i + 1)]
-						   - kHalfWidthTable[static_cast<size_t>(i)]) * frac;
-				return w * r;
+			// Half the width of a circle of radius r along a line dy from its centre.
+			float CircleHalfWidth(float dy, float r) {
+				float s = r * r - dy * dy;
+				return (s > 0.0F) ? sqrtf(s) : 0.0F;
 			}
 
-			void DrawDiscFill(IRenderer& r, Vector2 center, float rOut) {
-				int yLo = static_cast<int>(floorf(-rOut));
-				int yHi = static_cast<int>(ceilf(rOut));
-				for (int y = yLo; y < yHi; y++) {
-					float yf = static_cast<float>(y) + 0.5F;
-					float w = CircleHalfWidth(fabsf(yf), rOut);
-					if (w <= 0.0F)
-						continue;
-					r.DrawImage(nullptr, AABB2(center.x - w, center.y + static_cast<float>(y),
-											   2.0F * w, 1.0F));
-				}
-			}
+			// What a shape covers along one horizontal line: at most two intervals,
+			// since a line through the hole of a ring splits it in two.
+			struct RowSpans {
+				int count = 0;
+				std::array<float, 2> lo{};
+				std::array<float, 2> hi{};
 
-			void DrawAnnulusFill(IRenderer& r, Vector2 center, float rIn, float rOut) {
-				if (rIn <= 0.0F) {
-					DrawDiscFill(r, center, rOut);
-					return;
-				}
-				int yLo = static_cast<int>(floorf(-rOut));
-				int yHi = static_cast<int>(ceilf(rOut));
-				for (int y = yLo; y < yHi; y++) {
-					float yf = static_cast<float>(y) + 0.5F;
-					float yAbs = fabsf(yf);
-					float wOut = CircleHalfWidth(yAbs, rOut);
-					if (wOut <= 0.0F)
-						continue;
-					if (yAbs < rIn) {
-						float wIn = CircleHalfWidth(yAbs, rIn);
-						float strip = wOut - wIn;
-						if (strip > 0.0F) {
-							r.DrawImage(nullptr,
-										AABB2(center.x - wOut,
-											  center.y + static_cast<float>(y),
-											  strip, 1.0F));
-							r.DrawImage(nullptr,
-										AABB2(center.x + wIn,
-											  center.y + static_cast<float>(y),
-											  strip, 1.0F));
-						}
-					} else {
-						r.DrawImage(nullptr, AABB2(center.x - wOut,
-												   center.y + static_cast<float>(y),
-												   2.0F * wOut, 1.0F));
+				void Add(float a, float b) {
+					if (b > a && count < 2) {
+						lo[static_cast<size_t>(count)] = a;
+						hi[static_cast<size_t>(count)] = b;
+						count++;
 					}
 				}
+			};
+
+			// Lines sampled per pixel row. Coverage across a row is exact, so these
+			// only have to resolve edges that run close to horizontal, like the top
+			// and bottom of a ring.
+			constexpr int kSubRows = 8;
+			// Coverage steps a run of pixels is drawn at; neighbours that round to
+			// the same step merge into one rect.
+			constexpr float kCoverageLevels = 255.0F;
+
+			// Fills a shape with anti-aliased edges. The 2D pass is not multisampled,
+			// so a shape drawn as bare rects or triangles comes out stair-stepped;
+			// instead each pixel's coverage is worked out here and the pixel drawn
+			// with its alpha scaled by it. `spansAt(y)` gives the shape's extent along
+			// the horizontal line at screen y, `bounds` must contain the shape, and
+			// `color` is premultiplied.
+			template <class SpanFn>
+			void FillShape(IRenderer& r, Vector4 color, const AABB2& bounds, SpanFn&& spansAt) {
+				const int px0 = static_cast<int>(floorf(bounds.GetMinX()));
+				const int px1 = static_cast<int>(ceilf(bounds.GetMaxX()));
+				const int py0 = static_cast<int>(floorf(bounds.min.y));
+				const int py1 = static_cast<int>(ceilf(bounds.max.y));
+				if (px1 <= px0 || py1 <= py0 || color.w <= 0.0F)
+					return;
+
+				const int width = px1 - px0;
+				const float widthF = static_cast<float>(width);
+				constexpr float kSampleWeight = 1.0F / static_cast<float>(kSubRows);
+
+				// A span's partial end pixels go straight into `partial`; the run of
+				// pixels it covers in full goes into `delta` as a difference array,
+				// so a row costs its width however many spans and samples land in it.
+				std::vector<float> partial(static_cast<size_t>(width) + 1);
+				std::vector<float> delta(static_cast<size_t>(width) + 1);
+
+				for (int py = py0; py < py1; py++) {
+					int touchedLo = width;
+					int touchedHi = 0;
+
+					for (int sub = 0; sub < kSubRows; sub++) {
+						float y = static_cast<float>(py) +
+								  (static_cast<float>(sub) + 0.5F) * kSampleWeight;
+						RowSpans spans = spansAt(y);
+						for (int k = 0; k < spans.count; k++) {
+							float a = Clamp(spans.lo[static_cast<size_t>(k)] -
+											  static_cast<float>(px0), 0.0F, widthF);
+							float b = Clamp(spans.hi[static_cast<size_t>(k)] -
+											  static_cast<float>(px0), 0.0F, widthF);
+							if (b <= a)
+								continue;
+
+							int ia = static_cast<int>(floorf(a));
+							int ib = static_cast<int>(floorf(b));
+							if (ia == ib) {
+								partial[static_cast<size_t>(ia)] += (b - a) * kSampleWeight;
+							} else {
+								partial[static_cast<size_t>(ia)] +=
+								  (static_cast<float>(ia + 1) - a) * kSampleWeight;
+								delta[static_cast<size_t>(ia + 1)] += kSampleWeight;
+								delta[static_cast<size_t>(ib)] -= kSampleWeight;
+								if (ib < width)
+									partial[static_cast<size_t>(ib)] +=
+									  (b - static_cast<float>(ib)) * kSampleWeight;
+							}
+							touchedLo = std::min(touchedLo, ia);
+							touchedHi = std::max(touchedHi, std::min(ib + 1, width));
+						}
+					}
+
+					// Walk the touched pixels and draw each run of equal coverage.
+					// One step past the end closes the last run.
+					float running = 0.0F;
+					int runStart = touchedLo;
+					int runLevel = 0;
+					for (int i = touchedLo; i <= touchedHi; i++) {
+						int level = 0;
+						if (i < touchedHi) {
+							running += delta[static_cast<size_t>(i)];
+							float cov = Clamp(running + partial[static_cast<size_t>(i)],
+											  0.0F, 1.0F);
+							level = static_cast<int>(cov * kCoverageLevels + 0.5F);
+						}
+						if (level == runLevel)
+							continue;
+						if (runLevel > 0) {
+							r.SetColorAlphaPremultiplied(
+							  color * (static_cast<float>(runLevel) / kCoverageLevels));
+							r.DrawImage(nullptr, AABB2(static_cast<float>(px0 + runStart),
+													   static_cast<float>(py),
+													   static_cast<float>(i - runStart), 1.0F));
+						}
+						runStart = i;
+						runLevel = level;
+					}
+
+					// Only what this row touched is dirty; a slice covers a fraction
+					// of its bounds, so clearing the whole width would be most of the work.
+					if (touchedHi >= touchedLo) {
+						std::fill(partial.begin() + touchedLo, partial.begin() + touchedHi + 1, 0.0F);
+						std::fill(delta.begin() + touchedLo, delta.begin() + touchedHi + 1, 0.0F);
+					}
+				}
+			}
+
+			void DrawDiscFill(IRenderer& r, Vector4 color, Vector2 center, float rOut) {
+				FillShape(r, color,
+						  AABB2(center.x - rOut, center.y - rOut, 2.0F * rOut, 2.0F * rOut),
+						  [&](float y) {
+							  RowSpans spans;
+							  float w = CircleHalfWidth(y - center.y, rOut);
+							  spans.Add(center.x - w, center.x + w);
+							  return spans;
+						  });
+			}
+
+			void DrawAnnulusFill(IRenderer& r, Vector4 color, Vector2 center, float rIn,
+								 float rOut) {
+				FillShape(r, color,
+						  AABB2(center.x - rOut, center.y - rOut, 2.0F * rOut, 2.0F * rOut),
+						  [&](float y) {
+							  RowSpans spans;
+							  float dy = y - center.y;
+							  float wOut = CircleHalfWidth(dy, rOut);
+							  float wIn = CircleHalfWidth(dy, rIn);
+							  if (wIn > 0.0F) {
+								  spans.Add(center.x - wOut, center.x - wIn);
+								  spans.Add(center.x + wIn, center.x + wOut);
+							  } else {
+								  spans.Add(center.x - wOut, center.x + wOut);
+							  }
+							  return spans;
+						  });
 			}
 
 			// Annulus ∩ wedge. Rays at θ_c ± α are encoded as (s1,c1) and (s2,c2).
 			// Inside-wedge half-planes:   -x·s1 + y·c1 ≥ 0	  and	x·s2 - y·c2 ≥ 0.
-			void DrawSliceFill(IRenderer& r, Vector2 center, float rIn, float rOut,
-							   float s1, float c1, float s2, float c2) {
-				int yLo = static_cast<int>(floorf(-rOut));
-				int yHi = static_cast<int>(ceilf(rOut));
+			void DrawSliceFill(IRenderer& r, Vector4 color, Vector2 center, float rIn,
+							   float rOut, float s1, float c1, float s2, float c2) {
 				const float kInf = std::numeric_limits<float>::infinity();
-				for (int y = yLo; y < yHi; y++) {
-					float yf = static_cast<float>(y) + 0.5F;
-					float yAbs = fabsf(yf);
-					float wOut = CircleHalfWidth(yAbs, rOut);
-					if (wOut <= 0.0F)
-						continue;
-					float wIn = (yAbs < rIn) ? CircleHalfWidth(yAbs, rIn) : 0.0F;
+				FillShape(
+				  r, color, AABB2(center.x - rOut, center.y - rOut, 2.0F * rOut, 2.0F * rOut),
+				  [&](float y) {
+					  RowSpans spans;
+					  float dy = y - center.y;
 
-					// Clip by wedge rays.
-					float xLoW = -kInf, xHiW = kInf;
-					if (s1 > 0.0F) {
-						xHiW = std::min(xHiW, yf * c1 / s1);
-					} else if (s1 < 0.0F) {
-						xLoW = std::max(xLoW, yf * c1 / s1);
-					} else if (yf * c1 < 0.0F) {
-						continue;
-					}
-					if (s2 > 0.0F) {
-						xLoW = std::max(xLoW, yf * c2 / s2);
-					} else if (s2 < 0.0F) {
-						xHiW = std::min(xHiW, yf * c2 / s2);
-					} else if (yf * c2 < 0.0F) {
-						continue;
-					}
-					if (xHiW <= xLoW)
-						continue;
+					  // Clip by wedge rays.
+					  float xLoW = -kInf, xHiW = kInf;
+					  if (s1 > 0.0F) {
+						  xHiW = std::min(xHiW, dy * c1 / s1);
+					  } else if (s1 < 0.0F) {
+						  xLoW = std::max(xLoW, dy * c1 / s1);
+					  } else if (dy * c1 < 0.0F) {
+						  return spans;
+					  }
+					  if (s2 > 0.0F) {
+						  xLoW = std::max(xLoW, dy * c2 / s2);
+					  } else if (s2 < 0.0F) {
+						  xHiW = std::min(xHiW, dy * c2 / s2);
+					  } else if (dy * c2 > 0.0F) {
+						  return spans;
+					  }
 
-					auto emit = [&](float xA, float xB) {
-						float xLo = std::max(xA, xLoW);
-						float xHi = std::min(xB, xHiW);
-						if (xHi > xLo) {
-							r.DrawImage(nullptr,
-										AABB2(center.x + xLo,
-											  center.y + static_cast<float>(y),
-											  xHi - xLo, 1.0F));
-						}
-					};
-					if (yAbs < rIn) {
-						emit(-wOut, -wIn);
-						emit(wIn, wOut);
-					} else {
-						emit(-wOut, wOut);
-					}
-				}
+					  auto clipped = [&](float xA, float xB) {
+						  spans.Add(center.x + std::max(xA, xLoW),
+									center.x + std::min(xB, xHiW));
+					  };
+					  float wOut = CircleHalfWidth(dy, rOut);
+					  float wIn = CircleHalfWidth(dy, rIn);
+					  if (wIn > 0.0F) {
+						  clipped(-wOut, -wIn);
+						  clipped(wIn, wOut);
+					  } else {
+						  clipped(-wOut, wOut);
+					  }
+					  return spans;
+				  });
 			}
+
+			// Binding names are stored verbosely; the hint has to stay readable at
+			// the size it is drawn, so the mouse buttons get their common short forms.
+			std::string ShortKeyName(const std::string& key) {
+				if (EqualsIgnoringCase(key, "LeftMouseButton"))
+					return "LMB";
+				if (EqualsIgnoringCase(key, "RightMouseButton"))
+					return "RMB";
+				if (EqualsIgnoringCase(key, "MiddleMouseButton"))
+					return "MMB";
+				return ToUpperCase(key);
+			}
+
+			// Ring definitions. Slice order is top, then clockwise; Affirmative and
+			// Negative occupy the same slots in both variants so the gesture transfers.
+			struct PageDef {
+				const char* name;
+				bool global;
+				const char* labels[PieMenuView::kSliceCount];
+				// Slices that drop a Teamplay ping on whatever the crosshair was
+				// on instead of talking, falling back to the same message on chat
+				// where the server does not allow pings. The ping carries the
+				// slice's own label as its reason: the extension assigns no reason
+				// values, and a receiving client renders the string as it came, so
+				// a made-up token would only show up as "tear" on another screen.
+				bool pings[PieMenuView::kSliceCount];
+			};
+
+			// Layout rule, held across every ring: slice 0 is at the top and the
+			// rest follow clockwise, the vertical axis carries a pair of opposites,
+			// the right half is about them and the left half is about us.
+			//
+			// The ring a message sits on is what says how it travels, so nobody has
+			// to remember it slice by slice: the first ring points at a place, the
+			// second one talks, the third one calls the game.
+
+			// Every slice names somewhere, so every slice drops a marker there: on the
+			// ground, or on the player the crosshair was on, where the ray met them.
+			// A server without the extension gets the same words on team chat.
+			constexpr PageDef kPointPage = {
+			  "Point", false,
+			  {"Enemy Here!", "Tear It Down!", "Watch This Spot",
+			   "Go Here!", "Let's Dig Here", "Help Me Build"},
+			  {true, true, true, true, true, true}};
+
+			// Offered when the crosshair is on terrain rather than on a player.
+			const PageDef kWorldPages[] = {
+				kPointPage,
+				// Said to the team, about nowhere in particular: a marker would only
+				// put "thank you" on a piece of ground.
+				{"Social", false,
+				 {"Affirmative", "Thank You", "Hi!",
+				  "Negative", "Sorry!", "Help Me"},
+				 {false, false, false, false, false, false}},
+				// The objective rather than the ground: where the intel is and what
+				// to do about it is already known to everyone, so none of it points.
+				{"Tactics", false,
+				 {"Attack!", "Get the Intel!", "Enemy Has the Intel!",
+				  "Fall Back!", "Regroup on Me", "Defend the Intel!"},
+				 {false, false, false, false, false, false}},
+			};
+
+			// Offered while the crosshair is on a teammate, and sent to them alone.
+			// A person is not a place, so their own rings do not point; the rings keep
+			// the order they have on terrain, and Social keeps the same six words, so
+			// the gesture is the same whoever it is aimed at. Point comes last, one
+			// flip back from the first ring, so calling a spot never needs the
+			// crosshair taken off a player first.
+			const PageDef kTeammatePages[] = {
+				// Directions are relative to the teammate under the crosshair, which
+				// makes them exact in a way a broadcast "our right" cannot be. Up,
+				// down, left and right sit where they point; the two threats that
+				// have no direction take the lower corners.
+				{"Warn", false,
+				 {"Above You!", "On Your Right!", "Behind You!",
+				  "Below You!", "Sniper on You!", "On Your Left!"},
+				 {false, false, false, false, false, false}},
+				{"Social", false,
+				 {"Affirmative", "Thank You", "Hi!",
+				  "Negative", "Sorry!", "Help Me"},
+				 {false, false, false, false, false, false}},
+				{"Cooperate", false,
+				 {"Follow Me", "Cover Me", "Let Me Through",
+				  "Stay Here", "Boost Me Up", "Help Me Build"},
+				 {false, false, false, false, false, false}},
+				kPointPage,
+			};
+
+			// Offered only while the crosshair is on an enemy. The taunt goes out on
+			// global chat so the whole server reads it, addressed to the player it was
+			// aimed at; Point, as on a teammate, is one flip away.
+			const PageDef kEnemyPages[] = {
+				// A taunt goes to the whole server, at the player it was aimed at;
+				// a team marker has no business carrying one.
+				{"Taunt", true,
+				 {"I See You", "Nice Try", "Miss Me?",
+				  "Too Easy", "Behind You...", "Say Goodbye"},
+				 {false, false, false, false, false, false}},
+				kPointPage,
+			};
 		} // namespace
 
 		PieMenuView::PieMenuView(Client* c, IFont* f, IFont* big)
 			: renderer(c->GetRenderer()), font(f), bigFont(big) {
-			// Slice order: top, then clockwise.
-			//
-			// The World variant is aimed at a place, so its slices are callouts about
-			// somewhere rather than replies to somebody: four of them drop a
-			// Teamplay ping on whatever the crosshair was on when the menu opened, and
-			// fall back to the same message on team chat when the server does not allow
-			// pings. "Affirmative" and "Negative" have no place to point at and live on
-			// the Player variant, where a reply is what is wanted.
-			worldLabels = {
-				"Enemies!",
-				"Behind Us!",
-				"Spawnkiller!",
-				"Go Here!",
-				"Help Me Build",
-				"Tear It Down!",
-			};
-			playerLabels = {
-				"Affirmative",
-				"Behind You",
-				"Cover Me",
-				"Negative",
-				"Help Me",
-				"Thank You",
-			};
-			worldDisplayLabels = {
-				_Tr("Client", "Enemies!"),
-				_Tr("Client", "Behind Us!"),
-				_Tr("Client", "Spawnkiller!"),
-				_Tr("Client", "Go Here!"),
-				_Tr("Client", "Help Me Build"),
-				_Tr("Client", "Tear It Down!"),
+			auto buildPages = [](const PageDef* defs, size_t count) {
+				std::vector<Page> pages;
+				pages.reserve(count);
+				for (size_t i = 0; i < count; i++) {
+					const PageDef& def = defs[i];
+					Page p;
+					p.name = def.name;
+					p.global = def.global;
+					for (int s = 0; s < kSliceCount; s++) {
+						p.labels[static_cast<size_t>(s)] = def.labels[s];
+						p.pings[static_cast<size_t>(s)] = def.pings[s];
+					}
+					pages.push_back(std::move(p));
+				}
+				return pages;
 			};
 
-			// Which slices drop a ping instead of talking. The ping carries the slice's
-			// own message as its reason: the extension assigns no reason values, and a
-			// receiving client renders the string as it came, so a made-up token would
-			// only show up as "tear" on somebody else's screen.
-			//
-			// "Behind Us!" and "Spawnkiller!" stay chat-only — both are about a
-			// direction or an event, not a point on the map, so a marker would put them
-			// somewhere they do not belong.
-			worldSlicePings = {true, false, false, true, true, true};
-			playerSlicePings = {false, false, false, false, false, false};
-			playerDisplayLabels = {
-				_Tr("Client", "Affirmative"),
-				_Tr("Client", "Behind You"),
-				_Tr("Client", "Cover Me"),
-				_Tr("Client", "Negative"),
-				_Tr("Client", "Help Me"),
-				_Tr("Client", "Thank You"),
-			};
+			worldPages = buildPages(kWorldPages, std::size(kWorldPages));
+			teammatePages = buildPages(kTeammatePages, std::size(kTeammatePages));
+			enemyPages = buildPages(kEnemyPages, std::size(kEnemyPages));
 
 			const float halfSliceRad = kSliceSpan * 0.5F - DEG2RAD(kSliceGapDeg) * 0.5F;
 			for (int i = 0; i < kSliceCount; i++) {
@@ -236,6 +382,20 @@ namespace spades {
 
 		PieMenuView::~PieMenuView() {}
 
+		const PieMenuView::Page& PieMenuView::CurrentPage() const {
+			const auto& pages = CurrentPages();
+			SPAssert(!pages.empty());
+			size_t idx = static_cast<size_t>(std::max(0, page));
+			if (idx >= pages.size())
+				idx = pages.size() - 1;
+			return pages[idx];
+		}
+
+		void PieMenuView::RestorePage() {
+			int remembered = lastPage[static_cast<size_t>(variant)];
+			page = std::max(0, std::min(remembered, GetPageCount() - 1));
+		}
+
 		void PieMenuView::Open(Variant v, int tgtId) {
 			open = true;
 			variant = v;
@@ -243,7 +403,9 @@ namespace spades {
 			cursor = {0.0F, 0.0F};
 			selection = None;
 			openPhase = 0.0F;
+			pagePhase = 1.0F;
 			highlight.fill(0.0F);
+			RestorePage();
 		}
 
 		int PieMenuView::Close() {
@@ -252,9 +414,24 @@ namespace spades {
 			selection = None;
 			targetPlayerId = -1;
 			cursor = {0.0F, 0.0F};
+			page = 0;
 			openPhase = 0.0F;
 			highlight.fill(0.0F);
 			return result;
+		}
+
+		void PieMenuView::CyclePage(int dir) {
+			if (!open || dir == 0)
+				return;
+
+			int count = GetPageCount();
+			if (count <= 1)
+				return;
+
+			page = ((page + dir) % count + count) % count;
+			lastPage[static_cast<size_t>(variant)] = page;
+			pagePhase = 0.0F;
+			hintNeeded = false;
 		}
 
 		void PieMenuView::Update(float dt) {
@@ -262,10 +439,13 @@ namespace spades {
 				return;
 
 			constexpr float kOpenRate = 1.0F / 0.12F;
+			constexpr float kPageRate = 1.0F / 0.10F;
 			constexpr float kHighlightUpRate = 1.0F / 0.10F;
 			constexpr float kHighlightDownRate = 1.0F / 0.15F;
 
 			openPhase = std::min(1.0F, openPhase + dt * kOpenRate);
+			pagePhase = std::min(1.0F, pagePhase + dt * kPageRate);
+			hintTime += dt;
 
 			for (int i = 0; i < kSliceCount; i++) {
 				float target = (selection == i) ? 1.0F : 0.0F;
@@ -282,9 +462,7 @@ namespace spades {
 			static const std::string empty;
 			if (selection < 0 || selection >= kSliceCount)
 				return empty;
-			const auto& labels = (variant == Variant::Player)
-				? playerDisplayLabels : worldDisplayLabels;
-			return labels[static_cast<size_t>(selection)];
+			return CurrentPage().labels[static_cast<size_t>(selection)];
 		}
 
 		void PieMenuView::HandleMouseDelta(float dx, float dy) {
@@ -326,38 +504,49 @@ namespace spades {
 			
 			Vector2 center = {sw * 0.5F, sh * 0.5F};
 
-			const auto& labels = (variant == Variant::Player)
-				? playerDisplayLabels : worldDisplayLabels;
+			const auto& labels = CurrentPage().labels;
 
 			// Ease-out open animation: scale from 0.85 → 1.0, alpha from 0 → 1.
 			float eased = 1.0F - (1.0F - openPhase) * (1.0F - openPhase);
 			float scale = 0.85F + 0.15F * eased;
 			float alpha = eased;
 
+			// Labels fade back in after a ring flip so the swap reads as a change.
+			float easedPage = 1.0F - (1.0F - pagePhase) * (1.0F - pagePhase);
+
 			float rInner = kRingInner * scale;
 			float rOuter = kRingOuter * scale;
 			float rLabel = kLabelRadius * scale;
 
 			// Backing disc
-			renderer.SetColorAlphaPremultiplied(MakeVector4(0, 0, 0, 0.55F * alpha));
-			DrawDiscFill(renderer, center, rOuter);
+			DrawDiscFill(renderer, MakeVector4(0, 0, 0, 0.55F * alpha), center, rOuter);
+
+			// A highlighted slice reaches past the others, so how far out it goes
+			// is its own and is asked for in both passes below.
+			auto sliceOuter = [&](int i) { return rOuter + kHighlightReach * highlight[i]; };
 
 			// Slices
 			for (int i = 0; i < kSliceCount; i++) {
 				float h = highlight[i];
 				float fillA = (0.08F + (0.85F - 0.08F) * h) * alpha;
-				renderer.SetColorAlphaPremultiplied(MakeVector4(fillA, fillA, fillA, fillA));
-				float rOutSlice = rOuter + 10.0F * h;
 				const SliceRay& rr = sliceRays[i];
-				DrawSliceFill(renderer, center, rInner, rOutSlice,
-							  rr.s1, rr.c1, rr.s2, rr.c2);
+				DrawSliceFill(renderer, MakeVector4(fillA, fillA, fillA, fillA), center, rInner,
+							  sliceOuter(i), rr.s1, rr.c1, rr.s2, rr.c2);
 			}
 
-			// Outer and inner outline rings (thin)
-			renderer.SetColorAlphaPremultiplied(MakeVector4(alpha * 0.5F, alpha * 0.5F,
-															alpha * 0.5F, alpha * 0.5F));
-			DrawAnnulusFill(renderer, center, rOuter - 1.0F, rOuter);
-			DrawAnnulusFill(renderer, center, rInner, rInner + 1.0F);
+			// Outer and inner outline rings (thin). The outer one is drawn slice by
+			// slice, along each one's own edge: a single ring across the whole pie
+			// would sit at the resting radius and cut over the top of whichever
+			// slice had reached past it.
+			const float outlineA = alpha * 0.5F;
+			const Vector4 outlineColor = MakeVector4(outlineA, outlineA, outlineA, outlineA);
+			for (int i = 0; i < kSliceCount; i++) {
+				const SliceRay& rr = sliceRays[i];
+				float rOutSlice = sliceOuter(i);
+				DrawSliceFill(renderer, outlineColor, center, rOutSlice - 1.0F, rOutSlice,
+							  rr.s1, rr.c1, rr.s2, rr.c2);
+			}
+			DrawAnnulusFill(renderer, outlineColor, center, rInner, rInner + 1.0F);
 
 			// Labels at kLabelRadius along each slice center
 			for (int i = 0; i < kSliceCount; i++) {
@@ -369,9 +558,9 @@ namespace spades {
 				Vector2 sz = font->Measure(label);
 				Vector2 textPos = {p.x - sz.x * 0.5F, p.y - sz.y * 0.5F};
 
-				float textA = (0.85F + 0.15F * h) * alpha;
+				float textA = (0.85F + 0.15F * h) * alpha * easedPage;
 				Vector4 textColor = MakeVector4(1, 1, 1, textA);
-				Vector4 textShadow = MakeVector4(0, 0, 0, 0.6F * alpha);
+				Vector4 textShadow = MakeVector4(0, 0, 0, 0.6F * textA);
 				font->DrawShadow(label, textPos, 1.0F, textColor, textShadow);
 			}
 
@@ -381,11 +570,57 @@ namespace spades {
 				const std::string& centerLabel = labels[selection];
 				Vector2 sz = bigFont->Measure(centerLabel);
 				Vector2 pos = {center.x - sz.x * 0.5F, center.y - sz.y * 0.5F};
-				float a = h * alpha;
+				float a = h * alpha * easedPage;
 				Vector4 col = MakeVector4(a, a, a, a);
 				Vector4 shd = MakeVector4(0, 0, 0, 0.7F * a);
 				bigFont->DrawShadow(centerLabel, pos, 1.0F, col, shd);
+			} else if (font) {
+				// Nothing aimed at yet: name the ring instead, so which one is up
+				// can be read at a glance rather than inferred from six labels.
+				const std::string& pageName = CurrentPage().name;
+				Vector2 sz = font->Measure(pageName);
+				Vector2 pos = {center.x - sz.x * 0.5F, center.y - sz.y * 0.5F};
+				float a = alpha * easedPage * 0.55F;
+				font->DrawShadow(pageName, pos, 1.0F, MakeVector4(1, 1, 1, a),
+								 MakeVector4(0, 0, 0, 0.6F * a));
 			}
+
+			DrawPageIndicator(center, rOuter, alpha);
+		}
+
+		void PieMenuView::DrawPageIndicator(Vector2 center, float rOuter, float alpha) {
+			int pageCount = GetPageCount();
+			if (pageCount <= 1)
+				return;
+
+			constexpr float kDotRadius = 3.0F;
+			constexpr float kDotSpacing = 13.0F;
+			constexpr float kDotOffset = 16.0F;
+
+			// Pulses only until the player finds the flip, then settles into a
+			// quiet position readout that never asks for attention again.
+			float pulse = 0.75F + 0.25F * sinf(hintTime * 4.0F);
+			float indicatorA = alpha * (hintNeeded ? pulse : 0.4F);
+
+			float dotY = center.y + rOuter + kDotOffset;
+			float dotX = center.x - kDotSpacing * static_cast<float>(pageCount - 1) * 0.5F;
+			for (int i = 0; i < pageCount; i++) {
+				bool active = (i == page);
+				float a = indicatorA * (active ? 0.95F : 0.35F);
+				DrawDiscFill(renderer, MakeVector4(a, a, a, a),
+							 MakeVector2(dotX + kDotSpacing * static_cast<float>(i), dotY),
+							 active ? kDotRadius : kDotRadius - 1.0F);
+			}
+
+			if (!hintNeeded || !font)
+				return;
+
+			std::string hint = _Tr("Client", "{0} More", ShortKeyName(cg_keyAltAttack));
+			Vector2 sz = font->Measure(hint);
+			Vector2 pos = {center.x - sz.x * 0.5F, dotY + kDotRadius + 6.0F};
+			float a = alpha * pulse;
+			font->DrawShadow(hint, pos, 1.0F, MakeVector4(1, 1, 1, a),
+							 MakeVector4(0, 0, 0, 0.6F * a));
 		}
 	} // namespace client
 } // namespace spades
