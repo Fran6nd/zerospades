@@ -41,10 +41,6 @@ DEFINE_SPADES_SETTING(s_eax, "1");
 DEFINE_SPADES_SETTING(s_alPreciseErrorCheck, "1");
 DEFINE_SPADES_SETTING(s_openalDevice, "");
 
-// keep track of the "previous" volume so the dB isn't recomputed when unnecessary
-int s_volumePrevious = 100;
-float dBPrevious = 1.0F;
-
 // lm: seems to be missing for me..
 #ifndef ALC_ALL_DEVICES_SPECIFIER
 #define ALC_ALL_DEVICES_SPECIFIER 0x1013
@@ -68,10 +64,30 @@ namespace spades {
 				for (size_t i = 0; i < bytes.size(); i += 4) {
 					float inValue = reinterpret_cast<const float*>(bytes.data())[i >> 2];
 					int16_t& outValue = reinterpret_cast<std::int16_t*>(ret.data())[i >> 2];
-					outValue = static_cast<int16_t>(std::floor(inValue * 32768.f));
+					outValue = static_cast<int16_t>(std::floor(inValue * 32768.0F));
 				}
 
 				return ret;
+			}
+
+			// volume taper: -20dB (10x gain) per halving of the slider position, the
+			// standard curve for perceived loudness (same as an analog volume knob).
+			// collapses dB->linear (10^(dB/20)) into one power: volume^log2(10).
+			constexpr float kVolumeGainExponent = 3.32192809488736234787F; // log2(10)
+
+			// last volume (0-100) applied to the listener, and the gain it produced.
+			int lastVolume = 100;
+			float lastGain = 1.0F;
+
+			// called from every SetParam(). Only touches AL state when volume differs from last time.
+			void UpdateMasterVolume() {
+				int volume = Clamp((int)s_volume, 0, 100);
+				if (lastVolume == volume)
+					return;
+				lastGain = (volume > 0) ? powf((float)volume / 100.0F, kVolumeGainExponent) : 0.0F;
+				al::qalListenerf(AL_GAIN, lastGain);
+				ALCheckErrorPrecise();
+				lastVolume = volume;
 			}
 		} // namespace
 
@@ -212,17 +228,7 @@ namespace spades {
 					ALCheckErrorPrecise();
 					al::qalSourcef(handle, AL_REFERENCE_DISTANCE, param.referenceDistance);
 
-					if (s_volumePrevious != (int)s_volume) {
-						// update the previous volume
-						s_volumePrevious = (int)s_volume;
-						// compute the new dB level, where 27.71373379 ~ 10^(1/log(2))
-						// and update the master gain to it
-						if ((int)s_volume == 0)
-							dBPrevious = 0;
-						else
-							dBPrevious = powf(27.71373379F, log(((float)s_volume) / 100.0F));
-						al::qalListenerf(AL_GAIN, dBPrevious);
-					}
+					UpdateMasterVolume();
 
 					ALCheckError();
 					this->param = param;
@@ -448,7 +454,7 @@ namespace spades {
 				alDevice = al::qalcOpenDevice(dev);
 
 				if (UNLIKELY(!alDevice)) {
-					SPLog("Failed to open device: %s", dev ? dev : "default");			
+					SPLog("Failed to open device: %s", dev ? dev : "default");
 					if ((alcExt = al::qalcGetString(NULL, ALC_EXTENSIONS))) {
 						std::vector<std::string> strs = Split(alcExt, " ");
 						SPLog("OpenAL ALC Extensions (NULL):");
@@ -472,11 +478,11 @@ namespace spades {
 					SPRaise("Failed to create OpenAL context.");
 				}
 				al::qalcMakeContextCurrent(alContext);
-				
+
 				SPLog("OpenAL Info:");
 				SPLog("	 Vendor: %s", al::qalGetString(AL_VENDOR));
 				SPLog("	 Version: %s", al::qalGetString(AL_VERSION));
-				SPLog("	 Renderer: %s", al::qalGetString(AL_RENDERER));			
+				SPLog("	 Renderer: %s", al::qalGetString(AL_RENDERER));
 #ifdef OPENAL_SOFT
 				SPLog("	 Using OpenAL Soft (built-in)");
 #else
