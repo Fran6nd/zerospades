@@ -553,10 +553,10 @@ namespace spades {
 			float largeMapAlpha = largeMap ? zoomState : 1.0F;
 			float alpha = largeMap ? largeMapAlpha : Clamp((float)cg_minimapOpacity, 0.1F, 1.0F);
 
+			// draw map
 			if (circularMap) {
 				renderer.BeginClippingCircle(scrCenter, scrRadius);
 
-				// draw map
 				const auto& topLeft = RotateMap(MakeVector2(-scrHalfSize.x, -scrHalfSize.y));
 				const auto& topRight = RotateMap(MakeVector2(scrHalfSize.x, -scrHalfSize.y));
 				const auto& bottomLeft = RotateMap(MakeVector2(-scrHalfSize.x, scrHalfSize.y));
@@ -569,10 +569,6 @@ namespace spades {
 				DrawGridLines(gridSize, inRect, gridCol, (mapAngle != 0.0F));
 
 				renderer.EndClippingCircle();
-
-				// draw map border
-				renderer.SetColorAlphaPremultiplied(MakeVector4(0, 0, 0, 1) * alpha);
-				renderer.DrawOutlinedCircle(scrCenter, scrRadius + 1.0F, 2.0F);
 			} else if (rotatingMap) {
 				const Vector2 bigScrHalf = scrHalfSize * static_cast<float>(M_SQRT2);
 				const Vector2 bigMapHalf = mapHalfSize * static_cast<float>(M_SQRT2);
@@ -582,7 +578,6 @@ namespace spades {
 
 				renderer.BeginClippingRect(outRect);
 
-				// draw map
 				const auto& topLeft = RotateMap(MakeVector2(-bigScrHalf.x, -bigScrHalf.y));
 				const auto& topRight = RotateMap(MakeVector2(bigScrHalf.x, -bigScrHalf.y));
 				const auto& bottomLeft = RotateMap(MakeVector2(-bigScrHalf.x, bigScrHalf.y));
@@ -595,13 +590,7 @@ namespace spades {
 				DrawGridLines(gridSize, bigInRect, gridCol, true);
 
 				renderer.EndClippingRect();
-
-				// draw map border
-				renderer.SetColorAlphaPremultiplied(MakeVector4(0, 0, 0, 1) * alpha);
-				renderer.DrawOutlinedRect(outRect.GetMinX() - 1, outRect.GetMinY() - 1,
-										  outRect.GetMaxX() + 1, outRect.GetMaxY() + 1);
 			} else {
-				// draw map
 				renderer.SetColorAlphaPremultiplied(MakeVector4(1, 1, 1, 1) * alpha);
 				renderer.DrawFlatGameMap(outRect, inRect);
 
@@ -659,11 +648,17 @@ namespace spades {
 					renderer.DrawImage(mapFont, MakeVector2(outRect.GetMinX() + 4, wy - 4),
 									   AABB2(fntX, fntY, 8, 8));
 				}
+			}
 
-				// draw map border
-				renderer.SetColorAlphaPremultiplied(MakeVector4(0, 0, 0, 1) * alpha);
-				renderer.DrawOutlinedRect(outRect.GetMinX() - 1, outRect.GetMinY() - 1,
-										  outRect.GetMaxX() + 1, outRect.GetMaxY() + 1);
+			// draw map border
+			float borderThick = 2.0F;
+			renderer.SetColorAlphaPremultiplied(MakeVector4(0, 0, 0, 1) * alpha);
+			if (circularMap) {
+				renderer.DrawOutlinedCircle(scrCenter, scrRadius + borderThick * 0.5F, borderThick);
+			} else {
+				renderer.DrawOutlinedRect(outRect.GetMinX() - (int)borderThick, outRect.GetMinY() - (int)borderThick,
+										  outRect.GetMaxX() + (int)borderThick, outRect.GetMaxY() + (int)borderThick,
+										  (int)borderThick);
 			}
 
 			// draw map sector
