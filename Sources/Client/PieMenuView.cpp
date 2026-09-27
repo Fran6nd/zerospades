@@ -25,6 +25,7 @@
 #include <cmath>
 #include <iterator>
 #include <limits>
+#include <vector>
 
 #include "Client.h"
 #include "IFont.h"
@@ -47,133 +48,202 @@ namespace spades {
 			// How far past kRingOuter a slice reaches when it is fully highlighted.
 			constexpr float kHighlightReach = 10.0F;
 
-			// Normalized quarter-circle half-width table: table[i] = sqrt(1-(i/N)^2).
-			// Built once at program startup; radius-agnostic.
-			constexpr int kHalfWidthN = 1024;
-			const std::array<float, kHalfWidthN + 1> kHalfWidthTable = []() {
-				std::array<float, kHalfWidthN + 1> t{};
-				for (int i = 0; i <= kHalfWidthN; i++) {
-					float v = static_cast<float>(i) / static_cast<float>(kHalfWidthN);
-					float s = 1.0F - v * v;
-					t[static_cast<size_t>(i)] = (s > 0.0F) ? sqrtf(s) : 0.0F;
-				}
-				return t;
-			}();
-
-			// sqrt(r*r - y*y) via linear interp of the normalized table.
-			float CircleHalfWidth(float yAbs, float r) {
-				if (r <= 0.0F || yAbs >= r)
-					return 0.0F;
-				float t = yAbs / r;
-				float idxf = t * static_cast<float>(kHalfWidthN);
-				int i = static_cast<int>(idxf);
-				if (i >= kHalfWidthN)
-					return 0.0F;
-				float frac = idxf - static_cast<float>(i);
-				float w = kHalfWidthTable[static_cast<size_t>(i)]
-						+ (kHalfWidthTable[static_cast<size_t>(i + 1)]
-						   - kHalfWidthTable[static_cast<size_t>(i)]) * frac;
-				return w * r;
+			// Half the width of a circle of radius r along a line dy from its centre.
+			float CircleHalfWidth(float dy, float r) {
+				float s = r * r - dy * dy;
+				return (s > 0.0F) ? sqrtf(s) : 0.0F;
 			}
 
-			void DrawDiscFill(IRenderer& r, Vector2 center, float rOut) {
-				int yLo = static_cast<int>(floorf(-rOut));
-				int yHi = static_cast<int>(ceilf(rOut));
-				for (int y = yLo; y < yHi; y++) {
-					float yf = static_cast<float>(y) + 0.5F;
-					float w = CircleHalfWidth(fabsf(yf), rOut);
-					if (w <= 0.0F)
-						continue;
-					r.DrawImage(nullptr, AABB2(center.x - w, center.y + static_cast<float>(y),
-											   2.0F * w, 1.0F));
-				}
-			}
+			// What a shape covers along one horizontal line: at most two intervals,
+			// since a line through the hole of a ring splits it in two.
+			struct RowSpans {
+				int count = 0;
+				std::array<float, 2> lo{};
+				std::array<float, 2> hi{};
 
-			void DrawAnnulusFill(IRenderer& r, Vector2 center, float rIn, float rOut) {
-				if (rIn <= 0.0F) {
-					DrawDiscFill(r, center, rOut);
-					return;
-				}
-				int yLo = static_cast<int>(floorf(-rOut));
-				int yHi = static_cast<int>(ceilf(rOut));
-				for (int y = yLo; y < yHi; y++) {
-					float yf = static_cast<float>(y) + 0.5F;
-					float yAbs = fabsf(yf);
-					float wOut = CircleHalfWidth(yAbs, rOut);
-					if (wOut <= 0.0F)
-						continue;
-					if (yAbs < rIn) {
-						float wIn = CircleHalfWidth(yAbs, rIn);
-						float strip = wOut - wIn;
-						if (strip > 0.0F) {
-							r.DrawImage(nullptr,
-										AABB2(center.x - wOut,
-											  center.y + static_cast<float>(y),
-											  strip, 1.0F));
-							r.DrawImage(nullptr,
-										AABB2(center.x + wIn,
-											  center.y + static_cast<float>(y),
-											  strip, 1.0F));
-						}
-					} else {
-						r.DrawImage(nullptr, AABB2(center.x - wOut,
-												   center.y + static_cast<float>(y),
-												   2.0F * wOut, 1.0F));
+				void Add(float a, float b) {
+					if (b > a && count < 2) {
+						lo[static_cast<size_t>(count)] = a;
+						hi[static_cast<size_t>(count)] = b;
+						count++;
 					}
 				}
+			};
+
+			// Lines sampled per pixel row. Coverage across a row is exact, so these
+			// only have to resolve edges that run close to horizontal, like the top
+			// and bottom of a ring.
+			constexpr int kSubRows = 8;
+			// Coverage steps a run of pixels is drawn at; neighbours that round to
+			// the same step merge into one rect.
+			constexpr float kCoverageLevels = 255.0F;
+
+			// Fills a shape with anti-aliased edges. The 2D pass is not multisampled,
+			// so a shape drawn as bare rects or triangles comes out stair-stepped;
+			// instead each pixel's coverage is worked out here and the pixel drawn
+			// with its alpha scaled by it. `spansAt(y)` gives the shape's extent along
+			// the horizontal line at screen y, `bounds` must contain the shape, and
+			// `color` is premultiplied.
+			template <class SpanFn>
+			void FillShape(IRenderer& r, Vector4 color, const AABB2& bounds, SpanFn&& spansAt) {
+				const int px0 = static_cast<int>(floorf(bounds.GetMinX()));
+				const int px1 = static_cast<int>(ceilf(bounds.GetMaxX()));
+				const int py0 = static_cast<int>(floorf(bounds.min.y));
+				const int py1 = static_cast<int>(ceilf(bounds.max.y));
+				if (px1 <= px0 || py1 <= py0 || color.w <= 0.0F)
+					return;
+
+				const int width = px1 - px0;
+				const float widthF = static_cast<float>(width);
+				constexpr float kSampleWeight = 1.0F / static_cast<float>(kSubRows);
+
+				// A span's partial end pixels go straight into `partial`; the run of
+				// pixels it covers in full goes into `delta` as a difference array,
+				// so a row costs its width however many spans and samples land in it.
+				std::vector<float> partial(static_cast<size_t>(width) + 1);
+				std::vector<float> delta(static_cast<size_t>(width) + 1);
+
+				for (int py = py0; py < py1; py++) {
+					int touchedLo = width;
+					int touchedHi = 0;
+
+					for (int sub = 0; sub < kSubRows; sub++) {
+						float y = static_cast<float>(py) +
+								  (static_cast<float>(sub) + 0.5F) * kSampleWeight;
+						RowSpans spans = spansAt(y);
+						for (int k = 0; k < spans.count; k++) {
+							float a = Clamp(spans.lo[static_cast<size_t>(k)] -
+											  static_cast<float>(px0), 0.0F, widthF);
+							float b = Clamp(spans.hi[static_cast<size_t>(k)] -
+											  static_cast<float>(px0), 0.0F, widthF);
+							if (b <= a)
+								continue;
+
+							int ia = static_cast<int>(floorf(a));
+							int ib = static_cast<int>(floorf(b));
+							if (ia == ib) {
+								partial[static_cast<size_t>(ia)] += (b - a) * kSampleWeight;
+							} else {
+								partial[static_cast<size_t>(ia)] +=
+								  (static_cast<float>(ia + 1) - a) * kSampleWeight;
+								delta[static_cast<size_t>(ia + 1)] += kSampleWeight;
+								delta[static_cast<size_t>(ib)] -= kSampleWeight;
+								if (ib < width)
+									partial[static_cast<size_t>(ib)] +=
+									  (b - static_cast<float>(ib)) * kSampleWeight;
+							}
+							touchedLo = std::min(touchedLo, ia);
+							touchedHi = std::max(touchedHi, std::min(ib + 1, width));
+						}
+					}
+
+					// Walk the touched pixels and draw each run of equal coverage.
+					// One step past the end closes the last run.
+					float running = 0.0F;
+					int runStart = touchedLo;
+					int runLevel = 0;
+					for (int i = touchedLo; i <= touchedHi; i++) {
+						int level = 0;
+						if (i < touchedHi) {
+							running += delta[static_cast<size_t>(i)];
+							float cov = Clamp(running + partial[static_cast<size_t>(i)],
+											  0.0F, 1.0F);
+							level = static_cast<int>(cov * kCoverageLevels + 0.5F);
+						}
+						if (level == runLevel)
+							continue;
+						if (runLevel > 0) {
+							r.SetColorAlphaPremultiplied(
+							  color * (static_cast<float>(runLevel) / kCoverageLevels));
+							r.DrawImage(nullptr, AABB2(static_cast<float>(px0 + runStart),
+													   static_cast<float>(py),
+													   static_cast<float>(i - runStart), 1.0F));
+						}
+						runStart = i;
+						runLevel = level;
+					}
+
+					// Only what this row touched is dirty; a slice covers a fraction
+					// of its bounds, so clearing the whole width would be most of the work.
+					if (touchedHi >= touchedLo) {
+						std::fill(partial.begin() + touchedLo, partial.begin() + touchedHi + 1, 0.0F);
+						std::fill(delta.begin() + touchedLo, delta.begin() + touchedHi + 1, 0.0F);
+					}
+				}
+			}
+
+			void DrawDiscFill(IRenderer& r, Vector4 color, Vector2 center, float rOut) {
+				FillShape(r, color,
+						  AABB2(center.x - rOut, center.y - rOut, 2.0F * rOut, 2.0F * rOut),
+						  [&](float y) {
+							  RowSpans spans;
+							  float w = CircleHalfWidth(y - center.y, rOut);
+							  spans.Add(center.x - w, center.x + w);
+							  return spans;
+						  });
+			}
+
+			void DrawAnnulusFill(IRenderer& r, Vector4 color, Vector2 center, float rIn,
+								 float rOut) {
+				FillShape(r, color,
+						  AABB2(center.x - rOut, center.y - rOut, 2.0F * rOut, 2.0F * rOut),
+						  [&](float y) {
+							  RowSpans spans;
+							  float dy = y - center.y;
+							  float wOut = CircleHalfWidth(dy, rOut);
+							  float wIn = CircleHalfWidth(dy, rIn);
+							  if (wIn > 0.0F) {
+								  spans.Add(center.x - wOut, center.x - wIn);
+								  spans.Add(center.x + wIn, center.x + wOut);
+							  } else {
+								  spans.Add(center.x - wOut, center.x + wOut);
+							  }
+							  return spans;
+						  });
 			}
 
 			// Annulus ∩ wedge. Rays at θ_c ± α are encoded as (s1,c1) and (s2,c2).
 			// Inside-wedge half-planes:   -x·s1 + y·c1 ≥ 0	  and	x·s2 - y·c2 ≥ 0.
-			void DrawSliceFill(IRenderer& r, Vector2 center, float rIn, float rOut,
-							   float s1, float c1, float s2, float c2) {
-				int yLo = static_cast<int>(floorf(-rOut));
-				int yHi = static_cast<int>(ceilf(rOut));
+			void DrawSliceFill(IRenderer& r, Vector4 color, Vector2 center, float rIn,
+							   float rOut, float s1, float c1, float s2, float c2) {
 				const float kInf = std::numeric_limits<float>::infinity();
-				for (int y = yLo; y < yHi; y++) {
-					float yf = static_cast<float>(y) + 0.5F;
-					float yAbs = fabsf(yf);
-					float wOut = CircleHalfWidth(yAbs, rOut);
-					if (wOut <= 0.0F)
-						continue;
-					float wIn = (yAbs < rIn) ? CircleHalfWidth(yAbs, rIn) : 0.0F;
+				FillShape(
+				  r, color, AABB2(center.x - rOut, center.y - rOut, 2.0F * rOut, 2.0F * rOut),
+				  [&](float y) {
+					  RowSpans spans;
+					  float dy = y - center.y;
 
-					// Clip by wedge rays.
-					float xLoW = -kInf, xHiW = kInf;
-					if (s1 > 0.0F) {
-						xHiW = std::min(xHiW, yf * c1 / s1);
-					} else if (s1 < 0.0F) {
-						xLoW = std::max(xLoW, yf * c1 / s1);
-					} else if (yf * c1 < 0.0F) {
-						continue;
-					}
-					if (s2 > 0.0F) {
-						xLoW = std::max(xLoW, yf * c2 / s2);
-					} else if (s2 < 0.0F) {
-						xHiW = std::min(xHiW, yf * c2 / s2);
-					} else if (yf * c2 > 0.0F) {
-						continue;
-					}
-					if (xHiW <= xLoW)
-						continue;
+					  // Clip by wedge rays.
+					  float xLoW = -kInf, xHiW = kInf;
+					  if (s1 > 0.0F) {
+						  xHiW = std::min(xHiW, dy * c1 / s1);
+					  } else if (s1 < 0.0F) {
+						  xLoW = std::max(xLoW, dy * c1 / s1);
+					  } else if (dy * c1 < 0.0F) {
+						  return spans;
+					  }
+					  if (s2 > 0.0F) {
+						  xLoW = std::max(xLoW, dy * c2 / s2);
+					  } else if (s2 < 0.0F) {
+						  xHiW = std::min(xHiW, dy * c2 / s2);
+					  } else if (dy * c2 > 0.0F) {
+						  return spans;
+					  }
 
-					auto emit = [&](float xA, float xB) {
-						float xLo = std::max(xA, xLoW);
-						float xHi = std::min(xB, xHiW);
-						if (xHi > xLo) {
-							r.DrawImage(nullptr,
-										AABB2(center.x + xLo,
-											  center.y + static_cast<float>(y),
-											  xHi - xLo, 1.0F));
-						}
-					};
-					if (yAbs < rIn) {
-						emit(-wOut, -wIn);
-						emit(wIn, wOut);
-					} else {
-						emit(-wOut, wOut);
-					}
-				}
+					  auto clipped = [&](float xA, float xB) {
+						  spans.Add(center.x + std::max(xA, xLoW),
+									center.x + std::min(xB, xHiW));
+					  };
+					  float wOut = CircleHalfWidth(dy, rOut);
+					  float wIn = CircleHalfWidth(dy, rIn);
+					  if (wIn > 0.0F) {
+						  clipped(-wOut, -wIn);
+						  clipped(wIn, wOut);
+					  } else {
+						  clipped(-wOut, wOut);
+					  }
+					  return spans;
+				  });
 			}
 
 			// Binding names are stored verbosely; the hint has to stay readable at
@@ -449,8 +519,7 @@ namespace spades {
 			float rLabel = kLabelRadius * scale;
 
 			// Backing disc
-			renderer.SetColorAlphaPremultiplied(MakeVector4(0, 0, 0, 0.55F * alpha));
-			DrawDiscFill(renderer, center, rOuter);
+			DrawDiscFill(renderer, MakeVector4(0, 0, 0, 0.55F * alpha), center, rOuter);
 
 			// A highlighted slice reaches past the others, so how far out it goes
 			// is its own and is asked for in both passes below.
@@ -460,25 +529,24 @@ namespace spades {
 			for (int i = 0; i < kSliceCount; i++) {
 				float h = highlight[i];
 				float fillA = (0.08F + (0.85F - 0.08F) * h) * alpha;
-				renderer.SetColorAlphaPremultiplied(MakeVector4(fillA, fillA, fillA, fillA));
 				const SliceRay& rr = sliceRays[i];
-				DrawSliceFill(renderer, center, rInner, sliceOuter(i),
-							  rr.s1, rr.c1, rr.s2, rr.c2);
+				DrawSliceFill(renderer, MakeVector4(fillA, fillA, fillA, fillA), center, rInner,
+							  sliceOuter(i), rr.s1, rr.c1, rr.s2, rr.c2);
 			}
 
 			// Outer and inner outline rings (thin). The outer one is drawn slice by
 			// slice, along each one's own edge: a single ring across the whole pie
 			// would sit at the resting radius and cut over the top of whichever
 			// slice had reached past it.
-			renderer.SetColorAlphaPremultiplied(MakeVector4(alpha * 0.5F, alpha * 0.5F,
-															alpha * 0.5F, alpha * 0.5F));
+			const float outlineA = alpha * 0.5F;
+			const Vector4 outlineColor = MakeVector4(outlineA, outlineA, outlineA, outlineA);
 			for (int i = 0; i < kSliceCount; i++) {
 				const SliceRay& rr = sliceRays[i];
 				float rOutSlice = sliceOuter(i);
-				DrawSliceFill(renderer, center, rOutSlice - 1.0F, rOutSlice,
+				DrawSliceFill(renderer, outlineColor, center, rOutSlice - 1.0F, rOutSlice,
 							  rr.s1, rr.c1, rr.s2, rr.c2);
 			}
-			DrawAnnulusFill(renderer, center, rInner, rInner + 1.0F);
+			DrawAnnulusFill(renderer, outlineColor, center, rInner, rInner + 1.0F);
 
 			// Labels at kLabelRadius along each slice center
 			for (int i = 0; i < kSliceCount; i++) {
@@ -539,8 +607,7 @@ namespace spades {
 			for (int i = 0; i < pageCount; i++) {
 				bool active = (i == page);
 				float a = indicatorA * (active ? 0.95F : 0.35F);
-				renderer.SetColorAlphaPremultiplied(MakeVector4(a, a, a, a));
-				DrawDiscFill(renderer,
+				DrawDiscFill(renderer, MakeVector4(a, a, a, a),
 							 MakeVector2(dotX + kDotSpacing * static_cast<float>(i), dotY),
 							 active ? kDotRadius : kDotRadius - 1.0F);
 			}
