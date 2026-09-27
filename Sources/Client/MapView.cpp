@@ -324,10 +324,6 @@ namespace spades {
 			scrPos.x -= size.x * 0.5F;
 			scrPos.y -= size.y;
 
-			// rounded for better pixel alignment
-			scrPos.x = floorf(scrPos.x);
-			scrPos.y = floorf(scrPos.y);
-
 			font.DrawShadow(s, scrPos, 1.0F, col, MakeVector4(0, 0, 0, col.w));
 		}
 
