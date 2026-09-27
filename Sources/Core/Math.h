@@ -495,6 +495,8 @@ namespace spades {
 		}
 
 		Vector3 GetXYZ() const { return Vector3::Make(x, y, z); }
+
+		Vector4 Premultiplied() const { return Make(x * w, y * w, z * w, w); }
 	};
 
 	static inline IntVector3 MakeIntVector3(int x, int y, int z) { return IntVector3::Make(x, y, z); }

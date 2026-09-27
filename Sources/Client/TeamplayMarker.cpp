@@ -72,12 +72,8 @@ namespace spades {
 			float OutlineWidth(float halfSize) { return std::max(1.0F, halfSize * kOutlineRatio); }
 			float RimWidth(float halfSize) { return std::max(1.0F, halfSize * kRimRatio); }
 
-			Vector3 TowardWhite(const Vector3& c, float amount) {
-				return c + (MakeVector3(1, 1, 1) - c) * amount;
-			}
-
 			Vector4 Premultiplied(const Vector3& c, float alpha) {
-				return MakeVector4(c.x * alpha, c.y * alpha, c.z * alpha, alpha);
+				return MakeVector4(c.x, c.y, c.z, alpha).Premultiplied();
 			}
 
 			float EaseOutCubic(float t) {
@@ -151,10 +147,13 @@ namespace spades {
 				// Thick while it is close to the marker, a hairline as it dissolves.
 				float width = std::max(1.0F, halfSize * 0.3F * (1.0F - p));
 
+				const Vector3 black = MakeVector3(0, 0, 0);
+				const Vector3 white = MakeVector3(1, 1, 1);
+
 				StrokeDiamond(renderer, c, size, width + 2.0F,
-							  Premultiplied(MakeVector3(0, 0, 0), 0.35F * fade));
+							  Premultiplied(black, 0.35F * fade));
 				StrokeDiamond(renderer, c, size, width,
-							  Premultiplied(TowardWhite(color, kRimTint), fade));
+							  Premultiplied(Mix(color, white, kRimTint), fade));
 			}
 		} // namespace
 
@@ -175,8 +174,7 @@ namespace spades {
 
 			// Pulses go underneath, so the marker always reads on top of its own rings.
 			for (float offset : kBurstOffsets)
-				DrawPulse(renderer, center, halfSize, color, alpha, age - offset,
-						  kBurstStrength);
+				DrawPulse(renderer, center, halfSize, color, alpha, age - offset, kBurstStrength);
 			if (age >= kIdlePulseStart) {
 				float t = std::fmod(age - kIdlePulseStart, kIdlePulsePeriod);
 				DrawPulse(renderer, center, halfSize, color, alpha, t, kIdlePulseStrength);
@@ -199,19 +197,20 @@ namespace spades {
 			const float coreTint = std::min(1.0F, kCoreTint + kBreathTint * breath);
 
 			const Vector3 black = MakeVector3(0, 0, 0);
+			const Vector3 white = MakeVector3(1, 1, 1);
 
 			// Back to front: shadow, outline, rim, body, core.
 			FillDiamond(renderer, center + MakeVector2(0.0F, kShadowOffset),
 						outlineHalf + 0.5F, Premultiplied(black, 0.35F * alpha));
 			FillDiamond(renderer, center, outlineHalf, Premultiplied(black, 0.85F * alpha));
 			FillDiamond(renderer, center, halfSize,
-						Premultiplied(TowardWhite(color, kRimTint), alpha));
+						Premultiplied(Mix(color, white, kRimTint), alpha));
 			FillDiamond(renderer, center, bodyHalf, Premultiplied(color, alpha));
 
 			// Below a pixel the core would only shimmer as the marker moves.
 			if (coreHalf >= 1.0F)
 				FillDiamond(renderer, center, coreHalf,
-							Premultiplied(TowardWhite(color, coreTint), alpha));
+							Premultiplied(Mix(color, white, coreTint), alpha));
 		}
 	} // namespace client
 } // namespace spades

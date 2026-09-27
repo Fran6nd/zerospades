@@ -706,15 +706,8 @@ namespace spades {
 			bottom = ceilf(bottom);
 
 			// draw boxes
-			Vector4 shadowP = MakeVector4(0, 0, 0, 0.25F * color.w);
-			shadowP.x *= shadowP.w;
-			shadowP.y *= shadowP.w;
-			shadowP.z *= shadowP.w;
-
-			Vector4 colorP = MakeVector4(color.x, color.y, color.z, color.w);
-			colorP.x *= colorP.w;
-			colorP.y *= colorP.w;
-			colorP.z *= colorP.w;
+			Vector4 shadowP = MakeVector4(0, 0, 0, 0.25F * color.w).Premultiplied();
+			Vector4 colorP = color.Premultiplied();
 
 			renderer->SetColorAlphaPremultiplied(shadowP);
 			renderer->DrawOutlinedRect(left - 1, top - 1, right + 1, bottom + 1);
@@ -760,14 +753,6 @@ namespace spades {
 		}
 
 #pragma mark - Teamplay
-
-		namespace {
-			/** Premultiplies a straight (non-premultiplied) colour. */
-			Vector4 Premultiply(const Vector4& c) {
-				return MakeVector4(c.x * c.w, c.y * c.w, c.z * c.w, c.w);
-			}
-
-		} // namespace
 
 		Vector4 Client::GetTeamplayTeamColor(Player& p, float alpha) {
 			// The extension is explicit that a TEAM_ESP highlight uses the team colour
@@ -839,7 +824,7 @@ namespace spades {
 			Vector2 wingR = MakeVector2(scrPos.x + halfW, scrPos.y - depth);
 
 			Vector4 shadow = MakeVector4(0, 0, 0, 0.6F * alpha);
-			Vector4 outline = Premultiply(color);
+			Vector4 outline = color.Premultiplied();
 
 			renderer->SetColorAlphaPremultiplied(shadow);
 			renderer->DrawLine(wingL, tip, thickShadow);
@@ -848,7 +833,7 @@ namespace spades {
 			renderer->DrawLine(wingL, tip, thickOutline);
 			renderer->DrawLine(tip, wingR, thickOutline);
 
-			Vector4 nameCol = MakeVector4(color.x, color.y, color.z, alpha);
+			Vector4 textCol = MakeVector4(color.x, color.y, color.z, alpha);
 			Vector4 textShadow = MakeVector4(0, 0, 0, 0.7F * alpha);
 
 			// Stack the class weapon icon and then the name above the chevron. The class
@@ -893,7 +878,7 @@ namespace spades {
 				Vector2 nameSize = font.Measure(name);
 				Vector2 namePos = MakeVector2(floorf(scrPos.x - nameSize.x * 0.5F),
 											  floorf(stackBottom - nameSize.y - 1.0F));
-				font.DrawShadow(name, namePos, 1.0F, nameCol, textShadow);
+				font.DrawShadow(name, namePos, 1.0F, textCol, textShadow);
 
 				stackBottom = namePos.y;
 			}
@@ -904,7 +889,7 @@ namespace spades {
 				Vector2 noteSize = font.Measure(note);
 				Vector2 notePos = MakeVector2(floorf(scrPos.x - noteSize.x * 0.5F),
 											  floorf(stackBottom - noteSize.y - 1.0F));
-				font.DrawShadow(note, notePos, 1.0F, nameCol, textShadow);
+				font.DrawShadow(note, notePos, 1.0F, textCol, textShadow);
 			}
 		}
 
@@ -1136,8 +1121,8 @@ namespace spades {
 			// arrive.
 			constexpr float kFacedAlpha = 0.2F;
 			constexpr float kScopedFacedAlpha = 0.05F;
-			float facedAlpha =
-			  Mix(kFacedAlpha, kScopedFacedAlpha, Clamp(GetAimDownState(), 0.0F, 1.0F));
+			const float aimDownState = GetAimDownState(); // only valid for the local player
+			float facedAlpha = Mix(kFacedAlpha, kScopedFacedAlpha, Clamp(aimDownState, 0.0F, 1.0F));
 
 			for (const auto& entry : teamplay->GetPings()) {
 				const Teamplay::Ping& ping = entry.second;
@@ -1229,8 +1214,7 @@ namespace spades {
 				Vector2 size = font.Measure(label);
 				Vector2 pos = MakeVector2(floorf(scrPos.x - size.x * 0.5F),
 										  floorf(scrPos.y + GetPingDiamondExtent(sz) + 2.0F));
-				font.DrawShadow(label, pos, 1.0F, MakeVector4(color.x, color.y, color.z, alpha),
-								MakeVector4(0, 0, 0, 0.8F * alpha));
+				font.DrawShadow(label, pos, 1.0F, color, MakeVector4(0, 0, 0, 0.8F * alpha));
 			}
 		}
 
@@ -1694,10 +1678,7 @@ namespace spades {
 				: MakeVector4(1, 1, 1, 0.5);
 
 			// premultiplied
-			Vector4 shadowP = shadowColor;
-			shadowP.x *= shadowP.w;
-			shadowP.y *= shadowP.w;
-			shadowP.z *= shadowP.w;
+			Vector4 shadowP = shadowColor.Premultiplied();
 
 			Vector4 white = MakeVector4(1, 1, 1, 1);
 			Vector4 red = MakeVector4(1, 0, 0, 1);
@@ -2199,10 +2180,7 @@ namespace spades {
 			const Vector4 bgColor = (luminosity > 0.9F) ? color * gray : gray;
 
 			// premultiplied
-			Vector4 shadowP = shadow;
-			shadowP.x *= shadowP.w;
-			shadowP.y *= shadowP.w;
-			shadowP.z *= shadowP.w;
+			Vector4 shadowP = shadow.Premultiplied();
 
 			// draw background
 			renderer->DrawFilledRectFade(barX, barY, barX + barW, barY + barH,
