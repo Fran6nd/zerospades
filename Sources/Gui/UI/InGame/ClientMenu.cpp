@@ -152,22 +152,24 @@ namespace spades {
 		void ClientMenu::Render() {
 			UIElement::Render();
 
+			IFont& font = ui->GetFontManager().GetHeadingFont();
+
 			int now = static_cast<int>(helper->GetClientTime());
 			int hrs = now / 3600;
 			int mins = (now % 3600) / 60;
 			int secs = now % 60;
 
-			char buf[16];
+			std::string time;
 			if (hrs > 0)
-				snprintf(buf, sizeof(buf), "%d:%02d:%02d", hrs, mins, secs);
+				time = _Tr("Client", "{0}h {1}m {2}s", ToString(hrs), ToString(mins), ToString(secs));
+			else if (mins > 0)
+				time = _Tr("Client", "{0}m {1}s", ToString(mins), ToString(secs));
 			else
-				snprintf(buf, sizeof(buf), "%d:%02d", mins, secs);
+				time = _Tr("Client", "{0}s", ToString(secs));
 
-			std::string str = _Tr("Client", "Time played: {0}", std::string(buf));
-			IFont& font = ui->GetFontManager().GetHeadingFont();
-			Vector2 pos = MakeVector2(8.0F, 8.0F);
-			font.Draw(str, pos + MakeVector2(1, 1), 1.0F, MakeVector4(0, 0, 0, 0.5F));
-			font.Draw(str, pos, 1.0F, MakeVector4(1, 1, 1, 1));
+			std::string str = _Tr("Client", "Session time: {0}", time);
+			font.DrawShadow(str, MakeVector2(8.0F, 8.0F), 1.0F,
+                     MakeVector4(1, 1, 1, 1), MakeVector4(0, 0, 0, 0.5F));
 		}
 	} // namespace client
 } // namespace spades
