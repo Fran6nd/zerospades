@@ -205,7 +205,7 @@ namespace spades {
 				auto ent = stmp::make_unique<SmokeSpriteEntity>(*this, color, 100.0F,
 					SmokeSpriteEntity::Type::Explosion);
 				ent->SetTrajectory(pos, RandomVector() * 0.7F, 0.8F, 0.0F);
-				ent->SetRotation(SampleRandomFloat() * M_PI_F * 2.0F);
+				ent->SetRotation(SampleRandomFloat() * kTwoPi);
 				ent->SetRadius(0.5F + SampleRandomFloat() * SampleRandomFloat() * 0.2F, 2.0F);
 				ent->SetLifeTime(0.2F + SampleRandomFloat() * 0.2F, 0.06F, 0.2F);
 				ent->SetBlockHitAction(BlockHitAction::Ignore);
@@ -216,7 +216,7 @@ namespace spades {
 			{
 				auto ent = stmp::make_unique<SmokeSpriteEntity>(*this, color, 40.0F);
 				ent->SetTrajectory(pos, RandomVector() * 0.7F, 0.8F, 0.0F);
-				ent->SetRotation(SampleRandomFloat() * M_PI_F * 2.0F);
+				ent->SetRotation(SampleRandomFloat() * kTwoPi);
 				ent->SetRadius(0.7F + SampleRandomFloat() * SampleRandomFloat() * 0.2F, 2.0F, 0.1F);
 				ent->SetLifeTime(0.8F + SampleRandomFloat() * 0.4F, 0.06F, 1.0F);
 				ent->SetBlockHitAction(BlockHitAction::Ignore);
@@ -276,7 +276,7 @@ namespace spades {
 				for (int i = 0; i < 8; i++) {
 					auto ent = stmp::make_unique<ParticleSpriteEntity>(*this, img, color);
 					ent->SetTrajectory(pos, RandomVector() * 12.0F, 1.0F, 0.9F);
-					ent->SetRotation(SampleRandomFloat() * M_PI_F * 2.0F);
+					ent->SetRotation(SampleRandomFloat() * kTwoPi);
 					ent->SetRadius(0.2F + SampleRandomFloat() * SampleRandomFloat() * 0.25F);
 					ent->SetLifeTime(3.0F, 0.0F, 1.0F);
 					ent->SetBlockHitAction(BlockHitAction::BounceWeak);
@@ -289,7 +289,7 @@ namespace spades {
 			for (int i = 0; i < 2; i++) {
 				auto ent = stmp::make_unique<SmokeSpriteEntity>(*this, color, 100.0F);
 				ent->SetTrajectory(pos, RandomVector() * 0.7F, 1.0F, 0.0F);
-				ent->SetRotation(SampleRandomFloat() * M_PI_F * 2.0F);
+				ent->SetRotation(SampleRandomFloat() * kTwoPi);
 				ent->SetRadius(0.6F + SampleRandomFloat() * SampleRandomFloat() * 0.2F, 0.8F);
 				ent->SetLifeTime(0.3F + SampleRandomFloat() * 0.3F, 0.06F, 0.4F);
 				ent->SetBlockHitAction(BlockHitAction::Ignore);
@@ -352,7 +352,7 @@ namespace spades {
 				auto ent = stmp::make_unique<SmokeSpriteEntity>(*this, color, 120.0F,
 					SmokeSpriteEntity::Type::Explosion);
 				ent->SetTrajectory(pos, (RandomVector() + velBias * 0.5F) * 0.3F, 1.0F, 0.0F);
-				ent->SetRotation(SampleRandomFloat() * M_PI_F * 2.0F);
+				ent->SetRotation(SampleRandomFloat() * kTwoPi);
 				ent->SetRadius(0.4F, 3.0F, 0.0000005F);
 				ent->SetLifeTime(0.2F + SampleRandomFloat() * 0.1F, 0.0F, 0.3F);
 				ent->SetBlockHitAction(BlockHitAction::Ignore);
@@ -365,7 +365,7 @@ namespace spades {
 				auto ent = stmp::make_unique<SmokeSpriteEntity>(*this, color, 120.0F,
 					SmokeSpriteEntity::Type::Explosion);
 				ent->SetTrajectory(pos, (RandomVector() + velBias * 0.5F) * 0.3F, 1.0F, 0.0F);
-				ent->SetRotation(SampleRandomFloat() * M_PI_F * 2.0F);
+				ent->SetRotation(SampleRandomFloat() * kTwoPi);
 				ent->SetRadius(0.2F + SampleRandomFloat() * SampleRandomFloat() * 0.3F, 3.0F, 0.0000005F);
 				ent->SetLifeTime(0.01F + SampleRandomFloat() * 0.02F, 0.0F, 0.01F);
 				ent->SetBlockHitAction(BlockHitAction::Ignore);
@@ -444,7 +444,7 @@ namespace spades {
 				auto ent = stmp::make_unique<SmokeSpriteEntity>(*this, color, 60.0F,
 					SmokeSpriteEntity::Type::Explosion);
 				ent->SetTrajectory(pos, (RandomUnitVector() + velBias * 0.5F) * 2.0F, 1.0F, 0.0F);
-				ent->SetRotation(SampleRandomFloat() * M_PI_F * 2.0F);
+				ent->SetRotation(SampleRandomFloat() * kTwoPi);
 				ent->SetRadius(0.6F + SampleRandomFloat() * SampleRandomFloat() * 0.4F, 2.0F, 0.2F);
 				ent->SetLifeTime(1.8F + SampleRandomFloat() * 0.1F, 0.0F, 0.2F);
 				ent->SetBlockHitAction(BlockHitAction::Ignore);
@@ -458,7 +458,7 @@ namespace spades {
 				ent->SetTrajectory(pos, (MakeVector3(SampleRandomFloat() - SampleRandomFloat(),
 							   SampleRandomFloat() - SampleRandomFloat(),
 							   (SampleRandomFloat() - SampleRandomFloat()) * 0.2F)) * 2.0F, 1.0F, 0.0F);
-				ent->SetRotation(SampleRandomFloat() * M_PI_F * 2.0F);
+				ent->SetRotation(SampleRandomFloat() * kTwoPi);
 				ent->SetRadius(1.5F + SampleRandomFloat() * SampleRandomFloat() * 0.8F, 0.2F);
 				switch (particleLevel) {
 					case 1: ent->SetLifeTime(0.8F + SampleRandomFloat() * 1.0F, 0.1F, 8.0F); break;
@@ -476,7 +476,7 @@ namespace spades {
 				auto ent = stmp::make_unique<SmokeSpriteEntity>(*this, color, 120.0F,
 					SmokeSpriteEntity::Type::Explosion);
 				ent->SetTrajectory(pos, (RandomUnitVector() + velBias) * 6.0F, 1.0F, 0.0F);
-				ent->SetRotation(SampleRandomFloat() * M_PI_F * 2.0F);
+				ent->SetRotation(SampleRandomFloat() * kTwoPi);
 				ent->SetRadius(0.3F + SampleRandomFloat() * SampleRandomFloat() * 0.4F, 3.0F, 0.1F);
 				ent->SetLifeTime(0.18F + SampleRandomFloat() * 0.03F, 0.0F, 0.1F);
 				ent->SetBlockHitAction(BlockHitAction::Ignore);
@@ -540,7 +540,7 @@ namespace spades {
 				ent->SetTrajectory(pos, (MakeVector3(SampleRandomFloat() - SampleRandomFloat(),
 													 SampleRandomFloat() - SampleRandomFloat(),
 													 -SampleRandomFloat() * 7.0F)) * 3.5F);
-				ent->SetRotation(SampleRandomFloat() * M_PI_F * 2.0F);
+				ent->SetRotation(SampleRandomFloat() * kTwoPi);
 				ent->SetRadius(0.6F + SampleRandomFloat() * SampleRandomFloat() * 0.3F, 0.5F);
 				ent->SetLifeTime(2.0F + SampleRandomFloat() * 0.3F, 0.1F, 0.2F);
 				ent->SetBlockHitAction(BlockHitAction::Ignore);
@@ -554,7 +554,7 @@ namespace spades {
 				ent->SetTrajectory(pos, (MakeVector3(SampleRandomFloat() - SampleRandomFloat(),
 							   SampleRandomFloat() - SampleRandomFloat(),
 							   (SampleRandomFloat() - SampleRandomFloat()) * 0.2F)) * 2.0F, 1.0F, 0.0F);
-				ent->SetRotation(SampleRandomFloat() * M_PI_F * 2.0F);
+				ent->SetRotation(SampleRandomFloat() * kTwoPi);
 				ent->SetRadius(1.5F + SampleRandomFloat() * SampleRandomFloat() * 0.6F, 0.2F);
 				ent->SetLifeTime(2.0F + SampleRandomFloat() * 0.3F, 0.2F, 1.5F);
 				ent->SetBlockHitAction(BlockHitAction::Ignore);
@@ -616,7 +616,7 @@ namespace spades {
 				ent->SetTrajectory(pos, (MakeVector3(SampleRandomFloat() - SampleRandomFloat(),
 												SampleRandomFloat() - SampleRandomFloat(),
 												-SampleRandomFloat() * 16.0F)));
-				ent->SetRotation(SampleRandomFloat() * M_PI_F * 2.0F);
+				ent->SetRotation(SampleRandomFloat() * kTwoPi);
 				ent->SetRadius(0.6F + SampleRandomFloat() * SampleRandomFloat() * 0.6F, 0.6F);
 				ent->SetBlockHitAction(BlockHitAction::Ignore);
 				ent->SetLifeTime(3.0F + SampleRandomFloat() * 0.3F, SampleRandomFloat() * 0.3F, 0.6F);

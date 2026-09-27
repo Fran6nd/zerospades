@@ -142,7 +142,7 @@ namespace spades {
 			sceneDef.viewAxis[0] = side;
 			sceneDef.viewAxis[1] = up;
 			sceneDef.viewAxis[2] = dir;
-			sceneDef.fovY = fov * M_PI_F / 180.0F;
+			sceneDef.fovY = DEG2RAD(fov);
 			sceneDef.fovX = 2.0F * std::atan(std::tan(sceneDef.fovY * 0.5F) * ratio);
 			return sceneDef;
 		}

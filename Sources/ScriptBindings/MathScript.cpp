@@ -68,8 +68,8 @@ namespace spades {
 		virtual void Register(ScriptManager* manager, Phase phase) {
 			asIScriptEngine* eng = manager->GetEngine();
 			int r;
-			static float PiF = (float)M_PI;
-			static double Pi = (double)M_PI;
+			static float PiF = kPi;
+			static double Pi = kPiD;
 			eng->SetDefaultNamespace("spades");
 			switch (phase) {
 				case PhaseObjectType:

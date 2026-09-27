@@ -578,7 +578,7 @@ namespace spades {
 				float vel2D = player.GetVelocity().GetSquaredLength2D();
 				sp *= std::min(1.0F, (vel2D * 5.0F) / 0.1F);
 
-				float p = cosf(player.GetWalkAnimationProgress() * M_PI_F * 2.0F - 0.8F);
+				float p = cosf(player.GetWalkAnimationProgress() * kTwoPi - 0.8F);
 				p = p * p;
 				p *= p;
 				p *= p;
@@ -904,7 +904,7 @@ namespace spades {
 				float vel2D = vel.GetSquaredLength2D();
 				sp *= std::min(1.0F, (vel2D * 5.0F) / 0.1F);
 
-				float walkAng = p.GetWalkAnimationProgress() * M_PI_F * 2.0F;
+				float walkAng = p.GetWalkAnimationProgress() * kTwoPi;
 				float vl = cosf(walkAng);
 				vl *= vl;
 
@@ -940,7 +940,7 @@ namespace spades {
 
 			Vector3 o = p.GetFront();
 
-			float yaw = atan2f(o.y, o.x) + M_PI_F * 0.5F;
+			float yaw = atan2f(o.y, o.x) + kHalfPi;
 
 			// lower axis
 			Matrix4 const lower = Matrix4::Translate(p.GetOrigin())
@@ -959,7 +959,7 @@ namespace spades {
 			Vector2 legsRot;
 			legsRot.x = Vector3::Dot(vel, p.GetFront2D());
 			legsRot.y = Vector3::Dot(vel, p.GetRight());
-			legsRot *= sinf(p.GetWalkAnimationProgress() * M_PI_F * 2.0F) * 3.0F;
+			legsRot *= sinf(p.GetWalkAnimationProgress() * kTwoPi) * 3.0F;
 
 			Matrix4 const legLeft = lower
 				* Matrix4::Translate(-legsPosX, legsPosY, -legsPosZ)
@@ -1138,7 +1138,7 @@ namespace spades {
 			SetSkinParameterForTool(currentTool, curSkin);
 			SetCommonSkinParameter(curSkin);
 
-			float yaw = atan2f(o.y, o.x) + M_PI_F * 0.5F;
+			float yaw = atan2f(o.y, o.x) + kHalfPi;
 			float pitch = -atan2f(o.z, o.GetLength2D());
 
 			// lower axis
@@ -1198,13 +1198,13 @@ namespace spades {
 			}
 
 			if (armPitch < 0.0F)
-				armPitch = std::max(armPitch, -M_PI_F * 0.5F) * 0.9F;
+				armPitch = std::max(armPitch, -kHalfPi) * 0.9F;
 
 			Vector3 v = p.GetVelocity();
 			Vector2 legsRot;
 			legsRot.x = Vector3::Dot(v, p.GetFront2D());
 			legsRot.y = Vector3::Dot(v, p.GetRight());
-			legsRot *= sinf(p.GetWalkAnimationProgress() * M_PI_F * 2.0F) * 3.0F;
+			legsRot *= sinf(p.GetWalkAnimationProgress() * kTwoPi) * 3.0F;
 
 			Matrix4 const legLeft = lower
 				* Matrix4::Translate(-legsPosX, legsPosY, -legsPosZ)

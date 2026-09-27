@@ -29,9 +29,19 @@
 #include <string>
 #include <vector>
 
-#define M_PI_F ((float)(M_PI))
-
 namespace spades {
+
+#pragma mark - Math Constants
+
+	// Mathematical constants (do not rely on POSIX/MSVC-only M_PI, M_SQRT2, etc.,
+	// which are not guaranteed by the C++ standard and require extra defines on MSVC).
+	constexpr double kPiD = 3.14159265358979323846;
+	constexpr float kPi = 3.14159265358979323846F;
+	constexpr float kTwoPi = 6.28318530717958647692F;
+	constexpr float kHalfPi = 1.57079632679489661923F;
+	constexpr float kQuarterPi = 0.78539816339744830962F;
+	constexpr float kSqrt2 = 1.41421356237309504880F;
+	constexpr float kInvSqrt2 = 0.70710678118654752440F;
 
 #pragma mark - Random number generation
 
@@ -375,7 +385,7 @@ namespace spades {
 				scale = 1.0F / scale;
 			return Make(x * scale, y * scale, z * scale);
 		}
-		
+
 		Vector2 GetXY() const { return Vector2::Make(x, y); }
 
 		IntVector3 Floor() const {
@@ -931,8 +941,8 @@ namespace spades {
 	Vector2 Mix(const Vector2& a, const Vector2& b, float frac);
 	Vector3 Mix(const Vector3& a, const Vector3& b, float frac);
 
-	inline float DEG2RAD(float deg) { return deg * (M_PI_F / 180.0F); }
-	inline float RAD2DEG(float rad) { return rad * (180.0F / M_PI_F); }
+	inline float DEG2RAD(float deg) { return deg * (kPi / 180.0F); }
+	inline float RAD2DEG(float rad) { return rad * (180.0F / kPi); }
 
 	template <class T>
 	inline T Clamp(const T& val, const T& minVal, const T& maxVal) {
@@ -960,7 +970,7 @@ namespace spades {
 	inline Vector3 RandomUnitVector() {
 		Vector3 v;
 		v.z = SampleRandomFloat() * 2.0F - 1.0F;
-		float ang = SampleRandomFloat() * M_PI_F * 2.0F;
+		float ang = SampleRandomFloat() * kTwoPi;
 		float rad = sqrtf(1.0F - v.z * v.z);
 		v.x = rad * cosf(ang);
 		v.y = rad * sinf(ang);

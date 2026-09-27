@@ -432,14 +432,14 @@ namespace spades {
 				if (IsThirdPerson(cameraMode)) {
 					// In third person, the camera orbits around the player, so we don't set
 					// focusPlayerPtr: the player icon is drawn in the players loop
-					focusPlayerAngle = client->followAndFreeCameraState.yaw - M_PI_F * 0.5F;
+					focusPlayerAngle = client->followAndFreeCameraState.yaw - kHalfPi;
 				} else {
-					focusPlayerAngle = atan2f(ori.y, ori.x) + M_PI_F * 0.5F;
+					focusPlayerAngle = atan2f(ori.y, ori.x) + kHalfPi;
 					focusPlayerPtr = p;
 				}
 			} else if (isFreeCamera) {
 				focusPlayerPos = client->freeCameraState.position.GetXY();
-				focusPlayerAngle = client->followAndFreeCameraState.yaw - M_PI_F * 0.5F;
+				focusPlayerAngle = client->followAndFreeCameraState.yaw - kHalfPi;
 				focusPlayerPtr = world->GetLocalPlayer(); // May be empty in demo mode
 			} else {
 				return;
@@ -566,8 +566,8 @@ namespace spades {
 
 				renderer.EndClippingCircle();
 			} else if (rotatingMap) {
-				const Vector2 bigScrHalf = scrHalfSize * static_cast<float>(M_SQRT2);
-				const Vector2 bigMapHalf = mapHalfSize * static_cast<float>(M_SQRT2);
+				const Vector2 bigScrHalf = scrHalfSize * kSqrt2;
+				const Vector2 bigMapHalf = mapHalfSize * kSqrt2;
 
 				AABB2 bigInRect(mapCenter - bigMapHalf, mapCenter + bigMapHalf);
 				tracerClipRect = bigInRect;
@@ -775,7 +775,7 @@ namespace spades {
 				// draw player icons
 				const auto& pos = p.GetPosition().GetXY();
 				const auto& ori = p.GetFront2D();
-				const float ang = atan2f(ori.y, ori.x) + M_PI_F * 0.5F;
+				const float ang = atan2f(ori.y, ori.x) + kHalfPi;
 				DrawIcon(pos, *iconImg, iconColorF, ang);
 
 				// dont draw the focused player name when following non-local players

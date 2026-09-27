@@ -281,7 +281,7 @@ namespace spades {
 						hurtSprites.resize(std::max(cnt, 6));
 						for (size_t i = 0; i < hurtSprites.size(); i++) {
 							HurtSprite& spr = hurtSprites[i];
-							spr.angle = SampleRandomFloat() * M_PI_F * 2.0F;
+							spr.angle = SampleRandomFloat() * kTwoPi;
 							spr.scale = 0.2F + SampleRandomFloat() * SampleRandomFloat() * 0.7F;
 							spr.horzShift = SampleRandomFloat();
 							spr.strength = 0.3F + SampleRandomFloat() * 0.7F;

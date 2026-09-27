@@ -2404,9 +2404,9 @@ namespace spades {
 
 			const float radius = 16.0F;
 			const float thickness = 2.0F;
-			const float spinSpeed = (M_PI_F * 2.0F) * 0.75F;
+			const float spinSpeed = kTwoPi * 0.75F;
 			const float sweepAngle = DEG2RAD(225.0F);
-			const float startAngle = fmodf(time * spinSpeed, M_PI_F * 2.0F);
+			const float startAngle = fmodf(time * spinSpeed, kTwoPi);
 			const float fadeAngle = DEG2RAD(45.0F);
 
 			// draw background

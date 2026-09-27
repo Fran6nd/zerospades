@@ -249,7 +249,7 @@ namespace spades {
 					renderer.DrawFilledRect(x + 1, y + 1, w - 1, h - 1);
 
 					if (selected) {
-						float p = 0.5F * (1.0F + sinf(client->GetTime() * M_PI_F * 4.0F));
+						float p = 0.5F * (1.0F + sinf(client->GetTime() * kPi * 4.0F));
 						renderer.SetColorAlphaPremultiplied(MakeVector4(p, p, p, 1));
 					} else {
 						renderer.SetColorAlphaPremultiplied(MakeVector4(1, 1, 1, 1) * 0.2F);

@@ -48,12 +48,12 @@ namespace spades {
 
 			Vector3 o = p.GetFront();
 
-			float yaw = atan2f(o.y, o.x) + M_PI_F * 0.5F;
+			float yaw = atan2f(o.y, o.x) + kHalfPi;
 			float pitch = -atan2f(o.z, o.GetLength2D());
 
 			float armPitch = pitch;
 			if (armPitch < 0.0F)
-				armPitch = std::max(armPitch, -M_PI_F * 0.5F) * 0.9F;
+				armPitch = std::max(armPitch, -kHalfPi) * 0.9F;
 
 			// lower axis
 			Matrix4 lower = Matrix4::Translate(p.GetOrigin())
@@ -162,7 +162,7 @@ namespace spades {
 			if (v >= 1.0F)
 				return 0.0F;
 			if (v <= -1.0F)
-				return M_PI_F;
+				return kPi;
 			float vv = acosf(v);
 			if (isnan(vv))
 				vv = acosf(v * 0.99F);

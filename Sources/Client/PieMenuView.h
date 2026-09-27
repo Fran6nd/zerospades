@@ -38,7 +38,7 @@ namespace spades {
 			enum Slice { None = -1 };
 
 			static constexpr int kSliceCount = 6;
-			static constexpr float kSliceSpan = M_PI_F * 2.0F / static_cast<float>(kSliceCount);
+			static constexpr float kSliceSpan = kTwoPi / static_cast<float>(kSliceCount);
 
 		private:
 			IRenderer& renderer;

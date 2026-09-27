@@ -35,8 +35,8 @@ namespace spades {
 
 			const int numSegments = 16;
 			for (int i = 0; i < numSegments; i++) {
-				float ang1 = (float)i / numSegments * 2.0F * M_PI_F;
-				float ang2 = (float)(i + 1) / numSegments * 2.0F * M_PI_F;
+				float ang1 = (float)i / numSegments * kTwoPi;
+				float ang2 = (float)(i + 1) / numSegments * kTwoPi;
 				r.AddDebugLine(
 					MakeVector3(origin.x + cosf(ang1) * radius, origin.y + sinf(ang1) * radius, ringZ),
 					MakeVector3(origin.x + cosf(ang2) * radius, origin.y + sinf(ang2) * radius, ringZ),

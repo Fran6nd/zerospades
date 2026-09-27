@@ -412,8 +412,8 @@ namespace spades {
 
 			float maxCoc =
 			  (float)std::max(w, h) * Clamp((float)settings.r_depthOfFieldMaxCoc, 0.001F, 0.2F);
-			float cos60 = cosf(static_cast<float>(M_PI) / 3.0F);
-			float sin60 = sinf(static_cast<float>(M_PI) / 3.0F);
+			float cos60 = cosf(kPi / 3.0F);
+			float sin60 = sinf(kPi / 3.0F);
 
 			maxCoc *= 0.7F + vignetteBlur * 0.5F;
 			maxCoc *= 1.0F + 3.0F * globalBlur;

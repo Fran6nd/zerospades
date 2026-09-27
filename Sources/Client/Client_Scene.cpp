@@ -276,7 +276,7 @@ namespace spades {
 							roll += (SampleRandomFloat() - SampleRandomFloat()) * 0.03F * fireVib;
 							scale += SampleRandomFloat() * 0.04F * fireVib;
 							vibPitch += fireVib * (1.0F - fireVib) * 0.01F;
-							vibYaw += sinf(fireVib * M_PI_F * 2.0F) * 0.001F;
+							vibYaw += sinf(fireVib * kTwoPi) * 0.001F;
 
 							def.radialBlur += fireVib * 0.05F;
 
@@ -287,7 +287,7 @@ namespace spades {
 								sp *= std::min(1.0F, (vel2D * 5.0F) / 0.1F);
 
 								float walkPrg = p.GetWalkAnimationProgress();
-								float walkAng = walkPrg * M_PI_F * 2.0F;
+								float walkAng = walkPrg * kTwoPi;
 
 								vibYaw += sinf(walkAng) * 0.01F * sp;
 								roll -= sinf(walkAng) * 0.005F * sp;
@@ -625,7 +625,7 @@ namespace spades {
 					// draw base
 					param.matrix = Matrix4::Translate(team.basePos);
 					if (isChristmasOn) { // cheap trick
-						float angle = ((int)time % 4) * (M_PI_F / 2.0F);
+						float angle = ((int)time % 4) * kHalfPi;
 						param.matrix = param.matrix * Matrix4::Rotate(MakeVector3(0, 0, 1), angle);
 					}
 					param.matrix = param.matrix * Matrix4::Scale(0.3F);

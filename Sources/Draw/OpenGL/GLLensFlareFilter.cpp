@@ -120,7 +120,7 @@ namespace spades {
 			sunScreen.x = sunView.x / (sunView.z * fov.x);
 			sunScreen.y = sunView.y / (sunView.z * fov.y);
 
-			const float sunRadiusTan = tanf(0.53F * 0.5F * M_PI_F / 180.0F);
+			const float sunRadiusTan = tanf(0.53F * 0.5F * kPi / 180.0F);
 			Vector2 sunSize = {sunRadiusTan / fov.x, sunRadiusTan / fov.y};
 
 			GLColorBuffer visiblityBuffer =

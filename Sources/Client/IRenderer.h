@@ -285,7 +285,7 @@ namespace spades {
 			}
 			void DrawFilledCircle(const Vector2& pos, float radius) {
 				const int segments = Clamp((int)radius, 16, 64);
-				const float step = M_PI_F * 2.0F / (float)segments;
+				const float step = kTwoPi / (float)segments;
 				auto prev = pos + MakeVector2(radius, 0.0F);
 				for (int i = 1; i <= segments; i++) {
 					const float a = (float)i * step;
@@ -298,7 +298,7 @@ namespace spades {
 				const float inner = radius - (thickness * 0.5F);
 				const float outer = radius + (thickness * 0.5F);
 				const int segments = Clamp((int)radius, 16, 64);
-				const float step = M_PI_F * 2.0F / (float)segments;
+				const float step = kTwoPi / (float)segments;
 				auto d1 = MakeVector2(1.0F, 0.0F); // cos(0), sin(0)
 				for (int i = 0; i < segments; i++) {
 					const float a2 = (float)(i + 1) * step;

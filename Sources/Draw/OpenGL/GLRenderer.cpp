@@ -1438,7 +1438,7 @@ namespace spades {
 			const int segments = Clamp((int)radius, 16, 64);
 			Vector2 prev = center + MakeVector2(radius, 0.0F);
 			for (int i = 1; i <= segments; i++) {
-				const float ang = (float)i / (float)segments * M_PI_F * 2.0F;
+				const float ang = (float)i / (float)segments * kTwoPi;
 				const auto& cur = center + MakeVector2(cosf(ang), sinf(ang)) * radius;
 				DrawImage(nullptr, prev, cur, center, AABB2(0.0F, 0.0F, 1.0F, 1.0F));
 				prev = cur;

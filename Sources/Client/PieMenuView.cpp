@@ -226,7 +226,7 @@ namespace spades {
 
 			const float halfSliceRad = kSliceSpan * 0.5F - DEG2RAD(kSliceGapDeg) * 0.5F;
 			for (int i = 0; i < kSliceCount; i++) {
-				float center = -M_PI_F * 0.5F + kSliceSpan * static_cast<float>(i);
+				float center = -kHalfPi + kSliceSpan * static_cast<float>(i);
 				sliceCenterAngles[i] = center;
 				float t1 = center - halfSliceRad;
 				float t2 = center + halfSliceRad;
@@ -310,7 +310,7 @@ namespace spades {
 			// angle: 0 = up, clockwise. atan2(x, -y) gives that.
 			float angle = atan2f(cursor.x, -cursor.y);
 			if (angle < 0.0F)
-				angle += M_PI_F * 2.0F;
+				angle += kTwoPi;
 
 			// kSliceCount equal slices, top slice centered at angle 0.
 			int idx = static_cast<int>(floorf((angle + kSliceSpan * 0.5F) / kSliceSpan)) % kSliceCount;

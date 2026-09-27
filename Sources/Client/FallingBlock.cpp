@@ -191,7 +191,7 @@ namespace spades {
 							if (particleMode >= 2) {
 								auto ent = stmp::make_unique<SmokeSpriteEntity>(*client, color, 70.0F);
 								ent->SetTrajectory(p3, RandomVector() * 0.2F, 1.0F, 0.0F);
-								ent->SetRotation(getRandom() * M_PI_F * 2.0F);
+								ent->SetRotation(getRandom() * kTwoPi);
 								ent->SetRadius(1.0F, 0.5F);
 								ent->SetBlockHitAction(BlockHitAction::Ignore);
 								ent->SetLifeTime(1.0F + getRandom() * 0.5F, 0.0F, 1.0F);

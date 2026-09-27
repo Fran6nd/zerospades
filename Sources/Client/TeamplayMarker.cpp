@@ -27,12 +27,6 @@
 namespace spades {
 	namespace client {
 		namespace {
-			/** Widening a diamond's border by `w` perpendicular to its edges moves each
-			 * tip out by `w * sqrt(2)`, since the edges run at 45 degrees. */
-			constexpr float kEdgeToTip = 1.41421356F;
-
-			constexpr float kTwoPi = 6.28318531F;
-
 			/** How far the drop shadow sits below the marker, in pixels. */
 			constexpr float kShadowOffset = 1.0F;
 
@@ -158,7 +152,7 @@ namespace spades {
 		} // namespace
 
 		float GetPingDiamondExtent(float halfSize) {
-			return halfSize + OutlineWidth(halfSize) * kEdgeToTip + kShadowOffset;
+			return halfSize + OutlineWidth(halfSize) * kSqrt2 + kShadowOffset;
 		}
 
 		void DrawPingDiamond(IRenderer& renderer, Vector2 center, float halfSize,
@@ -191,8 +185,8 @@ namespace spades {
 
 			float breath = 0.5F + 0.5F * std::sin(age * kTwoPi * kBreathFrequency);
 
-			const float outlineHalf = halfSize + OutlineWidth(halfSize) * kEdgeToTip;
-			const float bodyHalf = halfSize - RimWidth(halfSize) * kEdgeToTip;
+			const float outlineHalf = halfSize + OutlineWidth(halfSize) * kSqrt2;
+			const float bodyHalf = halfSize - RimWidth(halfSize) * kSqrt2;
 			const float coreHalf = halfSize * kCoreRatio * (1.0F + kBreathScale * breath);
 			const float coreTint = std::min(1.0F, kCoreTint + kBreathTint * breath);
 

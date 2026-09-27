@@ -41,14 +41,13 @@ namespace spades {
 
 		// special tan function whose value is finite.
 		static inline float SpecialTan(float v) {
-			static const float pi = M_PI_F;
-			if (v <= -pi * 0.5F) {
+			if (v <= -kHalfPi) {
 				return -2.0F;
-			} else if (v < -pi * 0.25F) {
+			} else if (v < -kQuarterPi) {
 				v = -2.0F - 1.0F / tanf(v);
-			} else if (v < pi * 0.25F) {
+			} else if (v < kQuarterPi) {
 				v = tanf(v);
-			} else if (v < pi * 0.5F) {
+			} else if (v < kHalfPi) {
 				v = 2.0F - 1.0F / tanf(v);
 			} else {
 				return v = 2.0F;
@@ -229,10 +228,9 @@ namespace spades {
 			// pitch culling
 			{
 				const auto& frustrum = renderer.frustrum;
-				static const float pi = M_PI_F;
 				const auto& horz = line.horizonDir;
-				minPitch = -pi * 0.4999F;
-				maxPitch = pi * 0.4999F;
+				minPitch = -kPi * 0.4999F;
+				maxPitch = kPi * 0.4999F;
 
 				auto cull = [&minPitch, &maxPitch]() {
 					minPitch = 2.0F;
@@ -673,7 +671,7 @@ namespace spades {
 
 			// [0, 2pi] -> [0, 65536]
 			static uint16_t ToFixed(float v) {
-				v /= (M_PI_F * 2.0F);
+				v /= kTwoPi;
 				v *= 65536.0F;
 				int i = static_cast<int>(v);
 				return static_cast<uint16_t>(i & 65535);
@@ -723,10 +721,8 @@ namespace spades {
 			float deltaScreenPosRight = fovX * 2.0F / static_cast<float>(fw);
 			float deltaScreenPosDown = fovY * 2.0F / static_cast<float>(fh);
 
-			static const float pi = M_PI_F;
-			float yawScale = 65536.0F / (pi * 2.0F);
-			std::int32_t yawScale2 =
-			  static_cast<std::int32_t>(pi * 2.0F / (yawMax - yawMin) * 65536.0F);
+			float yawScale = 65536.0F / kTwoPi;
+			std::int32_t yawScale2 = static_cast<std::int32_t>(kTwoPi / (yawMax - yawMin) * 65536.0F);
 			std::int32_t yawMin2 = static_cast<std::int32_t>(yawMin * yawScale);
 			auto& lineList = this->lines;
 
@@ -917,35 +913,34 @@ namespace spades {
 				float fovDiag = sqrtf(fovX * fovX + fovY * fovY);
 				float fovDiagAng = atanf(fovDiag);
 				float pitch = asinf(def.viewAxis[2].z);
-				static const float pi = M_PI_F;
 
 				// pitch = 0.0F;
 
-				if (fabsf(pitch) >= pi * 0.49F - fovDiagAng) {
+				if (fabsf(pitch) >= kPi * 0.49F - fovDiagAng) {
 					// pole is visible
 					yawMin = 0.0F;
-					yawMax = pi * 2.0F;
+					yawMax = kTwoPi;
 				} else {
 					float yaw = atan2f(def.viewAxis[2].y, def.viewAxis[2].x);
 					// TODO: incorrect!
-					yawMin = yaw - pi * 0.5F; // fovDiagAng;
-					yawMax = yaw + pi * 0.5F; // fovDiagAng;
+					yawMin = yaw - kHalfPi; // fovDiagAng;
+					yawMax = yaw + kHalfPi; // fovDiagAng;
 				}
 
 				pitchMin = pitch - fovDiagAng;
 				pitchMax = pitch + fovDiagAng;
-				if (pitchMin < -pi * 0.5F) {
-					pitchMax = std::max(pitchMax, -pi - pitchMin);
-					pitchMin = -pi * 0.5F;
+				if (pitchMin < -kHalfPi) {
+					pitchMax = std::max(pitchMax, -kPi - pitchMin);
+					pitchMin = -kHalfPi;
 				}
-				if (pitchMax > pi * 0.5F) {
-					pitchMin = std::min(pitchMin, pi - pitchMax);
-					pitchMax = pi * 0.5F;
+				if (pitchMax > kHalfPi) {
+					pitchMin = std::min(pitchMin, kPi - pitchMax);
+					pitchMax = kHalfPi;
 				}
 
 				// pitch of PI/2 will make tan(x) infinite
-				pitchMin = std::max(pitchMin, -pi * 0.4999f);
-				pitchMax = std::min(pitchMax, pi * 0.4999f);
+				pitchMin = std::max(pitchMin, -kPi * 0.4999F);
+				pitchMax = std::min(pitchMax, kPi * 0.4999F);
 
 				float interval = static_cast<float>(frame->GetHeight());
 				interval = fovY * 2.0F / interval;

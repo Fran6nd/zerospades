@@ -271,16 +271,16 @@ namespace spades {
 			orientations.at(0) = Matrix4::Translate(0.0F, -0.2F, 0.0F); // make it just visible
 
 			// Floor and ceiling
-			orientations.at(4) = Matrix4::Rotate(Vector3{1, 0, 0}, -M_PI_F * 0.5F) *
+			orientations.at(4) = Matrix4::Rotate(Vector3{1, 0, 0}, -kHalfPi) *
 			                     Matrix4::Translate(0.0F, -0.2F, 0.0F);
-			orientations.at(8) = Matrix4::Rotate(Vector3{1, 0, 0}, M_PI_F * 0.5F) *
+			orientations.at(8) = Matrix4::Rotate(Vector3{1, 0, 0}, kHalfPi) *
 			                     Matrix4::Translate(0.0F, -0.2F, 0.0F);
 
 			for (size_t i = 0; i < 12; i += 4) {
 				for (size_t k = 1; k < 4; ++k) {
 					orientations.at(i + k) =
 					  Matrix4::Rotate(Vector3{0, 0, 1},
-						  M_PI_F * 0.5F * float(k)) * orientations.at(i);
+						  kHalfPi * float(k)) * orientations.at(i);
 				}
 			}
 

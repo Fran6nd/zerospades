@@ -1202,7 +1202,7 @@ namespace spades {
 				f *= 1.3F;
 
 			if ((input.moveForward || input.moveBackward) && (input.moveRight || input.moveLeft))
-				f *= sqrtf(0.5F); // if strafe + forward/backwards then limit diagonal velocity
+				f *= kInvSqrt2; // if strafe + forward/backwards then limit diagonal velocity
 
 			Vector3 front = GetFront();
 			if (input.moveForward) {
@@ -1422,14 +1422,14 @@ namespace spades {
 
 			Vector3 o = GetFront(interpolate);
 
-			float yaw = atan2f(o.y, o.x) + M_PI_F * 0.5F;
+			float yaw = atan2f(o.y, o.x) + kHalfPi;
 			float pitch = -atan2f(o.z, o.GetLength2D());
 
 			float armPitch = pitch;
 			if (input.sprint)
 				armPitch -= 0.9F;
 			if (armPitch < 0.0F)
-				armPitch = std::max(armPitch, -M_PI_F * 0.5F) * 0.9F;
+				armPitch = std::max(armPitch, -kHalfPi) * 0.9F;
 
 			// lower axis
 			Matrix4 const lower = Matrix4::Translate(GetOrigin())

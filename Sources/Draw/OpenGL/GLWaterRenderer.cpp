@@ -119,11 +119,11 @@ namespace spades {
 		public:
 			SinCosTable() {
 				for (int i = 0; i < 256; i++) {
-					float ang = (float)i / 256.0F * (M_PI_F * 2.0F);
+					float ang = (float)i / 256.0F * kTwoPi;
 					sinCoarse[i] = sinf(ang);
 					cosCoarse[i] = cosf(ang);
 
-					ang = (float)i / 65536.0F * (M_PI_F * 2.0F);
+					ang = (float)i / 65536.0F * kTwoPi;
 					sinFine[i] = sinf(ang);
 					cosFine[i] = cosf(ang);
 				}

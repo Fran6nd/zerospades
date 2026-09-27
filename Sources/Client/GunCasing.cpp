@@ -115,7 +115,7 @@ namespace spades {
 								SampleRandomFloat() - SampleRandomFloat(),
 								-SampleRandomFloat()) * 2.0F, 1.0F, 0.4F
 						);
-						ent->SetRotation(SampleRandomFloat() * M_PI_F * 2.0F);
+						ent->SetRotation(SampleRandomFloat() * kTwoPi);
 						ent->SetRadius(0.1F + SampleRandomFloat() * SampleRandomFloat() * 0.1F);
 						ent->SetLifeTime(2.0F, 0.0F, 1.0F);
 						client->AddLocalEntity(std::move(ent));
