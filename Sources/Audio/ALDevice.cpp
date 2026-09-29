@@ -178,6 +178,8 @@ namespace spades {
 				bool stereo;
 				bool local;
 				client::AudioParam param;
+				// Kept alive while bound: OpenAL can't delete an attached buffer.
+				Handle<ALAudioChunk> chunk;
 
 				ALSrc(Internal* i) : internal(i) {
 					SPADES_MARK_FUNCTION();
@@ -200,6 +202,7 @@ namespace spades {
 					ALCheckErrorPrecise();
 					al::qalSourcei(handle, AL_BUFFER, 0);
 					ALCheckError();
+					chunk = Handle<ALAudioChunk>();
 				}
 
 				bool IsPlaying() {
@@ -357,13 +360,16 @@ namespace spades {
 					ALCheckError();
 				}
 
-				void PlayBufferOneShot(ALuint buffer) {
+				void PlayChunkOneShot(ALAudioChunk& newChunk) {
 					SPADES_MARK_FUNCTION();
+
+					ALuint buffer = newChunk.GetHandle();
 
 					al::qalSourcei(handle, AL_LOOPING, AL_FALSE);
 					ALCheckErrorPrecise();
 					al::qalSourcei(handle, AL_BUFFER, buffer);
 					ALCheckErrorPrecise();
+					chunk = Handle<ALAudioChunk>(newChunk); // old buffer now detached
 					al::qalSourcei(handle, AL_SAMPLE_OFFSET, 0);
 					ALCheckErrorPrecise();
 
@@ -567,6 +573,16 @@ namespace spades {
 					delete srcs[i];
 			}
 
+			// Lets finished sources drop their chunk; playing ones keep it.
+			void ReleaseIdleSources() {
+				SPADES_MARK_FUNCTION();
+
+				for (ALSrc* src : srcs) {
+					if (!src->IsPlaying())
+						src->Terminate();
+				}
+			}
+
 			ALSrc* AllocChunk() {
 				SPADES_MARK_FUNCTION();
 
@@ -594,7 +610,7 @@ namespace spades {
 				src->SetParam(param);
 				src->Set3D(origin);
 				src->UpdateObstruction();
-				src->PlayBufferOneShot(chunk->GetHandle());
+				src->PlayChunkOneShot(*chunk);
 			}
 			void PlayLocal(ALAudioChunk* chunk, const Vector3& origin,
 						   const client::AudioParam& param) {
@@ -608,7 +624,7 @@ namespace spades {
 				src->SetParam(param);
 				src->Set3D(origin, true);
 				src->UpdateObstruction();
-				src->PlayBufferOneShot(chunk->GetHandle());
+				src->PlayChunkOneShot(*chunk);
 			}
 			void PlayLocal(ALAudioChunk* chunk, const client::AudioParam& param) {
 				SPADES_MARK_FUNCTION();
@@ -621,7 +637,7 @@ namespace spades {
 				src->SetParam(param);
 				src->Set2D();
 				src->UpdateObstruction();
-				src->PlayBufferOneShot(chunk->GetHandle());
+				src->PlayChunkOneShot(*chunk);
 			}
 
 			void Respatialize(const Vector3& eye, const Vector3& front, const Vector3& up) {
@@ -812,6 +828,8 @@ namespace spades {
 
 		void ALDevice::ClearCache() {
 			SPADES_MARK_FUNCTION();
+
+			d->ReleaseIdleSources();
 
 			for (const auto& chunk : chunks)
 				chunk.second->Release();
