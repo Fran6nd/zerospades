@@ -903,7 +903,7 @@ namespace spades {
 		}
 
 		// Clicking a row toggles the mod in the enabled set. The change is saved
-		// immediately and takes effect the next time the game starts.
+		// immediately and takes effect on Apply.
 		void MainScreenMainMenu::OnModToggle(const std::string& modName) {
 			if (modsDownloading)
 				return;

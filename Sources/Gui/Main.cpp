@@ -846,7 +846,7 @@ int main(int argc, char** argv) {
 
 		// search current file system for .pak files
 		{
-			spades::FileManager::LifetimeScope lifetime{spades::ResourceLifetime::Transient};
+			spades::FileManager::LifetimeScope lifetime{spades::ResourceLifetime::Session};
 
 			std::vector<spades::IFileSystem*> fss;
 			std::vector<spades::IFileSystem*> fssImportant;
@@ -947,8 +947,8 @@ int main(int argc, char** argv) {
 
 		// parse args
 
-		// The script engine is built by each game (only skins use scripts),
-		// so it compiles from the mods mounted at that time.
+		// The script engine is built by the first game (only skins use
+		// scripts) and rebuilt after mods are applied.
 
 		ThreadQuantumSetter quantumSetter;
 		(void)quantumSetter; // suppress "unused variable" warning

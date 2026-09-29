@@ -1081,6 +1081,8 @@ namespace spades {
 			SPADES_MARK_FUNCTION();
 			auto it = langs.find(s);
 			if (it == langs.end()) {
+				// Cached for the process, even when first needed in a game.
+				FileManager::LifetimeScope lifetime{ResourceLifetime::Process};
 				std::shared_ptr<CatalogOfLanguage> c;
 				if (!s.empty()) {
 					std::string path = "Locales/" + s + "/" + domainName + ".po";

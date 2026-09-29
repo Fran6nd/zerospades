@@ -819,7 +819,7 @@ namespace spades {
 
 			UnmountMods();
 
-			// Runs at startup before any instance exists.
+			// Static: runs at startup, before any instance exists.
 			Handle<ModsScreenHelper> h = Handle<ModsScreenHelper>::New();
 			h->RebuildModsCache();
 
@@ -865,8 +865,12 @@ namespace spades {
 		}
 
 		std::vector<std::string> ModsScreenHelper::GetPendingChanges() {
-			if (!modsCached)
-				RebuildModsCache();
+			// --try-mod ignores the enabled set, so applying it changes nothing.
+			if (spades::g_tryMod)
+				return {};
+
+			// Rescan: a pak may have been dropped in or removed by hand.
+			RebuildModsCache();
 
 			// What MountEnabledMods would mount now; a mod missing from disk
 			// can't be applied.
@@ -905,16 +909,19 @@ namespace spades {
 					changes.push_back(keptEnabled[i]);
 			}
 
-			// Replaced on disk (re-downloaded) since it was mounted.
+			// Paks replaced, added or removed on disk since it was mounted.
 			for (const MountedMod& mod : g_mountedMods) {
-				if (Contains(changes, mod.name))
+				const ModEntry* m = FindMod(mod.name);
+				if (m == nullptr || Contains(changes, mod.name))
 					continue;
-				for (const MountedPak& pak : mod.paks) {
-					if (FileStampAbs(UserRoot() + "/" + pak.path) != pak.stamp) {
-						changes.push_back(mod.name);
-						break;
-					}
+				bool changed = m->paks.size() != mod.paks.size();
+				for (std::size_t i = 0; !changed && i < mod.paks.size(); i++) {
+					const MountedPak& pak = mod.paks[i];
+					changed = PakPath(*m, m->paks[i]) != pak.path ||
+					          FileStampAbs(UserRoot() + "/" + pak.path) != pak.stamp;
 				}
+				if (changed)
+					changes.push_back(mod.name);
 			}
 			return changes;
 		}

@@ -309,8 +309,7 @@ namespace spades {
 				return false;
 
 			ScriptManager::Shutdown();
-			ModsScreenHelper::UnmountMods();
-			ModsScreenHelper::MountEnabledMods();
+			ModsScreenHelper::MountEnabledMods(); // unmounts the old set first
 			renderer->ClearCache();
 			audioDevice->ClearCache();
 			if (ui)

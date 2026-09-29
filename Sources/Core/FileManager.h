@@ -31,9 +31,8 @@ namespace spades {
 	/** How long what is built from a file is kept. Remounting mods only
 	 * reaches what is loaded again afterwards. */
 	enum class ResourceLifetime {
-		Process,   // until exit: menus, fonts, renderer internals
-		Session,   // loaded again after mods are applied: a game, the title scene
-		Transient, // not an asset: read to mount
+		Process, // until exit: menus, fonts, renderer internals
+		Session, // not kept past a mod apply: a game, the title scene, pak reads
 	};
 
 	class FileManager {
