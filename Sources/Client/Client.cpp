@@ -351,6 +351,7 @@ namespace spades {
 
 			RemoveAllLocalEntities();
 			bloodMarks.reset();
+			SmokeSpriteEntity::ReleaseSequences();
 
 			renderer->SetGameMap(nullptr);
 			audioDevice->SetGameMap(nullptr);

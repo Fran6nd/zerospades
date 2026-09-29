@@ -41,6 +41,9 @@ namespace spades {
 
 			static void Preload(IRenderer*);
 
+			/** Drops the cached frames; called when a game ends. */
+			static void ReleaseSequences();
+
 			bool Update(float dt) override;
 		};
 	} // namespace client

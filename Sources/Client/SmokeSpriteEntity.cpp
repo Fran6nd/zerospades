@@ -71,6 +71,14 @@ namespace spades {
 
 		void SmokeSpriteEntity::Preload(IRenderer* r) { Load(r); }
 
+		void SmokeSpriteEntity::ReleaseSequences() {
+			for (auto& image : lastSeq)
+				image = Handle<IImage>();
+			for (auto& image : lastSeq2)
+				image = Handle<IImage>();
+			lastRenderer = NULL;
+		}
+
 		bool SmokeSpriteEntity::Update(float dt) {
 			frame += dt * fps;
 			if (type == Type::Steady) {
