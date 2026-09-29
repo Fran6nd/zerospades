@@ -66,9 +66,8 @@ namespace spades {
 			std::vector<std::string> GetModContents(std::string modName);
 
 			// The enabled set: ordered mod names, top applied first, bottom wins
-			// conflicts. Toggling persists immediately; the change takes effect
-			// the next time the game starts (mods are mounted as a startup
-			// overlay — see GetEnabledModPakPaths).
+			// conflicts. Toggling persists immediately; it takes effect once
+			// applied.
 			std::vector<std::string> GetEnabledMods();
 			void EnableMod(std::string modName);
 			void DisableMod(std::string modName);
@@ -76,11 +75,22 @@ namespace spades {
 			// Disable every mod (clears the enabled set). Always succeeds.
 			void ClearEnabledMods();
 
-			// Startup: the ordered pak paths to mount as an overlay, relative to
-			// the resource root (e.g. "Mods/<folder>/<x>.pak"). In enabled order
-			// so the caller can prepend each in turn — last-enabled ends up on
-			// top and wins conflicts. Mods missing from disk are skipped.
-			static std::vector<std::string> GetEnabledModPakPaths();
+			// Mounts the enabled mods over the base paks, last-enabled on top.
+			// Used at startup and by a live apply. Skips mods missing from disk
+			// and records the ones that fail (GetMountError).
+			static void MountEnabledMods();
+			// Unmounts what MountEnabledMods mounted.
+			static void UnmountMods();
+
+			// Mods whose applied state differs from the enabled set: enabled,
+			// disabled, reordered, replaced on disk, or failed to mount.
+			std::vector<std::string> GetPendingChanges();
+			// Why the last mount failed for this mod, or "".
+			static std::string GetMountError(const std::string& modName);
+			// Why applying a change to this mod takes a restart, or "": it
+			// touches a file something kept for the whole process was built
+			// from (menus, fonts, shaders, translations...).
+			std::string GetRestartRequiredReason(const std::string& modName);
 
 		protected:
 			~ModsScreenHelper();
@@ -94,6 +104,9 @@ namespace spades {
 				std::vector<std::string> paks;
 				std::int64_t totalSize = 0;
 			};
+
+			// The pak's path relative to the resource root.
+			static std::string PakPath(const ModEntry&, const std::string& pak);
 
 			stmp::atomic_unique_ptr<std::string> resultCell;
 			RefreshQuery* query;

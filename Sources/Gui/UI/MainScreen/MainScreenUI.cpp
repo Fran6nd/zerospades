@@ -100,14 +100,19 @@ namespace spades {
 			mainMenu->SetState(state);
 		}
 
-		void MainScreenUI::SetupRenderer() {
-			// load map
+		void MainScreenUI::LoadTitleScene() {
+			// Loaded again whenever mods are applied, like a game's assets.
+			FileManager::LifetimeScope lifetime{ResourceLifetime::Session};
 			std::unique_ptr<IStream> stream{FileManager::OpenForReading("Maps/Title.vxl")};
 			titleMap.Set(client::GameMap::Load(stream.get()), false);
 			renderer->SetGameMap(*titleMap);
 			renderer->SetFogColor(MakeVector3(0.1F, 0.1F, 0.1F));
 			renderer->SetFogDistance(128.0F);
 			time = -1.0F;
+		}
+
+		void MainScreenUI::SetupRenderer() {
+			LoadTitleScene();
 
 			// returned from the client game, so reload the server list.
 			if (mainMenu)

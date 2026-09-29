@@ -75,6 +75,8 @@ namespace spades {
 			ui::UIManager& GetUIManager() { return *manager; }
 
 			void SetupRenderer();
+			// The title map behind the menu, from the resources mounted now.
+			void LoadTitleScene();
 
 			void MouseEvent(float x, float y);
 			void WheelEvent(float x, float y);

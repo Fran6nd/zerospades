@@ -25,8 +25,10 @@
 #include <Client/IAudioDevice.h>
 #include <Client/IRenderer.h>
 #include <Core/Exception.h>
+#include <Core/FileManager.h>
 #include <Core/Settings.h>
 #include <Core/Strings.h>
+#include <Gui/ModsScreenHelper.h>
 #include <Gui/UI/MainScreen/MainScreenUI.h>
 #include <ScriptBindings/ScriptManager.h>
 
@@ -188,6 +190,7 @@ namespace spades {
 		void MainScreen::RunFrame(float dt) {
 			SPADES_MARK_FUNCTION();
 			if (subview) {
+				FileManager::LifetimeScope lifetime{ResourceLifetime::Session};
 				try {
 					subview->RunFrame(dt);
 					return;
@@ -231,6 +234,7 @@ namespace spades {
 			if (!subview)
 				return;
 
+			FileManager::LifetimeScope lifetime{ResourceLifetime::Session};
 			try {
 				subview->RunFrameLate(dt);
 				if (!subview->WantsToBeClosed())
@@ -297,7 +301,27 @@ namespace spades {
 			return View::AutocompleteCommandName(name);
 		}
 
+		bool MainScreen::ReloadMods() {
+			SPADES_MARK_FUNCTION();
+
+			// A running game holds scripts and assets from the current mount.
+			if (subview)
+				return false;
+
+			ScriptManager::Shutdown();
+			ModsScreenHelper::UnmountMods();
+			ModsScreenHelper::MountEnabledMods();
+			renderer->ClearCache();
+			audioDevice->ClearCache();
+			if (ui)
+				ui->LoadTitleScene();
+
+			SPLog("Mod overlay reloaded");
+			return true;
+		}
+
 		std::string MainScreen::Connect(const ServerAddress& host) {
+			FileManager::LifetimeScope lifetime{ResourceLifetime::Session};
 			try {
 				subview = Handle<client::Client>::New(&*renderer, &*audioDevice, host, fontManager)
 				            .Cast<View>();
@@ -309,6 +333,7 @@ namespace spades {
 		}
 
 		std::string MainScreen::PlayDemo(const std::string& demoPath) {
+			FileManager::LifetimeScope lifetime{ResourceLifetime::Session};
 			try {
 				subview = Handle<client::Client>::New(&*renderer, &*audioDevice,
 				              ServerAddress(), fontManager, demoPath)

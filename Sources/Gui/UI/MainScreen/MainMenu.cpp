@@ -764,10 +764,15 @@ namespace spades {
 		}
 
 		void MainScreenMainMenu::UpdateModsStatus() {
+			// Runs every frame while downloading; the changes aren't shown then.
+			std::vector<std::string> changes;
+			if (!modsDownloading)
+				changes = modsHelper->GetPendingChanges();
+			modsPending = !changes.empty();
+
 			if (modsApplyButton != nullptr) {
-				// Toggles already persist; Apply only restarts to make pending
-				// changes live, so it's actionable only when something changed.
-				modsApplyButton->enable = modsDirty && !modsDownloading;
+				// Toggles already persist; Apply only makes them live.
+				modsApplyButton->enable = modsPending;
 			}
 			if (modsDownloading) {
 				int done = modsHelper->GetRefreshDone();
@@ -793,9 +798,17 @@ namespace spades {
 				modsStatusLabel->text = msg;
 				return;
 			}
-			if (modsDirty) {
-				modsStatusLabel->text =
-				    _Tr("MainScreen", "Press 'Apply changes' to restart and apply your mods.");
+			if (modsPending) {
+				// A mod that failed to mount stays pending so Apply can retry it.
+				for (const std::string& name : changes) {
+					std::string error = ModsScreenHelper::GetMountError(name);
+					if (!error.empty()) {
+						modsStatusLabel->text = _Tr("MainScreen", "{0} could not be loaded: {1}",
+						                            modsHelper->GetModDisplayName(name), error);
+						return;
+					}
+				}
+				modsStatusLabel->text = _Tr("MainScreen", "Press 'Apply changes' to apply your mods.");
 				return;
 			}
 			modsStatusLabel->text = "";
@@ -829,10 +842,45 @@ namespace spades {
 			UpdateModsStatus();
 		}
 
-		// Apply = restart now so the enabled set is mounted. Toggles are already
-		// saved, so this just relaunches straight back into the Mods tab.
+		// Apply = remount the enabled mods in place, or restart when a change
+		// touches something only loaded once per process.
 		void MainScreenMainMenu::OnApplyModsPressed(UIElement&) {
 			if (modsDownloading)
+				return;
+
+			for (const std::string& name : modsHelper->GetPendingChanges()) {
+				std::string reason = modsHelper->GetRestartRequiredReason(name);
+				if (!reason.empty()) {
+					AskToRestartForMods(_Tr("MainScreen",
+					                        "{0} {1}, so it can only be applied by restarting.",
+					                        modsHelper->GetModDisplayName(name), reason));
+					return;
+				}
+			}
+
+			if (!helper->ApplyModsLive()) {
+				AskToRestartForMods(
+				  _Tr("MainScreen", "Your mods could not be swapped in without restarting."));
+				return;
+			}
+
+			LoadModList();
+			// LoadModList clears the status line; say it worked, unless a mod
+			// failed to load (the status says so then).
+			if (!modsPending)
+				modsStatusLabel->text = _Tr("MainScreen", "Mods applied.");
+		}
+
+		void MainScreenMainMenu::AskToRestartForMods(const std::string& why) {
+			std::string body = why + "\n\n" + _Tr("MainScreen", "Restart now and apply all changes?");
+			Handle<ConfirmScreen> cs = Handle<ConfirmScreen>::New(this, body);
+			cs->closed = [this](UIElement& s) { OnRestartForModsConfirmed(s); };
+			cs->Run();
+		}
+
+		void MainScreenMainMenu::OnRestartForModsConfirmed(UIElement& sender) {
+			ConfirmScreen* cs = dynamic_cast<ConfirmScreen*>(&sender);
+			if (cs == nullptr || !cs->GetResult())
 				return;
 			helper->RelaunchForMods();
 		}
@@ -850,7 +898,6 @@ namespace spades {
 			if (cs == nullptr || !cs->GetResult())
 				return;
 			modsHelper->ClearEnabledMods();
-			modsDirty = true;
 			// Refresh the rows to clear every checkbox, not just the status line.
 			LoadModList();
 		}
@@ -865,7 +912,6 @@ namespace spades {
 				modsHelper->DisableMod(modName);
 			else
 				modsHelper->EnableMod(modName);
-			modsDirty = true;
 			LoadModList();
 		}
 

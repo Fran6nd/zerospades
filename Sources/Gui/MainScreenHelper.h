@@ -118,6 +118,9 @@ namespace spades {
 			bool ShouldOpenModsTab();
 			bool IsTryingMod();
 			void RelaunchForMods();
+
+			// Applies the enabled mods without restarting; false if it can't.
+			bool ApplyModsLive();
 		};
 	}
 }

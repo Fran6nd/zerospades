@@ -20,6 +20,7 @@
 
 #include <cstdlib>
 #include <cstring>
+#include <utility>
 
 #include "DynamicMemoryStream.h"
 #include <Core/Debug.h>
@@ -28,6 +29,10 @@
 namespace spades {
 #define MaxSize ((uint64_t)((size_t)(-1)))
 	DynamicMemoryStream::DynamicMemoryStream() : position(0) { SPADES_MARK_FUNCTION(); }
+	DynamicMemoryStream::DynamicMemoryStream(std::vector<unsigned char> contents)
+	    : memory(std::move(contents)), position(0) {
+		SPADES_MARK_FUNCTION();
+	}
 	DynamicMemoryStream::~DynamicMemoryStream() { SPADES_MARK_FUNCTION(); }
 
 	int DynamicMemoryStream::ReadByte() {

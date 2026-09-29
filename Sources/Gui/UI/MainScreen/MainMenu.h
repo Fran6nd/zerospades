@@ -138,7 +138,7 @@ namespace spades {
 			ui::Label* modsStatusLabel;
 			ModsProgressBar* modsProgressBar;
 			bool modsDownloading = false;
-			bool modsDirty = false; // enabled set changed this session; restart to apply
+			bool modsPending = false; // as of the last UpdateModsStatus
 			float modsCheckColWidth;
 			float modsOrderColWidth;
 			float modsTagColWidth;
@@ -152,6 +152,8 @@ namespace spades {
 			void OnDownloadModsPressed(ui::UIElement& sender);
 			void OnDownloadConfirmed(ui::UIElement& sender);
 			void OnApplyModsPressed(ui::UIElement& sender);
+			void AskToRestartForMods(const std::string& why);
+			void OnRestartForModsConfirmed(ui::UIElement& sender);
 			void OnResetModsPressed(ui::UIElement& sender);
 			void OnResetConfirmed(ui::UIElement& sender);
 			void OnModToggle(const std::string& modName);

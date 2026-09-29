@@ -25,6 +25,10 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <limits>
+#include <map>
+#include <memory>
+#include <utility>
 #include <sys/stat.h>
 #include <thread>
 
@@ -207,8 +211,12 @@ namespace spades {
 					// of a real mod name, so leave it intact.
 					while (!line.empty() && line.back() == '\r')
 						line.pop_back();
-					if (!line.empty())
+					if (!line.empty()) {
+						// A name listed twice (a hand edit) is one mod, at its
+						// last place.
+						out.erase(std::remove(out.begin(), out.end(), line), out.end());
 						out.push_back(line);
+					}
 					if (nl == std::string::npos)
 						break;
 					start = nl + 1;
@@ -232,6 +240,15 @@ namespace spades {
 				if (::stat(path.c_str(), &st) == 0)
 					return static_cast<std::int64_t>(st.st_size);
 				return -1;
+			}
+
+			// Size and modification time, to tell a replaced pak from the one
+			// mounted without reading it again.
+			std::pair<std::int64_t, std::int64_t> FileStampAbs(const std::string& path) {
+				struct stat st;
+				if (::stat(path.c_str(), &st) != 0)
+					return {-1, -1};
+				return {static_cast<std::int64_t>(st.st_size), static_cast<std::int64_t>(st.st_mtime)};
 			}
 
 			std::vector<std::string> ListDir(const std::string& path) {
@@ -714,11 +731,8 @@ namespace spades {
 			const ModEntry* m = FindMod(modName);
 			if (m) {
 				for (const std::string& pak : m->paks) {
-					std::string overlayPath = m->isFolder
-						? ("Mods/" + m->name + "/" + pak)
-						: ("Mods/" + pak);
 					try {
-						auto stream = FileManager::OpenForReading(overlayPath.c_str());
+						auto stream = FileManager::OpenForReading(PakPath(*m, pak).c_str());
 						ZipFileSystem zfs(std::move(stream));
 						for (const std::string& f : zfs.GetAllFiles())
 							out.push_back(pak + ": " + f);
@@ -751,24 +765,202 @@ namespace spades {
 
 		void ModsScreenHelper::ClearEnabledMods() { WriteEnabled({}); }
 
-		std::vector<std::string> ModsScreenHelper::GetEnabledModPakPaths() {
-			// Resolve the enabled names to pak paths relative to the resource
-			// root, in enabled order. Runs at startup before any instance
-			// exists, so a throwaway helper does the directory scan. Names with
-			// no matching mod on disk are skipped.
+		namespace {
+			struct MountedPak {
+				std::string path;                     // relative to the resource root
+				std::pair<std::int64_t, std::int64_t> stamp; // when it was read
+				ZipFileSystem* fs = nullptr;          // owned by FileManager
+			};
+
+			struct MountedMod {
+				std::string name;
+				std::vector<MountedPak> paks;
+			};
+
+			// In applied order. A mod is here only if all its paks mounted.
+			std::vector<MountedMod> g_mountedMods;
+			// Why each enabled mod on disk failed to mount.
+			std::map<std::string, std::string> g_modMountErrors;
+
+			std::unique_ptr<ZipFileSystem> MountPakInMemory(const std::string& path) {
+				// Mounted from memory so the file is never held open, which lets
+				// the mod manager replace an enabled pak while the game runs.
+				std::vector<unsigned char> bytes;
+				{
+					auto file = FileManager::OpenForReading(path.c_str());
+					std::uint64_t size = file->GetLength() - file->GetPosition();
+					if (size > std::numeric_limits<std::size_t>::max())
+						SPRaise("File too large: %s", path.c_str());
+					bytes.resize(static_cast<std::size_t>(size));
+					if (file->Read(bytes.data(), bytes.size()) != bytes.size())
+						SPRaise("File truncated while reading: %s", path.c_str());
+				}
+				return stmp::make_unique<ZipFileSystem>(
+				  stmp::make_unique<DynamicMemoryStream>(std::move(bytes)));
+			}
+
+			bool Contains(const std::vector<std::string>& list, const std::string& name) {
+				return std::find(list.begin(), list.end(), name) != list.end();
+			}
+		} // namespace
+
+		std::string ModsScreenHelper::PakPath(const ModEntry& mod, const std::string& pak) {
+			return mod.isFolder ? (std::string(kModsDir) + "/" + mod.name + "/" + pak)
+			                    : (std::string(kModsDir) + "/" + pak);
+		}
+
+		void ModsScreenHelper::MountEnabledMods() {
+			SPADES_MARK_FUNCTION();
+
+			// A --try-mod run ignores the enabled set: the mod under test applies
+			// on top of the base paks alone.
+			if (spades::g_tryMod)
+				return;
+
+			UnmountMods();
+
+			// Runs at startup before any instance exists.
 			Handle<ModsScreenHelper> h = Handle<ModsScreenHelper>::New();
 			h->RebuildModsCache();
-			std::vector<std::string> out;
+
 			for (const std::string& name : ReadEnabled()) {
 				const ModEntry* m = h->FindMod(name);
 				if (m == nullptr)
 					continue;
-				for (const std::string& pak : m->paks)
-					out.push_back(m->isFolder
-						? (std::string(kModsDir) + "/" + m->name + "/" + pak)
-						: (std::string(kModsDir) + "/" + pak));
+
+				// All of a mod's paks or none: its files may expect each other.
+				std::vector<std::unique_ptr<ZipFileSystem>> loaded;
+				MountedMod mounted{name, {}};
+				try {
+					for (const std::string& pak : m->paks) {
+						MountedPak mp;
+						mp.path = PakPath(*m, pak);
+						mp.stamp = FileStampAbs(UserRoot() + "/" + mp.path);
+						loaded.push_back(MountPakInMemory(mp.path));
+						mp.fs = loaded.back().get();
+						mounted.paks.push_back(std::move(mp));
+					}
+				} catch (const std::exception& ex) {
+					SPLog("Mod failed to mount: %s: %s", name.c_str(), ex.what());
+					g_modMountErrors[name] = ex.what();
+					continue;
+				}
+
+				for (auto& fs : loaded)
+					FileManager::PrependFileSystem(fs.release());
+				g_mountedMods.push_back(std::move(mounted));
+				SPLog("Mod mounted: %s", name.c_str());
 			}
-			return out;
+		}
+
+		void ModsScreenHelper::UnmountMods() {
+			SPADES_MARK_FUNCTION();
+
+			for (const MountedMod& mod : g_mountedMods) {
+				for (const MountedPak& pak : mod.paks)
+					FileManager::RemoveFileSystem(pak.fs);
+			}
+			g_mountedMods.clear();
+			g_modMountErrors.clear();
+		}
+
+		std::vector<std::string> ModsScreenHelper::GetPendingChanges() {
+			if (!modsCached)
+				RebuildModsCache();
+
+			// What MountEnabledMods would mount now; a mod missing from disk
+			// can't be applied.
+			std::vector<std::string> enabled;
+			for (const std::string& name : ReadEnabled()) {
+				if (FindMod(name) != nullptr)
+					enabled.push_back(name);
+			}
+			std::vector<std::string> mounted;
+			for (const MountedMod& mod : g_mountedMods)
+				mounted.push_back(mod.name);
+
+			std::vector<std::string> changes;
+			for (const std::string& name : enabled) {
+				if (!Contains(mounted, name))
+					changes.push_back(name); // newly enabled, or failed to mount
+			}
+			for (const std::string& name : mounted) {
+				if (!Contains(enabled, name))
+					changes.push_back(name); // disabled
+			}
+
+			// Moved relative to another mod: which one wins a shared file may
+			// change. Both lists are free of duplicates.
+			std::vector<std::string> keptEnabled, keptMounted;
+			for (const std::string& name : enabled) {
+				if (Contains(mounted, name))
+					keptEnabled.push_back(name);
+			}
+			for (const std::string& name : mounted) {
+				if (Contains(enabled, name))
+					keptMounted.push_back(name);
+			}
+			for (std::size_t i = 0; i < keptEnabled.size(); i++) {
+				if (keptEnabled[i] != keptMounted[i])
+					changes.push_back(keptEnabled[i]);
+			}
+
+			// Replaced on disk (re-downloaded) since it was mounted.
+			for (const MountedMod& mod : g_mountedMods) {
+				if (Contains(changes, mod.name))
+					continue;
+				for (const MountedPak& pak : mod.paks) {
+					if (FileStampAbs(UserRoot() + "/" + pak.path) != pak.stamp) {
+						changes.push_back(mod.name);
+						break;
+					}
+				}
+			}
+			return changes;
+		}
+
+		std::string ModsScreenHelper::GetMountError(const std::string& modName) {
+			auto it = g_modMountErrors.find(modName);
+			return it == g_modMountErrors.end() ? std::string() : it->second;
+		}
+
+		std::string ModsScreenHelper::GetRestartRequiredReason(const std::string& modName) {
+			if (!modsCached)
+				RebuildModsCache();
+
+			// Applying swaps the mounted copy for the one on disk; either may be
+			// missing, and they differ when the pak was replaced.
+			std::vector<std::string> files;
+			for (const MountedMod& mod : g_mountedMods) {
+				if (mod.name != modName)
+					continue;
+				for (const MountedPak& pak : mod.paks) {
+					std::vector<std::string> f = pak.fs->GetAllFiles();
+					files.insert(files.end(), f.begin(), f.end());
+				}
+			}
+			if (const ModEntry* m = FindMod(modName)) {
+				for (const std::string& pak : m->paks) {
+					try {
+						auto stream = FileManager::OpenForReading(PakPath(*m, pak).c_str());
+						std::vector<std::string> f = ZipFileSystem(std::move(stream)).GetAllFiles();
+						files.insert(files.end(), f.begin(), f.end());
+					} catch (const std::exception& ex) {
+						// Can't be mounted either, so it brings nothing in.
+						SPLog("Mod pak unreadable: %s: %s", pak.c_str(), ex.what());
+					}
+				}
+			}
+
+			static const std::string kWeak = ".weak";
+			for (std::string file : files) {
+				if (file.size() > kWeak.size() &&
+				    file.compare(file.size() - kWeak.size(), kWeak.size(), kWeak) == 0)
+					file.resize(file.size() - kWeak.size());
+				if (FileManager::IsHeldForProcess(file))
+					return _Tr("MainScreen", "changes '{0}', which is already in use", file);
+			}
+			return {};
 		}
 
 	} // namespace gui

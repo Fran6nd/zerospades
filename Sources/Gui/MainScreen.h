@@ -49,6 +49,10 @@ namespace spades {
 
 			void RestoreRenderer();
 
+			// Remounts the enabled mods and drops what was loaded from the old
+			// mount. Refused (false) while a game is running.
+			bool ReloadMods();
+
 			std::string Connect(const ServerAddress &host);
 		std::string PlayDemo(const std::string &demoPath);
 

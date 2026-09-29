@@ -31,6 +31,7 @@ namespace spades {
 
 	public:
 		DynamicMemoryStream();
+		explicit DynamicMemoryStream(std::vector<unsigned char> contents);
 		~DynamicMemoryStream();
 
 		int ReadByte() override;
