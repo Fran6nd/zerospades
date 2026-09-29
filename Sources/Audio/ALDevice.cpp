@@ -822,6 +822,7 @@ namespace spades {
 				// release audiochunk later (to eliminate memory leak)
 				return c;
 			}
+			FileManager::NoteUse(name);
 			it->second->AddRef();
 			return it->second;
 		}

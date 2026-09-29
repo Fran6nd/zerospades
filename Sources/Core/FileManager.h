@@ -56,6 +56,10 @@ namespace spades {
 		 * not, since a fallback is kept too. Case-insensitive. */
 		static bool IsHeldForProcess(const std::string& path);
 
+		/** For caches: records a use of `path` served without a lookup, so a
+		 * holder that only ever gets the cached copy is still accounted for. */
+		static void NoteUse(const char* path);
+
 		static std::unique_ptr<IStream> OpenForReading(const char*);
 		static std::unique_ptr<IStream> OpenForWriting(const char*);
 		static bool FileExists(const char*);

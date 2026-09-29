@@ -20,6 +20,7 @@
 #include <memory>
 
 #include "SWModel.h"
+#include <Core/FileManager.h>
 #include <Core/IStream.h>
 #include <Core/VoxelModelLoader.h>
 
@@ -141,6 +142,7 @@ namespace spades {
 
 				return model;
 			} else {
+				FileManager::NoteUse(name.c_str());
 				return it->second;
 			}
 		}

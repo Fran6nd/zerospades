@@ -24,6 +24,7 @@
 #include "GLOptimizedVoxelModel.h"
 #include "GLRenderer.h"
 #include <Core/Debug.h>
+#include <Core/FileManager.h>
 #include <Core/IStream.h>
 #include <Core/Settings.h>
 #include <Core/VoxelModel.h>
@@ -43,6 +44,7 @@ namespace spades {
 				models[name] = m;
 				return m;
 			}
+			FileManager::NoteUse(name);
 			return it->second;
 		}
 

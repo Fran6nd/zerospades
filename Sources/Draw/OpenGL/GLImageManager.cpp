@@ -55,6 +55,7 @@ namespace spades {
 				img->AddRef();
 				return img;
 			}
+			FileManager::NoteUse(name.c_str());
 			it->second->AddRef();
 			return it->second;
 		}

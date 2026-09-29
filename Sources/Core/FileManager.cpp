@@ -80,6 +80,8 @@ namespace spades {
 
 	FileManager::LifetimeScope::~LifetimeScope() { t_lifetime = previous; }
 
+	void FileManager::NoteUse(const char* path) { NoteLookup(path); }
+
 	bool FileManager::IsHeldForProcess(const std::string& path) {
 		std::string normalized = NormalizePath(path);
 		std::size_t slash = normalized.rfind('/');

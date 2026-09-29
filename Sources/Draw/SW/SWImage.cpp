@@ -115,6 +115,7 @@ namespace spades {
 				images.insert(std::make_pair(name, image));
 				return image;
 			} else {
+				FileManager::NoteUse(name.c_str());
 				return it->second;
 			}
 		}

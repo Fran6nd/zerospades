@@ -701,8 +701,8 @@ namespace spades {
 		}
 
 		std::vector<std::string> ModsScreenHelper::GetModNames() {
-			if (!modsCached)
-				RebuildModsCache();
+			// Rescan, so mods dropped into the folder show up right away.
+			RebuildModsCache();
 			std::vector<std::string> out;
 			out.reserve(mods.size());
 			for (const ModEntry& m : mods)
@@ -749,7 +749,7 @@ namespace spades {
 
 		// Enable a mod: drop any existing entry and append it at the end so it is
 		// applied last (and so wins conflicts). Persisted immediately; it takes
-		// effect on the next launch, when the overlay is mounted.
+		// effect on Apply.
 		void ModsScreenHelper::EnableMod(std::string modName) {
 			std::vector<std::string> list = ReadEnabled();
 			list.erase(std::remove(list.begin(), list.end(), modName), list.end());

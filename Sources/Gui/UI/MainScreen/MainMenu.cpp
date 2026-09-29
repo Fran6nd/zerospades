@@ -887,7 +887,7 @@ namespace spades {
 
 		void MainScreenMainMenu::OnResetModsPressed(UIElement&) {
 			Handle<ConfirmScreen> cs = Handle<ConfirmScreen>::New(
-			    this, _Tr("MainScreen", "Disable all mods? This takes effect after a restart."),
+			    this, _Tr("MainScreen", "Disable all mods? This takes effect on Apply."),
 			    200.0F, true);
 			cs->closed = [this](UIElement& s) { OnResetConfirmed(s); };
 			cs->Run();
