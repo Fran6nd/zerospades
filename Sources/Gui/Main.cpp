@@ -847,6 +847,8 @@ int main(int argc, char** argv) {
 
 		// search current file system for .pak files
 		{
+			spades::FileManager::LifetimeScope lifetime{spades::ResourceLifetime::Transient};
+
 			std::vector<spades::IFileSystem*> fss;
 			std::vector<spades::IFileSystem*> fssImportant;
 

@@ -29,6 +29,7 @@
 #include <Client/IGameMapListener.h>
 #include <Client/IRenderer.h>
 #include <Client/SceneDefinition.h>
+#include <Core/FileManager.h>
 #include <Core/Math.h>
 
 namespace spades {
@@ -157,6 +158,13 @@ namespace spades {
 			void UpdateRenderSize();
 
 			void Prepare2DRendering(bool reset = false);
+
+			/** For members created on first use and kept: what they load
+			 * lives as long as the renderer, not the game that needed it. */
+			template <class T> T* CreateRendererOwned() {
+				FileManager::LifetimeScope lifetime{ResourceLifetime::Process};
+				return new T(*this);
+			}
 
 		protected:
 			~GLRenderer();

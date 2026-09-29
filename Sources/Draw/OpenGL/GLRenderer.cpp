@@ -917,7 +917,7 @@ namespace spades {
 						handle = fbManager->StartPostProcessing();
 						if (settings.ShouldUseFogFilter2()) {
 							if (!fogFilter2)
-								fogFilter2.reset(new GLFogFilter2(*this));
+								fogFilter2.reset(CreateRendererOwned<GLFogFilter2>());
 
 							handle = fogFilter2->Filter(handle);
 						} else {
@@ -1026,7 +1026,7 @@ namespace spades {
 					GLProfiler::Context p(*profiler, "Volumetric Fog");
 					if (settings.ShouldUseFogFilter2()) {
 						if (!fogFilter2)
-							fogFilter2.reset(new GLFogFilter2(*this));
+							fogFilter2.reset(CreateRendererOwned<GLFogFilter2>());
 
 						handle = fogFilter2->Filter(handle);
 					} else {
@@ -1056,7 +1056,7 @@ namespace spades {
 
 				if (settings.r_cameraBlur && !sceneDef.denyCameraBlur) {
 					if (!cameraBlur)
-						cameraBlur = new GLCameraBlurFilter(*this);
+						cameraBlur = CreateRendererOwned<GLCameraBlurFilter>();
 
 					GLProfiler::Context p(*profiler, "Camera Blur");
 					// FIXME: better (correctly constructed) radial blur algorithm
@@ -1066,7 +1066,7 @@ namespace spades {
 
 				if (settings.r_temporalAA) {
 					if (!temporalAAFilter)
-						temporalAAFilter.reset(new GLTemporalAAFilter(*this));
+						temporalAAFilter.reset(CreateRendererOwned<GLTemporalAAFilter>());
 
 					GLProfiler::Context p(*profiler, "TXAA");
 					handle = temporalAAFilter->Filter(handle, settings.r_fxaa);

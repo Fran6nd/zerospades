@@ -19,8 +19,11 @@
  */
 
 #include <algorithm>
+#include <cctype>
 #include <list>
+#include <mutex>
 #include <set>
+#include <unordered_set>
 
 #include "Debug.h"
 #include "Exception.h"
@@ -30,12 +33,70 @@
 
 namespace spades {
 	static std::list<IFileSystem*> g_fileSystems;
+
+	namespace {
+		thread_local ResourceLifetime t_lifetime = ResourceLifetime::Process;
+
+		// Normalized paths looked up, and folders listed, while loading for
+		// the process lifetime. A listing covers files added to it later.
+		std::mutex g_heldMutex;
+		std::unordered_set<std::string> g_heldForProcess;
+		std::unordered_set<std::string> g_heldDirsForProcess;
+
+		// The form zip archives index their entries in.
+		std::string NormalizePath(const std::string& path) {
+			std::string out = path;
+			for (char& c : out) {
+				if (c == '\\')
+					c = '/';
+				else
+					c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+			}
+			return out;
+		}
+
+		void NoteLookup(const char* fn) {
+			if (t_lifetime != ResourceLifetime::Process)
+				return;
+			std::string path = NormalizePath(fn);
+			std::lock_guard<std::mutex> lock{g_heldMutex};
+			g_heldForProcess.insert(std::move(path));
+		}
+
+		void NoteListing(const char* dir) {
+			if (t_lifetime != ResourceLifetime::Process)
+				return;
+			std::string path = NormalizePath(dir);
+			while (!path.empty() && path.back() == '/')
+				path.pop_back();
+			std::lock_guard<std::mutex> lock{g_heldMutex};
+			g_heldDirsForProcess.insert(std::move(path));
+		}
+	} // namespace
+
+	FileManager::LifetimeScope::LifetimeScope(ResourceLifetime lifetime) : previous(t_lifetime) {
+		t_lifetime = lifetime;
+	}
+
+	FileManager::LifetimeScope::~LifetimeScope() { t_lifetime = previous; }
+
+	bool FileManager::IsHeldForProcess(const std::string& path) {
+		std::string normalized = NormalizePath(path);
+		std::size_t slash = normalized.rfind('/');
+		std::string dir = slash == std::string::npos ? std::string() : normalized.substr(0, slash);
+
+		std::lock_guard<std::mutex> lock{g_heldMutex};
+		return g_heldForProcess.count(normalized) != 0 || g_heldDirsForProcess.count(dir) != 0;
+	}
+
 	std::unique_ptr<IStream> FileManager::OpenForReading(const char* fn) {
 		SPADES_MARK_FUNCTION();
 		if (!fn)
 			SPInvalidArgument("fn");
 		if (fn[0] == 0)
 			SPFileNotFound(fn);
+
+		NoteLookup(fn);
 
 		// check each file system
 		for (auto* fs : g_fileSystems) {
@@ -78,6 +139,8 @@ namespace spades {
 		SPADES_MARK_FUNCTION();
 		if (!fn)
 			SPInvalidArgument("fn");
+
+		NoteLookup(fn);
 
 		for (auto* fs : g_fileSystems) {
 			if (fs->FileExists(fn))
@@ -162,6 +225,8 @@ namespace spades {
 		std::set<std::string> set;
 		if (!path)
 			SPInvalidArgument("path");
+
+		NoteListing(path);
 
 		for (auto* fs : g_fileSystems) {
 			std::vector<std::string> l = fs->EnumFiles(path);

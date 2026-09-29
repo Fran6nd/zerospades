@@ -74,6 +74,8 @@ namespace spades {
 			SPADES_MARK_FUNCTION();
 
 			SPLog("Loading GLSL program '%s'", name.c_str());
+			// Programs live as long as the renderer.
+			FileManager::LifetimeScope lifetime{ResourceLifetime::Process};
 			std::string text = FileManager::ReadAllBytes(name.c_str());
 			std::vector<std::string> lines = SplitIntoLines(text);
 
@@ -128,6 +130,7 @@ namespace spades {
 			SPADES_MARK_FUNCTION();
 
 			SPLog("Loading GLSL shader '%s'", name.c_str());
+			FileManager::LifetimeScope lifetime{ResourceLifetime::Process};
 			std::string text = FileManager::ReadAllBytes(name.c_str());
 
 			GLShader::Type type;

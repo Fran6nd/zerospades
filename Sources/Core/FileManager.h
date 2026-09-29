@@ -27,10 +27,36 @@
 namespace spades {
 	class IStream;
 	class IFileSystem;
+
+	/** How long what is built from a file is kept. Remounting mods only
+	 * reaches what is loaded again afterwards. */
+	enum class ResourceLifetime {
+		Process,   // until exit: menus, fonts, renderer internals
+		Session,   // loaded again after mods are applied: a game, the title scene
+		Transient, // not an asset: read to mount
+	};
+
 	class FileManager {
 		FileManager() {}
 
 	public:
+		/** Sets the lifetime of what this thread loads while in scope. The
+		 * default is `Process`, the safe guess for an unknown holder. */
+		class LifetimeScope {
+			ResourceLifetime previous;
+
+		public:
+			explicit LifetimeScope(ResourceLifetime);
+			~LifetimeScope();
+			LifetimeScope(const LifetimeScope&) = delete;
+			void operator=(const LifetimeScope&) = delete;
+		};
+
+		/** Whether `path` was looked up, or its folder listed, for something
+		 * kept for the process: changing it then takes a restart. Found or
+		 * not, since a fallback is kept too. Case-insensitive. */
+		static bool IsHeldForProcess(const std::string& path);
+
 		static std::unique_ptr<IStream> OpenForReading(const char*);
 		static std::unique_ptr<IStream> OpenForWriting(const char*);
 		static bool FileExists(const char*);
