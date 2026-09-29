@@ -61,6 +61,8 @@
 
 #include "NetClient.h"
 
+#include <ScriptBindings/ScriptManager.h>
+
 DEFINE_SPADES_SETTING(cg_chatBeep, "1");
 DEFINE_SPADES_SETTING(cg_alerts, "1");
 DEFINE_SPADES_SETTING(cg_alertSounds, "1");
@@ -143,6 +145,10 @@ namespace spades {
 			  pieMenuPingValid(false) {
 			SPADES_MARK_FUNCTION();
 			SPLog("Initializing...");
+
+			// Compile the skin scripts now, so a script a mod broke fails the
+			// connect instead of the first time a player is drawn.
+			ScriptManager::GetInstance();
 
 			renderer->SetFogColor(MakeVector3(0, 0, 0));
 			renderer->SetFogDistance(128.0F);

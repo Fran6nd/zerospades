@@ -23,12 +23,14 @@
 
 namespace spades {
 
-	void ScriptFunction::Load(asIScriptEngine* eng) {
-		if (eng != lastEngine) {
+	void ScriptFunction::Load(ScriptManager& manager) {
+		// Usually a static, so it outlives a rebuilt engine.
+		if (manager.GetGeneration() != loadedGeneration) {
 			func = NULL;
-			lastEngine = eng;
+			loadedGeneration = manager.GetGeneration();
 		}
 		if (func == NULL) {
+			asIScriptEngine* eng = manager.GetEngine();
 			asIScriptModule* module = eng->GetModule("Client");
 			eng->SetDefaultNamespace("spades");
 			module->SetDefaultNamespace("spades");
@@ -54,14 +56,15 @@ namespace spades {
 	}
 
 	ScriptFunction::ScriptFunction(const std::string& decl)
-	    : decl(decl), type(), lastEngine(NULL), func(NULL) {}
+	    : decl(decl), type(), loadedGeneration(0), func(NULL) {}
 
 	ScriptFunction::ScriptFunction(const std::string& type, const std::string& decl)
-	    : decl(decl), type(type), lastEngine(NULL), func(NULL) {}
+	    : decl(decl), type(type), loadedGeneration(0), func(NULL) {}
 
 	ScriptContextHandle ScriptFunction::Prepare() {
-		ScriptContextHandle ctx = ScriptManager::GetInstance()->GetContext();
-		Load(ctx.GetContext()->GetEngine());
+		ScriptManager& manager = *ScriptManager::GetInstance();
+		ScriptContextHandle ctx = manager.GetContext();
+		Load(manager);
 
 		ctx->Prepare(func);
 		return ctx;

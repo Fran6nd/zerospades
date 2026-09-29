@@ -61,8 +61,6 @@
 #include <Core/VoxelModel.h>
 #include <Draw/OpenGL/GLOptimizedVoxelModel.h>
 
-#include <ScriptBindings/ScriptManager.h>
-
 #include <Core/Bitmap.h>
 #include <Core/MemoryStream.h>
 
@@ -978,10 +976,8 @@ int main(int argc, char** argv) {
 
 		// parse args
 
-		// initialize AngelScript
-		SPLog("Initializing script engine");
-		spades::ScriptManager::GetInstance();
-		pumpEvents();
+		// The script engine is built by each game (only skins use scripts),
+		// so it compiles from the mods mounted at that time.
 
 		ThreadQuantumSetter quantumSetter;
 		(void)quantumSetter; // suppress "unused variable" warning

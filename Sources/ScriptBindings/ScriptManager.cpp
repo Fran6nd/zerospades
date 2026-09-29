@@ -23,15 +23,32 @@
 #include <Core/Exception.h>
 #include <Core/FileManager.h>
 #include <Core/IStream.h>
+#include <algorithm>
 #include <sstream>
 #include <vector>
 
 namespace spades {
 
+	namespace {
+		// Built on demand, released when a mod set is applied.
+		ScriptManager* g_instance = nullptr;
+		std::uint64_t g_nextGeneration = 1;
+	} // namespace
+
 	ScriptManager* ScriptManager::GetInstance() {
 		SPADES_MARK_FUNCTION_DEBUG();
-		static ScriptManager* m = new ScriptManager();
-		return m;
+		if (!g_instance)
+			g_instance = new ScriptManager();
+		return g_instance;
+	}
+
+	void ScriptManager::Shutdown() {
+		SPADES_MARK_FUNCTION();
+		if (!g_instance)
+			return;
+		SPLog("Releasing script engine");
+		delete g_instance;
+		g_instance = nullptr;
 	}
 
 	static void MessageCallback(const asSMessageInfo* msg, void* param) {
@@ -136,7 +153,7 @@ namespace spades {
 		return builder->AddSectionFromMemory(includePath.c_str(), data.c_str(), (unsigned int)(data.length()), 0);
 	}
 
-	ScriptManager::ScriptManager() {
+	ScriptManager::ScriptManager() : generation(g_nextGeneration++) {
 		SPADES_MARK_FUNCTION();
 
 		SPLog("Creating script engine");
@@ -160,6 +177,8 @@ namespace spades {
 
 			SPLog("Registering APIs");
 			engine->SetDefaultNamespace("");
+			// Registrars outlive the engine; register again for this one.
+			ScriptObjectRegistrar::ResetAllPhases();
 			ScriptObjectRegistrar::RegisterAll(this, ScriptObjectRegistrar::PhaseObjectType);
 			ScriptObjectRegistrar::RegisterAll(this, ScriptObjectRegistrar::PhaseGlobalFunction);
 			ScriptObjectRegistrar::RegisterAll(this, ScriptObjectRegistrar::PhaseObjectMember);
@@ -229,6 +248,15 @@ namespace spades {
 
 	ScriptManager::~ScriptManager() {
 		SPADES_MARK_FUNCTION();
+
+		// Pooled contexts hold a reference on the engine. None is handed out:
+		// Shutdown only runs from the menu, with no game and no script running.
+		for (Context* ctx : contextFreeList) {
+			ctx->obj->Release();
+			delete ctx;
+		}
+		contextFreeList.clear();
+
 		engine->Release();
 	}
 
@@ -333,6 +361,15 @@ namespace spades {
 				return;
 			r->phaseDone[(int)phase] = true;
 			r->Register(manager, phase);
+		}
+	}
+
+	void ScriptObjectRegistrar::ResetAllPhases() {
+		if (!registrars)
+			return;
+		for (auto& entry : *registrars) {
+			ScriptObjectRegistrar* r = entry.second;
+			std::fill(r->phaseDone, r->phaseDone + PhaseCount, false);
 		}
 	}
 

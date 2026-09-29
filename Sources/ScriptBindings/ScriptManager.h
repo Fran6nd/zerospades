@@ -35,6 +35,7 @@
 #include <AngelScript/addons/scriptmathcomplex.h>
 #include <AngelScript/addons/scriptstdstring.h>
 #include <AngelScript/addons/weakref.h>
+#include <cstdint>
 #include <list>
 #include <mutex>
 
@@ -52,16 +53,28 @@ namespace spades {
 		std::list<Context*> contextFreeList;
 
 		asIScriptEngine* engine;
+		const std::uint64_t generation;
 
 		ScriptManager();
 		~ScriptManager();
 
 	public:
+		/** Builds the engine on first use, from the resources mounted then. */
 		static ScriptManager* GetInstance();
+
+		/**
+		 * Releases the engine; the next `GetInstance` builds a new one. Every
+		 * script object must be gone, i.e. no `client::Client` may be alive.
+		 */
+		static void Shutdown();
 
 		static void CheckError(int);
 
 		asIScriptEngine* GetEngine() const { return engine; }
+
+		/** Unique per engine built. Caches compare this, not the pointer: a
+		 * new engine can reuse a released one's address. */
+		std::uint64_t GetGeneration() const { return generation; }
 
 		ScriptContextHandle GetContext();
 	};
@@ -107,6 +120,9 @@ namespace spades {
 
 		static void RegisterOne(const std::string& name, ScriptManager* manager, Phase);
 		static void RegisterAll(ScriptManager* manager, Phase);
+
+		/** Marks every phase not done, before registering with a new engine. */
+		static void ResetAllPhases();
 
 	private:
 		bool phaseDone[PhaseCount];
