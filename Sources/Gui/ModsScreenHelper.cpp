@@ -719,7 +719,7 @@ namespace spades {
 						: ("Mods/" + pak);
 					try {
 						auto stream = FileManager::OpenForReading(overlayPath.c_str());
-						ZipFileSystem zfs(stream.release());
+						ZipFileSystem zfs(std::move(stream));
 						for (const std::string& f : zfs.GetAllFiles())
 							out.push_back(pak + ": " + f);
 					} catch (const std::exception& ex) {

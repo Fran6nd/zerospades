@@ -280,16 +280,30 @@ namespace spades {
 
 #pragma mark - Zip file
 
-	ZipFileSystem::ZipFileSystem(IStream* stream) : baseStream(stream) {
+	ZipFileSystem::ZipFileSystem(std::unique_ptr<IStream> stream)
+	    : baseStream(std::move(stream)) {
 		SPADES_MARK_FUNCTION();
 
-		cursorPos = stream->GetPosition();
+		if (!baseStream)
+			SPInvalidArgument("stream");
+
+		cursorPos = baseStream->GetPosition();
 		zlib_filefunc_def def = CreateZLibFileFunc();
 		zip = unzOpen2("ZipFile.zip", &def);
 		if (!zip)
 			SPRaise("Failed to open ZIP stream.");
 
-		currentStream = NULL;
+		// The destructor won't run if this throws.
+		try {
+			ReadIndex();
+		} catch (...) {
+			unzClose(zip);
+			throw;
+		}
+	}
+
+	void ZipFileSystem::ReadIndex() {
+		SPADES_MARK_FUNCTION();
 
 		if (unzGoToFirstFile(zip) != UNZ_OK)
 			SPRaise("There was a problem while seeking the zip file to the first file.");

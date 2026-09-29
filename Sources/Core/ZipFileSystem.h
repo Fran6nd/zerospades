@@ -22,6 +22,7 @@
 
 #include <cstdint>
 #include <map>
+#include <memory>
 #include <string>
 
 #include "IFileSystem.h"
@@ -38,7 +39,7 @@ namespace spades {
 		class ZipFileInputStream;
 		class ZipFileHandle;
 
-		IStream* baseStream;
+		std::unique_ptr<IStream> baseStream;
 		unzFile zip;
 
 		std::map<std::string, unz_file_pos_s> files;
@@ -58,9 +59,10 @@ namespace spades {
 
 		zlib_filefunc_def CreateZLibFileFunc();
 		bool MoveToFile(const char*);
+		void ReadIndex();
 
 	public:
-		ZipFileSystem(IStream*);
+		explicit ZipFileSystem(std::unique_ptr<IStream>);
 		~ZipFileSystem();
 
 		std::vector<std::string> EnumFiles(const char*) override;

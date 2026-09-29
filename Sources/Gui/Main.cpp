@@ -892,7 +892,7 @@ int main(int argc, char** argv) {
 
 					stream->SetPosition(0);
 
-					spades::ZipFileSystem* fs = new spades::ZipFileSystem(stream.release());
+					spades::ZipFileSystem* fs = new spades::ZipFileSystem(std::move(stream));
 					if (name[0] == '_' && false) { // last resort for #198
 						SPLog("Pak registered: %s: %08lx (marked as 'important')", name.c_str(),
 							  static_cast<unsigned long>(crc));
@@ -938,8 +938,7 @@ int main(int argc, char** argv) {
 					if (!bytes.empty())
 						mem->Write(bytes.data(), bytes.size());
 					mem->SetPosition(0);
-					auto* zfs = new spades::ZipFileSystem(mem.get());
-					mem.release(); // ownership transferred to the ZipFileSystem
+					auto* zfs = new spades::ZipFileSystem(std::move(mem));
 					spades::FileManager::PrependFileSystem(zfs);
 					SPLog("Mod pak mounted (in memory): %s", path.c_str());
 				} catch (const std::exception& ex) {
@@ -962,7 +961,8 @@ int main(int argc, char** argv) {
 				SPLog("Mod folder mounted: %s", path.c_str());
 			} else if (std::FILE* f = std::fopen(path.c_str(), "rb")) {
 				spades::FileManager::PrependFileSystem(
-				  new spades::ZipFileSystem(new spades::StdStream(f, true)));
+				  new spades::ZipFileSystem(
+				    std::unique_ptr<spades::IStream>(new spades::StdStream(f, true))));
 				SPLog("Mod pak mounted: %s", path.c_str());
 			} else {
 				SPLog("Mod to try failed to open: %s", path.c_str());

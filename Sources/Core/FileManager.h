@@ -39,6 +39,10 @@ namespace spades {
 		static void AddFileSystem(IFileSystem*);
 		static void AppendFileSystem(IFileSystem*);
 		static void PrependFileSystem(IFileSystem*);
+
+		/** Unmounts and destroys a file system, if mounted. Streams already
+		 * opened from it are self-contained and stay valid. */
+		static void RemoveFileSystem(IFileSystem*);
 		static std::vector<std::string> EnumFiles(const char*);
 		static std::string ReadAllBytes(const char*);
 		static void Close();
