@@ -72,6 +72,11 @@ namespace spades {
 			// True while fast-replaying packets after a backward seek; suppresses client callbacks
 			bool seekingMode;
 
+			// Whether the recorded server negotiated Damage Markers, as the ExtensionInfo
+			// at the start of the demo says. Older demos carry none, and predate the
+			// extension.
+			bool serverReportsDamage = false;
+
 			stmp::optional<World&> GetWorld();
 			Player& GetPlayer(int);
 			stmp::optional<Player&> GetPlayerOrNull(int);
@@ -150,6 +155,8 @@ namespace spades {
 			void SendTeamChange(int) override {}
 			void SendWeaponChange(WeaponType) override {}
 			void SendTeamplayPing(Vector3, const std::string&) override {}
+
+			bool ServerReportsDamage() const override { return serverReportsDamage; }
 
 		};
 	} // namespace client

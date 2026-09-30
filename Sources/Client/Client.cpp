@@ -71,6 +71,7 @@ DEFINE_SPADES_SETTING(cg_ignoreChatMessages, "0");
 
 SPADES_SETTING(cg_playerName);
 SPADES_SETTING(cg_centerMessageSmallFont);
+SPADES_SETTING(cg_damageIndicators);
 
 namespace spades {
 	namespace client {
@@ -1338,6 +1339,53 @@ namespace spades {
 
 		void Client::TeamplayPlayerSpawned(int playerId) {
 			teamplay->PlayerSpawned(playerId);
+		}
+
+#pragma mark - Damage Markers
+
+		void Client::DamageMarkerReceived(int playerId, int amount) {
+			SPADES_MARK_FUNCTION();
+
+			if (!cg_damageIndicators || amount == 0 || !world)
+				return;
+			if (playerId < 0 || playerId >= static_cast<int>(world->GetNumPlayerSlots()))
+				return;
+
+			auto victim = world->GetPlayer(static_cast<unsigned int>(playerId));
+			if (!victim)
+				return;
+
+			// The server sends one packet per hit, so the pellets of a shotgun blast
+			// arrive as a burst. Hits on the same player that close together add up
+			// to one number, as the client's own prediction does for a single shot.
+			constexpr float kMergeWindow = 0.1F;
+			for (auto it = damageIndicators.rbegin(); it != damageIndicators.rend(); ++it) {
+				DamageIndicator& indicator = *it;
+				if (indicator.playerId != playerId || time - indicator.lastHitTime > kMergeWindow)
+					continue;
+				if ((indicator.damage < 0) != (amount < 0))
+					continue; // damage and heals are never folded into one number
+
+				indicator.damage += amount;
+				if (!indicator.crit && indicator.damage >= 100) {
+					indicator.crit = true;
+					indicator.velocity = MakeVector3(0.0F, 0.0F, -2.0F);
+				}
+				indicator.fade = indicator.crit ? 2.0F : 1.5F;
+				indicator.lastHitTime = time;
+				return;
+			}
+
+			DamageIndicator indicator;
+			indicator.damage = amount;
+			indicator.playerId = playerId;
+			indicator.position = victim->GetEye();
+			indicator.crit = amount >= 100;
+			indicator.velocity = indicator.crit ? MakeVector3(0.0F, 0.0F, 0.0F) : RandomVector() * 4.0F;
+			indicator.velocity.z = -2.0F;
+			indicator.fade = indicator.crit ? 2.0F : 1.5F;
+			indicator.lastHitTime = time;
+			damageIndicators.push_back(indicator);
 		}
 
 		bool Client::ResolveCrosshairWorldPos(Vector3& out) {

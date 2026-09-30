@@ -611,6 +611,11 @@ namespace spades {
 			switch (r.GetType()) {
 				case PacketTypeHandShakeInit: SendHandShakeValid(r.ReadInt()); return true;
 				case PacketTypeExtensionInfo: HandleExtensionPacket(r); return true;
+				case PacketTypeDamageMarker:
+					// A hit dealt in the world being replaced: its victim may be gone or
+					// someone else by the time the next map is in, so it is dropped
+					// rather than parked with the world packets.
+					return status != NetClientStatusConnected;
 				case PacketTypeTeamplay: {
 					auto sub = PeekTeamplaySubPacket(r);
 
@@ -832,11 +837,30 @@ namespace spades {
 			}
 		}
 
+		void NetClient::HandleDamageMarkerPacket(spades::client::NetPacketReader& r) {
+			SPADES_MARK_FUNCTION();
+
+			if (!HasExtension(ExtensionTypeDamageMarkers)) {
+				SPLog("Ignoring a Damage Markers packet from a server that did not "
+					  "negotiate the extension");
+				return;
+			}
+
+			auto marker = ReadDamageMarker(r);
+			if (!marker) {
+				SPLog("Ignoring a Damage Markers packet of length %d", (int)r.GetLength());
+				return;
+			}
+
+			client->DamageMarkerReceived(marker->playerId, marker->amount);
+		}
+
 		void NetClient::HandleGamePacket(spades::client::NetPacketReader& r) {
 			SPADES_MARK_FUNCTION();
 
 			switch (r.GetType()) {
 				case PacketTypeTeamplay: HandleTeamplayPacket(r); break;
+				case PacketTypeDamageMarker: HandleDamageMarkerPacket(r); break;
 				case PacketTypePositionData: {
 					Player& p = GetLocalPlayer();
 					if (r.GetLength() != 13) {
@@ -1858,15 +1882,18 @@ namespace spades {
 		void NetClient::SendSupportedExtensions() {
 			SPADES_MARK_FUNCTION();
 
+			SPLog("Sending extension support.");
+			enet_peer_send(peer, 0, MakeExtensionInfoPacket().CreatePacket());
+		}
+
+		NetPacketWriter NetClient::MakeExtensionInfoPacket() const {
 			NetPacketWriter w(PacketTypeExtensionInfo);
 			w.WriteByte(static_cast<uint8_t>(extensions.size()));
 			for (const auto& i : extensions) {
 				w.WriteByte(static_cast<uint8_t>(i.first));	 // ext id
 				w.WriteByte(static_cast<uint8_t>(i.second)); // ext version
 			}
-
-			SPLog("Sending extension support.");
-			enet_peer_send(peer, 0, w.CreatePacket());
+			return w;
 		}
 
 		void NetClient::MapLoaded() {
@@ -2145,6 +2172,14 @@ namespace spades {
 				w.WriteColor(p.GetBlockColor()); // block color
 				w.WriteString(world->GetPlayerPersistent(i).name); // name
 
+				const auto& data = w.GetData();
+				demoRecorder->RecordPacket(data.data(), data.size());
+			}
+
+			// The handshake happened before the recording started, so the demo carries
+			// its outcome: which extensions the server negotiated.
+			{
+				NetPacketWriter w = MakeExtensionInfoPacket();
 				const auto& data = w.GetData();
 				demoRecorder->RecordPacket(data.data(), data.size());
 			}

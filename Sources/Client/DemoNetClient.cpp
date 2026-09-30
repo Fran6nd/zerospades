@@ -196,6 +196,9 @@ namespace spades {
 						}
 
 						HandleGamePacket(reader);
+					} else if (type == PacketTypeDamageMarker) {
+						// A hit dealt in the world this map replaces, dropped for the
+						// same reason the live client dropped it while recording.
 					} else if (PeekTeamplaySubPacket(reader) == TeamplaySubPing) {
 						// A ping marks a place in the world it was sent in, and this map
 						// is replacing that world, so it goes no further — the same
@@ -919,6 +922,30 @@ namespace spades {
 						} break;
 						default: break; // a sub packet from a newer extension version
 					}
+				} break;
+				case PacketTypeExtensionInfo: {
+					bool damageMarkers = false;
+					int extCount = r.ReadByte();
+					for (int i = 0; i < extCount; i++) {
+						int extId = r.ReadByte();
+						r.ReadByte(); // version
+						if (extId == ExtensionTypeDamageMarkers)
+							damageMarkers = true;
+					}
+					serverReportsDamage = damageMarkers;
+				} break;
+				case PacketTypeDamageMarker: {
+					if (!serverReportsDamage)
+						break;
+
+					// A damage number is a momentary event, so a seek does not pop
+					// every one dealt on the way to its destination.
+					if (seekingMode)
+						break;
+
+					auto marker = ReadDamageMarker(r);
+					if (marker)
+						client->DamageMarkerReceived(marker->playerId, marker->amount);
 				} break;
 				default:
 					SPLog("Demo: dropped unknown packet %d", (int)r.GetType());
