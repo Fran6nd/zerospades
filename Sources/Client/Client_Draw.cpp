@@ -103,6 +103,9 @@ DEFINE_SPADES_SETTING(cg_playerNameY, "0");
 DEFINE_SPADES_SETTING(cg_playerNamesDead, "1");
 DEFINE_SPADES_SETTING(cg_debugHitTestSize, "128");
 DEFINE_SPADES_SETTING(cg_debugHitTestFadeTime, "10");
+// 0: off, 1: the numbers of bullet hits, 2: grenade hits too. On a server with the
+// Damage Markers extension every number comes from the server, which does not say
+// what dealt the damage, so any non-zero value shows them all, melee included.
 DEFINE_SPADES_SETTING(cg_damageIndicators, "1");
 DEFINE_SPADES_SETTING(cg_hurtScreenEffects, "1");
 DEFINE_SPADES_SETTING(cg_healScreenEffects, "1");
