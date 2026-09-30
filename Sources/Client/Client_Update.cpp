@@ -1861,9 +1861,8 @@ namespace spades {
 					audioDevice->Play(c.GetPointerOrNull(), soundPos, param);
 				}
 
-				// add grenade damage numbers, values can differ from server; a server
-				// that reports the damage it applied sends them itself
-				if ((int)cg_damageIndicators >= 2 && !activeNet->ServerReportsDamage()) {
+				// add grenade damage numbers and hitmarks, values can differ from server
+				if ((int)cg_damageIndicators >= 2) {
 					stmp::optional<Player&> maybeLocalPlayer = world->GetLocalPlayer();
 					if (!maybeLocalPlayer)
 						return; // no local player
@@ -1911,18 +1910,21 @@ namespace spades {
 						if (mapResult.hit && (mapResult.hitPos - eye).GetLength() < distToVictim)
 							continue;
 
-						// add damage number
-						DamageIndicator indicator;
-						indicator.damage = dmg;
-						indicator.playerId = player.GetId();
-						indicator.position = playerPos;
-						indicator.crit = dmg >= 100;
-						indicator.velocity.x = 0.0F;
-						indicator.velocity.y = 0.0F;
-						indicator.velocity.z = -2.0F;
-						indicator.fade = indicator.crit ? 2.0F : 1.5F;
-						indicator.lastHitTime = time;
-						damageIndicators.push_back(indicator);
+						// add damage number, unless the server reports the damage it
+						// applied, which then is the only source of the numbers
+						if (!activeNet->ServerReportsDamage()) {
+							DamageIndicator indicator;
+							indicator.damage = dmg;
+							indicator.playerId = player.GetId();
+							indicator.position = playerPos;
+							indicator.crit = dmg >= 100;
+							indicator.velocity.x = 0.0F;
+							indicator.velocity.y = 0.0F;
+							indicator.velocity.z = -2.0F;
+							indicator.fade = indicator.crit ? 2.0F : 1.5F;
+							indicator.lastHitTime = time;
+							damageIndicators.push_back(indicator);
+						}
 
 						// spawn hitmark
 						hitFeedbackIconState = 1.0F;
