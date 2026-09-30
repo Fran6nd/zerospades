@@ -264,6 +264,13 @@ namespace spades {
 			std::vector<HurtSprite> hurtSprites;
 
 			struct DamageIndicator {
+				/** From this much damage a number is a crit: it rises straight up,
+				 * bigger and pulsing. */
+				static constexpr int kCritDamage = 100;
+				/** The largest amount a number shows either way, which keeps a sum
+				 * and its negation within an int whatever is added to it. */
+				static constexpr int kMaxDamage = 999999;
+
 				int damage;
 				int playerId;
 				float fade;
@@ -273,6 +280,16 @@ namespace spades {
 				bool crit;
 				DamageIndicator() : damage(0), playerId(-1),
 					fade(0.0F), lastHitTime(0.0F), crit(false) {}
+
+				/** A number rising from `position`, drifting sideways as it goes when
+				 * `scatter` is set, unless it is a crit. A negative `damage` is a heal. */
+				static DamageIndicator Make(int playerId, int damage, const Vector3& position,
+				                            float time, bool scatter);
+				/** Adds another hit to this number and restarts its fade. */
+				void Accumulate(int damage, float time);
+
+			private:
+				void Refresh(float time);
 			};
 			std::list<DamageIndicator> damageIndicators;
 

@@ -1552,32 +1552,10 @@ namespace spades {
 					int dmg = by.GetWeapon().GetDamage(type);
 					auto& indicator = hitScanState.indicatorByPlayer[hurtPlayer.GetId()];
 					if (indicator) {
-						indicator->damage += dmg;
-						if (!indicator->crit && indicator->damage >= 100) {
-							indicator->crit = true;
-							indicator->velocity.x = 0.0F;
-							indicator->velocity.y = 0.0F;
-							indicator->velocity.z = -2.0F;
-						}
-						indicator->fade = indicator->crit ? 2.0F : 1.5F;
-						indicator->lastHitTime = time;
+						indicator->Accumulate(dmg, time);
 					} else {
-						DamageIndicator damages;
-						damages.damage = dmg;
-						damages.playerId = hurtPlayer.GetId();
-						damages.position = hitPos;
-						damages.crit = dmg >= 100;
-						if (damages.crit) {
-							damages.velocity.x = 0.0F;
-							damages.velocity.y = 0.0F;
-						} else {
-							damages.velocity = RandomVector() * 4.0F;
-						}
-						damages.velocity.z = -2.0F;
-						damages.fade = damages.crit ? 2.0F : 1.5F;
-						damages.lastHitTime = time;
-
-						damageIndicators.push_back(damages);
+						damageIndicators.push_back(DamageIndicator::Make(
+						  hurtPlayer.GetId(), dmg, hitPos, time, true));
 						indicator = &damageIndicators.back();
 					}
 				}
@@ -1912,19 +1890,9 @@ namespace spades {
 
 						// add damage number, unless the server reports the damage it
 						// applied, which then is the only source of the numbers
-						if (!activeNet->ServerReportsDamage()) {
-							DamageIndicator indicator;
-							indicator.damage = dmg;
-							indicator.playerId = player.GetId();
-							indicator.position = playerPos;
-							indicator.crit = dmg >= 100;
-							indicator.velocity.x = 0.0F;
-							indicator.velocity.y = 0.0F;
-							indicator.velocity.z = -2.0F;
-							indicator.fade = indicator.crit ? 2.0F : 1.5F;
-							indicator.lastHitTime = time;
-							damageIndicators.push_back(indicator);
-						}
+						if (!activeNet->ServerReportsDamage())
+							damageIndicators.push_back(DamageIndicator::Make(
+							  player.GetId(), dmg, playerPos, time, false));
 
 						// spawn hitmark
 						hitFeedbackIconState = 1.0F;
