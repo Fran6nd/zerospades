@@ -30,6 +30,7 @@
 #include <Core/Strings.h>
 #include <Gui/MainScreenHelper.h>
 #include <Gui/ModsScreenHelper.h>
+#include <Gui/UI/Components/UpdateNotice.h>
 #include <Gui/UI/Framework/UIManager.h>
 #include <Gui/UI/Settings/PreferenceView.h>
 #include <Gui/UI/Widgets/DrawUtils.h>
@@ -649,6 +650,13 @@ namespace spades {
 				    AABB2(contentsLeft + contentsWidth - 314.0F, footerPos, 110.0F, 30.0F));
 				button->activated = [this](UIElement& s) { OnSetupPressed(s); };
 				AddChild(button.GetPointerOrNull());
+			}
+
+			// Above the title logo; draws nothing unless a newer release is out.
+			{
+				Handle<UpdateNotice> notice = Handle<UpdateNotice>::New(manager);
+				notice->SetBounds(AABB2(contentsLeft, 20.0F, contentsWidth, 30.0F));
+				AddChild(notice.GetPointerOrNull());
 			}
 
 			LoadServerList();

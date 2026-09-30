@@ -34,8 +34,10 @@
 #include <Core/IStream.h>
 #include <Core/Settings.h>
 #include <Gui/MainScreenHelper.h>
+#include <Gui/UI/Components/UpdateNotice.h>
 #include <Gui/UI/Framework/UIManager.h>
 #include <Gui/UI/Widgets/DrawUtils.h>
+#include <Gui/UpdateChecker.h>
 
 SPADES_SETTING(cg_playerName); // defined in Gui/MainScreen.cpp
 DEFINE_SPADES_SETTING(cg_playerNameIsSet, "0");
@@ -58,6 +60,8 @@ namespace spades {
 			manager->screenSizeChanged = [this] { Reload(); };
 
 			Init();
+
+			UpdateChecker::Get().Start();
 
 			// Let the new player choose their IGN
 			std::string nameStr = cg_playerName;
@@ -192,6 +196,10 @@ namespace spades {
 			Handle<client::IImage> img = renderer->RegisterImage("Gfx/Title/Logo.png");
 			ui::SetColorNP(*renderer, MakeVector4(1.0F, 1.0F, 1.0F, 1.0F));
 			renderer->DrawImage(img, MakeVector2((sw - img->GetWidth()) * 0.5F, 64.0F));
+
+			// The check answers asynchronously; announce a new release once, as soon
+			// as the menu is free of other dialogs.
+			UpdatePromptScreen::ShowIfPending(mainMenu.GetPointerOrNull());
 
 			manager->RunFrame(dt);
 			manager->Render();
