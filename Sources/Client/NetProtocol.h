@@ -82,6 +82,15 @@ namespace spades {
 			PacketTypeTeamplay = 112, // S2C2P, extension id 48 (`64 + extension id`)
 		};
 
+		/** Protocol extension ids, as negotiated through `PacketTypeExtensionInfo`. */
+		enum NetExtensionType {
+			ExtensionTypePlayerProperties = 0,
+			ExtensionTypeTeamplay = 48,
+			ExtensionTypePlayerLimit = 192,
+			ExtensionTypeMessageTypes = 193,
+			ExtensionTypeKickReason = 194,
+		};
+
 		/** Sub packet ids of `PacketTypeTeamplay`. Every extension packet
 		 * carries one as its second byte, even when the extension needs only one. */
 		enum TeamplaySubPacketType : std::uint8_t {
