@@ -1348,6 +1348,12 @@ namespace spades {
 
 			if (!cg_damageIndicators || amount == 0 || !world)
 				return;
+
+			// The amount is whatever the server put in a signed 32-bit field. Bounding it
+			// keeps the merged sum and its negation, for a heal, within an int, and no
+			// real hit comes near it.
+			constexpr int kMaxAmount = 999999;
+			amount = Clamp(amount, -kMaxAmount, kMaxAmount);
 			if (playerId < 0 || playerId >= static_cast<int>(world->GetNumPlayerSlots()))
 				return;
 
@@ -1368,7 +1374,7 @@ namespace spades {
 				if ((indicator.damage < 0) != (amount < 0))
 					continue; // damage and heals are never folded into one number
 
-				indicator.damage += amount;
+				indicator.damage = Clamp(indicator.damage + amount, -kMaxAmount, kMaxAmount);
 				if (!indicator.crit && indicator.damage >= 100) {
 					indicator.crit = true;
 					indicator.velocity = MakeVector3(0.0F, 0.0F, -2.0F);
