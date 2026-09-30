@@ -706,16 +706,13 @@ namespace spades {
 		}
 
 		void NetClient::HandleExtensionPacket(spades::client::NetPacketReader& r) {
-			int extCount = r.ReadByte();
-			for (int i = 0; i < extCount; i++) {
-				int extId = r.ReadByte();
-				int extVer = r.ReadByte();
-
-				auto got = implementedExtensions.find(extId);
+			for (const ExtensionEntry& ext : ReadExtensionInfo(r)) {
+				auto got = implementedExtensions.find(ext.id);
 				if (got == implementedExtensions.end()) {
-					SPLog("Client does not support extension %d v%d", extId, extVer);
+					SPLog("Client does not support extension %d v%d", (int)ext.id,
+					      (int)ext.version);
 				} else {
-					SPLog("Client supports extension %d v%d", extId, extVer);
+					SPLog("Client supports extension %d v%d", (int)ext.id, (int)ext.version);
 					extensions.emplace(got->first, got->second);
 				}
 			}

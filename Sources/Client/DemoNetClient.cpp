@@ -924,15 +924,10 @@ namespace spades {
 					}
 				} break;
 				case PacketTypeExtensionInfo: {
-					bool damageMarkers = false;
-					int extCount = r.ReadByte();
-					for (int i = 0; i < extCount; i++) {
-						int extId = r.ReadByte();
-						r.ReadByte(); // version
-						if (extId == ExtensionTypeDamageMarkers)
-							damageMarkers = true;
-					}
-					serverReportsDamage = damageMarkers;
+					serverReportsDamage = false;
+					for (const ExtensionEntry& ext : ReadExtensionInfo(r))
+						if (ext.id == ExtensionTypeDamageMarkers)
+							serverReportsDamage = true;
 				} break;
 				case PacketTypeDamageMarker: {
 					if (!serverReportsDamage)

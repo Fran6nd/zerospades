@@ -273,6 +273,23 @@ namespace spades {
 			return static_cast<TeamplaySubPacketType>(r.Peek(0));
 		}
 
+		/** One entry of an ExtensionInfo packet. */
+		struct ExtensionEntry {
+			std::uint8_t id;
+			std::uint8_t version;
+		};
+
+		/** Reads a `PacketTypeExtensionInfo` packet whose type byte has been consumed:
+		 * the extensions it lists, with their versions. */
+		inline std::vector<ExtensionEntry> ReadExtensionInfo(NetPacketReader& r) {
+			std::vector<ExtensionEntry> entries(r.ReadByte());
+			for (ExtensionEntry& entry : entries) {
+				entry.id = r.ReadByte();
+				entry.version = r.ReadByte();
+			}
+			return entries;
+		}
+
 		/** A *Damage Markers* packet: a hit the local player dealt, as the server applied
 		 * it. A negative amount is a heal. */
 		struct DamageMarker {
