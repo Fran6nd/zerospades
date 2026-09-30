@@ -151,6 +151,9 @@ namespace spades {
 			void SendWeaponChange(WeaponType) override {}
 			void SendTeamplayPing(Vector3, const std::string&) override {}
 
+			// Damage Markers are never recorded, so a replay predicts its own numbers.
+			bool ServerReportsDamage() const override { return false; }
+
 		};
 	} // namespace client
 } // namespace spades

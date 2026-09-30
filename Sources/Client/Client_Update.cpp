@@ -1545,7 +1545,13 @@ namespace spades {
 				if (!isMeleeHit)
 					weaponStats.hits[by.GetWeaponType()]++;
 
-				if ((bool)cg_damageIndicators && !isMeleeHit) {
+				// A server that reports the damage it applied is the only source of
+				// the numbers, so the client stops predicting its own. Predicted hits
+				// on a player add up to one number per shot, so the pellets of a
+				// shotgun blast show their total; `DamageMarkerReceived` does the same
+				// for the server's numbers.
+				if ((bool)cg_damageIndicators && !isMeleeHit &&
+				    !activeNet->ServerReportsDamage()) {
 					int dmg = by.GetWeapon().GetDamage(type);
 					auto& indicator = hitScanState.indicatorByPlayer[hurtPlayer.GetId()];
 					if (indicator) {
@@ -1858,8 +1864,9 @@ namespace spades {
 					audioDevice->Play(c.GetPointerOrNull(), soundPos, param);
 				}
 
-				// add grenade damage numbers, values can differ from server
-				if ((int)cg_damageIndicators >= 2) {
+				// add grenade damage numbers, values can differ from server; a server
+				// that reports the damage it applied sends them itself
+				if ((int)cg_damageIndicators >= 2 && !activeNet->ServerReportsDamage()) {
 					stmp::optional<Player&> maybeLocalPlayer = world->GetLocalPlayer();
 					if (!maybeLocalPlayer)
 						return; // no local player

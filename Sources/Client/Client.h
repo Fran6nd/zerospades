@@ -778,6 +778,11 @@ namespace spades {
 			 * still has to rebuild the marks in force at the destination. */
 			void TeamplayPlayerSpawned(int playerId);
 
+			// ── Damage Markers, called by the net client ───────────
+			/** The server applied `amount` damage to a player the local player hit. A
+			 * negative amount is a heal. */
+			void DamageMarkerReceived(int playerId, int amount);
+
 			void PlayerCapturedIntel(Player&);
 			void PlayerPickedIntel(Player&);
 			void PlayerDropIntel(Player&);
