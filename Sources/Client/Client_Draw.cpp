@@ -1274,6 +1274,36 @@ namespace spades {
 			}
 		}
 
+		Client::DamageIndicator Client::DamageIndicator::Make(int playerId, int damage,
+		                                                      const Vector3& position,
+		                                                      float time, bool scatter) {
+			DamageIndicator indicator;
+			indicator.damage = Clamp(damage, -kMaxDamage, kMaxDamage);
+			indicator.playerId = playerId;
+			indicator.position = position;
+			indicator.crit = indicator.damage >= kCritDamage;
+			indicator.velocity = (scatter && !indicator.crit) ? RandomVector() * 4.0F
+			                                                  : MakeVector3(0.0F, 0.0F, 0.0F);
+			indicator.velocity.z = -2.0F;
+			indicator.Refresh(time);
+			return indicator;
+		}
+
+		void Client::DamageIndicator::Accumulate(int more, float time) {
+			damage = Clamp(damage + Clamp(more, -kMaxDamage, kMaxDamage), -kMaxDamage,
+			               kMaxDamage);
+			if (!crit && damage >= kCritDamage) {
+				crit = true;
+				velocity = MakeVector3(0.0F, 0.0F, -2.0F);
+			}
+			Refresh(time);
+		}
+
+		void Client::DamageIndicator::Refresh(float time) {
+			fade = crit ? 2.0F : 1.5F;
+			lastHitTime = time;
+		}
+
 		void Client::UpdateDamageIndicators(float dt) {
 			for (auto it = damageIndicators.begin(); it != damageIndicators.end();) {
 				DamageIndicator& ent = *it;
