@@ -50,14 +50,6 @@ namespace spades {
 		class Client;
 		class Player;
 
-		enum NetExtensionType {
-			ExtensionTypePlayerProperties = 0,
-			ExtensionTypeTeamplay = 48,
-			ExtensionTypePlayerLimit = 192,
-			ExtensionTypeMessageTypes = 193,
-			ExtensionTypeKickReason = 194,
-		};
-
 		class World;
 		class NetPacketWriter;
 		struct PlayerInput;
