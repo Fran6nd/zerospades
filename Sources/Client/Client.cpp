@@ -1351,8 +1351,10 @@ namespace spades {
 			if (playerId < 0 || playerId >= static_cast<int>(world->GetNumPlayerSlots()))
 				return;
 
+			// Damage the local player dealt to itself has no one to float over: the
+			// number would sit inside the camera.
 			auto victim = world->GetPlayer(static_cast<unsigned int>(playerId));
-			if (!victim)
+			if (!victim || victim->IsLocalPlayer())
 				return;
 
 			// The server sends one packet per hit, so the pellets of a shotgun blast
