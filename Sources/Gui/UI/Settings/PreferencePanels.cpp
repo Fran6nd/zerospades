@@ -462,6 +462,7 @@ namespace spades {
 			l.AddSliderField(_Tr("Preferences", "JPEG Quality"), "core_jpegQuality", 1, 100, 1,
 			                 NumberFormatter(0, "%"));
 			l.AddToggleField(_Tr("Preferences", "Enable Startup Window"), "cl_showStartupWindow");
+			l.AddToggleField(_Tr("Preferences", "Check for Updates"), "cl_zsCheckForUpdates");
 
 			l.AddHeading(_Tr("Preferences", "Demo Recording"));
 			l.AddControl(_Tr("Preferences", "Start/Stop Recording"), "cg_keyDemoRecord");
