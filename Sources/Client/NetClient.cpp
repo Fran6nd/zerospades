@@ -723,15 +723,11 @@ namespace spades {
 		}
 
 		void NetClient::HandleExtensionPacket(spades::client::NetPacketReader& r) {
-			int extCount = r.ReadByte();
-			for (int i = 0; i < extCount; i++) {
-				int extId = r.ReadByte();
-				int extVer = r.ReadByte();
-
+			for (const ExtensionEntry& ext : ReadExtensionInfo(r)) {
 				// some servers announce the same extension more than once
 				bool alreadyAnnounced = false;
 				for (const auto& e : serverExtensions) {
-					if (e.id == extId) {
+					if (e.id == ext.id) {
 						alreadyAnnounced = true;
 						break;
 					}
@@ -739,17 +735,16 @@ namespace spades {
 				if (alreadyAnnounced)
 					continue;
 
-				auto got = implementedExtensions.find(extId);
+				auto got = implementedExtensions.find(ext.id);
 				bool supported = got != implementedExtensions.end();
 
-				serverExtensions.push_back({static_cast<uint8_t>(extId),
-				                            static_cast<uint8_t>(extVer),
-				                            supported});
+				serverExtensions.push_back({ext.id, ext.version, supported});
 
 				if (!supported) {
-					SPLog("Client does not support extension %d v%d", extId, extVer);
+					SPLog("Client does not support extension %d v%d", (int)ext.id,
+					      (int)ext.version);
 				} else {
-					SPLog("Client supports extension %d v%d", extId, extVer);
+					SPLog("Client supports extension %d v%d", (int)ext.id, (int)ext.version);
 					extensions.emplace(got->first, got->second);
 				}
 			}
