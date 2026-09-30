@@ -412,9 +412,11 @@ namespace spades {
 					// Skip the server's WeaponReload echo for the local player: the
 					// client-sent packet is already recorded in SendReload(), so
 					// recording the server response would produce a double reload.
+					// Skip Damage Markers too: they are not part of a demo, whose
+					// replay predicts its own damage numbers.
 					if (demoRecorder && demoRecorder->IsRecording()) {
 						auto data = reader.GetData();
-						bool skip = false;
+						bool skip = reader.GetType() == PacketTypeDamageMarker;
 						if (data.size() >= 2 &&
 						    static_cast<uint8_t>(data[0]) == PacketTypeWeaponReload) {
 							auto localPlayer = GetLocalPlayerOrNull();
@@ -1879,18 +1881,15 @@ namespace spades {
 		void NetClient::SendSupportedExtensions() {
 			SPADES_MARK_FUNCTION();
 
-			SPLog("Sending extension support.");
-			enet_peer_send(peer, 0, MakeExtensionInfoPacket().CreatePacket());
-		}
-
-		NetPacketWriter NetClient::MakeExtensionInfoPacket() const {
 			NetPacketWriter w(PacketTypeExtensionInfo);
 			w.WriteByte(static_cast<uint8_t>(extensions.size()));
 			for (const auto& i : extensions) {
 				w.WriteByte(static_cast<uint8_t>(i.first));	 // ext id
 				w.WriteByte(static_cast<uint8_t>(i.second)); // ext version
 			}
-			return w;
+
+			SPLog("Sending extension support.");
+			enet_peer_send(peer, 0, w.CreatePacket());
 		}
 
 		void NetClient::MapLoaded() {
@@ -2169,14 +2168,6 @@ namespace spades {
 				w.WriteColor(p.GetBlockColor()); // block color
 				w.WriteString(world->GetPlayerPersistent(i).name); // name
 
-				const auto& data = w.GetData();
-				demoRecorder->RecordPacket(data.data(), data.size());
-			}
-
-			// The handshake happened before the recording started, so the demo carries
-			// its outcome: which extensions the server negotiated.
-			{
-				NetPacketWriter w = MakeExtensionInfoPacket();
 				const auto& data = w.GetData();
 				demoRecorder->RecordPacket(data.data(), data.size());
 			}

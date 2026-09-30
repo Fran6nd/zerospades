@@ -156,11 +156,6 @@ namespace spades {
 			 * before the recording started. Nothing when the extension is not negotiated. */
 			void WriteInitialTeamplayDemoState();
 
-			/** Builds the ExtensionInfo packet listing the negotiated extensions. It is
-			 * the client's answer in the handshake, and a demo opens with it so the
-			 * replay knows which extensions the recorded server spoke. */
-			NetPacketWriter MakeExtensionInfoPacket() const;
-
 			void SendMapCached();
 			void SendVersion();
 			void SendVersionEnhanced(const std::set<std::uint8_t>& propertyIds);
