@@ -1305,8 +1305,10 @@ namespace spades {
 					bool crit = dmg.crit;
 					IFont& font = crit ? mediumFont : guiFont;
 
+					// A negative amount is a heal, shown as a gain.
 					int damage = dmg.damage;
-					auto damageStr = ToString(damage);
+					bool heal = damage < 0;
+					auto damageStr = heal ? "+" + ToString(-damage) : ToString(damage);
 					Vector2 size = font.Measure(damageStr);
 					scrPos -= size * 0.5F;
 
@@ -1318,7 +1320,9 @@ namespace spades {
 					Vector4 shadow = MakeVector4(0, 0, 0, 0.4F * fade);
 					Vector4 color = MakeVector4(1.0F, 1.0F - per, 0.0F, fade);
 
-					if (crit) {
+					if (heal) {
+						color = MakeVector4(0.3F, 1.0F, 0.3F, fade);
+					} else if (crit) {
 						float pulse = (sinf((time - dmg.lastHitTime) * 10.0F) * 0.5F) + 0.5F;
 						color = MakeVector4(1.0F, pulse * 0.8F, pulse * 0.2F, fade);
 					}
