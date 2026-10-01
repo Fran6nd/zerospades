@@ -23,6 +23,7 @@
 #include <algorithm>
 #include <atomic>
 #include <cmath>
+#include <cstring>
 #include <limits>
 #include <thread>
 #if defined(_MSC_VER)
@@ -154,6 +155,7 @@ namespace spades {
 		/**
 		 * Bakes the whole map for a shear, a band of rows on each worker thread. It reads
 		 * a copy of the map's solid columns, so it never reads the map as the game edits it.
+		 * The copy and the hits live in buffers the renderer keeps from bake to bake.
 		 */
 		class GLMapShadowRenderer::Bake {
 			class Band : public ConcurrentDispatch {
@@ -174,12 +176,12 @@ namespace spades {
 			};
 
 			int w, h;
-			std::vector<uint64_t> columns;
+			std::vector<uint64_t>& columns;
 			std::vector<std::unique_ptr<Band>> bands;
 
 			void TraceRows(int firstRow, int endRow) {
 				auto column = [this](int x, int y) {
-					return columns[(x & (w - 1)) + (y & (h - 1)) * w];
+					return columns[(x & (w - 1)) * h + (y & (h - 1))];
 				};
 				for (int y = firstRow; y < endRow; y++)
 					for (int x = 0; x < w; x++)
@@ -188,15 +190,15 @@ namespace spades {
 
 		public:
 			const Vector2 shear;
-			std::vector<Hit> hits;
+			std::vector<Hit>& hits;
 
-			Bake(const client::GameMap& map, Vector2 shear)
-			    : w(map.Width()), h(map.Height()), shear(shear) {
-				columns.resize(static_cast<std::size_t>(w * h));
-				for (int y = 0; y < h; y++)
-					for (int x = 0; x < w; x++)
-						columns[x + y * w] = map.GetSolidMap(x, y);
-				hits.resize(columns.size());
+			Bake(const client::GameMap& map, Vector2 shear, std::vector<uint64_t>& columns,
+			     std::vector<Hit>& hits)
+			    : w(map.Width()), h(map.Height()), columns(columns), shear(shear), hits(hits) {
+				const std::size_t count = static_cast<std::size_t>(w * h);
+				columns.resize(count);
+				std::memcpy(columns.data(), map.GetSolidMapData(), count * sizeof(uint64_t));
+				hits.resize(count);
 			}
 
 			~Bake() { Join(); }
@@ -391,7 +393,7 @@ namespace spades {
 
 			if (!baked) {
 				// The first bake is waited for, as there is nothing to show before it.
-				Bake first(*map, target);
+				Bake first(*map, target, bakeColumns, bakeHits);
 				first.Start();
 				first.Join();
 				InstallRows(first, bitmap, 0, h);
@@ -444,7 +446,7 @@ namespace spades {
 			sinceRebake.Reset();
 			changedSinceRebake.clear();
 			installedRows = 0;
-			rebake.reset(new Bake(*map, target));
+			rebake.reset(new Bake(*map, target, bakeColumns, bakeHits));
 			rebake->Start();
 			return false;
 		}

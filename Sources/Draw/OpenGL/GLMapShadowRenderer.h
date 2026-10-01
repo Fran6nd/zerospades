@@ -78,6 +78,10 @@ namespace spades {
 			/** Where a finished rebake is taken in before it is swapped with `bitmap`. */
 			std::vector<uint32_t> backBitmap;
 
+			/** The buffers every bake works in, kept from one to the next. */
+			std::vector<uint64_t> bakeColumns;
+			std::vector<Hit> bakeHits;
+
 			/** The bake of the whole map for a new shear, running in the background. */
 			std::unique_ptr<Bake> rebake;
 			/** The rows of `rebake` taken into the back buffers so far. */
