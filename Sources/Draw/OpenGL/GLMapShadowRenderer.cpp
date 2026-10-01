@@ -66,6 +66,10 @@ namespace spades {
 			/** The most worker threads a bake is split across. */
 			constexpr unsigned int kMaxBakeThreads = 16;
 
+			/** The rows of a finished bake taken in per frame: a whole bake at once, with
+			 * its colours looked up and its texture sent, would be a visible hitch. */
+			constexpr int kInstallRowsPerFrame = 64;
+
 			int CountTrailingZeros(uint64_t v) {
 				SPAssert(v != 0);
 #if defined(_MSC_VER)
@@ -323,16 +327,21 @@ namespace spades {
 		    : renderer(renderer), device(renderer.GetGLDevice()), map(map), baked(false) {
 			SPADES_MARK_FUNCTION();
 			texture = device.GenTexture();
+			backTexture = device.GenTexture();
 			coarseTexture = device.GenTexture();
-			device.BindTexture(IGLDevice::Texture2D, texture);
-			device.TexImage2D(IGLDevice::Texture2D, 0, IGLDevice::RGBA, map->Width(), map->Height(),
-			                  0, IGLDevice::RGBA, IGLDevice::UnsignedByte, NULL);
-			device.TexParamater(IGLDevice::Texture2D, IGLDevice::TextureMagFilter,
-			                    IGLDevice::Nearest);
-			device.TexParamater(IGLDevice::Texture2D, IGLDevice::TextureMinFilter,
-			                    IGLDevice::Nearest);
-			device.TexParamater(IGLDevice::Texture2D, IGLDevice::TextureWrapS, IGLDevice::Repeat);
-			device.TexParamater(IGLDevice::Texture2D, IGLDevice::TextureWrapT, IGLDevice::Repeat);
+			for (IGLDevice::UInteger tex : {texture, backTexture}) {
+				device.BindTexture(IGLDevice::Texture2D, tex);
+				device.TexImage2D(IGLDevice::Texture2D, 0, IGLDevice::RGBA, map->Width(),
+				                  map->Height(), 0, IGLDevice::RGBA, IGLDevice::UnsignedByte, NULL);
+				device.TexParamater(IGLDevice::Texture2D, IGLDevice::TextureMagFilter,
+				                    IGLDevice::Nearest);
+				device.TexParamater(IGLDevice::Texture2D, IGLDevice::TextureMinFilter,
+				                    IGLDevice::Nearest);
+				device.TexParamater(IGLDevice::Texture2D, IGLDevice::TextureWrapS,
+				                    IGLDevice::Repeat);
+				device.TexParamater(IGLDevice::Texture2D, IGLDevice::TextureWrapT,
+				                    IGLDevice::Repeat);
+			}
 
 			device.BindTexture(IGLDevice::Texture2D, coarseTexture);
 			device.TexImage2D(IGLDevice::Texture2D, 0, IGLDevice::RGBA8, map->Width() / CoarseSize,
@@ -358,6 +367,7 @@ namespace spades {
 			coarseBitmap.resize((w * h) >> (CoarseBits * 2));
 
 			bitmap.resize(w * h);
+			backBitmap.resize(w * h);
 			std::fill(updateBitmap.begin(), updateBitmap.end(), 0xffffffffUL);
 			std::fill(bitmap.begin(), bitmap.end(), 0xffffffffUL);
 		}
@@ -368,6 +378,7 @@ namespace spades {
 			rebake.reset();
 
 			device.DeleteTexture(texture);
+			device.DeleteTexture(backTexture);
 			device.DeleteTexture(coarseTexture);
 		}
 
@@ -379,7 +390,11 @@ namespace spades {
 				Bake first(*map, target);
 				first.Start();
 				first.Join();
-				Install(first);
+				InstallRows(first, bitmap, 0, h);
+				shear = first.shear;
+				device.BindTexture(IGLDevice::Texture2D, texture);
+				device.TexSubImage2D(IGLDevice::Texture2D, 0, 0, 0, w, h, IGLDevice::RGBA,
+				                     IGLDevice::UnsignedByte, bitmap.data());
 				std::fill(updateBitmap.begin(), updateBitmap.end(), 0);
 				baked = true;
 				return true;
@@ -388,6 +403,19 @@ namespace spades {
 			if (rebake) {
 				if (!rebake->IsDone())
 					return false;
+
+				// The bake goes into the back buffers a few rows a frame, then is swapped in.
+				if (installedRows < h) {
+					const int endRow = std::min(installedRows + kInstallRowsPerFrame, h);
+					InstallRows(*rebake, backBitmap, installedRows, endRow);
+					device.BindTexture(IGLDevice::Texture2D, backTexture);
+					device.TexSubImage2D(IGLDevice::Texture2D, 0, 0, installedRows, w,
+					                     endRow - installedRows, IGLDevice::RGBA,
+					                     IGLDevice::UnsignedByte,
+					                     backBitmap.data() + installedRows * w);
+					installedRows = endRow;
+					return false;
+				}
 
 				// The radiosity reads `bitmap` on its own thread; swap only while it rests.
 				GLRadiosityRenderer* radiosity = renderer.GetRadiosityRenderer();
@@ -407,23 +435,27 @@ namespace spades {
 				return false;
 
 			changedSinceRebake.clear();
+			installedRows = 0;
 			rebake.reset(new Bake(*map, target));
 			rebake->Start();
 			return false;
 		}
 
-		void GLMapShadowRenderer::Install(const Bake& bake) {
-			shear = bake.shear;
-			for (std::size_t i = 0; i < bitmap.size(); i++) {
+		void GLMapShadowRenderer::InstallRows(const Bake& bake, std::vector<uint32_t>& pixels,
+		                                      int firstRow, int endRow) {
+			for (std::size_t i = firstRow * w, end = endRow * w; i < end; i++) {
 				const Hit& hit = bake.hits[i];
-				bitmap[i] = BuildPixel(hit.depth, map->GetColorWrapped(hit.x, hit.y, hit.z), hit.face);
+				pixels[i] = BuildPixel(hit.depth, map->GetColorWrapped(hit.x, hit.y, hit.z), hit.face);
 			}
 		}
 
 		void GLMapShadowRenderer::CompleteRebake() {
 			SPADES_MARK_FUNCTION();
 
-			Install(*rebake);
+			// The back buffers hold the whole bake now; they become the front together.
+			std::swap(texture, backTexture);
+			bitmap.swap(backBitmap);
+			shear = rebake->shear;
 			rebake.reset();
 
 			// The copy the bake read predates these; bake them again from the map.
@@ -442,14 +474,12 @@ namespace spades {
 			coarseUpdateBitmap.resize(coarseBitmap.size());
 			std::fill(coarseUpdateBitmap.begin(), coarseUpdateBitmap.end(), 0);
 
-			device.BindTexture(IGLDevice::Texture2D, texture);
-
 			if (FollowSun()) {
 				// A new projection came in whole. The radiosity follows it on its own terms.
-				device.TexSubImage2D(IGLDevice::Texture2D, 0, 0, 0, w, h, IGLDevice::RGBA,
-				                     IGLDevice::UnsignedByte, bitmap.data());
 				std::fill(coarseUpdateBitmap.begin(), coarseUpdateBitmap.end(), 1);
 			}
+
+			device.BindTexture(IGLDevice::Texture2D, texture);
 
 			for (size_t i = 0; i < updateBitmap.size(); i++) {
 				int y = static_cast<int>(i / updateBitmapPitch);

@@ -59,6 +59,8 @@ namespace spades {
 			client::GameMap* map;
 			IGLDevice::UInteger texture;
 			IGLDevice::UInteger coarseTexture;
+			/** Where a finished rebake is taken in before it is swapped with `texture`. */
+			IGLDevice::UInteger backTexture;
 
 			int w, h, d;
 
@@ -72,9 +74,13 @@ namespace spades {
 
 			std::vector<uint32_t> bitmap;
 			std::vector<uint32_t> coarseBitmap;
+			/** Where a finished rebake is taken in before it is swapped with `bitmap`. */
+			std::vector<uint32_t> backBitmap;
 
 			/** The bake of the whole map for a new shear, running in the background. */
 			std::unique_ptr<Bake> rebake;
+			/** The rows of `rebake` taken into the back buffers so far. */
+			int installedRows = 0;
 			/** Voxels changed since `rebake` copied the map, to bake again once it is in. */
 			std::vector<IntVector3> changedSinceRebake;
 
@@ -93,8 +99,8 @@ namespace spades {
 			bool FollowSun();
 			void CompleteRebake();
 
-			/** Takes a finished bake into `bitmap` and its shear. */
-			void Install(const Bake&);
+			/** Takes rows of a finished bake into `pixels`, with their colours. */
+			void InstallRows(const Bake&, std::vector<uint32_t>& pixels, int firstRow, int endRow);
 
 			/** The voxel a texel's sunlight met, from the texel and its pixel. */
 			IntVector3 GetHitVoxel(int x, int y, uint32_t pixel) const;
