@@ -27,6 +27,7 @@
 #include "IGLDevice.h"
 #include <Core/Debug.h>
 #include <Core/Math.h>
+#include <Core/TMPUtils.h>
 
 namespace spades {
 	namespace client {
@@ -96,6 +97,12 @@ namespace spades {
 			float CompressDynamicRange(float v);
 
 			UpdateDispatch *dispatch;
+
+			/** The map shadow's projection the chunks were last all evaluated with. */
+			stmp::optional<Vector2> evaluatedShear;
+
+			/** Evaluates the whole map again once the sun has moved far enough. */
+			void FollowSun();
 
 		public:
 			struct Result {

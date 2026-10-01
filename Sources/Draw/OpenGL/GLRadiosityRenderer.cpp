@@ -18,6 +18,7 @@
 
  */
 
+#include <algorithm>
 #include <atomic>
 #include <cmath>
 #include <cstdlib>
@@ -41,6 +42,12 @@
 
 namespace spades {
 	namespace draw {
+		namespace {
+			/** How far the map shadow's shear may drift before the whole map is evaluated
+			 * again: sixteen times the shadows' own tolerance. */
+			constexpr float kSunShearTolerance = 0.25F;
+		} // namespace
+
 		class GLRadiosityRenderer::UpdateDispatch : public ConcurrentDispatch {
 			GLRadiosityRenderer& renderer;
 
@@ -324,7 +331,29 @@ namespace spades {
 			return cnt;
 		}
 
+		void GLRadiosityRenderer::FollowSun() {
+			const Vector2 shear = renderer.GetMapShadowShear();
+			if (!evaluatedShear) {
+				evaluatedShear = shear; // every chunk starts dirty
+				return;
+			}
+
+			// The bounce is soft, and evaluating the whole map takes seconds, so it follows
+			// the sun far more loosely than the shadows do. Nothing bounces at night.
+			if (renderer.GetSunlight() <= 0.0F)
+				return;
+
+			const Vector2 drift = shear - *evaluatedShear;
+			if (std::max(std::fabs(drift.x), std::fabs(drift.y)) <= kSunShearTolerance)
+				return;
+
+			evaluatedShear = shear;
+			InvalidateAll();
+		}
+
 		void GLRadiosityRenderer::Update() {
+			FollowSun();
+
 			if (GetNumDirtyChunks() > 0 && (dispatch == NULL || dispatch->done.load())) {
 				if (dispatch) {
 					dispatch->Join();

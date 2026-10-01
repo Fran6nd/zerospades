@@ -401,12 +401,10 @@ namespace spades {
 			device.BindTexture(IGLDevice::Texture2D, texture);
 
 			if (FollowSun()) {
-				// A new projection came in whole; everything derived from it follows.
+				// A new projection came in whole. The radiosity follows it on its own terms.
 				device.TexSubImage2D(IGLDevice::Texture2D, 0, 0, 0, w, h, IGLDevice::RGBA,
 				                     IGLDevice::UnsignedByte, bitmap.data());
 				std::fill(coarseUpdateBitmap.begin(), coarseUpdateBitmap.end(), 1);
-				if (radiosity)
-					radiosity->InvalidateAll();
 			}
 
 			for (size_t i = 0; i < updateBitmap.size(); i++) {
