@@ -121,6 +121,7 @@ namespace spades {
 			static GLProgramUniform sunlightScale("sunlightScale");
 			static GLProgramUniform ambientScale("ambientScale");
 			static GLProgramUniform radiosityScale("radiosityScale");
+			static GLProgramUniform sunlight("sunlight");
 			static GLProgramUniform fogDistance("fogDistance");
 			static GLProgramUniform ditherTexture("ditherTexture");
 			static GLProgramUniform ditherOffset("ditherOffset");
@@ -134,6 +135,7 @@ namespace spades {
 			lensDepthTexture(lens);
 			lensViewOrigin(lens);
 			sunlightScale(lens);
+			sunlight(lens);
 			ambientScale(lens);
 			radiosityScale(lens);
 			fogDistance(lens);
@@ -154,8 +156,11 @@ namespace spades {
 			Vector3 fogCol = renderer.GetFullDaylightFogColor();
 			fogCol *= fogCol; // linearize
 			const float daylight = renderer.GetDaylight();
+			sunlight.SetValue(renderer.GetSunlight());
 
-			float sunlightBrightness = 0.6F; // Sun -> Fog -> Eye
+			// Without the sun, the sky alone gives the fog its colour.
+			const bool sunUp = renderer.GetSunlight() > 0.0F;
+			float sunlightBrightness = sunUp ? 0.6F : 0.0F; // Sun -> Fog -> Eye
 			float ambientBrightness = 1.0F;  // Sun -> Fog -> Fog -> Eye
 			float radiosityBrightness = 1.0F;
 			float radiosityOffset = 0.2F;
@@ -186,10 +191,12 @@ namespace spades {
 			  fogTransmission1(fogCol.y),
 			  fogTransmission1(fogCol.z),
 			};
-			Vector3 sunlight = fogTransmission * sunlightBrightness * daylight;
+			// The radiosity is the sun's light the map bounces.
+			Vector3 sunScale = fogTransmission * sunlightBrightness * renderer.GetSunlight();
 			Vector3 ambient = fogTransmission * fogCol * ambientBrightness * daylight;
-			Vector3 radiosity = (fogTransmission * radiosityBrightness + radiosityOffset) * daylight;
-			sunlightScale.SetValue(sunlight.x, sunlight.y, sunlight.z);
+			Vector3 radiosity = (fogTransmission * radiosityBrightness + radiosityOffset) *
+			                    renderer.GetSunlight();
+			sunlightScale.SetValue(sunScale.x, sunScale.y, sunScale.z);
 			ambientScale.SetValue(ambient.x, ambient.y, ambient.z);
 			radiosityScale.SetValue(radiosity.x, radiosity.y, radiosity.z);
 
