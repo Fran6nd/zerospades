@@ -44,10 +44,10 @@ namespace spades {
 			constexpr const char* kLatestReleaseUrl =
 			  "https://api.github.com/repos/zerospades/zerospades/releases/latest";
 
-			// The page the user is sent to: the full releases list, so the
-			// changes since their version are visible, not only the newest release.
-			constexpr const char* kReleasesPageUrl =
-			  "https://github.com/zerospades/zerospades/releases";
+			// Prefix of a release's page, followed by its tag. Used only when the
+			// response carries no page link of its own.
+			constexpr const char* kReleaseTagPageUrl =
+			  "https://github.com/zerospades/zerospades/releases/tag/";
 
 			// The check must never hold anything up, so it gives up quickly.
 			constexpr long kConnectTimeoutSeconds = 10;
@@ -165,7 +165,8 @@ namespace spades {
 
 				const ReleaseVersion current = ReleaseVersion::Current();
 				r.latestVersion = *latest;
-				r.releaseUrl = kReleasesPageUrl;
+				r.releaseUrl = root["html_url"].isString() ? root["html_url"].asString()
+				                                           : kReleaseTagPageUrl + tag;
 				r.state = current < *latest ? State::UpdateAvailable : State::UpToDate;
 
 				SPLog("Update check: running %s, latest release is %s (%s).",
