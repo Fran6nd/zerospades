@@ -70,6 +70,10 @@ namespace spades {
 			 * its colours looked up and its texture sent, would be a visible hitch. */
 			constexpr int kInstallRowsPerFrame = 64;
 
+			/** The least time between two rebakes, in seconds: at a fast Speed the sun
+			 * would otherwise keep the worker threads busy. */
+			constexpr double kMinRebakeInterval = 0.25;
+
 			int CountTrailingZeros(uint64_t v) {
 				SPAssert(v != 0);
 #if defined(_MSC_VER)
@@ -434,6 +438,10 @@ namespace spades {
 			if (std::max(std::fabs(drift.x), std::fabs(drift.y)) <= kRebakeShear)
 				return false;
 
+			if (sinceRebake.GetTime() < kMinRebakeInterval)
+				return false;
+
+			sinceRebake.Reset();
 			changedSinceRebake.clear();
 			installedRows = 0;
 			rebake.reset(new Bake(*map, target));

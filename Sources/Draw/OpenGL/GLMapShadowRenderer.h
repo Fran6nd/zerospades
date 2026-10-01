@@ -26,6 +26,7 @@
 
 #include "IGLDevice.h"
 #include <Core/Math.h>
+#include <Core/Stopwatch.h>
 
 namespace spades {
 	namespace client {
@@ -81,6 +82,8 @@ namespace spades {
 			std::unique_ptr<Bake> rebake;
 			/** The rows of `rebake` taken into the back buffers so far. */
 			int installedRows = 0;
+			/** The time since the last rebake started. */
+			Stopwatch sinceRebake;
 			/** Voxels changed since `rebake` copied the map, to bake again once it is in. */
 			std::vector<IntVector3> changedSinceRebake;
 
