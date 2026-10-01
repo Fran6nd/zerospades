@@ -28,6 +28,7 @@
 #include "BloodMarks.h"
 #include "Corpse.h"
 #include "CTFGameMode.h"
+#include "DaytimeWeather.h"
 #include "GameProperties.h"
 #include "IGameMode.h"
 #include "Player.h"
@@ -197,6 +198,12 @@ namespace spades {
 			if (world) {
 				IntVector3 fogColor = world->GetFogColor();
 				renderer->SetFogColor(ConvertColorRGB(fogColor));
+
+				// Without a time of day the scene keeps its default, unchanging noon.
+				if (stmp::optional<float> minutes = activeNet->GetTimeOfDay()) {
+					def.sunDirection = GetSunDirection(*minutes);
+					def.daylight = GetDaylight(*minutes);
+				}
 
 				int shakeLevel = cg_shake;
 

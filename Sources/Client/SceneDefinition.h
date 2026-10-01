@@ -51,6 +51,20 @@ namespace spades {
 			float saturation;
 			float radialBlur;
 
+			/**
+			 * The unit vector toward the sun, in map axes. While it is below the horizon
+			 * (`z >= 0`), the sun casts no light and no shadow, and the daylight falls
+			 * evenly on every face.
+			 */
+			Vector3 sunDirection;
+
+			/**
+			 * The factor the world's sun and ambient lighting, the fog and the sky are
+			 * drawn with, in `[0, 1]`. Dynamic lights are not affected. `1` is full
+			 * daylight.
+			 */
+			float daylight;
+
 			SceneDefinition() {
 				viewportLeft = viewportTop = 0;
 				viewportWidth = viewportHeight = 0;
@@ -71,6 +85,8 @@ namespace spades {
 				globalBlur = 0.0F;
 				saturation = 1.0F;
 				radialBlur = 0.0F;
+				sunDirection = MakeVector3(0, -1, -1).Normalize();
+				daylight = 1.0F;
 			}
 
 			Matrix4 ToOpenGLProjectionMatrix() const;
