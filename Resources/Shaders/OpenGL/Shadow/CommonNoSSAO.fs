@@ -20,9 +20,9 @@
 
 // Modified version of Common.fs; SSAO is removed to lower the texture stage pressure
 
-// The factor the sun's light is drawn with: the daylight while the sun is above the
-// horizon, and none below it. The sky's light is drawn at the daylight by the
-// radiosity evaluators.
+// The factor the sun's light is drawn with; at night there is none, and the sun casts
+// no light and no shadow. The sky's light is drawn at the daylight by the radiosity
+// evaluators.
 uniform float sunlight;
 
 float EvaluateMapShadow();

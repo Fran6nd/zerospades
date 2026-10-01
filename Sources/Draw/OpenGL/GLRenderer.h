@@ -182,8 +182,8 @@ namespace spades {
 			void SetFogColor(Vector3 v) override;
 			void SetFogDistance(float f) override { fogDistance = f; }
 
-			/** The factor the world's sun and sky lighting, the fog and the sky are drawn
-			 * with, in `[0, 1]`. */
+			/** The factor the world's lighting but the sun's, the fog and the sky are
+			 * drawn with, in `[0, 1]`. */
 			float GetDaylight() { return sceneDef.daylight; }
 
 			/** The Fog Colour as set: the colour of the fog and the sky in full daylight. */
