@@ -19,6 +19,7 @@
  */
 
 #include <atomic>
+#include <cmath>
 #include <cstdlib>
 
 #include "GLMapShadowRenderer.h"
@@ -168,54 +169,42 @@ namespace spades {
 
 			GLMapShadowRenderer* shadowmap = renderer.mapShadowRenderer;
 			uint32_t* bitmap = shadowmap->bitmap.data();
-			int centerX = ipos.x;
-			int centerY = ipos.y - ipos.z;
+			const Vector2 shear = shadowmap->GetShear();
+			const int centerX = static_cast<int>(std::floor(pos.x - shear.x * pos.z));
+			const int centerY = static_cast<int>(std::floor(pos.y - shear.y * pos.z));
 			const int yMask = h - 1;
 			const int pitch = w;
+
+			// A side face the sunlight meets faces back against the way it travels.
+			const Vector3 sideXNormal = MakeVector3(shear.x < 0.0F ? 1.0F : -1.0F, 0.0F, 0.0F);
+			const Vector3 sideYNormal = MakeVector3(0.0F, shear.y < 0.0F ? 1.0F : -1.0F, 0.0F);
 
 			for (int x = -Envelope; x <= Envelope; x++) {
 				uint32_t* column = bitmap + ((centerX + x) & (w - 1));
 				for (int y = -Envelope; y <= Envelope; y++) {
 					uint32_t pixel = column[pitch * ((centerY + y) & yMask)];
-					int depth = pixel >> 24;
+					float depth = static_cast<float>(pixel >> 24);
 
-					// shadowmap pixel's world coord
-					int wx = centerX + x;
-					int wy = centerY + y + depth;
-					int wz = depth;
+					// The face the texel's sunlight met: a top face at its depth, or a side
+					// face lit down to its depth, taken at its middle.
+					const bool isSide = (pixel & 0x80) != 0;
+					const bool isSideX = (pixel & 0x8000) != 0;
+					const float faceDepth = isSide ? depth - 0.5F : depth;
 
-					// if true, this is negative-y faced plane
-					// if false, this is negative-z faced plane
-					bool isSide = (pixel & 0x80) != 0;
-
-					// direction dependent process
 					Vector3 center; // center of face
-					Vector3 diff;   // pos - center
-					float diffDot;  // dot(diff, normal)
-					if (isSide) {
-						// normal cull
-						if (wy <= ipos.y)
-							continue;
+					center.x = static_cast<float>(centerX + x) + 0.5F + shear.x * faceDepth;
+					center.y = static_cast<float>(centerY + y) + 0.5F + shear.y * faceDepth;
+					center.z = faceDepth;
 
-						center.x = wx + 0.5F;
-						center.y = (float)wy;
-						center.z = wz - 0.5F;
+					const Vector3 normal =
+					  isSide ? (isSideX ? sideXNormal : sideYNormal) : MakeVector3(0, 0, -1);
 
-						diff = pos - center;
-						diffDot = -diff.y;
-					} else {
-						if (wz <= ipos.z)
-							continue;
+					Vector3 diff = pos - center;               // pos - center
+					float diffDot = Vector3::Dot(diff, normal); // dot(diff, normal)
 
-						center.x = wx + 0.5F;
-						center.y = wy + 0.5F;
-						center.z = (float)wz;
-
-						diff = pos - center;
-						diffDot = -diff.z;
-					}
-
-					SPAssert(diffDot >= 0.0F);
+					// normal cull
+					if (diffDot <= 0.0F)
+						continue;
 
 					float diffLen = diff.GetLength();
 					float invDiffLen = 1.0F / diffLen;
@@ -270,6 +259,10 @@ namespace spades {
 			Invalidate(x - Envelope, y - Envelope, z - Envelope, x + Envelope, y + Envelope,
 			           z + Envelope);
 		}
+
+		void GLRadiosityRenderer::InvalidateAll() { Invalidate(0, 0, 0, w - 1, h - 1, d - 1); }
+
+		bool GLRadiosityRenderer::IsUpdating() const { return dispatch && !dispatch->done.load(); }
 
 		void GLRadiosityRenderer::Invalidate(int minX, int minY, int minZ, int maxX, int maxY, int maxZ) {
 			SPADES_MARK_FUNCTION_DEBUG();

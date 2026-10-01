@@ -368,6 +368,16 @@ namespace spades {
 				smoothedFogColor = fogColor;
 		}
 
+		Vector3 GLRenderer::GetShadowSunDirection() {
+			return GLMapShadowRenderer::SunDirectionForShear(GetMapShadowShear());
+		}
+
+		Vector2 GLRenderer::GetMapShadowShear() {
+			if (mapShadowRenderer)
+				return mapShadowRenderer->GetShear();
+			return GLMapShadowRenderer::ShearForSun(GetSunDirection());
+		}
+
 		Vector3 GLRenderer::GetFogColorForSolidPass() {
 			return GetFullDaylightFogColorForSolidPass() * GetDaylight();
 		}

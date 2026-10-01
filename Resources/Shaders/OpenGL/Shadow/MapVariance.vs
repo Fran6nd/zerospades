@@ -20,9 +20,12 @@
 
 varying vec3 mapShadowCoord;
 
+// The map shadow's projection: a point falls on its texel `xy - mapShadowShear * z`.
+uniform vec2 mapShadowShear;
+
 void PrepareForMapShadow(vec3 vertexCoord, vec3 normal) {
 	mapShadowCoord = vertexCoord;
-	mapShadowCoord.y -= mapShadowCoord.z;
+	mapShadowCoord.xy -= mapShadowShear * mapShadowCoord.z;
 
 	// texture value is normalized unsigned integer
 	mapShadowCoord.z /= 255.0;

@@ -32,8 +32,13 @@ uniform vec3 viewOrigin;
 uniform vec3 sunlightScale;
 uniform vec3 ambientScale;
 uniform vec3 radiosityScale;
+// The sun's light; none while it is below the horizon.
+uniform float sunlight;
 uniform float fogDistance;
 uniform vec3 sunLightDirection;
+
+// The map shadow's projection: a point falls on its texel `xy - mapShadowShear * z`.
+uniform vec2 mapShadowShear;
 uniform mat4 viewProjectionMatrixInv;
 uniform vec2 ditherOffset;
 
@@ -45,7 +50,7 @@ varying vec4 viewcentricWorldPositionPartial;
  * This function is linear.
  */
 vec3 transformToShadow(vec3 v) {
-	v.y -= v.z;
+	v.xy -= mapShadowShear * v.z;
 	v *= vec3(1.0 / 512.0, 1.0 / 512.0, 1.0 / 255.0);
 	return v;
 }
@@ -188,9 +193,11 @@ void main() {
 	// ---------------------------------------------------------------------
 
 	// add gradient
-	float bright = dot(sunLightDirection, normalize(viewcentricWorldPosition.xyz));
-	sunlightFactorColor *= bright * 0.5 + 1.0;
-	ambientFactorColor *= bright * 0.5 + 1.0;
+	if (sunlight > 0.0) {
+		float bright = dot(sunLightDirection, normalize(viewcentricWorldPosition.xyz));
+		sunlightFactorColor *= bright * 0.5 + 1.0;
+		ambientFactorColor *= bright * 0.5 + 1.0;
+	}
 
 	// ---------------------------------------------------------------------
 

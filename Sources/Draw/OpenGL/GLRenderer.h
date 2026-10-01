@@ -189,6 +189,15 @@ namespace spades {
 			/** The unit vector toward the sun, in map axes. */
 			Vector3 GetSunDirection() { return sceneDef.sunDirection; }
 
+			/**
+			 * The unit vector toward the sun the shadows are cast from: that of the map
+			 * shadow's projection, which keeps the sun high enough for it to bake.
+			 */
+			Vector3 GetShadowSunDirection();
+
+			/** The map shadow's projection: a point falls on its texel `xy - shear * z`. */
+			Vector2 GetMapShadowShear();
+
 			/** `GetSunDirection` at the length of `(0, -1, -1)`, the vector the specular
 			 * terms of the lighting shaders were tuned with. */
 			Vector3 GetSunLightVector() { return sceneDef.sunDirection * kSqrt2; }

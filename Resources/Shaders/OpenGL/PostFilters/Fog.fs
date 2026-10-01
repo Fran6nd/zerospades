@@ -29,6 +29,9 @@ uniform sampler2D coarseShadowMapTexture;
 #endif
 uniform vec2 zNearFar;
 
+// The sun's light; none while it is below the horizon, where the fog is even.
+uniform float sunlight;
+
 uniform vec3 fogColor;
 uniform float fogDistance;
 uniform vec3 sunLightDirection;
@@ -109,9 +112,10 @@ void main() {
 	vec2 timePerVoxelAbs = abs(timePerVoxel);
 	vec2 timeToNextVoxel = (nextVoxelIndex2 - pos.xy) * timePerVoxel;
 
-	if (ceilTime <= 0.0) {
+	if (ceilTime <= 0.0 || sunlight <= 0.0) {
 		// camera is above ceil, and
-		// ray never goes below ceil
+		// ray never goes below ceil;
+		// or the sun is down, and casts no shafts
 		total = fogDensFunc(zMaxTime);
 	} else {
 #if USE_COARSE_SHADOWMAP
@@ -344,10 +348,12 @@ void main() {
 	total /= fogDensFunc(fogDistanceTime);
 
 	// add gradient
-	float bright = dot(sunLightDirection, normalize(viewDir));
-	total *= 0.8 + bright * 0.3;
-	bright = exp2(bright * 16.0 - 15.0);
-	total *= bright + 1.0;
+	if (sunlight > 0.0) {
+		float bright = dot(sunLightDirection, normalize(viewDir));
+		total *= 0.8 + bright * 0.3;
+		bright = exp2(bright * 16.0 - 15.0);
+		total *= bright + 1.0;
+	}
 
 	gl_FragColor = texture2D(colorTexture, texCoord);
 #if !LINEAR_FRAMEBUFFER

@@ -109,6 +109,12 @@ namespace spades {
 
 			void GameMapChanged(int x, int y, int z, client::GameMap *);
 
+			/** Marks the whole map to be evaluated again. */
+			void InvalidateAll();
+
+			/** Whether a worker is evaluating chunks, reading the map shadow as it does. */
+			bool IsUpdating() const;
+
 			void Update();
 
 			IGLDevice::UInteger GetTextureFlat() { return textureFlat; }
