@@ -199,10 +199,10 @@ namespace spades {
 				IntVector3 fogColor = world->GetFogColor();
 				renderer->SetFogColor(ConvertColorRGB(fogColor));
 
-				// Without a time of day the scene keeps its default, unchanging noon.
-				if (stmp::optional<float> minutes = activeNet->GetTimeOfDay()) {
-					def.sunDirection = GetSunDirection(*minutes);
-					def.daylight = GetDaylight(*minutes);
+				// Without a time of day the scene keeps its default, full daylight.
+				if (stmp::optional<TimeOfDay> timeOfDay = activeNet->GetTimeOfDay()) {
+					def.sunlight = GetSunlight(*timeOfDay);
+					def.daylight = GetDaylight(*timeOfDay);
 				}
 
 				int shakeLevel = cg_shake;

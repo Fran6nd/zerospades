@@ -202,9 +202,9 @@ namespace spades {
 			 * lighting shaders scale by the daylight themselves. */
 			Vector3 GetFullDaylightFogColorForSolidPass();
 
-			/** The factor the sun's light is drawn with: the daylight while the sun is
-			 * above the horizon, and none below it, where it casts no light or shadow. */
-			float GetSunlight() { return sceneDef.sunDirection.z < 0.0F ? GetDaylight() : 0.0F; }
+			/** The factor the sun's light is drawn with. At `0` the sun casts no light
+			 * and no shadow. */
+			float GetSunlight() { return sceneDef.sunlight; }
 
 			void StartScene(const client::SceneDefinition&) override;
 

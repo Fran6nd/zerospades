@@ -121,7 +121,7 @@ namespace spades {
 		};
 
 		/** The length of the Sky sub packet, counted from just after the sub packet id. */
-		constexpr std::size_t kDaytimeWeatherSkyBytes = 2 + 2 + 2; // time, speed, weather
+		constexpr std::size_t kDaytimeWeatherSkyBytes = 2 + 2 + 2; // time, reserved, weather
 
 		/** The player id that stands for the server: Player Limit reserves it, so no
 		 * player ever has it. */

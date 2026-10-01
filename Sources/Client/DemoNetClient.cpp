@@ -143,7 +143,6 @@ namespace spades {
 
 			// Process packets from the demo
 			demoPlayer->Update(dt, [this](const std::vector<char>& data) {
-				packetTime = demoPlayer->GetTime();
 				ProcessPacket(data);
 			});
 
@@ -165,7 +164,7 @@ namespace spades {
 
 			// A Sky needs no world and applies on arrival, whatever the stage.
 			if (reader.GetType() == PacketTypeDaytimeWeather) {
-				ApplyDaytimeWeatherPacket(reader, daytime, packetTime);
+				ApplyDaytimeWeatherPacket(reader, timeOfDay);
 				return;
 			}
 
@@ -1001,12 +1000,6 @@ namespace spades {
 			return statusString;
 		}
 
-		stmp::optional<float> DemoNetClient::GetTimeOfDay() {
-			if (!daytime.IsSet() || !demoPlayer)
-				return {};
-			return daytime.GetMinutes(demoPlayer->GetTime());
-		}
-
 		void DemoNetClient::ResetWorldForReplay() {
 			if (!initialMap) return;
 
@@ -1018,7 +1011,7 @@ namespace spades {
 			// The replay sends the beams and the Sky in force again, so none can leak
 			// back from later in the recording.
 			flashlightBeams.Clear();
-			daytime.Clear();
+			timeOfDay.reset();
 
 			// Reset all per-player tracking state
 			recordedLocalPlayerId = -1;
@@ -1041,11 +1034,8 @@ namespace spades {
 			}
 
 			try {
-				float replayTime = 0.0F;
 				demoPlayer->ReplayUpTo(targetTime,
-					[this, &replayTime](const std::vector<char>& data, float dt) {
-						replayTime += dt;
-						packetTime = replayTime;
+					[this](const std::vector<char>& data, float dt) {
 						ProcessPacket(data);
 						// Age world physics in fixed steps so grenade fuses, falling
 						// blocks, etc. resolve at their correct demo timestamps under

@@ -25,6 +25,7 @@
 #include <memory>
 #include <string>
 
+#include "DaytimeWeather.h"
 #include "Flashlight.h"
 #include "GameConstants.h"
 #include "Player.h"
@@ -112,9 +113,8 @@ namespace spades {
 			virtual const FlashlightBeams& GetFlashlightBeams() = 0;
 
 			// ── Daytime and Weather extension ───────────────────────────────
-			/** The time of day the server set, in minutes since midnight, or nothing
-			 * when it sets none. */
-			virtual stmp::optional<float> GetTimeOfDay() = 0;
+			/** The time of day the server set, or nothing when it sets none. */
+			virtual stmp::optional<TimeOfDay> GetTimeOfDay() = 0;
 
 		};
 

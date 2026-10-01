@@ -111,9 +111,9 @@ namespace spades {
 
 			FlashlightBeams flashlightBeams;
 
-			DaytimeClock daytime;
-			/** The real time `daytime` is read with. */
-			Stopwatch daytimeStopwatch;
+			/** The time of day of the last Sky. It belongs to the connection, not to a
+			 * world, so it lasts through Map Start. */
+			stmp::optional<TimeOfDay> timeOfDay;
 			/** StateData and every packet after it, held while the first Sky is owed. */
 			std::vector<std::vector<char>> packetsAwaitingSky;
 
@@ -179,7 +179,7 @@ namespace spades {
 			 * *Daytime and Weather* and has sent none yet.
 			 */
 			bool IsAwaitingSky() const {
-				return HasExtension(ExtensionTypeDaytimeWeather) && !daytime.IsSet();
+				return HasExtension(ExtensionTypeDaytimeWeather) && !timeOfDay;
 			}
 
 			/** Enters the world held back for the first Sky, and handles what followed it. */
@@ -265,7 +265,7 @@ namespace spades {
 			bool IsFlashlightSynchronized() const { return HasExtension(ExtensionTypeFlashlight); }
 			const FlashlightBeams& GetFlashlightBeams() override { return flashlightBeams; }
 
-			stmp::optional<float> GetTimeOfDay() override;
+			stmp::optional<TimeOfDay> GetTimeOfDay() override { return timeOfDay; }
 
 			double GetDownlinkBps() override { return bandwidthMonitor->GetDownlinkBps(); }
 			double GetUplinkBps() override { return bandwidthMonitor->GetUplinkBps(); }

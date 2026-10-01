@@ -298,7 +298,7 @@ namespace spades {
 
 			savedPackets.clear();
 			packetsAwaitingSky.clear();
-			daytime.Clear();
+			timeOfDay.reset();
 			customKickReasonString.clear();
 
 			peer = enet_host_connect(host, &addr, 1, protocolVersion);
@@ -851,16 +851,10 @@ namespace spades {
 				return;
 			}
 
-			ApplyDaytimeWeatherPacket(r, daytime, daytimeStopwatch.GetTime());
+			ApplyDaytimeWeatherPacket(r, timeOfDay);
 
 			if (!packetsAwaitingSky.empty() && !IsAwaitingSky())
 				ReleasePacketsAwaitingSky();
-		}
-
-		stmp::optional<float> NetClient::GetTimeOfDay() {
-			if (!daytime.IsSet())
-				return {};
-			return daytime.GetMinutes(daytimeStopwatch.GetTime());
 		}
 
 		void NetClient::HandleGamePacket(spades::client::NetPacketReader& r) {
@@ -2247,12 +2241,10 @@ namespace spades {
 		void NetClient::WriteInitialDaytimeWeatherDemoState() {
 			SPADES_MARK_FUNCTION();
 
-			if (!daytime.IsSet())
+			if (!timeOfDay)
 				return;
 
-			// The time of day as of now, at the speed in force.
-			const int minutes = static_cast<int>(daytime.GetMinutes(daytimeStopwatch.GetTime()));
-			std::vector<char> data = EncodeDaytimeWeatherSky(minutes, daytime.GetSpeed());
+			std::vector<char> data = EncodeDaytimeWeatherSky(*timeOfDay);
 			demoRecorder->RecordPacket(data.data(), data.size());
 		}
 

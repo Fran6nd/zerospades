@@ -75,10 +75,7 @@ namespace spades {
 
 			FlashlightBeams flashlightBeams;
 
-			DaytimeClock daytime;
-			/** The demo time the packet being processed was recorded at, which a Sky in
-			 * it is set as of. */
-			float packetTime = 0.0F;
+			stmp::optional<TimeOfDay> timeOfDay;
 
 			stmp::optional<World&> GetWorld();
 			Player& GetPlayer(int);
@@ -162,7 +159,7 @@ namespace spades {
 
 			const FlashlightBeams& GetFlashlightBeams() override { return flashlightBeams; }
 
-			stmp::optional<float> GetTimeOfDay() override;
+			stmp::optional<TimeOfDay> GetTimeOfDay() override { return timeOfDay; }
 
 		};
 	} // namespace client
