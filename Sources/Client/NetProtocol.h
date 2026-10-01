@@ -83,6 +83,7 @@ namespace spades {
 			PacketTypeDamageMarker = 96, // S2C, extension id 32 (`64 + extension id`)
 			PacketTypeTeamplay = 112, // S2C2P, extension id 48 (`64 + extension id`)
 			PacketTypeFlashlight = 114, // S2C2P, extension id 0x32 (`64 + extension id`)
+			PacketTypeDaytimeWeather = 115, // S2C, extension id 0x33 (`64 + extension id`)
 		};
 
 		/** Protocol extension ids, as negotiated through `PacketTypeExtensionInfo`. */
@@ -91,6 +92,7 @@ namespace spades {
 			ExtensionTypeDamageMarkers = 32,
 			ExtensionTypeTeamplay = 48,
 			ExtensionTypeFlashlight = 0x32,
+			ExtensionTypeDaytimeWeather = 0x33,
 			ExtensionTypePlayerLimit = 192,
 			ExtensionTypeMessageTypes = 193,
 			ExtensionTypeKickReason = 194,
@@ -126,6 +128,14 @@ namespace spades {
 		constexpr std::size_t kFlashlightLightBytes = 1 + 1;          // player, state
 		constexpr std::size_t kFlashlightConfigBytes =
 		  1 + 1 + 1 + 3 + 1; // player, reach, cone, rgb, flicker
+
+		/** Sub packet ids of `PacketTypeDaytimeWeather`. */
+		enum DaytimeWeatherSubPacketType : std::uint8_t {
+			DaytimeWeatherSubSky = 0, // S2C
+		};
+
+		/** The length of the Sky sub packet, counted from just after the sub packet id. */
+		constexpr std::size_t kDaytimeWeatherSkyBytes = 2 + 2 + 2; // time, reserved, weather
 
 		/** The player id that stands for the server: Player Limit reserves it, so no
 		 * player ever has it. */
