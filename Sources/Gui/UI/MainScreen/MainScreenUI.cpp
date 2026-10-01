@@ -61,8 +61,6 @@ namespace spades {
 
 			Init();
 
-			UpdateChecker::Get().Start();
-
 			// Let the new player choose their IGN
 			std::string nameStr = cg_playerName;
 			if (nameStr != "" && nameStr != "Deuce")
@@ -196,6 +194,10 @@ namespace spades {
 			Handle<client::IImage> img = renderer->RegisterImage("Gfx/Title/Logo.png");
 			ui::SetColorNP(*renderer, MakeVector4(1.0F, 1.0F, 1.0F, 1.0F));
 			renderer->DrawImage(img, MakeVector2((sw - img->GetWidth()) * 0.5F, 64.0F));
+
+			// Started from the frame rather than once at construction, so enabling the
+			// check in Setup takes effect without a restart; it runs once per process.
+			UpdateChecker::Get().Start();
 
 			// The check answers asynchronously; announce a new release once, as soon
 			// as the menu is free of other dialogs.
