@@ -784,6 +784,9 @@ namespace spades {
 			void PlayerJoinedTeam(Player&);
 			void PlayerSpawned(Player&);
 
+			/** Called after a player's flashlight was switched, to give the feedback. */
+			void PlayerSwitchedFlashlight(Player&);
+
 			// IWorldListener begin
 			void PlayerObjectSet(int) override;
 			void PlayerMadeFootstep(Player&) override;

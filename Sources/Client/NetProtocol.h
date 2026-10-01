@@ -22,6 +22,7 @@
 
 #pragma once
 
+#include <cstddef>
 #include <cstdint>
 #include <string>
 #include <vector>
@@ -79,7 +80,8 @@ namespace spades {
 			PacketTypeVersionSend = 34,    // C2S
 			PacketTypeExtensionInfo = 60,
 			PacketTypePlayerProperties = 64,
-			PacketTypeTeamplay = 112, // S2C2P, extension id 48 (`64 + extension id`)
+			PacketTypeTeamplay = 112,   // S2C2P, extension id 48 (`64 + extension id`)
+			PacketTypeFlashlight = 114, // S2C2P, extension id 0x32 (`64 + extension id`)
 		};
 
 		/** Sub packet ids of `PacketTypeTeamplay`. Every extension packet
@@ -99,6 +101,18 @@ namespace spades {
 		  1 + 12 + 4 + 1 + 3 + 1; // player, position, duration, surfaces, colour, message
 		constexpr std::size_t kTeamplayMarkBytes =
 		  1 + 4 + 1 + 1 + 3 + 1; // player, duration, surfaces, flags, colour, message
+
+		/** Sub packet ids of `PacketTypeFlashlight`. */
+		enum FlashlightSubPacketType : std::uint8_t {
+			FlashlightSubLight = 0,       // C2S2P
+			FlashlightSubLightState = 1,  // S2C
+			FlashlightSubLightConfig = 2, // S2C
+		};
+
+		/** The length of each fixed-size Flashlight sub packet, counted from just after
+		 * the sub packet id. Light State runs to the end of the packet. */
+		constexpr std::size_t kFlashlightLightBytes = 1 + 1;          // player, state
+		constexpr std::size_t kFlashlightConfigBytes = 1 + 1 + 1 + 3; // player, reach, cone, rgb
 
 		/** The player id that stands for the server: Player Limit reserves it, so no
 		 * player ever has it. */

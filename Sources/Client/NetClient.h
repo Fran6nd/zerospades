@@ -53,6 +53,7 @@ namespace spades {
 		enum NetExtensionType {
 			ExtensionTypePlayerProperties = 0,
 			ExtensionTypeTeamplay = 48,
+			ExtensionTypeFlashlight = 0x32,
 			ExtensionTypePlayerLimit = 192,
 			ExtensionTypeMessageTypes = 193,
 			ExtensionTypeKickReason = 194,
@@ -100,9 +101,12 @@ namespace spades {
 			std::unordered_map<uint8_t, uint8_t> implementedExtensions{
 			  {ExtensionTypePlayerProperties, 1},
 			  {ExtensionTypeTeamplay, 1},
+			  {ExtensionTypeFlashlight, 1},
 			  {ExtensionTypePlayerLimit, 1},
 			  {ExtensionTypeMessageTypes, 1},
 			  {ExtensionTypeKickReason, 1}};
+
+			FlashlightBeams flashlightBeams;
 
 			class BandwidthMonitor {
 				ENetHost* host;
@@ -136,6 +140,7 @@ namespace spades {
 			bool HandleHandshakePackets(NetPacketReader&);
 			void HandleExtensionPacket(NetPacketReader&);
 			void HandleTeamplayPacket(NetPacketReader&);
+			void HandleFlashlightPacket(NetPacketReader&);
 
 			/** Whether the server negotiated the given extension during the handshake. */
 			bool HasExtension(NetExtensionType type) const {
@@ -161,6 +166,10 @@ namespace spades {
 			/** Writes the Teamplay Config and the ESP marks in force, which the server sent
 			 * before the recording started. Nothing when the extension is not negotiated. */
 			void WriteInitialTeamplayDemoState();
+
+			/** Writes the flashlights in force and the beams the server configured, which
+			 * it sent before the recording started. Nothing without the extension. */
+			void WriteInitialFlashlightDemoState();
 
 			void SendMapCached();
 			void SendVersion();
@@ -219,7 +228,13 @@ namespace spades {
 			void SendTeamChange(int team) override;
 			void SendWeaponChange(WeaponType) override;
 			void SendTeamplayPing(Vector3 position, const std::string& reason) override;
+			void SendFlashlight(bool on) override;
 			void SendHandShakeValid(int challenge);
+
+			/** Whether the server switches every flashlight, the local player's included,
+			 * using the *Flashlight* extension. */
+			bool IsFlashlightSynchronized() const { return HasExtension(ExtensionTypeFlashlight); }
+			const FlashlightBeams& GetFlashlightBeams() override { return flashlightBeams; }
 
 			double GetDownlinkBps() override { return bandwidthMonitor->GetDownlinkBps(); }
 			double GetUplinkBps() override { return bandwidthMonitor->GetUplinkBps(); }

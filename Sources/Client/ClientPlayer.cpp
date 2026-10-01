@@ -74,6 +74,11 @@ SPADES_SETTING(cg_pngScope);
 namespace spades {
 	namespace client {
 
+		namespace {
+			/** The widest cone the Flashlight extension allows, in radians. */
+			const float kMaxFlashlightConeAngle = DEG2RAD(179.0F);
+		} // namespace
+
 		class SandboxedRenderer : public IRenderer {
 			Handle<IRenderer> base;
 			AABB3 clipBox;
@@ -701,6 +706,10 @@ namespace spades {
 			if (!p.IsFlashlightOn())
 				return;
 
+			const FlashlightBeam& beam = client.activeNet->GetFlashlightBeams().Resolve(p.GetId());
+			if (!beam.Emits())
+				return;
+
 			// Fade in when the flashlight is switched on.
 			float brightness = p.GetWorld().GetTime() - p.GetFlashlightOnTime();
 			brightness = 1.0F - expf(-brightness * 5.0F);
@@ -709,9 +718,9 @@ namespace spades {
 			DynamicLightParam light;
 			light.type = DynamicLightTypeSpotlight;
 			light.origin = lightOrigin;
-			light.radius = 60.0F;
-			light.color = MakeVector3(1.0F, 0.7F, 0.5F) * brightness;
-			light.spotAngle = DEG2RAD(90);
+			light.radius = beam.GetReach();
+			light.color = beam.GetColor() * brightness;
+			light.spotAngle = std::min(beam.GetConeAngle(), kMaxFlashlightConeAngle);
 			light.spotAxis = GetFlashlightAxes();
 			Handle<IImage> img = renderer.RegisterImage("Gfx/Spotlight.jpg");
 			light.image = img.GetPointerOrNull();
