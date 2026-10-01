@@ -142,6 +142,9 @@ namespace spades {
 
 			template <SWFeatureLevel> void ApplyDynamicLight(const DynamicLight &);
 
+			/** Dims what is drawn so far, the world and the sky, by the daylight. */
+			void ApplyDaylight();
+
 		protected:
 			~SWRenderer();
 
@@ -165,7 +168,9 @@ namespace spades {
 			void SetFogColor(Vector3 v) override;
 			void SetFogDistance(float f) override { fogDistance = f; }
 
-			Vector3 GetFogColor() { return fogColor; }
+			/** The colour the fog and the sky are drawn in: the Fog Colour times the
+			 * daylight. */
+			Vector3 GetFogColor() { return fogColor * sceneDef.daylight; }
 			float GetFogDistance() { return fogDistance; }
 
 			void StartScene(const client::SceneDefinition &) override;

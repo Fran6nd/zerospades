@@ -257,9 +257,12 @@ namespace spades {
 			lightCenter.y = Vector3::Dot(diff, sceneDef.viewAxis[1]);
 			lightCenter.z = Vector3::Dot(diff, sceneDef.viewAxis[2]);
 
-			int lightR = ToFixedFactor8(light.param.color.x);
-			int lightG = ToFixedFactor8(light.param.color.y);
-			int lightB = ToFixedFactor8(light.param.color.z);
+			// Dynamic lights are not dimmed, but the colour they light was: undo that
+			// for their share, so a pixel ends up as `albedo * (daylight + light)`.
+			const float daylight = sceneDef.daylight;
+			int lightR = static_cast<int>(ToFixedFactor8(light.param.color.x) / daylight + 0.5F);
+			int lightG = static_cast<int>(ToFixedFactor8(light.param.color.y) / daylight + 0.5F);
+			int lightB = static_cast<int>(ToFixedFactor8(light.param.color.z) / daylight + 0.5F);
 
 			float invRadius2 = 1.0F / (light.param.radius * light.param.radius);
 
@@ -342,6 +345,27 @@ namespace spades {
 			});
 		}
 
+		void SWRenderer::ApplyDaylight() {
+			const int factor = ToFixedFactor8(sceneDef.daylight);
+			if (factor >= 256)
+				return;
+
+			const int fw = this->fb->GetWidth();
+			const int fh = this->fb->GetHeight();
+			const uint32_t factor32 = static_cast<uint32_t>(factor);
+
+			InvokeParallel2([&](unsigned int threadId, unsigned int numThreads) {
+				auto* px = this->fb->GetPixels() + fw * (fh * threadId / numThreads);
+				auto* end = this->fb->GetPixels() + fw * (fh * (threadId + 1) / numThreads);
+				for (; px != end; px++) {
+					uint32_t color = *px;
+					uint32_t v1 = ((color & 0xFF00FF) * factor32) & 0xFF00FF00;
+					uint32_t v2 = ((color & 0xFF00) * factor32) & 0xFF0000;
+					*px = (v1 | v2) >> 8;
+				}
+			});
+		}
+
 		template <SWFeatureLevel level> void SWRenderer::ApplyFog() {
 			int fw = this->fb->GetWidth();
 			int fh = this->fb->GetHeight();
@@ -352,6 +376,7 @@ namespace spades {
 			float dvx = -fovX * 2.0F / static_cast<float>(fw / 4);
 			float dvy = -fovY * 2.0F / static_cast<float>(fh / 4);
 
+			Vector3 fogColor = GetFogColor();
 			int fogR = ToFixed8(fogColor.x);
 			int fogG = ToFixed8(fogColor.y);
 			int fogB = ToFixed8(fogColor.z);
@@ -432,6 +457,7 @@ namespace spades {
 			float dvx = -fovX * 2.0F / static_cast<float>(fw / 4);
 			float dvy = -fovY * 2.0F / static_cast<float>(fh / 4);
 
+			Vector3 fogColor = GetFogColor();
 			int fogR = ToFixed8(fogColor.x);
 			int fogG = ToFixed8(fogColor.y);
 			int fogB = ToFixed8(fogColor.z);
@@ -679,6 +705,15 @@ namespace spades {
 			spr.radius = radius;
 			spr.rotation = rotation;
 			spr.color = drawColorAlphaPremultiplied;
+
+			// A scattering sprite reflects the world's light, which the daylight dims;
+			// an emissive one keeps its own.
+			Vector4& c = spr.color;
+			if (!(c.x > c.w || c.y > c.w || c.z > c.w)) {
+				c.x *= sceneDef.daylight;
+				c.y *= sceneDef.daylight;
+				c.z *= sceneDef.daylight;
+			}
 		}
 
 		void SWRenderer::AddLongSprite(client::IImage&, spades::Vector3 p1, spades::Vector3 p2,
@@ -706,7 +741,7 @@ namespace spades {
 			EnsureInitialized();
 			EnsureSceneStarted();
 
-			// clear scene
+			// clear scene; the sky is dimmed with the world below
 			auto* px = this->fb->GetPixels();
 			std::fill(px, px + fb->GetWidth() * fb->GetHeight(),
 				ConvertColor32(MakeVector4(fogColor.x, fogColor.y, fogColor.z, 1.0F)));
@@ -724,6 +759,8 @@ namespace spades {
 				for (const auto& m : models)
 					modelRenderer->Render(*m.model, m.param);
 				models.clear();
+
+				ApplyDaylight();
 
 				// deferred lighting
 				for (const auto& light : lights)

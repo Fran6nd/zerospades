@@ -63,7 +63,9 @@ namespace spades {
 			// evaluate brightness for each normals
 			uint8_t brights[3 * 3 * 3 + 1];
 			{
-				auto lightVec = MakeVector3(0.f, -0.707f, -0.707f);
+				// Below the horizon the sun lights nothing, and every face is lit alike.
+				const Vector3 sun = r->sceneDef.sunDirection;
+				auto lightVec = sun.z < 0.0F ? sun : MakeVector3(0.f, 0.f, 0.f);
 				float dot1 = Vector3::Dot(axis1, lightVec) * fastRSqrt(axis1.GetSquaredLength());
 				float dot2 = Vector3::Dot(axis2, lightVec) * fastRSqrt(axis2.GetSquaredLength());
 				float dot3 = Vector3::Dot(axis3, lightVec) * fastRSqrt(axis3.GetSquaredLength());
