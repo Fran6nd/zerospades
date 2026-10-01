@@ -52,8 +52,8 @@ namespace spades {
 		 * newer ZeroSpades has been published. It only reports; it never downloads
 		 * or installs anything.
 		 *
-		 * The check is process-wide: the main screen and the in-game menu read the
-		 * same result, so a notice seen in one is consistent with the other.
+		 * The check is process-wide, so the main screen keeps its result when it is
+		 * rebuilt (resize, return from a game) instead of asking again.
 		 */
 		class UpdateChecker {
 		public:

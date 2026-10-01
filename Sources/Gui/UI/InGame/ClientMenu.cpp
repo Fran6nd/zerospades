@@ -18,14 +18,11 @@
 
  */
 
-#include <algorithm>
-
 #include "ClientMenu.h"
 #include <Client/ClientUI.h>
 #include <Client/ClientUIHelper.h>
 #include <Client/Fonts.h>
 #include <Core/Strings.h>
-#include <Gui/UI/Components/UpdateNotice.h>
 #include <Gui/UI/Framework/UIManager.h>
 #include <Gui/UI/Widgets/Button.h>
 #include <Gui/UI/Widgets/Label.h>
@@ -35,7 +32,6 @@ namespace spades {
 		using gui::PreferenceView;
 		using gui::PreferenceViewOptions;
 		using gui::PreferenceViewPersistedState;
-		using gui::UpdateNotice;
 		using gui::ui::Button;
 		using gui::ui::Label;
 		using gui::ui::UIElement;
@@ -106,18 +102,6 @@ namespace spades {
 				escHint->SetBounds(AABB2(winX - 8.0F, (winY + winH + 20.0F) - 8.0F, 200.0F, 20.0F));
 				AddChild(escHint.GetPointerOrNull());
 				this->escHint = escHint.GetPointerOrNull();
-			}
-
-			// Draws nothing unless a newer release is out.
-			{
-				float noticeW = std::min(sw - 16.0F, 640.0F);
-				// Leaves the game and quits, so the update can be installed.
-				Handle<UpdateNotice> notice = Handle<UpdateNotice>::New(manager, [this] {
-					this->ui->shouldQuitApplication = true;
-					this->ui->shouldExit = true;
-				});
-				notice->SetBounds(AABB2((sw - noticeW) * 0.5F, sh - 60.0F, noticeW, 30.0F));
-				AddChild(notice.GetPointerOrNull());
 			}
 		}
 
