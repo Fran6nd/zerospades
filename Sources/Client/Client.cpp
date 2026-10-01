@@ -117,7 +117,6 @@ namespace spades {
 			  scoreboardVisible(false),
 			  netgraphVisible(false),
 			  hudVisible(true),
-			  flashlightOn(false),
 			  isChristmasOn(false),
 			  lastSnowDropTime(0.0F),
 			  hotBarIconState(0.0F),
@@ -235,7 +234,6 @@ namespace spades {
 			aimingDownSight = false;
 			reloadKeyPressed = false;
 			scoreboardVisible = false;
-			flashlightOn = false;
 			debugHitTestZoom = false;
 			spectatorZoom = false;
 			largeMapView->SetZoom(false);

@@ -320,8 +320,6 @@ namespace spades {
 			bool scoreboardVisible;
 			bool netgraphVisible;
 			bool hudVisible;
-			bool flashlightOn;
-			float flashlightOnTime;
 
 			struct GrenadeTracer {
 				std::vector<Vector3> positions;
