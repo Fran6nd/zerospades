@@ -94,7 +94,7 @@ namespace spades {
 
 			demoPlayer.reset(new DemoPlayer());
 
-			const int slots = GameProperties::kMaxPlayerSlots;
+			const int slots = NumPlayerSlots;
 			savedPlayerPos.resize(slots);
 			savedPlayerFront.resize(slots);
 			savedPlayerTeam.resize(slots);

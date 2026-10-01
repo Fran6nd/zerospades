@@ -250,7 +250,7 @@ namespace spades {
 			lastPlayerInput = 0;
 			lastWeaponInput = 0;
 
-			const int slots = 256;
+			const int slots = NumPlayerSlots;
 			savedPlayerPos.resize(slots);
 			savedPlayerFront.resize(slots);
 			savedPlayerTeam.resize(slots);
@@ -684,7 +684,7 @@ namespace spades {
 					// before sending the map). Peek so non-kick chat falls through with
 					// an untouched reader cursor.
 					if (r.GetNumRemainingBytes() >= 2 &&
-						r.Peek(0) == 255 && r.Peek(1) == ChatTypeSystem) {
+						r.Peek(0) == kServerPlayerId && r.Peek(1) == ChatTypeSystem) {
 						r.ReadByte(); // playerId
 						r.ReadByte(); // chat type
 						CaptureKickReason(r);
@@ -1832,7 +1832,7 @@ namespace spades {
 			// The Player ID is ignored in this direction; the server fills it in
 			// authoritatively. Sent as 255 so a server reading it sees "unset" rather
 			// than a plausible-looking impersonation of some other player.
-			w.WriteByte((uint8_t)Teamplay::kServerPlayerId);
+			w.WriteByte((uint8_t)kServerPlayerId);
 
 			w.WriteVector3(position);
 
