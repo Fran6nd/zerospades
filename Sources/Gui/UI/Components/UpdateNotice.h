@@ -33,14 +33,20 @@ namespace spades {
 		 * It stays in the tree from the start and follows `UpdateChecker` on its own:
 		 * until an update is known it draws nothing and ignores the mouse, so owners
 		 * add it once and never have to poll the check themselves.
+		 *
+		 * With `showUpToDate`, a confirmed up-to-date check is shown as a small,
+		 * non-interactive mark at the right end of the strip.
 		 */
 		class UpdateNotice : public ui::ButtonBase {
+			const bool showUpToDate;
+			bool upToDate = false;
 			std::string releaseUrl;
 
 			void Refresh();
+			void RenderUpToDate();
 
 		public:
-			UpdateNotice(ui::UIManager* manager);
+			UpdateNotice(ui::UIManager* manager, bool showUpToDate = false);
 
 			void OnActivated() override;
 			void Render() override;

@@ -35,6 +35,12 @@ namespace spades {
 			// Warm accent so the notice reads apart from the grey menu chrome.
 			const Vector3 kAccent = MakeVector3(1.0F, 0.72F, 0.2F);
 
+			// Quiet confirmation colour; it should not compete with the menu.
+			const Vector4 kUpToDateColor = MakeVector4(0.45F, 0.9F, 0.45F, 0.85F);
+			constexpr float kCheckMarkSize = 10.0F;
+			constexpr float kCheckMarkThickness = 2.0F;
+			constexpr float kCheckMarkGap = 6.0F;
+
 			constexpr float kPromptHeight = 170.0F;
 
 			void OpenReleasePage(const std::string& url) {
@@ -45,7 +51,8 @@ namespace spades {
 
 		// -- UpdateNotice --
 
-		UpdateNotice::UpdateNotice(ui::UIManager* manager) : ButtonBase(manager) {
+		UpdateNotice::UpdateNotice(ui::UIManager* manager, bool showUpToDate)
+		    : ButtonBase(manager), showUpToDate(showUpToDate) {
 			isMouseInteractive = false;
 			Refresh();
 		}
@@ -56,6 +63,7 @@ namespace spades {
 				return;
 
 			UpdateChecker::Result result = UpdateChecker::Get().GetResult();
+			upToDate = result.state == UpdateChecker::State::UpToDate;
 			if (result.state != UpdateChecker::State::UpdateAvailable)
 				return;
 
@@ -73,10 +81,42 @@ namespace spades {
 			ButtonBase::OnActivated();
 		}
 
+		void UpdateNotice::RenderUpToDate() {
+			client::IFont* font = GetFont();
+			if (!font)
+				return;
+
+			client::IRenderer& r = GetManager().GetRenderer();
+			Vector2 pos = GetScreenPosition();
+
+			std::string text =
+			  _Tr("MainScreen", "Up to date ({0})", ReleaseVersion::Current().ToString());
+			Vector2 txtSize = font->Measure(text);
+			Vector2 txtPos =
+			  MakeVector2(pos.x + size.x - txtSize.x, pos.y + (size.y - txtSize.y) * 0.5F);
+			font->DrawShadow(text, txtPos, 1.0F, kUpToDateColor,
+			                 MakeVector4(0.0F, 0.0F, 0.0F, 0.4F));
+
+			// A check mark drawn as two strokes, so it does not depend on the font
+			// carrying a check glyph.
+			const float s = kCheckMarkSize;
+			const float x = txtPos.x - kCheckMarkGap - s;
+			const float y = pos.y + (size.y - s) * 0.5F;
+			const Vector2 start = MakeVector2(x, y + s * 0.55F);
+			const Vector2 corner = MakeVector2(x + s * 0.38F, y + s * 0.9F);
+			const Vector2 end = MakeVector2(x + s, y + s * 0.1F);
+			ui::SetColorNP(r, kUpToDateColor);
+			r.DrawLine(start, corner, kCheckMarkThickness);
+			r.DrawLine(corner, end, kCheckMarkThickness);
+		}
+
 		void UpdateNotice::Render() {
 			Refresh();
-			if (!isMouseInteractive)
+			if (!isMouseInteractive) {
+				if (showUpToDate && upToDate)
+					RenderUpToDate();
 				return;
+			}
 
 			client::IRenderer& r = GetManager().GetRenderer();
 			Vector2 pos = GetScreenPosition();
