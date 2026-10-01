@@ -28,6 +28,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "DaytimeWeather.h"
 #include "DemoRecorder.h"
 #include "GameConstants.h"
 #include "INetClient.h"
@@ -54,6 +55,7 @@ namespace spades {
 			ExtensionTypePlayerProperties = 0,
 			ExtensionTypeTeamplay = 48,
 			ExtensionTypeFlashlight = 0x32,
+			ExtensionTypeDaytimeWeather = 0x33,
 			ExtensionTypePlayerLimit = 192,
 			ExtensionTypeMessageTypes = 193,
 			ExtensionTypeKickReason = 194,
@@ -102,11 +104,18 @@ namespace spades {
 			  {ExtensionTypePlayerProperties, 1},
 			  {ExtensionTypeTeamplay, 1},
 			  {ExtensionTypeFlashlight, 1},
+			  {ExtensionTypeDaytimeWeather, 1},
 			  {ExtensionTypePlayerLimit, 1},
 			  {ExtensionTypeMessageTypes, 1},
 			  {ExtensionTypeKickReason, 1}};
 
 			FlashlightBeams flashlightBeams;
+
+			DaytimeClock daytime;
+			/** The real time `daytime` is read with. */
+			Stopwatch daytimeStopwatch;
+			/** StateData and every packet after it, held while the first Sky is owed. */
+			std::vector<std::vector<char>> packetsAwaitingSky;
 
 			class BandwidthMonitor {
 				ENetHost* host;
@@ -141,6 +150,7 @@ namespace spades {
 			void HandleExtensionPacket(NetPacketReader&);
 			void HandleTeamplayPacket(NetPacketReader&);
 			void HandleFlashlightPacket(NetPacketReader&);
+			void HandleDaytimeWeatherPacket(NetPacketReader&);
 
 			/** Whether the server negotiated the given extension during the handshake. */
 			bool HasExtension(NetExtensionType type) const {
@@ -160,6 +170,21 @@ namespace spades {
 
 			void MapLoaded();
 
+			/** Enters the world the map transfer ended with, `stateData` being the
+			 * StateData that ended it. */
+			void FinishMapLoad(NetPacketReader& stateData);
+
+			/**
+			 * Whether the world has to wait for the first Sky: the server negotiated
+			 * *Daytime and Weather* and has sent none yet.
+			 */
+			bool IsAwaitingSky() const {
+				return HasExtension(ExtensionTypeDaytimeWeather) && !daytime.IsSet();
+			}
+
+			/** Enters the world held back for the first Sky, and handles what followed it. */
+			void ReleasePacketsAwaitingSky();
+
 			/** Writes the initial game state to the demo recorder (map, players, etc.) */
 			void WriteInitialDemoState();
 
@@ -170,6 +195,10 @@ namespace spades {
 			/** Writes the flashlights in force and the beams the server configured, which
 			 * it sent before the recording started. Nothing without the extension. */
 			void WriteInitialFlashlightDemoState();
+
+			/** Writes the Sky in force, which the server sent before the recording
+			 * started. Nothing without the extension. */
+			void WriteInitialDaytimeWeatherDemoState();
 
 			void SendMapCached();
 			void SendVersion();
@@ -235,6 +264,8 @@ namespace spades {
 			 * using the *Flashlight* extension. */
 			bool IsFlashlightSynchronized() const { return HasExtension(ExtensionTypeFlashlight); }
 			const FlashlightBeams& GetFlashlightBeams() override { return flashlightBeams; }
+
+			stmp::optional<float> GetTimeOfDay() override;
 
 			double GetDownlinkBps() override { return bandwidthMonitor->GetDownlinkBps(); }
 			double GetUplinkBps() override { return bandwidthMonitor->GetUplinkBps(); }

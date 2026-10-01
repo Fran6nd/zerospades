@@ -25,6 +25,7 @@
 #include <string>
 #include <vector>
 
+#include "DaytimeWeather.h"
 #include "DemoPlayer.h"
 #include "GameConstants.h"
 #include "GameMap.h"
@@ -73,6 +74,11 @@ namespace spades {
 			bool seekingMode;
 
 			FlashlightBeams flashlightBeams;
+
+			DaytimeClock daytime;
+			/** The demo time the packet being processed was recorded at, which a Sky in
+			 * it is set as of. */
+			float packetTime = 0.0F;
 
 			stmp::optional<World&> GetWorld();
 			Player& GetPlayer(int);
@@ -155,6 +161,8 @@ namespace spades {
 			void SendFlashlight(bool) override {}
 
 			const FlashlightBeams& GetFlashlightBeams() override { return flashlightBeams; }
+
+			stmp::optional<float> GetTimeOfDay() override;
 
 		};
 	} // namespace client
