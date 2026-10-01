@@ -20,6 +20,8 @@
 
 #include "UpdateNotice.h"
 
+#include <utility>
+
 #include <Client/IFont.h>
 #include <Client/IRenderer.h>
 #include <Core/Debug.h>
@@ -43,16 +45,28 @@ namespace spades {
 
 			constexpr float kPromptHeight = 170.0F;
 
-			void OpenReleasePage(const std::string& url) {
-				if (!OpenURLInBrowser(url))
+			/**
+			 * Opens the release page and, once the browser has it, runs `opened`
+			 * (which closes the application). If the browser could not be launched
+			 * the game stays open, so the user is not left with neither.
+			 */
+			void OpenReleasePage(const std::string& url, const std::function<void()>& opened) {
+				if (!OpenURLInBrowser(url)) {
 					SPLog("[!] Could not open the release page: %s", url.c_str());
+					return;
+				}
+				if (opened)
+					opened();
 			}
 		} // namespace
 
 		// -- UpdateNotice --
 
-		UpdateNotice::UpdateNotice(ui::UIManager* manager, bool showUpToDate)
-		    : ButtonBase(manager), showUpToDate(showUpToDate) {
+		UpdateNotice::UpdateNotice(ui::UIManager* manager, std::function<void()> releasePageOpened,
+		                           bool showUpToDate)
+		    : ButtonBase(manager),
+		      showUpToDate(showUpToDate),
+		      releasePageOpened(std::move(releasePageOpened)) {
 			isMouseInteractive = false;
 			Refresh();
 		}
@@ -77,7 +91,7 @@ namespace spades {
 
 		void UpdateNotice::OnActivated() {
 			if (!releaseUrl.empty())
-				OpenReleasePage(releaseUrl);
+				OpenReleasePage(releaseUrl, releasePageOpened);
 			ButtonBase::OnActivated();
 		}
 
@@ -145,7 +159,8 @@ namespace spades {
 
 		// -- UpdatePromptScreen --
 
-		void UpdatePromptScreen::ShowIfPending(ui::UIElement* owner) {
+		void UpdatePromptScreen::ShowIfPending(ui::UIElement* owner,
+		                                       std::function<void()> releasePageOpened) {
 			// Wait for the owner to be free, so the prompt never stacks on top of
 			// another dialog (e.g. the first-launch profile prompt).
 			if (!owner->IsEnabled())
@@ -162,18 +177,20 @@ namespace spades {
 			      ReleaseVersion::Current().ToString(), result.latestVersion.ToString());
 
 			Handle<UpdatePromptScreen> prompt =
-			  Handle<UpdatePromptScreen>::New(owner, text, result.releaseUrl);
+			  Handle<UpdatePromptScreen>::New(owner, text, result.releaseUrl,
+			                                  std::move(releasePageOpened));
 			prompt->Run();
 		}
 
 		UpdatePromptScreen::UpdatePromptScreen(ui::UIElement* owner, const std::string& text,
-		                                       const std::string& releaseUrl)
+		                                       const std::string& releaseUrl,
+		                                       std::function<void()> releasePageOpened)
 		    : MessageBoxScreen(owner, text,
 		                       {_Tr("MainScreen", "Download"), _Tr("MainScreen", "Later")},
 		                       kPromptHeight, true) {
-			closed = [releaseUrl](ui::UIElement& sender) {
+			closed = [releaseUrl, releasePageOpened](ui::UIElement& sender) {
 				if (static_cast<UpdatePromptScreen&>(sender).resultIndex == 0)
-					OpenReleasePage(releaseUrl);
+					OpenReleasePage(releaseUrl, releasePageOpened);
 			};
 		}
 

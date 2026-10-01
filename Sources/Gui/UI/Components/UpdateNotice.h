@@ -20,6 +20,7 @@
 
 #pragma once
 
+#include <functional>
 #include <string>
 
 #include <Gui/UI/Widgets/ButtonBase.h>
@@ -36,17 +37,22 @@ namespace spades {
 		 *
 		 * With `showUpToDate`, a confirmed up-to-date check is shown as a small,
 		 * non-interactive mark at the right end of the strip.
+		 *
+		 * `releasePageOpened` runs once the browser has the release page, and is
+		 * where the owner closes the application so the update can be installed.
 		 */
 		class UpdateNotice : public ui::ButtonBase {
 			const bool showUpToDate;
 			bool upToDate = false;
 			std::string releaseUrl;
+			std::function<void()> releasePageOpened;
 
 			void Refresh();
 			void RenderUpToDate();
 
 		public:
-			UpdateNotice(ui::UIManager* manager, bool showUpToDate = false);
+			UpdateNotice(ui::UIManager* manager, std::function<void()> releasePageOpened,
+			             bool showUpToDate = false);
 
 			void OnActivated() override;
 			void Render() override;
@@ -54,15 +60,18 @@ namespace spades {
 
 		/**
 		 * The dialog shown once per launch when an update is found, offering to open
-		 * the release page. Enter downloads, Escape dismisses.
+		 * the release page. Enter downloads, Escape dismisses. `releasePageOpened`
+		 * runs once the browser has the page, as for `UpdateNotice`.
 		 */
 		class UpdatePromptScreen : public MessageBoxScreen {
 		public:
 			/** Shows the prompt over `owner` if the check has an update to announce. */
-			static void ShowIfPending(ui::UIElement* owner);
+			static void ShowIfPending(ui::UIElement* owner,
+			                          std::function<void()> releasePageOpened);
 
 			UpdatePromptScreen(ui::UIElement* owner, const std::string& text,
-			                   const std::string& releaseUrl);
+			                   const std::string& releaseUrl,
+			                   std::function<void()> releasePageOpened);
 
 			void HotKey(const std::string& key) override;
 		};

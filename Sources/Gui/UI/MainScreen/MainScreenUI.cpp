@@ -201,7 +201,8 @@ namespace spades {
 
 			// The check answers asynchronously; announce a new release once, as soon
 			// as the menu is free of other dialogs.
-			UpdatePromptScreen::ShowIfPending(mainMenu.GetPointerOrNull());
+			UpdatePromptScreen::ShowIfPending(mainMenu.GetPointerOrNull(),
+			                                  [this] { shouldExit = true; });
 
 			manager->RunFrame(dt);
 			manager->Render();

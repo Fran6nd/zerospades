@@ -111,7 +111,11 @@ namespace spades {
 			// Draws nothing unless a newer release is out.
 			{
 				float noticeW = std::min(sw - 16.0F, 640.0F);
-				Handle<UpdateNotice> notice = Handle<UpdateNotice>::New(manager);
+				// Leaves the game and quits, so the update can be installed.
+				Handle<UpdateNotice> notice = Handle<UpdateNotice>::New(manager, [this] {
+					this->ui->shouldQuitApplication = true;
+					this->ui->shouldExit = true;
+				});
 				notice->SetBounds(AABB2((sw - noticeW) * 0.5F, sh - 60.0F, noticeW, 30.0F));
 				AddChild(notice.GetPointerOrNull());
 			}

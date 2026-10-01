@@ -655,7 +655,8 @@ namespace spades {
 			// Above the title logo: the new release banner, or a small up-to-date
 			// mark once the check has confirmed this build is the latest.
 			{
-				Handle<UpdateNotice> notice = Handle<UpdateNotice>::New(manager, true);
+				Handle<UpdateNotice> notice = Handle<UpdateNotice>::New(
+				  manager, [this] { this->ui->shouldExit = true; }, true);
 				notice->SetBounds(AABB2(contentsLeft, 20.0F, contentsWidth, 30.0F));
 				AddChild(notice.GetPointerOrNull());
 			}
