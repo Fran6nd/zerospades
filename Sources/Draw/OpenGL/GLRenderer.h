@@ -182,9 +182,29 @@ namespace spades {
 			void SetFogColor(Vector3 v) override;
 			void SetFogDistance(float f) override { fogDistance = f; }
 
-			Vector3 GetFogColor() { return fogColor; }
+			/** The factor the world's sun and sky lighting, the fog and the sky are drawn
+			 * with, in `[0, 1]`. */
+			float GetDaylight() { return sceneDef.daylight; }
+
+			/** The Fog Colour as set: the colour of the fog and the sky in full daylight. */
+			Vector3 GetFullDaylightFogColor() { return fogColor; }
+
+			/** The colour the fog and the sky are drawn in: the Fog Colour times the
+			 * daylight. */
+			Vector3 GetFogColor() { return fogColor * GetDaylight(); }
 			float GetFogDistance() { return fogDistance; }
+
+			/** The colour solid geometry fades to with distance: none when a fog filter
+			 * draws the fog over it afterwards. */
 			Vector3 GetFogColorForSolidPass();
+
+			/** `GetFogColorForSolidPass` in full daylight: the sky's light, which the
+			 * lighting shaders scale by the daylight themselves. */
+			Vector3 GetFullDaylightFogColorForSolidPass();
+
+			/** The factor the sun's light is drawn with: the daylight while the sun is
+			 * above the horizon, and none below it, where it casts no light or shadow. */
+			float GetSunlight() { return sceneDef.sunDirection.z < 0.0F ? GetDaylight() : 0.0F; }
 
 			void StartScene(const client::SceneDefinition&) override;
 

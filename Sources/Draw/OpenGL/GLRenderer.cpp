@@ -369,10 +369,14 @@ namespace spades {
 		}
 
 		Vector3 GLRenderer::GetFogColorForSolidPass() {
+			return GetFullDaylightFogColorForSolidPass() * GetDaylight();
+		}
+
+		Vector3 GLRenderer::GetFullDaylightFogColorForSolidPass() {
 			if (settings.r_fogShadow && mapShadowRenderer)
 				return MakeVector3(0, 0, 0);
 			else
-				return GetFogColor();
+				return GetFullDaylightFogColor();
 		}
 
 #pragma mark - Resource Manager

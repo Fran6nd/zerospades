@@ -149,8 +149,11 @@ namespace spades {
 			lensViewOrigin.SetValue(def.viewOrigin.x, def.viewOrigin.y, def.viewOrigin.z);
 			viewProjectionMatrixInv.SetValue(viewProjectionMatrix.Inversed());
 
-			Vector3 fogCol = renderer.GetFogColor();
+			// Derived in full daylight, then scaled by the daylight below, so the fog
+			// looks like the Fog Colour times the daylight.
+			Vector3 fogCol = renderer.GetFullDaylightFogColor();
 			fogCol *= fogCol; // linearize
+			const float daylight = renderer.GetDaylight();
 
 			float sunlightBrightness = 0.6F; // Sun -> Fog -> Eye
 			float ambientBrightness = 1.0F;  // Sun -> Fog -> Fog -> Eye
@@ -183,15 +186,12 @@ namespace spades {
 			  fogTransmission1(fogCol.y),
 			  fogTransmission1(fogCol.z),
 			};
-			sunlightScale.SetValue(fogTransmission.x * sunlightBrightness,
-			                       fogTransmission.y * sunlightBrightness,
-			                       fogTransmission.z * sunlightBrightness);
-			ambientScale.SetValue(fogTransmission.x * fogCol.x * ambientBrightness,
-			                      fogTransmission.y * fogCol.y * ambientBrightness,
-			                      fogTransmission.z * fogCol.z * ambientBrightness);
-			radiosityScale.SetValue(fogTransmission.x * radiosityBrightness + radiosityOffset,
-			                        fogTransmission.y * radiosityBrightness + radiosityOffset,
-			                        fogTransmission.z * radiosityBrightness + radiosityOffset);
+			Vector3 sunlight = fogTransmission * sunlightBrightness * daylight;
+			Vector3 ambient = fogTransmission * fogCol * ambientBrightness * daylight;
+			Vector3 radiosity = (fogTransmission * radiosityBrightness + radiosityOffset) * daylight;
+			sunlightScale.SetValue(sunlight.x, sunlight.y, sunlight.z);
+			ambientScale.SetValue(ambient.x, ambient.y, ambient.z);
+			radiosityScale.SetValue(radiosity.x, radiosity.y, radiosity.z);
 
 			fogDistance.SetValue(renderer.GetFogDistance());
 

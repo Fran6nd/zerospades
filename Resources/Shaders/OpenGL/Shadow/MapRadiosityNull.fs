@@ -18,13 +18,21 @@
 
  */
 
-uniform vec3 fogColor;
+uniform vec3 skyLightColor;
 varying float hemisphereLighting;
 
+uniform float sunlight;
+uniform float daylight;
+
 vec3 EvaluateRadiosity(float detailAmbientOcclusion, float ssao) {
-	return mix(fogColor, vec3(1.0), 0.5) * (0.5 * detailAmbientOcclusion * hemisphereLighting * ssao);
+	// With the sun below the horizon the night's light falls evenly on every face, at
+	// the faces' average.
+	float hemisphere = sunlight > 0.0 ? hemisphereLighting : 1.0;
+	return mix(skyLightColor, vec3(1.0), 0.5) *
+	       (0.5 * detailAmbientOcclusion * hemisphere * ssao * daylight);
 }
 
 vec3 EvaluateSoftReflections(float detailAmbientOcclusion, vec3 direction, float ssao) {
-    return fogColor * ((direction.z * -0.5 + 0.5) * detailAmbientOcclusion * ssao);
+    float facing = sunlight > 0.0 ? direction.z * -0.5 + 0.5 : 0.5;
+    return skyLightColor * (facing * detailAmbientOcclusion * ssao * daylight);
 }
