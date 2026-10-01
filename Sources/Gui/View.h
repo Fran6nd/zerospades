@@ -55,6 +55,12 @@ namespace spades {
 			virtual bool WantsToBeClosed() { return false; }
 
 			/**
+			 * When `WantsToBeClosed` is true, whether the whole application should
+			 * quit rather than return to the view that opened this one.
+			 */
+			virtual bool WantsApplicationToQuit() { return false; }
+
+			/**
 			 * Execute a console command.
 			 *
 			 * @return `true` if the command was handled.
