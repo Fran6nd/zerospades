@@ -345,27 +345,6 @@ namespace spades {
 			});
 		}
 
-		void SWRenderer::ApplyDaylight() {
-			const int factor = ToFixedFactor8(sceneDef.daylight);
-			if (factor >= 256)
-				return;
-
-			const int fw = this->fb->GetWidth();
-			const int fh = this->fb->GetHeight();
-			const uint32_t factor32 = static_cast<uint32_t>(factor);
-
-			InvokeParallel2([&](unsigned int threadId, unsigned int numThreads) {
-				auto* px = this->fb->GetPixels() + fw * (fh * threadId / numThreads);
-				auto* end = this->fb->GetPixels() + fw * (fh * (threadId + 1) / numThreads);
-				for (; px != end; px++) {
-					uint32_t color = *px;
-					uint32_t v1 = ((color & 0xFF00FF) * factor32) & 0xFF00FF00;
-					uint32_t v2 = ((color & 0xFF00) * factor32) & 0xFF0000;
-					*px = (v1 | v2) >> 8;
-				}
-			});
-		}
-
 		template <SWFeatureLevel level> void SWRenderer::ApplyFog() {
 			int fw = this->fb->GetWidth();
 			int fh = this->fb->GetHeight();
@@ -741,10 +720,11 @@ namespace spades {
 			EnsureInitialized();
 			EnsureSceneStarted();
 
-			// clear scene; the sky is dimmed with the world below
+			// clear scene
+			const Vector3 skyColor = GetFogColor();
 			auto* px = this->fb->GetPixels();
 			std::fill(px, px + fb->GetWidth() * fb->GetHeight(),
-				ConvertColor32(MakeVector4(fogColor.x, fogColor.y, fogColor.z, 1.0F)));
+				ConvertColor32(MakeVector4(skyColor.x, skyColor.y, skyColor.z, 1.0F)));
 
 			if (!sceneDef.skipWorld) {
 				// draw map
@@ -759,8 +739,6 @@ namespace spades {
 				for (const auto& m : models)
 					modelRenderer->Render(*m.model, m.param);
 				models.clear();
-
-				ApplyDaylight();
 
 				// deferred lighting
 				for (const auto& light : lights)

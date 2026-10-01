@@ -142,9 +142,6 @@ namespace spades {
 
 			template <SWFeatureLevel> void ApplyDynamicLight(const DynamicLight &);
 
-			/** Dims what is drawn so far, the world and the sky, by the daylight. */
-			void ApplyDaylight();
-
 		protected:
 			~SWRenderer();
 
