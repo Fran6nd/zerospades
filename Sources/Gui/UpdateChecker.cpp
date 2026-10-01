@@ -44,9 +44,10 @@ namespace spades {
 			constexpr const char* kLatestReleaseUrl =
 			  "https://api.github.com/repos/zerospades/zerospades/releases/latest";
 
-			// Shown when the response carries no page link of its own.
+			// The page the user is sent to: the full releases list, so the
+			// changes since their version are visible, not only the newest release.
 			constexpr const char* kReleasesPageUrl =
-			  "https://github.com/zerospades/zerospades/releases/latest";
+			  "https://github.com/zerospades/zerospades/releases";
 
 			// The check must never hold anything up, so it gives up quickly.
 			constexpr long kConnectTimeoutSeconds = 10;
@@ -164,8 +165,7 @@ namespace spades {
 
 				const ReleaseVersion current = ReleaseVersion::Current();
 				r.latestVersion = *latest;
-				r.releaseUrl = root["html_url"].isString() ? root["html_url"].asString()
-				                                           : std::string(kReleasesPageUrl);
+				r.releaseUrl = kReleasesPageUrl;
 				r.state = current < *latest ? State::UpdateAvailable : State::UpToDate;
 
 				SPLog("Update check: running %s, latest release is %s (%s).",

@@ -69,10 +69,10 @@ namespace spades {
 
 			isMouseInteractive = true;
 			releaseUrl = result.releaseUrl;
-			caption = _Tr("MainScreen",
-			              "ZeroSpades {0} is available (you have {1}). Click here to download it.",
-			              result.latestVersion.ToString(),
-			              ReleaseVersion::Current().ToString());
+			caption =
+			  _Tr("MainScreen",
+			      "ZeroSpades {0} is available (you have {1}). Click to open the release page.",
+			      result.latestVersion.ToString(), ReleaseVersion::Current().ToString());
 		}
 
 		void UpdateNotice::OnActivated() {
