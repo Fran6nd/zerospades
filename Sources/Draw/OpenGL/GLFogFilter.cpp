@@ -56,6 +56,7 @@ namespace spades {
 
 			static GLProgramUniform fogColor("fogColor");
 			static GLProgramUniform fogDistance("fogDistance");
+			static GLProgramUniform sunLightDirection("sunLightDirection");
 
 			dev.Enable(IGLDevice::Blend, false);
 
@@ -72,6 +73,7 @@ namespace spades {
 			zNearFar(lens);
 			fogColor(lens);
 			fogDistance(lens);
+			sunLightDirection(lens);
 
 			lens->Use();
 
@@ -94,6 +96,9 @@ namespace spades {
 			fogColor.SetValue(fogCol.x, fogCol.y, fogCol.z);
 
 			fogDistance.SetValue(128.f);
+
+			Vector3 sunDir = renderer.GetSunDirection();
+			sunLightDirection.SetValue(sunDir.x, sunDir.y, sunDir.z);
 
 			lensColorTexture.SetValue(0);
 			lensDepthTexture.SetValue(1);

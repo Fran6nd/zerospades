@@ -673,13 +673,13 @@ namespace spades {
 
 			static GLProgramUniform viewSpaceLight("viewSpaceLight");
 			viewSpaceLight(program);
-			Vector3 vspLight = (viewMatrix * MakeVector4(0, -1, -1, 0)).GetXYZ();
+			Vector3 sunLight = renderer.GetSunLightVector();
+			Vector3 vspLight = (viewMatrix * MakeVector4(sunLight.x, sunLight.y, sunLight.z, 0)).GetXYZ();
 			viewSpaceLight.SetValue(vspLight.x, vspLight.y, vspLight.z);
 
 			static GLProgramUniform sunLightDirection("sunLightDirection");
 			sunLightDirection(program);
-			Vector3 sunPos = MakeVector3(0, -1, -1);
-			sunPos = sunPos.Normalize();
+			Vector3 sunPos = renderer.GetSunDirection();
 			sunLightDirection.SetValue(sunPos.x, sunPos.y, sunPos.z);
 
 			static GLProgramUniform viewOriginVector("viewOriginVector");
@@ -1072,7 +1072,8 @@ namespace spades {
 
 			static GLProgramUniform viewSpaceLight("viewSpaceLight");
 			viewSpaceLight(xrayProgram);
-			Vector3 vspLight = (viewMatrix * MakeVector4(0, -1, -1, 0)).GetXYZ();
+			Vector3 sunLight = renderer.GetSunLightVector();
+			Vector3 vspLight = (viewMatrix * MakeVector4(sunLight.x, sunLight.y, sunLight.z, 0)).GetXYZ();
 			viewSpaceLight.SetValue(vspLight.x, vspLight.y, vspLight.z);
 
 			// setup attributes

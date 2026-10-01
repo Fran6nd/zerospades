@@ -84,6 +84,7 @@ namespace spades {
 			GLProgramUniform viewMatrix;
 			GLProgramUniform fogDistance;
 			GLProgramUniform fogColor;
+			GLProgramUniform sunLightDirection;
 			GLProgramUniform zNearFar;
 			GLProgramUniform cameraPosition;
 

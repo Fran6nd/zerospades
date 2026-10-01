@@ -34,6 +34,7 @@ uniform sampler2D mirrorDepthTexture;
 uniform mat4 viewMatrix;
 uniform vec3 fogColor;
 uniform vec3 skyColor;
+uniform vec3 sunLightDirection;
 uniform vec2 zNearFar;
 uniform vec4 fovTan;
 uniform vec4 waterPlane;
@@ -312,7 +313,9 @@ void main() {
 	if (dot(sunlight, vec3(1.0)) > 0.0001 && reflectedSky) {
 		// can't use CookTorrance here -- CookTorrance's fresenel term
 		// is hard-coded for higher roughness values
-		vec3 lightVec = vec3(0.0, 1.0, 1.0);
+		// Negated like `wave` and `ongoing`, at the length of `(0, 1, 1)` the terms
+		// below were tuned with.
+		vec3 lightVec = sunLightDirection * -sqrt(2.0);
 		vec3 halfVec = lightVec + ongoing;
 		halfVec = (dot(halfVec, halfVec) < 0.00000000001)
 			? vec3(1.0, 0.0, 0.0) : normalize(halfVec);

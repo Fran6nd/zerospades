@@ -122,6 +122,7 @@ namespace spades {
 			static GLProgramUniform ambientScale("ambientScale");
 			static GLProgramUniform radiosityScale("radiosityScale");
 			static GLProgramUniform fogDistance("fogDistance");
+			static GLProgramUniform sunLightDirection("sunLightDirection");
 			static GLProgramUniform ditherTexture("ditherTexture");
 			static GLProgramUniform ditherOffset("ditherOffset");
 			static GLProgramUniform noiseTexture("noiseTexture");
@@ -137,6 +138,7 @@ namespace spades {
 			ambientScale(lens);
 			radiosityScale(lens);
 			fogDistance(lens);
+			sunLightDirection(lens);
 			ditherTexture(lens);
 			ditherOffset(lens);
 			viewProjectionMatrixInv(lens);
@@ -194,6 +196,9 @@ namespace spades {
 			radiosityScale.SetValue(radiosity.x, radiosity.y, radiosity.z);
 
 			fogDistance.SetValue(renderer.GetFogDistance());
+
+			Vector3 sunDir = renderer.GetSunDirection();
+			sunLightDirection.SetValue(sunDir.x, sunDir.y, sunDir.z);
 
 			lensColorTexture.SetValue(0);
 			lensDepthTexture.SetValue(1);

@@ -31,6 +31,7 @@ uniform vec2 zNearFar;
 
 uniform vec3 fogColor;
 uniform float fogDistance;
+uniform vec3 sunLightDirection;
 
 varying vec2 texCoord;
 varying vec3 viewTan;
@@ -343,8 +344,7 @@ void main() {
 	total /= fogDensFunc(fogDistanceTime);
 
 	// add gradient
-	vec3 sunDir = normalize(vec3(0.0, -1.0, -1.0));
-	float bright = dot(sunDir, normalize(viewDir));
+	float bright = dot(sunLightDirection, normalize(viewDir));
 	total *= 0.8 + bright * 0.3;
 	bright = exp2(bright * 16.0 - 15.0);
 	total *= bright + 1.0;
