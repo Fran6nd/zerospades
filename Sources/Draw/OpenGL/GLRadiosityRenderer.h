@@ -27,7 +27,6 @@
 #include "IGLDevice.h"
 #include <Core/Debug.h>
 #include <Core/Math.h>
-#include <Core/TMPUtils.h>
 
 namespace spades {
 	namespace client {
@@ -98,12 +97,6 @@ namespace spades {
 
 			UpdateDispatch *dispatch;
 
-			/** The map shadow's projection the chunks were last all evaluated with. */
-			stmp::optional<Vector2> evaluatedShear;
-
-			/** Evaluates the whole map again once the sun has moved far enough. */
-			void FollowSun();
-
 		public:
 			struct Result {
 				Vector3 base, x, y, z;
@@ -115,12 +108,6 @@ namespace spades {
 			Result Evaluate(IntVector3);
 
 			void GameMapChanged(int x, int y, int z, client::GameMap *);
-
-			/** Marks the whole map to be evaluated again. */
-			void InvalidateAll();
-
-			/** Whether a worker is evaluating chunks, reading the map shadow as it does. */
-			bool IsUpdating() const;
 
 			void Update();
 

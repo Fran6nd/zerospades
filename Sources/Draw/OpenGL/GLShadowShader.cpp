@@ -35,7 +35,6 @@ namespace spades {
 	namespace draw {
 		GLShadowShader::GLShadowShader()
 		    : mapShadowTexture("mapShadowTexture"),
-		      mapShadowShear("mapShadowShear"),
 		      fogColor("fogColor"),
 		      daylight("daylight"),
 		      sunlight("sunlight"),
@@ -137,10 +136,6 @@ namespace spades {
 			}
 			mapShadowTexture.SetValue(texStage);
 			texStage++;
-
-			mapShadowShear(program);
-			Vector2 shear = renderer->GetMapShadowShear();
-			mapShadowShear.SetValue(shear.x, shear.y);
 
 			auto& settings = renderer->GetSettings();
 

@@ -21,7 +21,6 @@
 uniform sampler2D depthTexture;
 uniform sampler2D mainTexture;
 uniform vec3 sRGBFogColor;
-uniform vec3 sunLightDirection;
 uniform vec2 zNearFar;
 
 varying vec4 color;
@@ -55,7 +54,8 @@ void main() {
 	// calculate diffuse color
 	vec4 computedColor = color;
 	vec3 diffuse = EvaluateSunLight();
-	diffuse *= dot(nNormal, sunLightDirection) * 0.4 + 0.6;
+	vec3 sunDir = normalize(vec3(0.0, -1.0, -1.0));
+	diffuse *= dot(nNormal, sunDir) * 0.4 + 0.6;
 	vec4 extNormal = vec4(nNormal, 1.0);
 	diffuse.x += dot(extNormal, dlR);
 	diffuse.y += dot(extNormal, dlG);

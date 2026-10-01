@@ -137,14 +137,11 @@ namespace spades {
 		}
 
 		bool GLBasicShadowMapRenderer::BuildMatrix(float near, float far) {
-			// Cast from where the terrain's shadows are, so the two always agree.
-			Vector3 lightDir = GetRenderer().GetShadowSunDirection();
+			// TODO: variable light direction?
+			Vector3 lightDir = MakeVector3(0, -1, -1).Normalize();
 			// set better up dir?
 			Vector3 up = MakeVector3(0, 0, 1);
-			Vector3 side = Vector3::Cross(up, lightDir);
-			if (side.GetSquaredLength() < 1.0E-6F) // the sun overhead
-				side = MakeVector3(1, 0, 0);
-			side = side.Normalize();
+			Vector3 side = Vector3::Cross(up, lightDir).Normalize();
 			up = Vector3::Cross(lightDir, side).Normalize();
 
 			// build frustrum

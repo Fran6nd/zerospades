@@ -49,7 +49,6 @@ namespace spades {
 		      viewMatrix("viewMatrix"),
 		      fogDistance("fogDistance"),
 		      fogColor("sRGBFogColor"),
-		      sunLightDirection("sunLightDirection"),
 		      zNearFar("zNearFar"),
 		      cameraPosition("cameraPosition"),
 		      positionAttribute("positionAttribute"),
@@ -215,7 +214,6 @@ namespace spades {
 			viewMatrix(program);
 			fogDistance(program);
 			fogColor(program);
-			sunLightDirection(program);
 			zNearFar(program);
 
 			positionAttribute(program);
@@ -234,9 +232,6 @@ namespace spades {
 			Vector3 fogCol = renderer.GetFogColor();
 			//fogCol *= fogCol; // linearize
 			fogColor.SetValue(fogCol.x, fogCol.y, fogCol.z);
-
-			Vector3 sunDir = renderer.GetSunDirection();
-			sunLightDirection.SetValue(sunDir.x, sunDir.y, sunDir.z);
 
 			const client::SceneDefinition& def = renderer.GetSceneDef();
 			rightVector.SetValue(def.viewAxis[0].x, def.viewAxis[0].y, def.viewAxis[0].z);

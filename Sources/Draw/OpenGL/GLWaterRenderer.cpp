@@ -664,7 +664,6 @@ namespace spades {
 				static GLProgramUniform fogDistance("fogDistance");
 				static GLProgramUniform fogColor("fogColor");
 				static GLProgramUniform skyColor("skyColor");
-				static GLProgramUniform sunLightDirection("sunLightDirection");
 				static GLProgramUniform zNearFar("zNearFar");
 				static GLProgramUniform viewOriginVector("viewOriginVector");
 				static GLProgramUniform displaceScale("displaceScale");
@@ -679,7 +678,6 @@ namespace spades {
 				fogDistance(prg);
 				fogColor(prg);
 				skyColor(prg);
-				sunLightDirection(prg);
 				zNearFar(prg);
 				viewOriginVector(prg);
 				displaceScale(prg);
@@ -697,8 +695,6 @@ namespace spades {
 				fogDistance.SetValue(fogDist);
 				fogColor.SetValue(fogCol.x, fogCol.y, fogCol.z);
 				skyColor.SetValue(skyCol.x, skyCol.y, skyCol.z);
-				Vector3 sunDir = renderer.GetSunDirection();
-				sunLightDirection.SetValue(sunDir.x, sunDir.y, sunDir.z);
 				zNearFar.SetValue(def.zNear, def.zFar);
 				viewOriginVector.SetValue(def.viewOrigin.x, def.viewOrigin.y, def.viewOrigin.z);
 				displaceScale.SetValue(1.0F / tanf(def.fovX * 0.5F), 1.0F / tanf(def.fovY * 0.5F));

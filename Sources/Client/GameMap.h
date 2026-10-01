@@ -74,10 +74,6 @@ namespace spades {
 			}
 
 			inline uint64_t GetSolidMap(int x, int y) const { return solidMap[x][y]; }
-
-			/** Every column's solid bits, `Width() * Height()` of them: the column `(x, y)`
-			 * is at `x * Height() + y`. */
-			const uint64_t* GetSolidMapData() const { return &solidMap[0][0]; }
 			inline uint64_t GetSolidMapWrapped(int x, int y) const {
 				return GetSolidMap(x & (Width() - 1), y & (Height() - 1));
 			}

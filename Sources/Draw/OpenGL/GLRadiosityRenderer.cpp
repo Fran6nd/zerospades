@@ -18,9 +18,7 @@
 
  */
 
-#include <algorithm>
 #include <atomic>
-#include <cmath>
 #include <cstdlib>
 
 #include "GLMapShadowRenderer.h"
@@ -42,12 +40,6 @@
 
 namespace spades {
 	namespace draw {
-		namespace {
-			/** How far the map shadow's shear may drift before the whole map is evaluated
-			 * again: sixteen times the shadows' own tolerance. */
-			constexpr float kSunShearTolerance = 0.25F;
-		} // namespace
-
 		class GLRadiosityRenderer::UpdateDispatch : public ConcurrentDispatch {
 			GLRadiosityRenderer& renderer;
 
@@ -176,42 +168,54 @@ namespace spades {
 
 			GLMapShadowRenderer* shadowmap = renderer.mapShadowRenderer;
 			uint32_t* bitmap = shadowmap->bitmap.data();
-			const Vector2 shear = shadowmap->GetShear();
-			const int centerX = static_cast<int>(std::floor(pos.x - shear.x * pos.z));
-			const int centerY = static_cast<int>(std::floor(pos.y - shear.y * pos.z));
+			int centerX = ipos.x;
+			int centerY = ipos.y - ipos.z;
 			const int yMask = h - 1;
 			const int pitch = w;
-
-			// A side face the sunlight meets faces back against the way it travels.
-			const Vector3 sideXNormal = MakeVector3(shear.x < 0.0F ? 1.0F : -1.0F, 0.0F, 0.0F);
-			const Vector3 sideYNormal = MakeVector3(0.0F, shear.y < 0.0F ? 1.0F : -1.0F, 0.0F);
 
 			for (int x = -Envelope; x <= Envelope; x++) {
 				uint32_t* column = bitmap + ((centerX + x) & (w - 1));
 				for (int y = -Envelope; y <= Envelope; y++) {
 					uint32_t pixel = column[pitch * ((centerY + y) & yMask)];
-					float depth = static_cast<float>(pixel >> 24);
+					int depth = pixel >> 24;
 
-					// The face the texel's sunlight met: a top face at its depth, or a side
-					// face lit down to its depth, taken at its middle.
-					const bool isSide = (pixel & 0x80) != 0;
-					const bool isSideX = (pixel & 0x8000) != 0;
-					const float faceDepth = isSide ? depth - 0.5F : depth;
+					// shadowmap pixel's world coord
+					int wx = centerX + x;
+					int wy = centerY + y + depth;
+					int wz = depth;
 
+					// if true, this is negative-y faced plane
+					// if false, this is negative-z faced plane
+					bool isSide = (pixel & 0x80) != 0;
+
+					// direction dependent process
 					Vector3 center; // center of face
-					center.x = static_cast<float>(centerX + x) + 0.5F + shear.x * faceDepth;
-					center.y = static_cast<float>(centerY + y) + 0.5F + shear.y * faceDepth;
-					center.z = faceDepth;
+					Vector3 diff;   // pos - center
+					float diffDot;  // dot(diff, normal)
+					if (isSide) {
+						// normal cull
+						if (wy <= ipos.y)
+							continue;
 
-					const Vector3 normal =
-					  isSide ? (isSideX ? sideXNormal : sideYNormal) : MakeVector3(0, 0, -1);
+						center.x = wx + 0.5F;
+						center.y = (float)wy;
+						center.z = wz - 0.5F;
 
-					Vector3 diff = pos - center;               // pos - center
-					float diffDot = Vector3::Dot(diff, normal); // dot(diff, normal)
+						diff = pos - center;
+						diffDot = -diff.y;
+					} else {
+						if (wz <= ipos.z)
+							continue;
 
-					// normal cull
-					if (diffDot <= 0.0F)
-						continue;
+						center.x = wx + 0.5F;
+						center.y = wy + 0.5F;
+						center.z = (float)wz;
+
+						diff = pos - center;
+						diffDot = -diff.z;
+					}
+
+					SPAssert(diffDot >= 0.0F);
 
 					float diffLen = diff.GetLength();
 					float invDiffLen = 1.0F / diffLen;
@@ -266,10 +270,6 @@ namespace spades {
 			Invalidate(x - Envelope, y - Envelope, z - Envelope, x + Envelope, y + Envelope,
 			           z + Envelope);
 		}
-
-		void GLRadiosityRenderer::InvalidateAll() { Invalidate(0, 0, 0, w - 1, h - 1, d - 1); }
-
-		bool GLRadiosityRenderer::IsUpdating() const { return dispatch && !dispatch->done.load(); }
 
 		void GLRadiosityRenderer::Invalidate(int minX, int minY, int minZ, int maxX, int maxY, int maxZ) {
 			SPADES_MARK_FUNCTION_DEBUG();
@@ -331,29 +331,7 @@ namespace spades {
 			return cnt;
 		}
 
-		void GLRadiosityRenderer::FollowSun() {
-			const Vector2 shear = renderer.GetMapShadowShear();
-			if (!evaluatedShear) {
-				evaluatedShear = shear; // every chunk starts dirty
-				return;
-			}
-
-			// The bounce is soft, and evaluating the whole map takes seconds, so it follows
-			// the sun far more loosely than the shadows do. Nothing bounces at night.
-			if (renderer.GetSunlight() <= 0.0F)
-				return;
-
-			const Vector2 drift = shear - *evaluatedShear;
-			if (std::max(std::fabs(drift.x), std::fabs(drift.y)) <= kSunShearTolerance)
-				return;
-
-			evaluatedShear = shear;
-			InvalidateAll();
-		}
-
 		void GLRadiosityRenderer::Update() {
-			FollowSun();
-
 			if (GetNumDirtyChunks() > 0 && (dispatch == NULL || dispatch->done.load())) {
 				if (dispatch) {
 					dispatch->Join();

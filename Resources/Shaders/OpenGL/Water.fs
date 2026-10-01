@@ -28,7 +28,6 @@ uniform sampler2D depthTexture;
 uniform sampler2D mainTexture;
 uniform sampler2D waveTexture;
 uniform vec3 fogColor;
-uniform vec3 sunLightDirection;
 uniform vec3 skyColor;
 uniform vec2 zNearFar;
 uniform vec4 fovTan;
@@ -160,7 +159,7 @@ void main() {
 	// specular reflection
 	if (dot(sunlight, vec3(1.0)) > 0.0001) {
 		vec3 refl = reflect(ongoing, wave);
-		float spec = max(dot(refl, sunLightDirection), 0.0);
+		float spec = max(dot(refl, normalize(vec3(0.0, -1.0, -1.0))), 0.0);
 		spec *= spec; // ^2
 		spec *= spec; // ^4
 		spec *= spec; // ^16

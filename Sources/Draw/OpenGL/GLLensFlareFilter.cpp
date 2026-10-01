@@ -90,12 +90,13 @@ namespace spades {
 		}
 
 		void GLLensFlareFilter::Draw() {
-			const float sunlight = renderer.GetSunlight();
-			if (sunlight <= 0.0F)
+			const float daylight = renderer.GetDaylight();
+			if (daylight <= 0.0F)
 				return; // no sun to flare
 
-			auto sunCol = MakeVector3(1.0F, 0.9F, 0.8F) * sunlight;
-			Draw(renderer.GetSunDirection(), true, sunCol, true);
+			auto sunCol = MakeVector3(1.0F, 0.9F, 0.8F) * daylight;
+			auto sunDir = MakeVector3(0.0F, -1.0F, -1.0F);
+			Draw(sunDir, true, sunCol, true);
 		}
 
 		void GLLensFlareFilter::Draw(Vector3 direction, bool renderReflections, Vector3 sunColor,

@@ -31,11 +31,8 @@ varying vec3 viewDir;
 varying vec3 shadowOrigin;
 varying vec3 shadowRayDirection;
 
-// The map shadow's projection: a point falls on its texel `xy - mapShadowShear * z`.
-uniform vec2 mapShadowShear;
-
 vec3 transformToShadow(vec3 v) {
-	v.xy -= mapShadowShear * v.z;
+	v.y -= v.z;
 	v *= vec3(1.0, 1.0, 1.0 / 255.0);
 	return v;
 }
