@@ -24,6 +24,7 @@
 #include <atomic>
 #include <cmath>
 #include <limits>
+#include <thread>
 #if defined(_MSC_VER)
 #include <intrin.h>
 #endif
@@ -61,6 +62,9 @@ namespace spades {
 			constexpr float kRebakeShear = 1.0F / 64.0F;
 
 			constexpr float kInfinity = std::numeric_limits<float>::infinity();
+
+			/** The most worker threads a bake is split across. */
+			constexpr unsigned int kMaxBakeThreads = 16;
 
 			int CountTrailingZeros(uint64_t v) {
 				SPAssert(v != 0);
@@ -139,38 +143,73 @@ namespace spades {
 			int x = 0, y = 0, z = 0;
 		};
 
-		/** Bakes the whole map for a new shear from a copy of its solid columns, so it
-		 * never reads the map while the game edits it. */
-		class GLMapShadowRenderer::BakeDispatch : public ConcurrentDispatch {
+		/**
+		 * Bakes the whole map for a shear, a band of rows on each worker thread. It reads
+		 * a copy of the map's solid columns, so it never reads the map as the game edits it.
+		 */
+		class GLMapShadowRenderer::Bake {
+			class Band : public ConcurrentDispatch {
+				Bake& bake;
+				int firstRow, endRow;
+
+			public:
+				std::atomic<bool> done{false};
+
+				Band(Bake& bake, int firstRow, int endRow)
+				    : bake(bake), firstRow(firstRow), endRow(endRow) {}
+
+				void Run() override {
+					SPADES_MARK_FUNCTION();
+					bake.TraceRows(firstRow, endRow);
+					done = true;
+				}
+			};
+
 			int w, h;
 			std::vector<uint64_t> columns;
+			std::vector<std::unique_ptr<Band>> bands;
+
+			void TraceRows(int firstRow, int endRow) {
+				auto column = [this](int x, int y) {
+					return columns[(x & (w - 1)) + (y & (h - 1)) * w];
+				};
+				for (int y = firstRow; y < endRow; y++)
+					for (int x = 0; x < w; x++)
+						hits[x + y * w] = TraceSunlight(column, x, y, shear);
+			}
 
 		public:
 			const Vector2 shear;
 			std::vector<Hit> hits;
-			std::atomic<bool> done{false};
 
-			BakeDispatch(const client::GameMap& map, Vector2 shear)
+			Bake(const client::GameMap& map, Vector2 shear)
 			    : w(map.Width()), h(map.Height()), shear(shear) {
 				columns.resize(static_cast<std::size_t>(w * h));
 				for (int y = 0; y < h; y++)
 					for (int x = 0; x < w; x++)
 						columns[x + y * w] = map.GetSolidMap(x, y);
+				hits.resize(columns.size());
 			}
 
-			void Run() override {
-				SPADES_MARK_FUNCTION();
+			~Bake() { Join(); }
 
-				auto column = [this](int x, int y) {
-					return columns[(x & (w - 1)) + (y & (h - 1)) * w];
-				};
+			void Start() {
+				const int numBands = static_cast<int>(
+				  Clamp(std::thread::hardware_concurrency(), 1U, kMaxBakeThreads));
+				for (int i = 0; i < numBands; i++) {
+					bands.emplace_back(new Band(*this, h * i / numBands, h * (i + 1) / numBands));
+					bands.back()->Start();
+				}
+			}
 
-				hits.resize(columns.size());
-				for (int y = 0; y < h; y++)
-					for (int x = 0; x < w; x++)
-						hits[x + y * w] = TraceSunlight(column, x, y, shear);
+			bool IsDone() const {
+				return std::all_of(bands.begin(), bands.end(),
+				                   [](const std::unique_ptr<Band>& b) { return b->done.load(); });
+			}
 
-				done = true;
+			void Join() {
+				for (const std::unique_ptr<Band>& band : bands)
+					band->Join();
 			}
 		};
 
@@ -326,8 +365,7 @@ namespace spades {
 		GLMapShadowRenderer::~GLMapShadowRenderer() {
 			SPADES_MARK_FUNCTION();
 
-			if (rebake)
-				rebake->Join();
+			rebake.reset();
 
 			device.DeleteTexture(texture);
 			device.DeleteTexture(coarseTexture);
@@ -337,14 +375,18 @@ namespace spades {
 			const Vector2 target = ShearForSun(renderer.GetSunDirection());
 
 			if (!baked) {
-				// The first update bakes every texel, so it bakes them for this sun.
-				shear = target;
+				// The first bake is waited for, as there is nothing to show before it.
+				Bake first(*map, target);
+				first.Start();
+				first.Join();
+				Install(first);
+				std::fill(updateBitmap.begin(), updateBitmap.end(), 0);
 				baked = true;
-				return false;
+				return true;
 			}
 
 			if (rebake) {
-				if (!rebake->done.load())
+				if (!rebake->IsDone())
 					return false;
 
 				// The radiosity reads `bitmap` on its own thread; swap only while it rests.
@@ -365,21 +407,23 @@ namespace spades {
 				return false;
 
 			changedSinceRebake.clear();
-			rebake.reset(new BakeDispatch(*map, target));
+			rebake.reset(new Bake(*map, target));
 			rebake->Start();
 			return false;
+		}
+
+		void GLMapShadowRenderer::Install(const Bake& bake) {
+			shear = bake.shear;
+			for (std::size_t i = 0; i < bitmap.size(); i++) {
+				const Hit& hit = bake.hits[i];
+				bitmap[i] = BuildPixel(hit.depth, map->GetColorWrapped(hit.x, hit.y, hit.z), hit.face);
+			}
 		}
 
 		void GLMapShadowRenderer::CompleteRebake() {
 			SPADES_MARK_FUNCTION();
 
-			rebake->Join();
-			shear = rebake->shear;
-
-			for (std::size_t i = 0; i < bitmap.size(); i++) {
-				const Hit& hit = rebake->hits[i];
-				bitmap[i] = BuildPixel(hit.depth, map->GetColorWrapped(hit.x, hit.y, hit.z), hit.face);
-			}
+			Install(*rebake);
 			rebake.reset();
 
 			// The copy the bake read predates these; bake them again from the map.

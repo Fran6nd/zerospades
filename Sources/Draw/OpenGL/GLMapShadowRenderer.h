@@ -50,7 +50,7 @@ namespace spades {
 			friend class GLRadiosityRenderer;
 
 			struct Hit;
-			class BakeDispatch;
+			class Bake;
 
 			enum { CoarseSize = 8, CoarseBits = 3 };
 
@@ -74,7 +74,7 @@ namespace spades {
 			std::vector<uint32_t> coarseBitmap;
 
 			/** The bake of the whole map for a new shear, running in the background. */
-			std::unique_ptr<BakeDispatch> rebake;
+			std::unique_ptr<Bake> rebake;
 			/** Voxels changed since `rebake` copied the map, to bake again once it is in. */
 			std::vector<IntVector3> changedSinceRebake;
 
@@ -92,6 +92,9 @@ namespace spades {
 			 */
 			bool FollowSun();
 			void CompleteRebake();
+
+			/** Takes a finished bake into `bitmap` and its shear. */
+			void Install(const Bake&);
 
 			/** The voxel a texel's sunlight met, from the texel and its pixel. */
 			IntVector3 GetHitVoxel(int x, int y, uint32_t pixel) const;
