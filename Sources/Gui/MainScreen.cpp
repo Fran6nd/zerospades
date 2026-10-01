@@ -236,13 +236,9 @@ namespace spades {
 				if (!subview->WantsToBeClosed())
 					return;
 
-				bool quitApplication = subview->WantsApplicationToQuit();
 				subview->Closing();
 				subview = NULL;
 				RestoreRenderer();
-
-				if (quitApplication && ui)
-					ui->Closing();
 			} catch (const std::exception& ex) {
 				SPLog("[!] Error while running a game client: %s", ex.what());
 				subview->Closing();

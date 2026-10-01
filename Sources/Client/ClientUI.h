@@ -63,9 +63,6 @@ namespace spades {
 			std::vector<gui::ui::CommandHistoryItem> chatHistory;
 
 			bool shouldExit = false;
-			// Set together with `shouldExit` when leaving the game should also quit
-			// the application, not return to the main screen.
-			bool shouldQuitApplication = false;
 			float time = -1.0F;
 
 			// weak reference
@@ -110,7 +107,6 @@ namespace spades {
 			void Closing() override;
 
 			bool WantsClientToBeClosed();
-			bool WantsApplicationToQuit() { return shouldQuitApplication; }
 			bool WantsToClose() override { return WantsClientToBeClosed(); }
 			bool NeedsInput();
 

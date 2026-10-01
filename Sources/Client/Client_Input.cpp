@@ -135,9 +135,6 @@ namespace spades {
 	namespace client {
 
 		bool Client::WantsToBeClosed() { return readyToClose; }
-		bool Client::WantsApplicationToQuit() {
-			return readyToClose && scriptedUI && scriptedUI->WantsApplicationToQuit();
-		}
 		void Client::Closing() { SPADES_MARK_FUNCTION(); }
 
 		bool Client::NeedsAbsoluteMouseCoordinate() {

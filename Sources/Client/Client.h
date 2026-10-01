@@ -741,7 +741,6 @@ namespace spades {
 			const std::vector<SoundFeedbackIndicator>& GetSoundFeedbackIndicators() { return soundFeedbackIndicators; }
 
 			bool WantsToBeClosed() override;
-			bool WantsApplicationToQuit() override;
 			bool IsMuted();
 			bool IsScoreboardVisible() { return scoreboardVisible; }
 			bool IsNetgraphVisible() { return netgraphVisible; }
