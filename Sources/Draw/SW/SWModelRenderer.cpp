@@ -118,7 +118,7 @@ namespace spades {
 								case 2: d3 *= 0.707f; break;
 								case 3: d3 *= 0.57735f; break;
 							}
-							d3 = (192.f + d3 * 62.0F) * r->sceneDef.daylight;
+							d3 = 192.f + d3 * 62.0F;
 							brights[x + y * 3 + z * 9] = static_cast<uint8_t>(d3);
 						}
 					}

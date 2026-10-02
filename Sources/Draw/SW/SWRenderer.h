@@ -57,6 +57,9 @@ namespace spades {
 
 			Handle<Bitmap> fb;
 			std::vector<float> depthBuffer;
+			/** The world's own colours, kept while the daylight dims the frame so that
+			 * dynamic lights still light them. Empty in full daylight. */
+			std::vector<uint32_t> albedoBuffer;
 
 			std::shared_ptr<SWImageManager> imageManager;
 			std::shared_ptr<SWModelManager> modelManager;
@@ -141,6 +144,10 @@ namespace spades {
 			template <SWFeatureLevel> void ApplyFog();
 
 			template <SWFeatureLevel> void ApplyDynamicLight(const DynamicLight &);
+
+			/** Dims what is drawn so far, the world and the sky, by the daylight, keeping
+			 * their colours in `albedoBuffer`. */
+			void ApplyDaylight();
 
 		protected:
 			~SWRenderer();

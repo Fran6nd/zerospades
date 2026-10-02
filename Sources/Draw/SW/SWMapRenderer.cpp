@@ -521,10 +521,7 @@ namespace spades {
 
 				// check for new spans
 
-				// The daylight, as a factor of 256, dims each face as it is built.
-				const uint32_t daylight = static_cast<uint32_t>(ToFixedFactor8(sceneDef.daylight));
-
-				auto BuildLinePixel = [&map, daylight](int x, int y, int z, Face face, float dist) {
+				auto BuildLinePixel = [&map](int x, int y, int z, Face face, float dist) {
 					LinePixel px;
 					px.depth = dist;
 #if ENABLE_SSE
@@ -565,12 +562,6 @@ namespace spades {
 						}
 						px.combined = col;
 						px.filled = true;
-					}
-					if (daylight < 256) {
-						const uint32_t col = px.combined;
-						const uint32_t rb = (((col & 0xFF00FF) * daylight) >> 8) & 0xFF00FF;
-						const uint32_t g = (((col & 0xFF00) * daylight) >> 8) & 0xFF00;
-						px.combined = (col & 0xFF000000) | rb | g;
 					}
 					return px;
 				};
