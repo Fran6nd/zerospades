@@ -895,14 +895,13 @@ namespace spades {
 				if (param.depthHack)
 					device.DepthRange(0.0F, 0.1F);
 
-				for (const auto& light : lights) {
-					if (!light.SphereCull(modelOrigin, rad))
-						continue;
-
-					dlightShader(&renderer, dlightProgram, light, 2);
-					device.DrawElements(IGLDevice::Triangles,
-						numIndices, IGLDevice::UnsignedInt, (void*)0);
-				}
+				dlightShader.Render(
+				  &renderer, dlightProgram, lights, 2,
+				  [&](const GLDynamicLight& light) { return light.SphereCull(modelOrigin, rad); },
+				  [&] {
+					  device.DrawElements(IGLDevice::Triangles, numIndices,
+					                      IGLDevice::UnsignedInt, (void*)0);
+				  });
 
 				if (isMirrored)
 					device.FrontFace(mirror ? IGLDevice::CCW : IGLDevice::CW);
