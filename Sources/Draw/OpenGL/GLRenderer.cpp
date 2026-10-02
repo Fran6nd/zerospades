@@ -43,7 +43,6 @@
 #include "GLModel.h"
 #include "GLModelManager.h"
 #include "GLModelRenderer.h"
-#include "GLNonlinearizeFilter.h"
 #include "GLOptimizedVoxelModel.h"
 #include "GLProfiler.h"
 #include "GLProgramAttribute.h"
@@ -1131,13 +1130,8 @@ namespace spades {
 				// FIXME: these passes should be combined for lower VRAM bandwidth usage
 
 				if (settings.r_hdr) {
-					GLProfiler::Context p(*profiler, "Auto Exposure");
+					GLProfiler::Context p(*profiler, "Auto Exposure and Gamma Correction");
 					handle = autoExposureFilter->Filter(handle, dt);
-				}
-
-				if (settings.r_hdr) {
-					GLProfiler::Context p(*profiler, "Gamma Correction");
-					handle = GLNonlinearlizeFilter(*this).Filter(handle);
 				}
 
 				if (settings.r_colorCorrection) {
