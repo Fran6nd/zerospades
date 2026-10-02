@@ -40,7 +40,12 @@ uniform float dynamicLightLinearLength[DYNAMIC_LIGHT_MAX];
 // Shared by every spotlight of the draw
 uniform sampler2D dynamicLightProjectionTexture;
 
-vec3 EvaluateDynamicLight(int i, vec3 position, vec3 normal) {
+/**
+ * The light that light `i` brings to `position`, shaped by its cone, its image
+ * and its reach but not by how the surface faces it; `direction` is set to the
+ * unit vector towards the light.
+ */
+vec3 DynamicLightIncidence(int i, vec3 position, out vec3 direction) {
 	// The image is sampled before anything below can return: a texture's mipmap level
 	// is undefined inside control flow that differs between fragments.
 	vec3 lightTexCoord = (dynamicLightSpotMatrix[i] * vec4(position, 1.0)).xyw;
@@ -56,6 +61,7 @@ vec3 EvaluateDynamicLight(int i, vec3 position, vec3 normal) {
 	}
 
 	vec3 lightPos = lightPosition - position;
+	direction = normalize(lightPos);
 
 	float coneFalloff = 1.0;
 	if (dynamicLightIsSpot[i] > 0.5) {
@@ -74,11 +80,6 @@ vec3 EvaluateDynamicLight(int i, vec3 position, vec3 normal) {
 			return vec3(0.0);
 	}
 
-	// diffuse lighting
-	float intensity = dot(normalize(lightPos), normal);
-	if (intensity < 0.0)
-		return vec3(0.0);
-
 	// attenuation
 	float distance = length(lightPos);
 	if (distance >= dynamicLightRadius[i])
@@ -86,11 +87,15 @@ vec3 EvaluateDynamicLight(int i, vec3 position, vec3 normal) {
 	distance = max(1.0 - distance * dynamicLightRadiusInversed[i], 0.0);
 	float attenuation = distance * distance;
 
-	// apply attenuation
-	intensity *= attenuation * coneFalloff;
+	return dynamicLightColor[i] * (attenuation * coneFalloff) * texValue;
+}
 
-	// TODO: specular lighting?
-	return dynamicLightColor[i] * intensity * texValue;
+vec3 EvaluateDynamicLight(int i, vec3 position, vec3 normal) {
+	vec3 direction;
+	vec3 incidence = DynamicLightIncidence(i, position, direction);
+
+	// diffuse lighting
+	return incidence * max(dot(direction, normal), 0.0);
 }
 
 /** The light every dynamic light of the draw casts on `position`, facing `normal`
@@ -101,6 +106,28 @@ vec3 EvaluateDynamicLights(vec3 position, vec3 normal) {
 		if (i >= dynamicLightCount)
 			break;
 		light += EvaluateDynamicLight(i, position, normal);
+	}
+	return light;
+}
+
+/**
+ * The light every dynamic light of the draw reflects off a glossy surface at
+ * `position`, facing `normal`, along `reflected`: the eye's ray mirrored by the
+ * surface. Both are unit length; `shininess` is the highlight's Phong exponent,
+ * and the result is normalized for it, so a tighter highlight is a brighter one.
+ * The caller weighs it by the surface's Fresnel term.
+ */
+vec3 EvaluateDynamicLightsSpecular(vec3 position, vec3 normal, vec3 reflected, float shininess) {
+	float normalization = (shininess + 2.0) * (1.0 / (2.0 * 3.14159265));
+	vec3 light = vec3(0.0);
+	for (int i = 0; i < DYNAMIC_LIGHT_MAX; i++) {
+		if (i >= dynamicLightCount)
+			break;
+		vec3 direction;
+		vec3 incidence = DynamicLightIncidence(i, position, direction);
+		float cosIncidence = max(dot(direction, normal), 0.0);
+		float lobe = pow(max(dot(reflected, direction), 0.0), shininess);
+		light += incidence * (lobe * normalization * cosIncidence);
 	}
 	return light;
 }
