@@ -38,6 +38,7 @@ uniform vec2 displaceScale;
 
 vec3 EvaluateSunLight();
 vec3 EvaluateAmbientLight(float detailAmbientOcclusion);
+vec3 EvaluateDynamicLights(vec3 position, vec3 normal);
 
 float decodeDepth(float w, float near, float far) {
 	return far * near / mix(far, near, w);
@@ -112,6 +113,8 @@ void main() {
 
 	vec3 diffuseShading = EvaluateAmbientLight(1.0);
 	vec3 sunlight = EvaluateSunLight();
+	// The surface faces up, which is -Z in world space.
+	vec3 dynamicLight = EvaluateDynamicLights(worldPosition, vec3(0.0, 0.0, -1.0));
 
 	// water color
 	// TODO: correct integral
@@ -125,7 +128,7 @@ void main() {
 	vec2 subCoord = 1.0 - clamp((vec2(0.5) - startPos) / diffPos, 0.0, 1.0);
 	vec2 sampCoord = integralCoord + subCoord * blurDirSign;
 	vec3 waterColor = texture2D(mainTexture, sampCoord / 512.0).xyz;
-	waterColor *= sunlight + diffuseShading;
+	waterColor *= sunlight + diffuseShading + dynamicLight;
 
 	// underwater object color
 	gl_FragColor = texture2D(screenTexture, scrPos);

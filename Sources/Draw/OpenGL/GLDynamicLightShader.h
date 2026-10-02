@@ -39,8 +39,9 @@ namespace spades {
 		 *
 		 * The lights that reach a draw are split into batches of up to
 		 * `MaxLightsPerDraw` that share one spotlight image, and each batch takes a
-		 * single draw. A program keeps its uniforms, so a batch it already holds this
-		 * frame is not uploaded again.
+		 * single draw. A draw that cannot be repeated takes the nearest batch alone. A
+		 * program keeps its uniforms, so a batch it already holds this frame is not
+		 * uploaded again.
 		 */
 		class GLDynamicLightShader {
 		public:
@@ -83,8 +84,17 @@ namespace spades {
 			/** The image a spotlight projects, or none for another kind of light. */
 			static GLImage* GetSpotImage(const GLDynamicLight&);
 
+			/**
+			 * Fills `batch` with the first lights of `pending` that fit one draw, in
+			 * their order, and `deferred` with the rest; returns the batch's image.
+			 */
+			GLImage* TakeBatch();
+
 			/** Binds `image` and sets the program up for `batch`. */
 			void SetUp(GLRenderer*, GLProgram*, GLImage* image, int texStage);
+
+			/** Sets the program up for the batch of `pending` nearest to `eye`. */
+			void SetUpNearestBatch(GLRenderer*, GLProgram*, int texStage, const Vector3& eye);
 
 		public:
 			GLDynamicLightShader();
@@ -107,27 +117,31 @@ namespace spades {
 						pending.push_back(&light);
 
 				while (!pending.empty()) {
-					batch.clear();
-					deferred.clear();
-
-					GLImage* image = nullptr;
-					for (const GLDynamicLight* light : pending) {
-						GLImage* lightImage = GetSpotImage(*light);
-						const bool fits = batch.size() < MaxLightsPerDraw &&
-						                  (!lightImage || !image || lightImage == image);
-						if (!fits) {
-							deferred.push_back(light);
-							continue;
-						}
-						if (lightImage)
-							image = lightImage;
-						batch.push_back(light);
-					}
-
+					GLImage* image = TakeBatch();
 					SetUp(renderer, program, image, texStage);
 					draw();
 					pending.swap(deferred);
 				}
+			}
+
+			/**
+			 * Lights a draw that must take its lights in one go, as it replaces what is
+			 * under it instead of adding to it: sets `program` up with the one batch of
+			 * the lights `reaches` accepts whose origins are nearest to `eye`, with its
+			 * image on `texStage`, which is left the active texture stage. The lights
+			 * that batch has no room for are left out. With no light, the program is set
+			 * up to take none.
+			 */
+			template <class Reaches>
+			void SetUpSingleDraw(GLRenderer* renderer, GLProgram* program,
+			                     const std::vector<GLDynamicLight>& lights, int texStage,
+			                     const Vector3& eye, Reaches&& reaches) {
+				pending.clear();
+				for (const GLDynamicLight& light : lights)
+					if (reaches(light))
+						pending.push_back(&light);
+
+				SetUpNearestBatch(renderer, program, texStage, eye);
 			}
 		};
 	} // namespace draw

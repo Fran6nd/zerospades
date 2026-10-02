@@ -967,7 +967,7 @@ namespace spades {
 			if (settings.r_water && waterRenderer) {
 				GLProfiler::Context p(*profiler, "Water");
 				waterRenderer->Update(dt);
-				waterRenderer->Render();
+				waterRenderer->Render(lights);
 			}
 
 			{

@@ -20,6 +20,7 @@
 
 #include "GLDynamicLightShader.h"
 
+#include <algorithm>
 #include <string>
 
 #include "GLImage.h"
@@ -74,6 +75,40 @@ namespace spades {
 			if (param.type != client::DynamicLightTypeSpotlight)
 				return nullptr;
 			return static_cast<GLImage*>(param.image);
+		}
+
+		GLImage* GLDynamicLightShader::TakeBatch() {
+			batch.clear();
+			deferred.clear();
+
+			GLImage* image = nullptr;
+			for (const GLDynamicLight* light : pending) {
+				GLImage* lightImage = GetSpotImage(*light);
+				const bool fits = batch.size() < MaxLightsPerDraw &&
+				                  (!lightImage || !image || lightImage == image);
+				if (!fits) {
+					deferred.push_back(light);
+					continue;
+				}
+				if (lightImage)
+					image = lightImage;
+				batch.push_back(light);
+			}
+			return image;
+		}
+
+		void GLDynamicLightShader::SetUpNearestBatch(GLRenderer* renderer, GLProgram* program,
+		                                             int texStage, const Vector3& eye) {
+			// Stable, so lights as near as each other keep their order from frame to
+			// frame and the batch does not flicker between them.
+			std::stable_sort(pending.begin(), pending.end(),
+			                 [&eye](const GLDynamicLight* a, const GLDynamicLight* b) {
+				                 return (a->GetParam().origin - eye).GetSquaredLength() <
+				                        (b->GetParam().origin - eye).GetSquaredLength();
+			                 });
+
+			GLImage* image = TakeBatch();
+			SetUp(renderer, program, image, texStage);
 		}
 
 		void GLDynamicLightShader::SetUp(GLRenderer* renderer, GLProgram* program, GLImage* image,
