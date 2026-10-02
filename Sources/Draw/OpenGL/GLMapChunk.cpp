@@ -470,6 +470,11 @@ namespace spades {
 			if (!renderer.renderer.BoxFrustrumCull(bx))
 				return;
 
+			// Nothing to set up for a chunk no light reaches.
+			if (std::none_of(lights.begin(), lights.end(),
+			                 [&bx](const GLDynamicLight& light) { return light.Cull(bx); }))
+				return;
+
 			GLProgram* program = renderer.dlightProgram;
 
 			static GLProgramUniform chunkPosition("chunkPosition");
@@ -499,11 +504,12 @@ namespace spades {
 			device.BindBuffer(IGLDevice::ArrayBuffer, 0);
 			device.BindBuffer(IGLDevice::ElementArrayBuffer, iBuffer);
 			for (const auto& light : lights) {
-				static GLDynamicLightShader lightShader;
-				lightShader(&renderer.renderer, program, light, 1);
-
+				// Cull first: setting a light up costs far more than testing it.
 				if (!light.Cull(bx))
 					continue;
+
+				static GLDynamicLightShader lightShader;
+				lightShader(&renderer.renderer, program, light, 1);
 
 				device.DrawElements(IGLDevice::Triangles,
 				                    static_cast<IGLDevice::Sizei>(indices.size()),

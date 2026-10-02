@@ -18,6 +18,8 @@
 
  */
 
+#include <algorithm>
+
 #include <set>
 
 #include "CellToTriangle.h"
@@ -862,6 +864,12 @@ namespace spades {
 				// frustrum cull
 				float rad = radius * axisX.GetLength();
 				if (!renderer.SphereFrustrumCull(modelOrigin, rad))
+					continue;
+
+				// Nothing to set up for a model no light reaches.
+				if (std::none_of(lights.begin(), lights.end(), [&](const GLDynamicLight& light) {
+					    return light.SphereCull(modelOrigin, rad);
+				    }))
 					continue;
 
 				static GLProgramUniform customColor("customColor");
