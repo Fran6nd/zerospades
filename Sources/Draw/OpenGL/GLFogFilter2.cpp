@@ -183,7 +183,12 @@ namespace spades {
 			//
 			// We add some value (`radiosityOffset`) to `radiosityScale` for
 			// artistic reasons. We want the fog to reflect some light.
+			//
+			// Without the sun this reduces to `1 / ambientBrightness`, which is taken
+			// as is: a black channel of the Fog Colour would make it `0 / 0`.
 			auto fogTransmission1 = [=](float fogColor) {
+				if (!sunUp)
+					return 1.0F / ambientBrightness;
 				return fogColor / (sunlightBrightness + ambientBrightness * fogColor);
 			};
 			Vector3 fogTransmission{
