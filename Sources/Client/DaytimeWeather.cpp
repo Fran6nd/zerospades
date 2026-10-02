@@ -29,9 +29,6 @@
 namespace spades {
 	namespace client {
 		namespace {
-			/** The factor the night lights the world with, but for the sun's light. */
-			constexpr float kNightDaylight = 0.1F;
-
 			/**
 			 * The Times a Sky is sent with. Version 1 reads any but `0` as the day; these
 			 * are midnight and noon, which a version with a passing time will read as
@@ -84,7 +81,7 @@ namespace spades {
 		}
 
 		float GetDaylight(TimeOfDay timeOfDay) {
-			return timeOfDay == TimeOfDay::Night ? kNightDaylight : 1.0F;
+			return timeOfDay == TimeOfDay::Night ? 0.0F : 1.0F;
 		}
 	} // namespace client
 } // namespace spades

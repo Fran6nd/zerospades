@@ -46,7 +46,8 @@ namespace spades {
 		float GetSunlight(TimeOfDay);
 
 		/** The factor the rest of the world's lighting, the fog and the sky are drawn
-		 * with. `1` is the day, and how the world looks without the extension. */
+		 * with. `1` is the day, and how the world looks without the extension; at night
+		 * there is none, and only dynamic lights light the world. */
 		float GetDaylight(TimeOfDay);
 	} // namespace client
 } // namespace spades
