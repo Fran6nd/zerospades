@@ -44,6 +44,7 @@ uniform vec2 displaceScale;
 vec3 EvaluateSunLight();
 vec3 EvaluateAmbientLight(float detailAmbientOcclusion);
 vec3 EvaluateDynamicLights(vec3 position, vec3 normal);
+vec3 EvaluateWaterDynamicLightGlint(vec3 position, vec3 wave, vec3 ongoing);
 float GGXDistribution(float m, float dotHalf);
 
 float decodeDepth(float w, float near, float far) {
@@ -339,6 +340,10 @@ void main() {
 
 		gl_FragColor.xyz += sunlight * spec * att;
 	}
+
+	/* ------- Dynamic Light Glint -------- */
+
+	gl_FragColor.xyz += EvaluateWaterDynamicLightGlint(worldPosition, wave, ongoing) * att;
 
 #if !LINEAR_FRAMEBUFFER
 	gl_FragColor.xyz = sqrt(gl_FragColor.xyz);
