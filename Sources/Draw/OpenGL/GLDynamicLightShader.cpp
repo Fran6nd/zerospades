@@ -59,6 +59,7 @@ namespace spades {
 		GLDynamicLightShader::RegisterShader(spades::draw::GLProgramManager* r) {
 			std::vector<GLShader*> shaders;
 
+			shaders.push_back(r->RegisterShader("Shaders/OpenGL/DynamicLight/Lights.fs"));
 			shaders.push_back(r->RegisterShader("Shaders/OpenGL/DynamicLight/Common.fs"));
 			shaders.push_back(r->RegisterShader("Shaders/OpenGL/DynamicLight/Common.vs"));
 
