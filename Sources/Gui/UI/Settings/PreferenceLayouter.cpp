@@ -44,23 +44,30 @@ namespace spades {
 			float sw = parent->GetManager().screenWidth;
 			float sh = parent->GetManager().screenHeight;
 
-			fieldX = sw - 440.0F;
-			float maxFieldX = 250.0F;
-			if (fieldX > maxFieldX)
-				fieldX = maxFieldX;
+			// Width of the tab panel as laid out by PreferenceView.
+			float panelWidth = PreferenceMetrics::GetPanelWidth(sw);
 
-			fieldWidth = sw - 400.0F;
-			float maxFieldWidth = 320.0F;
+			listX = 10.0F;
+
+			// The list fills the panel starting at listX. The controls end before the
+			// right edge so the scroll bar has room.
+			float scrollBarReserve = 20.0F;
+			float fieldRight = panelWidth - listX - scrollBarReserve;
+
+			// Controls are right-aligned and capped in width.
+			float maxFieldWidth = 280.0F;
+			float minCaptionWidth = 200.0F;
+			fieldWidth = fieldRight - minCaptionWidth;
 			if (fieldWidth > maxFieldWidth)
 				fieldWidth = maxFieldWidth;
+			fieldX = fieldRight - fieldWidth;
 
 			fieldHeight = sh - 8.0F;
 			float maxFieldHeight = 550.0F;
 			if (fieldHeight > maxFieldHeight)
 				fieldHeight = maxFieldHeight;
 
-			listX = 10.0F;
-			listWidth = fieldX + fieldWidth - listX;
+			listWidth = fieldRight - listX;
 		}
 
 		void StandardPreferenceLayouter::OnKeyBound(UIElement& sender) {

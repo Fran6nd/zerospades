@@ -37,6 +37,21 @@ namespace spades {
 			int row = 0;
 		};
 
+		/** Geometry shared by `PreferenceView` and `StandardPreferenceLayouter`. */
+		struct PreferenceMetrics {
+			static constexpr float maxContentsWidth = 800.0F;
+			static constexpr float tabWidth = 150.0F;
+			static constexpr float tabInset = 2.0F;
+
+			/** Width of a tab's content panel for the given screen width. */
+			static float GetPanelWidth(float screenWidth) {
+				float contentsWidth = screenWidth - 16.0F;
+				if (contentsWidth > maxContentsWidth)
+					contentsWidth = maxContentsWidth;
+				return contentsWidth - (tabInset + tabWidth);
+			}
+		};
+
 		/** Heading navigation index for one tab; shared between panel and view. */
 		class HeadingNavIndex : public RefCountedObject {
 		public:

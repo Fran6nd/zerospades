@@ -59,7 +59,7 @@ namespace spades {
 			float sh = manager->screenHeight;
 
 			contentsWidth = sw - 16.0F;
-			float maxContentsWidth = 800.0F;
+			float maxContentsWidth = PreferenceMetrics::maxContentsWidth;
 			if (contentsWidth > maxContentsWidth)
 				contentsWidth = maxContentsWidth;
 
@@ -72,10 +72,10 @@ namespace spades {
 			contentsLeft = (sw - contentsWidth) * 0.5F;
 			contentsRight = contentsLeft + contentsWidth;
 
-			tabWidth = 150.0F;
+			tabWidth = PreferenceMetrics::tabWidth;
 			tabRowHeight = 30.0F;
 			tabTop = contentsTop + 2.0F;
-			tabLeft = contentsLeft + 2.0F;
+			tabLeft = contentsLeft + PreferenceMetrics::tabInset;
 			tabRight = tabLeft + tabWidth;
 
 			float panelBorderOffset = 14.0F;
