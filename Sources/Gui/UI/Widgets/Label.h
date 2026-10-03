@@ -33,6 +33,8 @@ namespace spades {
 				std::string text;
 				Vector4 backgroundColor = MakeVector4(0, 0, 0, 0);
 				Vector4 textColor = MakeVector4(1, 1, 1, 1);
+				Vector4 shadowColor = MakeVector4(0, 0, 0, 0);
+				Vector4 outlineColor = MakeVector4(0, 0, 0, 0);
 				Vector4 disabledTextColor = MakeVector4(1.0F, 1.0F, 1.0F, 0.3F);
 				Vector2 alignment = MakeVector2(0.0F, 0.0F);
 				float textScale = 1.0F;

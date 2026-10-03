@@ -313,6 +313,56 @@ namespace spades {
 			              [f](UIElement& s) { f->OnRandomizePressed(s); });
 		}
 
+		void StandardPreferenceLayouter::MarkLastAsBadge(const std::string& text,
+                                                 const Vector4& textColor,
+                                                 const Vector4& outlineColor)
+		{
+			if (items.empty())
+				return;
+
+			UIElement* container = items.back().GetPointerOrNull();
+			if (!container || container->GetChildren().empty())
+				return;
+
+			Label* caption = dynamic_cast<Label*>(container->GetChildren().front().GetPointerOrNull());
+			if (!caption)
+				return;
+
+			client::IFont& font = fontManager->GetGuiFont();
+			client::IFont& smallFont = fontManager->GetSmallFont();
+
+			Handle<Label> badge = Handle<Label>::New(&parent->GetManager());
+			badge->SetFont(&smallFont);
+			badge->text = text;
+			badge->alignment = MakeVector2(0.0F, 0.0F);
+			badge->textColor = textColor;
+			badge->outlineColor = outlineColor;
+
+			float badgeW = smallFont.Measure(badge->text).x + 8.0F;
+			float x = listX + font.Measure(caption->text).x + 4.0F;
+
+			// Never overlap the control column.
+			float maxX = fieldX - badgeW - 4.0F;
+			if (x > maxX)
+				x = maxX;
+
+			badge->SetBounds(AABB2(x, 8.0F, badgeW, 16.0F));
+			badge->enable = caption->enable;
+			container->AddChild(badge.GetPointerOrNull());
+		}
+
+		void StandardPreferenceLayouter::MarkLastAsNew() {
+			MarkLastAsBadge(_Tr("Preferences", "NEW"),
+							MakeVector4(1.0F, 0.85F, 0.2F, 1.0F),
+							MakeVector4(0.25F, 0.2F, 0.05F, 1.0F));
+		}
+
+		void StandardPreferenceLayouter::MarkLastAsUpdated() {
+			MarkLastAsBadge(_Tr("Preferences", "MOD."),
+							MakeVector4(0.4F, 0.85F, 1.0F, 1.0F),
+							MakeVector4(0.1F, 0.25F, 0.35F, 1.0F));
+		}
+
 		void StandardPreferenceLayouter::FinishLayout() {
 			Handle<ListView> list = Handle<ListView>::New(&parent->GetManager());
 			Handle<StandardPreferenceLayouterModel> model =

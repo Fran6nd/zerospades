@@ -37,14 +37,30 @@ namespace spades {
 					r.DrawImage(nullptr, AABB2(pos.x, pos.y, sz.x, sz.y));
 				}
 
-				if (!text.empty()) {
-					client::IFont* font = GetFont();
-					if (!font)
-						return;
-					Vector2 textSize = font->Measure(text) * textScale;
-					Vector2 textPos = pos + (sz - textSize) * alignment;
-					font->Draw(text, textPos, textScale, IsEnabled() ? textColor : disabledTextColor);
+				if (text.empty())
+					return;
+
+				client::IFont* font = GetFont();
+				if (!font)
+					return;
+
+				Vector2 textSize = font->Measure(text) * textScale;
+				Vector2 textPos = pos + (sz - textSize) * alignment;
+
+				// draw shadowed (blurred) text
+				if (shadowColor.w > 0.0F) {
+					font->DrawShadow(text, textPos, textScale, IsEnabled() ? textColor : disabledTextColor, shadowColor);
+					return;
 				}
+				
+				// draw outlined text
+				if (outlineColor.w > 0.0F) {
+					font->DrawOutline(text, textPos, textScale, IsEnabled() ? textColor : disabledTextColor, outlineColor);
+					return;
+				}
+
+				// draw simple text
+				font->Draw(text, textPos, textScale, IsEnabled() ? textColor : disabledTextColor);
 			}
 		} // namespace ui
 	} // namespace gui

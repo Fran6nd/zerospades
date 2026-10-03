@@ -53,6 +53,8 @@ namespace spades {
 			l.AddToggleField(_Tr("Preferences", "Classic Weapon Recoil"), "cg_classicWeaponRecoil");
 			l.AddToggleField(_Tr("Preferences", "Classic Sprinting"), "cg_classicSprinting");
 			l.AddToggleField(_Tr("Preferences", "Classic Zoom"), "cg_classicZoom");
+			l.AddToggleField(_Tr("Preferences", "Automatic Unscope"), "cg_autoUnscope");
+			l.MarkLastAsNew();
 
 			l.AddHeading(_Tr("Preferences", "Effects"));
 			l.AddChoiceField(_Tr("Preferences", "Blood"), "cg_blood",
@@ -175,9 +177,11 @@ namespace spades {
 			l.AddChoiceField(_Tr("Preferences", "HUD Ammo Style"), "cg_hudAmmoStyle",
 			                 {_Tr("Preferences", "NORMAL"), _Tr("Preferences", "SIMPLE")}, {0, 1});
 			l.AddToggleField(_Tr("Preferences", "Show Tool Hotbar"), "cg_hudHotbar");
+			l.MarkLastAsUpdated();
 			// The compass also needs the server's permission, so turning this on does
 			// not put one on screen where the server does not allow it.
 			l.AddToggleField(_Tr("Preferences", "Show Compass Bar"), "cg_hudCompassBar");
+			l.MarkLastAsNew();
 			l.AddChoiceField(_Tr("Preferences", "Show Alive Player Count"), "cg_hudPlayerCount",
 			                 {_Tr("Preferences", "OFF"), _Tr("Preferences", "Top"),
 			                  _Tr("Preferences", "Bottom")},
@@ -422,8 +426,11 @@ namespace spades {
 			l.AddControl(_Tr("Preferences", "Chat Log"), "cg_keyChatLog");
 			l.AddControl(_Tr("Preferences", "Chat Zoom"), "cg_keyZoomChatLog");
 			l.AddControl(_Tr("Preferences", "Pie Menu"), "cg_keyPieMenu");
+			l.MarkLastAsNew();
 			l.AddControl(_Tr("Preferences", "Show Teammates"), "cg_keyTeamOverlay");
+			l.MarkLastAsNew();
 			l.AddControl(_Tr("Preferences", "Team Ping"), "cg_keyTeamPing");
+			l.MarkLastAsNew();
 			l.AddControl(_Tr("Preferences", "Limbo Menu"), "cg_keyLimbo");
 			l.AddControl(_Tr("Preferences", "Save Map"), "cg_keySaveMap");
 			l.AddControl(_Tr("Preferences", "Save Sceneshot"), "cg_keySceneshot");

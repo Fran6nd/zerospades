@@ -117,6 +117,10 @@ namespace spades {
 			void AddTargetPreview();
 			void AddScopePreview();
 
+			void MarkLastAsBadge(const std::string& text, const Vector4& textColor, const Vector4& outlineColor);
+			void MarkLastAsNew();
+			void MarkLastAsUpdated();
+
 			void FinishLayout();
 		};
 	} // namespace gui
