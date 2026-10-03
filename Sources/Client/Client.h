@@ -138,6 +138,7 @@ namespace spades {
 			Handle<ClientUI> scriptedUI;
 
 			ServerAddress hostname;
+			std::string serverName;
 
 			std::unique_ptr<World> world;
 			Handle<GameMap> map;
@@ -686,6 +687,9 @@ namespace spades {
 			bool IsDemoMode() const { return demoNet != nullptr; }
 			DemoNetClient* GetDemoNetClient() { return demoNet.get(); }
 			void ReloadDemo();
+			
+			const std::string& GetServerName() const { return serverName; }
+			
 
 			/**
 			 * Auto-follows a player once the demo world has loaded (empty = first

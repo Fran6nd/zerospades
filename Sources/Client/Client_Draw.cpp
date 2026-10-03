@@ -2682,11 +2682,28 @@ namespace spades {
 			renderer->DrawOutlinedRect(prgBarX - 1, prgBarY - 1, prgBarX1 + 1, prgBarY1 + 1, 1);
 
 			// draw net status
-			auto statusStr = activeNet->GetStatusString();
+			Vector4 dim = MakeVector4(0.5F, 0.5F, 0.5F, 1.0F);
 			IFont& font = fontManager->GetGuiFont();
+			auto statusStr = activeNet->GetStatusString();
 			Vector2 size = font.Measure(statusStr);
 			Vector2 pos = MakeVector2((sw - size.x) * 0.5F, (prgBarY - 10.0F) - size.y);
-			font.Draw(statusStr, pos, 1.0F, MakeVector4(0.5, 0.5, 0.5, 1));
+			font.Draw(statusStr, pos, 1.0F, dim);
+
+			// draw the server name and the cancel hint in the top-left corner
+			const float margin = 8.0F;
+			float y = margin;
+
+			// server name (empty in demo mode)
+			if (!serverName.empty()) {
+				IFont& headingFont = fontManager->GetHeadingFont();
+				std::string serverStr = _Tr("Client", "Connecting to {0}", serverName);
+				headingFont.Draw(serverStr, MakeVector2(margin, y), 1.0F, MakeVector4(1, 1, 1, 1));
+				y += headingFont.Measure(serverStr).y + 4.0F;
+			}
+
+			// cancel hint
+			std::string hintStr = _Tr("Client", "[Esc] Cancel");
+			font.Draw(hintStr, MakeVector2(margin, y), 1.0F, dim);
 		}
 
 		void Client::DrawStats() {

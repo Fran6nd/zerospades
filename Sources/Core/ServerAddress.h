@@ -44,6 +44,9 @@ namespace spades {
 
 		/** Returns the resolved host as a dotted-decimal IPv4 string, e.g. "1.2.3.4". */
 		std::string GetIPString() const;
+		
+		/** Returns a human-readable host for the UI (no port), e.g. "Localhost" or "play.example.com". */
+		std::string GetDisplayName() const;
 
 		static uint32_t ParseIntegerAddress(const std::string& str);
 	};

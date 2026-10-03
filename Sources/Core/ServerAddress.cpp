@@ -22,6 +22,7 @@
 #include <regex>
 
 #include "ServerAddress.h"
+#include <Core/Strings.h>
 
 namespace spades {
 
@@ -100,6 +101,19 @@ namespace spades {
 		if (enet_address_get_host_ip(&addr, buf, sizeof(buf)) == 0)
 			return buf;
 		return StripProtocol(mAddress);
+	}
+	
+	std::string ServerAddress::GetDisplayName() const {
+		std::string address = StripProtocol(mAddress);
+
+		size_t pos = address.find(':');
+		if (pos != std::string::npos)
+			address = address.substr(0, pos);
+
+		if (address == "16777343" || address.compare(0, 4, "127.") == 0)
+			address = _Tr("ServerAddress", "Localhost");
+
+		return address;
 	}
 
 }; // namespace spades

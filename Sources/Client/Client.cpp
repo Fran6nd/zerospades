@@ -73,6 +73,8 @@ SPADES_SETTING(cg_playerName);
 SPADES_SETTING(cg_centerMessageSmallFont);
 
 namespace spades {
+	extern std::string g_pendingServerName;
+
 	namespace client {
 
 		Client::Client(Handle<IRenderer> r, Handle<IAudioDevice> audioDev,
@@ -542,7 +544,7 @@ namespace spades {
 			audioDevice->RegisterSound("Sounds/Weapons/RestockLocal.opus");
 			audioDevice->RegisterSound("Sounds/Weapons/Switch.opus");
 			audioDevice->RegisterSound("Sounds/Weapons/SwitchLocal.opus");
-			
+
 			// init blood marks
 			bloodMarks = stmp::make_unique<BloodMarks>(*this);
 
@@ -644,13 +646,18 @@ namespace spades {
 				renderer->RegisterModel("Models/Player/XmasHat.kv6");
 			}
 
+			std::string fullHostStr = hostname.ToString(false);
+			std::string hostStr = hostname.ToString();
+
+			// init mumble link
 			if (mumbleLink.Init())
 				SPLog("Mumble linked");
 			else
 				SPLog("Mumble link failed");
-			mumbleLink.SetContext(hostname.ToString(false));
+			mumbleLink.SetContext(fullHostStr);
 			mumbleLink.SetIdentity(playerName);
 
+			// create demo file
 			if (!demoFilePath.empty()) {
 				SPLog("Starting demo playback: '%s'", demoFilePath.c_str());
 				demoNet = stmp::make_unique<DemoNetClient>(this);
@@ -658,14 +665,22 @@ namespace spades {
 					SPRaise("Failed to open demo file: %s", demoFilePath.c_str());
 				activeNet = demoNet.get();
 			} else {
-				SPLog("Started connecting to '%s'", hostname.ToString().c_str());
+				SPLog("Started connecting to '%s'", hostStr.c_str());
+
+				// ConnectServer falls back to the raw address when the server is not in
+				// the list, and direct connects (autoconnect) leave it empty. In both
+				// cases show a readable address instead.
+				const std::string& pending = g_pendingServerName;
+				bool isAddress = pending.empty() || pending == hostStr || pending == fullHostStr;
+				serverName = isAddress ? hostname.GetDisplayName() : pending;
+
 				net = stmp::make_unique<NetClient>(this);
 				net->Connect(hostname);
 				activeNet = net.get();
 			}
 
-			// get host/time string
-			std::string fn = hostname.ToString(false);
+			// decide log file name
+			std::string fn = fullHostStr;
 			std::string fn2;
 			{
 				time_t t;
@@ -684,7 +699,7 @@ namespace spades {
 					fn2 += '_';
 			}
 
-			// decide log file name
+			// create log file
 			const std::string logFn = "NetLogs/" + fn2 + ".log";
 			try {
 				logStream = FileManager::OpenForWriting(logFn.c_str());

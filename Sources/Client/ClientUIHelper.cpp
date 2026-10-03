@@ -65,5 +65,10 @@ namespace spades {
 		float ClientUIHelper::GetClientTime() const {
 			return (ui && ui->client) ? ui->client->GetTime() : 0.0F;
 		}
+		
+		std::string ClientUIHelper::GetServerName() const {
+			return (ui && ui->client) ? ui->client->GetServerName() : std::string();
+		}
+		
 	} // namespace client
 } // namespace spades

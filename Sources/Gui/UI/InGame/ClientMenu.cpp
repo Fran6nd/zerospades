@@ -152,8 +152,16 @@ namespace spades {
 		void ClientMenu::Render() {
 			UIElement::Render();
 
-			IFont& font = ui->GetFontManager().GetHeadingFont();
+			IFont& guiFont = ui->GetFontManager().GetGuiFont();
+			IFont& headingFont = ui->GetFontManager().GetHeadingFont();
 
+			float x = 8.0F;
+			float y = 8.0F;
+
+			Vector4 white = MakeVector4(1, 1, 1, 1);
+			Vector4 shadow = MakeVector4(0, 0, 0, 0.5F);
+
+			// draw playing time
 			int now = static_cast<int>(helper->GetClientTime());
 			int hrs = now / 3600;
 			int mins = (now % 3600) / 60;
@@ -167,9 +175,18 @@ namespace spades {
 			else
 				time = _Tr("Client", "{0}s", ToString(secs));
 
-			std::string str = _Tr("Client", "Session time: {0}", time);
-			font.DrawShadow(str, MakeVector2(8.0F, 8.0F), 1.0F,
-                     MakeVector4(1, 1, 1, 1), MakeVector4(0, 0, 0, 0.5F));
+			std::string timeStr = _Tr("Client", "Session time: {0}", time);
+			headingFont.DrawShadow(timeStr, MakeVector2(x, y), 1.0F, white, shadow);
+			y += headingFont.Measure(timeStr).y + 10.0F;
+
+			// draw server name
+			std::string serverName = helper->GetServerName();
+			if (!serverName.empty()) {
+				std::string serverStr = _Tr("Client", "Connected to: {0}", serverName);
+				guiFont.DrawShadow(serverStr, MakeVector2(x, y), 1.0F, white, shadow);
+				y += guiFont.Measure(serverStr).y + 2.0F;
+			}
+
 		}
 	} // namespace client
 } // namespace spades

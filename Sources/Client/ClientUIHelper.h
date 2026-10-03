@@ -21,6 +21,8 @@
 
 #pragma once
 
+#include <string>
+
 #include <Core/RefCountedObject.h>
 
 namespace spades {
@@ -47,6 +49,9 @@ namespace spades {
 			bool IsDemoMode() const;
 
 			float GetClientTime() const;
+			
+			std::string GetServerName() const;
+			
 		};
 	} // namespace client
 } // namespace spades
