@@ -2775,10 +2775,14 @@ namespace spades {
 			const Vector4 colBorder = MakeVector4(0.6F, 0.6F, 0.6F, 0.6F);
 
 			// draw background
-			renderer->SetColorAlphaPremultiplied(colBackground);
-			renderer->DrawFilledRect(panelX - margin, panelY - margin,
-									panelX - margin + panelW + margin * 2,
-									panelY - margin + panelH + margin * 2);
+			const float bgTop = panelY - margin;
+			const float bgBottom = panelY + panelH + margin;
+			const float solidEnd = graphX + graphW + margin;
+			const float fadeEnd = panelX + panelW + margin;
+			const Vector4 bgTransparent = MakeVector4(0, 0, 0, 0);
+			renderer->DrawFilledRectFadeSolid(0.0F, bgTop, fadeEnd, bgBottom,
+											  solidEnd, fadeEnd,
+											  colBackground, bgTransparent, true);
 
 			// compute max values for scaling
 			float maxBw = 8.0F; // kbps floor
