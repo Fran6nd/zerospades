@@ -25,19 +25,24 @@
 namespace spades {
 	namespace gui {
 		namespace {
+			inline void FillRectI(client::IRenderer& r, int x0, int y0, int x1, int y1) {
+				r.DrawFilledRect(static_cast<float>(x0), static_cast<float>(y0),
+								 static_cast<float>(x1), static_cast<float>(y1));
+			}
+			
 			void DrawTargetOutlineRect(client::IRenderer& r, int x, int y, int w, int h,
 			                           const TargetParam& param) {
 				int thickness = static_cast<int>(param.outlineThickness);
 				ui::SetColorNP(r, param.outlineColor);
 				if (param.useRoundedStyle) {
-					r.DrawFilledRect(x, y - thickness, w, y);
-					r.DrawFilledRect(x, h, w, h + thickness);
+					FillRectI(r, x, y - thickness, w, y);
+					FillRectI(r, x, h, w, h + thickness);
 				} else {
-					r.DrawFilledRect(x - thickness, y - thickness, w + thickness, y);
-					r.DrawFilledRect(x - thickness, h, w + thickness, h + thickness);
+					FillRectI(r, x - thickness, y - thickness, w + thickness, y);
+					FillRectI(r, x - thickness, h, w + thickness, h + thickness);
 				}
-				r.DrawFilledRect(x - thickness, y, x, h);
-				r.DrawFilledRect(w, y, w + thickness, h);
+				FillRectI(r, x - thickness, y, x, h);
+				FillRectI(r, w, y, w + thickness, h);
 			}
 
 			void DrawTargetRect(client::IRenderer& r, int x, int y, int w, int h,
@@ -45,7 +50,7 @@ namespace spades {
 				if (param.drawOutline)
 					DrawTargetOutlineRect(r, x, y, w, h, param);
 				ui::SetColorNP(r, param.lineColor);
-				r.DrawFilledRect(x, y, w, h);
+				FillRectI(r, x, y, w, h);
 			}
 		} // namespace
 
@@ -91,7 +96,7 @@ namespace spades {
 				if (param.drawOutline)
 					DrawTargetOutlineRect(r, x, y, w, h, param);
 				ui::SetColorNP(r, param.dotColor);
-				r.DrawFilledRect(x, y, w, h);
+				FillRectI(r, x, y, w, h);
 			}
 		}
 	} // namespace gui
