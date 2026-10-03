@@ -297,6 +297,7 @@ namespace spades {
 
 			savedPackets.clear();
 			customKickReasonString.clear();
+			serverExtensions.clear();
 
 			peer = enet_host_connect(host, &addr, 1, protocolVersion);
 			if (peer == NULL)
@@ -605,6 +606,17 @@ namespace spades {
 			}
 		}
 
+		std::string GetExtensionDisplayName(uint8_t id) {
+			switch (id) {
+				case ExtensionTypePlayerProperties: return "Player Properties";
+				case ExtensionTypeTeamplay: return "Teamplay";
+				case ExtensionTypePlayerLimit: return "Player Limit";
+				case ExtensionTypeMessageTypes: return "Message Types";
+				case ExtensionTypeKickReason: return "Kick Reason";
+				default: return _Tr("NetClient", "Unknown (ID {0})", ToString(id));
+			}
+		}
+
 		bool NetClient::HandleHandshakePackets(spades::client::NetPacketReader& r) {
 			SPADES_MARK_FUNCTION();
 
@@ -706,8 +718,25 @@ namespace spades {
 				int extId = r.ReadByte();
 				int extVer = r.ReadByte();
 
+				// some servers announce the same extension more than once
+				bool alreadyAnnounced = false;
+				for (const auto& e : serverExtensions) {
+					if (e.id == extId) {
+						alreadyAnnounced = true;
+						break;
+					}
+				}
+				if (alreadyAnnounced)
+					continue;
+
 				auto got = implementedExtensions.find(extId);
-				if (got == implementedExtensions.end()) {
+				bool supported = got != implementedExtensions.end();
+
+				serverExtensions.push_back({static_cast<uint8_t>(extId),
+				                            static_cast<uint8_t>(extVer),
+				                            supported});
+
+				if (!supported) {
 					SPLog("Client does not support extension %d v%d", extId, extVer);
 				} else {
 					SPLog("Client supports extension %d v%d", extId, extVer);

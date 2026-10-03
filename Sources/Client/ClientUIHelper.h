@@ -22,12 +22,14 @@
 #pragma once
 
 #include <string>
+#include <vector>
 
 #include <Core/RefCountedObject.h>
 
 namespace spades {
 	namespace client {
 		class ClientUI;
+		struct ServerExtensionInfo;
 		class ClientUIHelper : public RefCountedObject {
 
 			friend class ClientUI;
@@ -52,6 +54,7 @@ namespace spades {
 			
 			std::string GetServerName() const;
 			
+			std::vector<ServerExtensionInfo> GetServerExtensions() const;
 		};
 	} // namespace client
 } // namespace spades

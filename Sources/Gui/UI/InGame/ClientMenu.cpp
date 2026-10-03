@@ -22,6 +22,7 @@
 #include <Client/ClientUI.h>
 #include <Client/ClientUIHelper.h>
 #include <Client/Fonts.h>
+#include <Client/NetClient.h>
 #include <Core/Strings.h>
 #include <Gui/UI/Framework/UIManager.h>
 #include <Gui/UI/Widgets/Button.h>
@@ -187,6 +188,23 @@ namespace spades {
 				y += guiFont.Measure(serverStr).y + 2.0F;
 			}
 
+			// draw extensions announced by the server
+			const auto& extensions = helper->GetServerExtensions();
+			if (!extensions.empty()) {
+				std::string extStr = _Tr("Client", "Server extensions:");
+				guiFont.DrawShadow(extStr, MakeVector2(x, y), 1.0F, white, shadow);
+				y += guiFont.Measure(extStr).y;
+
+				for (const auto& ext : extensions) {
+					std::string line = GetExtensionDisplayName(ext.id) + " v" + ToString(ext.version);
+					// dim unsupported extensions
+					Vector4 color = ext.supportedByClient
+						? MakeVector4(0.7F, 0.7F, 0.7F, 1.0F)
+						: MakeVector4(0.4F, 0.4F, 0.4F, 1.0F);
+					guiFont.Draw(line, MakeVector2(x, y), 1.0F, color);
+					y += guiFont.Measure(line).y;
+				}
+			}
 		}
 	} // namespace client
 } // namespace spades

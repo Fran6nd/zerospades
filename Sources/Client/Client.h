@@ -690,6 +690,11 @@ namespace spades {
 			
 			const std::string& GetServerName() const { return serverName; }
 			
+			/** Extensions announced by the server; empty in demo mode or before the handshake. */
+			std::vector<ServerExtensionInfo> GetServerExtensions() const {
+				return (net && !IsDemoMode()) ? net->GetServerExtensions()
+											  : std::vector<ServerExtensionInfo>();
+			}
 
 			/**
 			 * Auto-follows a player once the demo world has loaded (empty = first

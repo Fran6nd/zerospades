@@ -70,5 +70,9 @@ namespace spades {
 			return (ui && ui->client) ? ui->client->GetServerName() : std::string();
 		}
 		
+		std::vector<ServerExtensionInfo> ClientUIHelper::GetServerExtensions() const {
+			return (ui && ui->client) ? ui->client->GetServerExtensions()
+									  : std::vector<ServerExtensionInfo>();
+		}
 	} // namespace client
 } // namespace spades

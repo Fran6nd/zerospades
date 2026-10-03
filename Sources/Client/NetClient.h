@@ -58,6 +58,17 @@ namespace spades {
 			ExtensionTypeKickReason = 194,
 		};
 
+		/** An extension announced by the server during the handshake. */
+		struct ServerExtensionInfo {
+			uint8_t id;
+			uint8_t version;
+			/** Whether this client implements the extension. */
+			bool supportedByClient;
+		};
+
+		/** Human-readable (translated) name of a server extension id. */
+		std::string GetExtensionDisplayName(uint8_t id);
+
 		class World;
 		class NetPacketWriter;
 		struct PlayerInput;
@@ -96,6 +107,8 @@ namespace spades {
 			int protocolVersion;
 			/** Extensions supported by both client and server (map of extension id → version) */
 			std::unordered_map<uint8_t, uint8_t> extensions;
+			/** Every extension announced by the server, in announcement order (including unsupported ones) */
+			std::vector<ServerExtensionInfo> serverExtensions;
 			/** Extensions implemented in this client (map of extension id → version) */
 			std::unordered_map<uint8_t, uint8_t> implementedExtensions{
 			  {ExtensionTypePlayerProperties, 1},
@@ -190,6 +203,9 @@ namespace spades {
 				SPAssert(properties);
 				return properties;
 			}
+
+			/** Extensions announced by the server during the handshake. Empty until the handshake arrives. */
+			const std::vector<ServerExtensionInfo>& GetServerExtensions() const { return serverExtensions; }
 
 			void Connect(const ServerAddress& hostname);
 			void Disconnect() override;
