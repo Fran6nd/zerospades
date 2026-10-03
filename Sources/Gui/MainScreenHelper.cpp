@@ -38,6 +38,7 @@
 #include <Core/IStream.h>
 #include <Core/Settings.h>
 #include <Core/Thread.h>
+#include <Gui/Utils/LanDiscovery.h>
 #include <Gui/Utils/PingTester.h>
 #include <ZeroSpades.h>
 
@@ -222,6 +223,51 @@ namespace spades {
 		void MainScreenHelper::Update() {
 			if (pingTester)
 				pingTester->Update();
+
+			if (!lanDiscovery)
+				return;
+			lanDiscovery->Update();
+
+			// Servers found on the LAN are added once the master list has been replaced
+			if (!result || query)
+				return;
+
+			for (const LanDiscoveryEntry& entry : lanDiscovery->GetServers()) {
+				if (lanMerged.count(entry.address))
+					continue;
+
+				// Reuse the master list parser so the item is built the same way
+				Json::Value obj(Json::objectValue);
+				obj["name"] = entry.info.name;
+				obj["identifier"] = entry.address;
+				obj["map"] = entry.info.mapName;
+				obj["game_mode"] = entry.info.gameMode;
+				obj["country"] = "";
+				obj["game_version"] = entry.info.gameVersion;
+				obj["latency"] = entry.ping;
+				obj["players_current"] = entry.info.numPlayers;
+				obj["players_max"] = entry.info.maxPlayers;
+
+				std::unique_ptr<ServerItem> srv{ServerItem::Create(obj)};
+				if (!srv)
+					continue;
+
+				result->list.emplace_back(
+				  new MainScreenServerItem(srv.get(), favorites.count(entry.address) >= 1),
+				  false);
+				lanMerged.insert(entry.address);
+				lanListChanged = true;
+
+				// Let the ping tester refine the rough round-trip time
+				if (pingTester)
+					pingTester->AddTarget(entry.address);
+			}
+		}
+
+		bool MainScreenHelper::PollLanServers() {
+			bool changed = lanListChanged;
+			lanListChanged = false;
+			return changed;
 		}
 
 		void MainScreenHelper::MainScreenDestroyed() {
@@ -292,6 +338,10 @@ namespace spades {
 				pingTester.reset(new PingTester());
 				for (const auto& item : result->list)
 					pingTester->AddTarget(item->GetAddress());
+				
+				// The new list replaces the old one, so LAN servers must be added again
+				lanMerged.clear();
+				lanListChanged = false;
 
 				return true;
 			}
@@ -307,6 +357,11 @@ namespace spades {
 
 			if (pingTester)
 				pingTester.reset();
+			
+			// Look for servers on the local network while the master list loads
+			lanDiscovery.reset(new LanDiscovery());
+			lanDiscovery->Scan();
+			lanMerged.clear();
 
 			query = new ServerListQuery(this);
 			query->Start();

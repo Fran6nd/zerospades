@@ -30,6 +30,7 @@
 namespace spades {
 	class ServerItem;
 	class PingTester;
+	class LanDiscovery;
 	namespace gui {
 		class MainScreen;
 
@@ -45,7 +46,7 @@ namespace spades {
 			int numPlayers;
 			int maxPlayers;
 			bool favorite;
-
+			
 		protected:
 			~MainScreenServerItem();
 
@@ -84,6 +85,12 @@ namespace spades {
 			ServerListQuery *query;
 			std::string errorMessage;
 			std::unordered_set<std::string> favorites;
+			
+			std::unique_ptr<LanDiscovery> lanDiscovery;
+			/** Addresses of LAN servers already added to the current `result`. */
+			std::unordered_set<std::string> lanMerged;
+			/** Set when `Update()` added a LAN server to `result`. */
+			bool lanListChanged = false;
 
 			void Update();
 
@@ -99,6 +106,8 @@ namespace spades {
 			void SetServerFavorite(std::string ip, bool favorite);
 
 			bool PollServerListState();
+			/** Returns `true` once after a LAN server was added to the list. */
+			bool PollLanServers();
 			void StartQuery();
 			std::vector<Handle<MainScreenServerItem>> GetServerList(const std::string& sortKey,
 			                                                        bool descending);

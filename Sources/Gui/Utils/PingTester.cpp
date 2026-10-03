@@ -18,6 +18,7 @@
 
  */
 
+#include <algorithm>
 #include <array>
 #include <atomic>
 #include <chrono>
@@ -26,7 +27,9 @@
 #include <unordered_map>
 
 #include <enet/enet.h>
+#include <json/json.h>
 
+#include "HelloProtocol.h"
 #include "PingTester.h"
 
 #include <Core/Debug.h>
@@ -46,18 +49,18 @@ namespace spades {
 		struct SafeENetSocket {
 			const ENetSocket handle;
 			SafeENetSocket(ENetSocket handle) : handle{handle} {
-				if (handle == -1) {
+				if (handle == -1)
 					SPRaise("Failed to create a socket.");
-				}
 			}
-			SafeENetSocket(const SafeENetSocket &) = delete;
-			void operator=(const SafeENetSocket &) = delete;
+			SafeENetSocket(const SafeENetSocket&) = delete;
+			void operator=(const SafeENetSocket&) = delete;
 			~SafeENetSocket() { enet_socket_destroy(handle); }
 		};
 
 		struct ResultPacket {
 			ENetAddress address;
 			clock::time_point receiveTime;
+			std::string payload;
 
 			// Singly-linked list
 			std::unique_ptr<ResultPacket> next;
@@ -102,36 +105,36 @@ namespace spades {
 		struct MeasureThread : public Thread {
 			std::shared_ptr<Shared> shared;
 
-			MeasureThread(const std::shared_ptr<Shared> &shared) : shared{shared} {}
+			MeasureThread(const std::shared_ptr<Shared>& shared) : shared{shared} {}
 
 			void Run() override {
 				SPADES_MARK_FUNCTION();
 
-				std::array<char, 256> buffer;
+				std::array<char, hello::kMaxPacketSize> buffer;
 				ENetBuffer enetBuffer;
 				enetBuffer.data = buffer.data();
 				enetBuffer.dataLength = buffer.size();
 
 				std::unique_ptr<ResultPacket> resultPacket{new ResultPacket()};
-
-				if (cl_debugServerPing) {
+				
+				bool debugPing = cl_debugServerPing;
+				if (debugPing)
 					SPLog("Measurement thread started.");
-				}
 
 				shared->ready.store(true);
 
 				// Wait for incoming packets while polling the value of `shutdown`
 				while (!shared->shutdown.load()) {
-					enet_uint32 cond = ENET_SOCKET_WAIT_RECEIVE;
+					enet_uint32 cond = ENET_SOCKET_WAIT_RECEIVE | ENET_SOCKET_WAIT_INTERRUPT;
 					int result = enet_socket_wait(shared->socket.handle, &cond, 200);
-					if (result < 0) {
+					if (result < 0)
 						SPRaise("enet_socket_wait failed");
-					}
 
-					if (!(cond & ENET_SOCKET_WAIT_RECEIVE)) {
+					// A signal (EINTR) interrupted the wait: ENet reports it through
+					// `ENET_SOCKET_WAIT_INTERRUPT` instead of failing, so just poll again.
+					if (!(cond & ENET_SOCKET_WAIT_RECEIVE))
 						continue;
-					}
-
+						
 					while (true) {
 						ENetAddress address;
 
@@ -149,6 +152,8 @@ namespace spades {
 						// Create and insert a result packet
 						resultPacket->address = address;
 						resultPacket->receiveTime = clock::now();
+						resultPacket->payload.assign(buffer.data(),
+						                             static_cast<std::size_t>(result));
 						resultPacket->next = shared->firstResultPacket.take();
 						shared->firstResultPacket.store(std::move(resultPacket));
 
@@ -159,9 +164,8 @@ namespace spades {
 
 				shared->ready.store(false);
 
-				if (cl_debugServerPing) {
+				if (debugPing)
 					SPLog("Measurement thread closed.");
-				}
 			}
 		};
 
@@ -183,10 +187,8 @@ namespace spades {
 
 			int retriesRemaining;
 
-			bool operator<(const QueueItem &o) const {
-				// `std::priority_queue` is max-heap, so flip the order
-				return time > o.time;
-			}
+			// `std::priority_queue` is max-heap, so flip the order
+			bool operator<(const QueueItem& o) const { return time > o.time; }
 		};
 
 		const std::size_t g_maxSimultaneousMeasurement = 16;
@@ -196,6 +198,68 @@ namespace spades {
 		  duration_cast<clock::duration>(milliseconds(10000));
 		const clock::duration g_timeout = duration_cast<clock::duration>(milliseconds(2000));
 		const int g_retryCount = 10;
+
+		/** Removes control characters and truncates without splitting a UTF-8 character. */
+		std::string SanitizeText(const std::string& s, std::size_t maxLength) {
+			std::string out;
+			out.reserve(std::min(s.size(), maxLength));
+			for (unsigned char c : s) {
+				if (c < 0x20 || c == 0x7F)
+					continue; // drop control characters
+				out += static_cast<char>(c);
+			}
+			if (out.size() > maxLength) {
+				std::size_t cut = maxLength;
+				// move back to the start of a UTF-8 sequence so no character is split
+				while (cut > 0 && (static_cast<unsigned char>(out[cut]) & 0xC0) == 0x80)
+					--cut;
+				out.resize(cut);
+			}
+			return out;
+		}
+
+		/** Parses a HELLOLAN reply. Returns false for anything else (e.g. a plain "HI"). */
+		bool ParseServerInfo(const std::string& payload, PingTesterServerInfo& out) {
+			if (payload.empty() || payload[0] != '{')
+				return false;
+
+			Json::Value root;
+			Json::Reader reader;
+			if (!reader.parse(payload, root) || !root.isObject())
+				return false;
+
+			auto getString = [&](const char* key) {
+				const Json::Value& v = root[key];
+				return v.isString() ? v.asString() : std::string();
+			};
+			auto getInt = [&](const char* key) {
+				const Json::Value& v = root[key];
+				return v.isInt() ? v.asInt() : 0;
+			};
+
+			// Everything here comes from the network, so keep it bounded and printable
+			out.name = SanitizeText(getString("name"), 64);
+			out.mapName = SanitizeText(getString("map"), 64);
+			out.gameMode = SanitizeText(getString("game_mode"), 32);
+			out.gameVersion = SanitizeText(getString("game_version"), 16);
+			out.numPlayers = getInt("players_current");
+			out.maxPlayers = getInt("players_max");
+
+			// "extensions" is a list of [id, version] pairs
+			out.extensions.clear();
+			const Json::Value& exts = root["extensions"];
+			if (exts.isArray()) {
+				for (const Json::Value& e : exts) {
+					if (e.isArray() && e.size() >= 2 && e[0u].isInt() && e[1u].isInt())
+						out.extensions.emplace_back(e[0u].asInt(), e[1u].asInt());
+				}
+			}
+			return true;
+		}
+	}
+	
+	bool ParseHelloLanReply(const std::string& payload, PingTesterServerInfo& out) {
+		return ParseServerInfo(payload, out);
 	}
 
 	struct PingTester::Private {
@@ -211,7 +275,7 @@ namespace spades {
 		std::vector<QueueItem> ongoing;
 
 		/** Measurement thread object, can be null. Can be running or not. */
-		MeasureThread *thread{nullptr};
+		MeasureThread* thread{nullptr};
 
 		Private() {
 			SPADES_MARK_FUNCTION();
@@ -224,9 +288,8 @@ namespace spades {
 			shared->shutdown.store(true);
 
 			// Detach the thread
-			if (thread) {
+			if (thread)
 				thread->MarkForAutoDeletion();
-			}
 		}
 	};
 
@@ -235,11 +298,10 @@ namespace spades {
 
 	void PingTester::AddTarget(const std::string &address) {
 		SPADES_MARK_FUNCTION();
-
-		if (priv->results.find(address) != priv->results.end()) {
-			// The address is already added to the measurement list.
+		
+		// The address is already added to the measurement list.
+		if (priv->results.find(address) != priv->results.end())
 			return;
-		}
 
 		priv->results.emplace(address, PingTesterResult{});
 
@@ -253,11 +315,10 @@ namespace spades {
 
 		priv->addressMap.emplace(addr, address);
 
-		if (alreadyInserted) {
-			// Another measurement with the same ENet address but a different address string
-			// is already inserted.
+		// Another measurement with the same ENet address but a different address string
+		// is already inserted.
+		if (alreadyInserted)
 			return;
-		}
 
 		QueueItem item;
 
@@ -273,20 +334,21 @@ namespace spades {
 		SPADES_MARK_FUNCTION();
 
 		auto now = clock::now();
+		
+		bool debugPing = cl_debugServerPing;
 
 		// Retrieve the result packets
 		auto packet = priv->shared->firstResultPacket.take();
 		for (; packet; packet = std::move(packet->next)) {
-			if (cl_debugServerPing) {
+			if (debugPing)
 				SPLog("Received a packet from %s", ToString(packet->address).c_str());
-			}
 
 			// Find the matching element from the "ongoing" list
 			auto it =
 			  std::find_if(priv->ongoing.begin(), priv->ongoing.end(),
-			               [&](const QueueItem &item) { return item.address == packet->address; });
+			               [&](const QueueItem& item) { return item.address == packet->address; });
 			if (it == priv->ongoing.end()) {
-				if (cl_debugServerPing) {
+				if (debugPing) {
 					SPLog("No ongoing item matching to the host %s",
 					      ToString(packet->address).c_str());
 				}
@@ -295,24 +357,24 @@ namespace spades {
 			}
 
 			// Compute the result
-			QueueItem &item = *it;
-			auto diff = now - item.time;
-			auto ping = static_cast<int>(duration_cast<milliseconds>(diff).count());
+			QueueItem& item = *it;
+			// Use the time the measurement thread received the packet, not the time of this
+			// frame, so the frame rate does not leak into the result
+			auto diff = packet->receiveTime - item.time;
+			auto ping = std::max(0, static_cast<int>(duration_cast<milliseconds>(diff).count()));
 
-			if (cl_debugServerPing) {
+			if (debugPing)
 				SPLog("Pong from %s, RTT = %d", ToString(packet->address).c_str(), ping);
-			}
 
 			// Store the result
 			auto range = priv->addressMap.equal_range(item.address);
 
 			for (auto it = range.first; it != range.second; ++it) {
-				PingTesterResult &result = priv->results[it->second];
+				PingTesterResult& result = priv->results[it->second];
 				result.ping = stmp::optional<int>{ping};
 
-				if (cl_debugServerPing) {
+				if (debugPing)
 					SPLog("%s matches %s", it->second.c_str(), ToString(packet->address).c_str());
-				}
 			}
 
 			priv->addressMap.erase(range.first, range.second);
@@ -325,16 +387,15 @@ namespace spades {
 		// Retry/drop the timed out measurements
 		{
 			for (auto &item : priv->ongoing) {
-				if (!(now > item.deadline)) {
+				if (!(now > item.deadline))
 					continue;
-				}
 
 				if (item.retriesRemaining == 0) {
 					// Give up
 					// (We're allowed to hold it indefinitely according to the definition of
 					// `AddTarget()`)
 
-					if (cl_debugServerPing) {
+					if (debugPing) {
 						SPLog("Host %s didn't respond --- giving up",
 						      ToString(item.address).c_str());
 					}
@@ -342,7 +403,7 @@ namespace spades {
 					continue;
 				}
 
-				if (cl_debugServerPing) {
+				if (debugPing) {
 					SPLog("Host %s didn't respond --- retrying in %d ms",
 					      ToString(item.address).c_str(),
 					      int(duration_cast<milliseconds>(item.retryBackoff).count()));
@@ -351,48 +412,49 @@ namespace spades {
 				// Retry the measurement some time later
 				item.time = now + item.retryBackoff;
 				--item.retriesRemaining;
+
 				item.retryBackoff *= 2;
-				if (item.retryBackoff > g_maximumRetryBackoff) {
+				if (item.retryBackoff > g_maximumRetryBackoff)
 					item.retryBackoff = g_maximumRetryBackoff;
-				}
 
 				priv->queue.push(item);
 			}
 
 			priv->ongoing.erase(
 			  std::remove_if(priv->ongoing.begin(), priv->ongoing.end(),
-			                 [&](const QueueItem &item) { return now > item.deadline; }),
+			                 [&](const QueueItem& item) { return now > item.deadline; }),
 			  priv->ongoing.end());
 		}
 
 		// Initiate new measurements
 		ENetBuffer pingBuffer;
-		pingBuffer.data = (void*)"HELLO";
-		pingBuffer.dataLength = 5;
+		pingBuffer.data = const_cast<char*>(hello::kPingRequest);
+		pingBuffer.dataLength = hello::kPingRequestLength;
 
 		while (priv->ongoing.size() < g_maxSimultaneousMeasurement && !priv->queue.empty() &&
 		       priv->shared->ready.load()) {
 			QueueItem item = priv->queue.top();
 
-			if (now < item.time) {
+			if (now < item.time)
 				break;
-			}
 
-			if (cl_debugServerPing) {
+			if (debugPing)
 				SPLog("Pinging the host %s", ToString(item.address).c_str());
-			}
-
+				
 			int result =
 			  enet_socket_send(priv->shared->socket.handle, &item.address, &pingBuffer, 1);
 			if (result == 0) {
 				// Hmm? (maybe send buffer is full)
-				if (cl_debugServerPing) {
+				if (debugPing)
 					SPLog("enet_socket_send returned 0.");
-				}
 				break;
 			}
 			if (result < 0) {
-				SPRaise("enet_socket_send failed");
+				// Not fatal: e.g. EHOSTUNREACH when the network is down or when macOS denies
+				// local network access. Treat it as a lost packet, so the regular timeout and
+				// backoff logic retries it later and eventually gives up.
+				if (debugPing)
+					SPLog("enet_socket_send failed, treating it as a lost packet.");
 			}
 
 			// Record the submission time
@@ -410,9 +472,8 @@ namespace spades {
 		if (active && (!priv->thread || priv->shared->shutdown.load())) {
 			// Start a measurement thread.
 			if (priv->thread) {
-				if (cl_debugServerPing) {
+				if (debugPing)
 					SPLog("Waiting for the previous measurement thread to finish running...");
-				}
 
 				// We must wait until the previous thread is shut down completely
 				// because it shares the same `Shared` object.
@@ -422,9 +483,8 @@ namespace spades {
 				priv->thread->MarkForAutoDeletion();
 			}
 
-			if (cl_debugServerPing) {
+			if (debugPing)
 				SPLog("Starting a measurement thread.");
-			}
 
 			priv->shared->shutdown.store(false);
 			priv->thread = new MeasureThread(priv->shared);
@@ -432,9 +492,8 @@ namespace spades {
 		}
 
 		if (!active && (priv->thread && !priv->shared->shutdown.load())) {
-			if (cl_debugServerPing) {
+			if (debugPing)
 				SPLog("Shutting the measurement thread down.");
-			}
 
 			// Stop the currently running measurement thread.
 			priv->shared->shutdown.store(true);
@@ -442,13 +501,12 @@ namespace spades {
 		}
 	}
 
-	stmp::optional<PingTesterResult> PingTester::GetTargetResult(const std::string &address) {
+	stmp::optional<PingTesterResult> PingTester::GetTargetResult(const std::string& address) {
 		SPADES_MARK_FUNCTION();
 
 		auto it = priv->results.find(address);
-		if (it == priv->results.end()) {
+		if (it == priv->results.end())
 			return {};
-		}
 
 		return {it->second};
 	}

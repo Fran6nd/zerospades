@@ -22,14 +22,34 @@
 
 #include <memory>
 #include <string>
+#include <utility>
+#include <vector>
 
 #include <Core/TMPUtils.h>
 
 namespace spades {
+	/** Server information carried by a HELLOLAN reply. */
+	struct PingTesterServerInfo {
+		std::string name;
+		std::string mapName;
+		std::string gameMode;
+		std::string gameVersion;
+		int numPlayers = 0;
+		int maxPlayers = 0;
+		/** Extensions offered by the server, as (id, version) pairs. */
+		std::vector<std::pair<int, int>> extensions;
+	};
+
 	struct PingTesterResult {
 		/** Round-trip time, measured in milliseconds. */
 		stmp::optional<int> ping;
 	};
+	
+	/**
+	 * Parses a HELLOLAN reply. Returns `false` for anything that is not one
+	 * (e.g. a plain "HI"). Text fields are sanitized and length-limited.
+	 */
+	bool ParseHelloLanReply(const std::string& payload, PingTesterServerInfo& out);
 
 	class PingTester {
 		struct Private;
@@ -43,17 +63,20 @@ namespace spades {
 		 * Adds the specified address to the measurement list. If the
 		 * address is already added, it does nothing.
 		 *
+		 * The measurement is a plain HELLO (ping only, a 2-byte reply, works with every
+		 * server). Server info is not requested here: it is only discovered by `LanDiscovery`.
+		 *
 		 * After that, you must call `Update()` periodically.
 		 * The result will eventually be available via `GetTargetResult()`.
 		 * (Eventually = in an unbounded time)
 		 */
-		void AddTarget(const std::string &);
+		void AddTarget(const std::string&);
 
 		void Update();
 
 		/**
 		 * Retrieves the measurement result for the specified address.
 		 */
-		stmp::optional<PingTesterResult> GetTargetResult(const std::string &);
+		stmp::optional<PingTesterResult> GetTargetResult(const std::string&);
 	};
 }

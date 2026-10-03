@@ -1087,6 +1087,13 @@ namespace spades {
 				loadingView->visible = false;
 				UpdateServerList();
 			}
+			
+			// A server on this machine answered: show it, even if the master list failed to load
+			if (!loading && helper->PollLanServers()) {
+				loaded = true;
+				errorView->visible = false;
+				UpdateServerList();
+			}
 
 			if ((static_cast<int>(cg_serverlistSort) & 0xfff) == 0 && loaded) {
 				// Ping (RTT) is updated in real-time
