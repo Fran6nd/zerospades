@@ -2630,38 +2630,56 @@ namespace spades {
 			float sw = renderer->ScreenWidth();
 			float sh = renderer->ScreenHeight();
 
-			float prgBarW = 440.0F;
-			float prgBarH = 8.0F;
-			float prgBarX = (sw - prgBarW) * 0.5F;
-			float prgBarY = sh - (prgBarH + 40.0F);
+			const float prgBarW = 440.0F;
+			const float prgBarH = 8.0F;
+			const float prgBarX = (sw - prgBarW) * 0.5F;
+			const float prgBarY = sh - (prgBarH + 40.0F);
+			const float prgBarX1 = prgBarX + prgBarW;
+			const float prgBarY1 = prgBarY + prgBarH;
 
-			// draw background bar
-			renderer->SetColorAlphaPremultiplied(MakeVector4(0.2F, 0.2F, 0.2F, 1));
-			renderer->DrawImage(nullptr, AABB2(prgBarX, prgBarY, prgBarW, prgBarH));
+			// draw background track
+			renderer->SetColorAlphaPremultiplied(MakeVector4(0.2F, 0.2F, 0.2F, 1.0F));
+			renderer->DrawFilledRect(prgBarX, prgBarY, prgBarX1, prgBarY1);
 
-			// draw progress bar
 			NetClientStatus status = activeNet->GetStatus();
 			if (status == NetClientStatusReceivingMap) {
-				float progress = mapReceivingProgressSmoothed;
-				float prgBarMaxWidth = prgBarW * progress;
-
-				renderer->SetColorAlphaPremultiplied(MakeVector4(0, 0.5, 1, 1));
-				renderer->DrawImage(nullptr, AABB2(prgBarX, prgBarY, prgBarMaxWidth, prgBarH));
-				for (float x = 0.0F; x < prgBarMaxWidth; x += 1.0F) {
-					float per = 1.0F - (x / prgBarMaxWidth);
-					renderer->SetColorAlphaPremultiplied(MakeVector4(0, 0, 0, 0.5) * per);
-					renderer->DrawImage(nullptr, AABB2(prgBarX + x, prgBarY, 1.0F, prgBarH));
-				}
-			} else { // draw indeterminate progress bar
+				const float progress = Clamp(mapReceivingProgressSmoothed, 0.0F, 1.0F);
+				// draw progress bar: horizontal gradient from dark to brighter blue
+				const float fillX1 = prgBarX + prgBarW * progress;
+				renderer->DrawFilledRectFade(prgBarX, prgBarY, fillX1, prgBarY1,
+						MakeVector4(0.0F, 0.25F, 0.5F, 1.0F),
+						MakeVector4(0.0F, 0.5F, 1.0F, 1.0F), true);
+			} else {
+				// draw indeterminate progress bar: a soft glow sweeping across the track
+				const float glowRadius = 200.0F;
+				const float peakAlpha = 0.55F;
 				const float progressPosition = fmodf(timeSinceInit * 0.7F, 1.0F);
-				const float centerX = progressPosition * (prgBarW + 400.0F) - 200.0F;
-				for (float x = 0.0F; x < prgBarW; x += 1.0F) {
-					float opacity = 1.0F - fabsf(x - centerX) / 200.0F;
-					opacity = std::max(opacity, 0.0F) * 0.5F + 0.05F;
-					renderer->SetColorAlphaPremultiplied(MakeVector4(0.5, 0.5, 0.5, 1) * opacity);
-					renderer->DrawImage(nullptr, AABB2(prgBarX + x, prgBarY, 1.0F, prgBarH));
-				}
+				const float centerX = prgBarX + progressPosition * (prgBarW + glowRadius * 2.0F) - glowRadius;
+
+				// glow alpha at a given x (linear falloff from the center)
+				auto glowColorAt = [&](float x) {
+					float a = 1.0F - fabsf(x - centerX) / glowRadius;
+					a = std::max(a, 0.0F) * peakAlpha;
+					return MakeVector4(0.5F, 0.5F, 0.5F, 1.0F) * a;
+				};
+
+				// draw one linear segment of the glow, clipped to the track
+				auto drawGlowSegment = [&](float xa, float xb) {
+					xa = std::max(xa, prgBarX);
+					xb = std::min(xb, prgBarX1);
+					if (xb <= xa)
+						return;
+					renderer->DrawFilledRectFade(xa, prgBarY, xb, prgBarY1,
+						glowColorAt(xa), glowColorAt(xb), true);
+				};
+
+				drawGlowSegment(centerX - glowRadius, centerX); // fade in
+				drawGlowSegment(centerX, centerX + glowRadius); // fade out
 			}
+
+			// draw outline
+			renderer->SetColorAlphaPremultiplied(MakeVector4(0.1F, 0.1F, 0.1F, 0.1F));
+			renderer->DrawOutlinedRect(prgBarX - 1, prgBarY - 1, prgBarX1 + 1, prgBarY1 + 1, 1);
 
 			// draw net status
 			auto statusStr = activeNet->GetStatusString();
