@@ -31,6 +31,7 @@
 #include <vector>
 
 #include <Imports/SDL.h>
+#include <curl/curl.h>
 #include <zlib.h>
 
 #include "Main.h"
@@ -626,6 +627,11 @@ int main(int argc, char** argv) {
 		// initialize threads
 		spades::Thread::InitThreadSystem();
 		spades::DispatchQueue::GetThreadQueue()->MarkSDLVideoThread();
+
+		// Before any worker thread makes a request: the server list, the mods
+		// index and the update check can start at the same time, and libcurl's
+		// implicit global init is not thread-safe on older versions.
+		curl_global_init(CURL_GLOBAL_DEFAULT);
 
 		SPLog("Package: " PACKAGE_STRING);
 
