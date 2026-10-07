@@ -101,6 +101,14 @@ namespace spades {
 			 */
 			virtual void SendTeamplayPing(Vector3 position, const std::string& reason) = 0;
 
+			// ── Extensions ──────────────────────────────────────────────────
+			/**
+			 * Whether the server reports the damage the local player deals, using the
+			 * *Damage Markers* extension. When it does, those reports are the only
+			 * damage numbers shown and the client stops predicting its own.
+			 */
+			virtual bool ServerReportsDamage() const = 0;
+
 		};
 
 	} // namespace client

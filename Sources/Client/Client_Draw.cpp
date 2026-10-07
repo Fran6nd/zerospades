@@ -103,6 +103,9 @@ DEFINE_SPADES_SETTING(cg_playerNameY, "0");
 DEFINE_SPADES_SETTING(cg_playerNamesDead, "1");
 DEFINE_SPADES_SETTING(cg_debugHitTestSize, "128");
 DEFINE_SPADES_SETTING(cg_debugHitTestFadeTime, "10");
+// 0: off, 1: the numbers of bullet hits, 2: grenade hits too. On a server with the
+// Damage Markers extension every number comes from the server, which does not say
+// what dealt the damage, so any non-zero value shows them all, melee included.
 DEFINE_SPADES_SETTING(cg_damageIndicators, "1");
 DEFINE_SPADES_SETTING(cg_hurtScreenEffects, "1");
 DEFINE_SPADES_SETTING(cg_healScreenEffects, "1");
@@ -1274,6 +1277,36 @@ namespace spades {
 			}
 		}
 
+		Client::DamageIndicator Client::DamageIndicator::Make(int playerId, int damage,
+		                                                      const Vector3& position,
+		                                                      float time, bool scatter) {
+			DamageIndicator indicator;
+			indicator.damage = Clamp(damage, -kMaxDamage, kMaxDamage);
+			indicator.playerId = playerId;
+			indicator.position = position;
+			indicator.crit = indicator.damage >= kCritDamage;
+			indicator.velocity = (scatter && !indicator.crit) ? RandomVector() * 4.0F
+			                                                  : MakeVector3(0.0F, 0.0F, 0.0F);
+			indicator.velocity.z = -2.0F;
+			indicator.Refresh(time);
+			return indicator;
+		}
+
+		void Client::DamageIndicator::Accumulate(int more, float time) {
+			damage = Clamp(damage + Clamp(more, -kMaxDamage, kMaxDamage), -kMaxDamage,
+			               kMaxDamage);
+			if (!crit && damage >= kCritDamage) {
+				crit = true;
+				velocity = MakeVector3(0.0F, 0.0F, -2.0F);
+			}
+			Refresh(time);
+		}
+
+		void Client::DamageIndicator::Refresh(float time) {
+			fade = crit ? 2.0F : 1.5F;
+			lastHitTime = time;
+		}
+
 		void Client::UpdateDamageIndicators(float dt) {
 			for (auto it = damageIndicators.begin(); it != damageIndicators.end();) {
 				DamageIndicator& ent = *it;
@@ -1305,8 +1338,10 @@ namespace spades {
 					bool crit = dmg.crit;
 					IFont& font = crit ? mediumFont : guiFont;
 
+					// A negative amount is a heal, shown as a gain.
 					int damage = dmg.damage;
-					auto damageStr = ToString(damage);
+					bool heal = damage < 0;
+					auto damageStr = heal ? "+" + ToString(-damage) : ToString(damage);
 					Vector2 size = font.Measure(damageStr);
 					scrPos -= size * 0.5F;
 
@@ -1318,7 +1353,9 @@ namespace spades {
 					Vector4 shadow = MakeVector4(0, 0, 0, 0.4F * fade);
 					Vector4 color = MakeVector4(1.0F, 1.0F - per, 0.0F, fade);
 
-					if (crit) {
+					if (heal) {
+						color = MakeVector4(0.3F, 1.0F, 0.3F, fade);
+					} else if (crit) {
 						float pulse = (sinf((time - dmg.lastHitTime) * 10.0F) * 0.5F) + 0.5F;
 						color = MakeVector4(1.0F, pulse * 0.8F, pulse * 0.2F, fade);
 					}

@@ -265,6 +265,14 @@ namespace spades {
 			std::vector<HurtSprite> hurtSprites;
 
 			struct DamageIndicator {
+				/** From this much damage a number is a crit: it rises straight up,
+				 * bigger and pulsing. */
+				static constexpr int kCritDamage = 100;
+				/** The largest amount a number shows either way. Both a number and
+				 * every amount added to it are bounded by this before they are summed,
+				 * so the sum, and its negation drawn for a heal, always fit in an int. */
+				static constexpr int kMaxDamage = 999999;
+
 				int damage;
 				int playerId;
 				float fade;
@@ -274,6 +282,16 @@ namespace spades {
 				bool crit;
 				DamageIndicator() : damage(0), playerId(-1),
 					fade(0.0F), lastHitTime(0.0F), crit(false) {}
+
+				/** A number rising from `position`, drifting sideways as it goes when
+				 * `scatter` is set, unless it is a crit. A negative `damage` is a heal. */
+				static DamageIndicator Make(int playerId, int damage, const Vector3& position,
+				                            float time, bool scatter);
+				/** Adds another hit to this number and restarts its fade. */
+				void Accumulate(int damage, float time);
+
+			private:
+				void Refresh(float time);
 			};
 			std::list<DamageIndicator> damageIndicators;
 
@@ -777,6 +795,11 @@ namespace spades {
 			 * out of `PlayerSpawned` because a demo seek skips the rest of that work but
 			 * still has to rebuild the marks in force at the destination. */
 			void TeamplayPlayerSpawned(int playerId);
+
+			// ── Damage Markers, called by the net client ───────────
+			/** The server applied `amount` damage to a player the local player hit. A
+			 * negative amount is a heal. */
+			void DamageMarkerReceived(int playerId, int amount);
 
 			void PlayerCapturedIntel(Player&);
 			void PlayerPickedIntel(Player&);

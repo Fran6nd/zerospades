@@ -1545,36 +1545,20 @@ namespace spades {
 				if (!isMeleeHit)
 					weaponStats.hits[by.GetWeaponType()]++;
 
-				if ((bool)cg_damageIndicators && !isMeleeHit) {
+				// A server that reports the damage it applied is the only source of
+				// the numbers, so the client stops predicting its own. Predicted hits
+				// on a player add up to one number per shot, so the pellets of a
+				// shotgun blast show their total; `DamageMarkerReceived` does the same
+				// for the server's numbers.
+				if ((bool)cg_damageIndicators && !isMeleeHit &&
+				    !activeNet->ServerReportsDamage()) {
 					int dmg = by.GetWeapon().GetDamage(type);
 					auto& indicator = hitScanState.indicatorByPlayer[hurtPlayer.GetId()];
 					if (indicator) {
-						indicator->damage += dmg;
-						if (!indicator->crit && indicator->damage >= 100) {
-							indicator->crit = true;
-							indicator->velocity.x = 0.0F;
-							indicator->velocity.y = 0.0F;
-							indicator->velocity.z = -2.0F;
-						}
-						indicator->fade = indicator->crit ? 2.0F : 1.5F;
-						indicator->lastHitTime = time;
+						indicator->Accumulate(dmg, time);
 					} else {
-						DamageIndicator damages;
-						damages.damage = dmg;
-						damages.playerId = hurtPlayer.GetId();
-						damages.position = hitPos;
-						damages.crit = dmg >= 100;
-						if (damages.crit) {
-							damages.velocity.x = 0.0F;
-							damages.velocity.y = 0.0F;
-						} else {
-							damages.velocity = RandomVector() * 4.0F;
-						}
-						damages.velocity.z = -2.0F;
-						damages.fade = damages.crit ? 2.0F : 1.5F;
-						damages.lastHitTime = time;
-
-						damageIndicators.push_back(damages);
+						damageIndicators.push_back(DamageIndicator::Make(
+						  hurtPlayer.GetId(), dmg, hitPos, time, true));
 						indicator = &damageIndicators.back();
 					}
 				}
@@ -1858,7 +1842,9 @@ namespace spades {
 					audioDevice->Play(c.GetPointerOrNull(), soundPos, param);
 				}
 
-				// add grenade damage numbers, values can differ from server
+				// predict grenade hits: always the hitmark, and the damage number only
+				// when the server does not report the damage it applied (a predicted
+				// value can differ from the server's)
 				if ((int)cg_damageIndicators >= 2) {
 					stmp::optional<Player&> maybeLocalPlayer = world->GetLocalPlayer();
 					if (!maybeLocalPlayer)
@@ -1907,18 +1893,11 @@ namespace spades {
 						if (mapResult.hit && (mapResult.hitPos - eye).GetLength() < distToVictim)
 							continue;
 
-						// add damage number
-						DamageIndicator indicator;
-						indicator.damage = dmg;
-						indicator.playerId = player.GetId();
-						indicator.position = playerPos;
-						indicator.crit = dmg >= 100;
-						indicator.velocity.x = 0.0F;
-						indicator.velocity.y = 0.0F;
-						indicator.velocity.z = -2.0F;
-						indicator.fade = indicator.crit ? 2.0F : 1.5F;
-						indicator.lastHitTime = time;
-						damageIndicators.push_back(indicator);
+						// add damage number, unless the server reports the damage it
+						// applied, which then is the only source of the numbers
+						if (!activeNet->ServerReportsDamage())
+							damageIndicators.push_back(DamageIndicator::Make(
+							  player.GetId(), dmg, playerPos, time, false));
 
 						// spawn hitmark
 						hitFeedbackIconState = 1.0F;

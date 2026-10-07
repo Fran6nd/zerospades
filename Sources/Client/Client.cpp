@@ -71,6 +71,7 @@ DEFINE_SPADES_SETTING(cg_ignoreChatMessages, "0");
 
 SPADES_SETTING(cg_playerName);
 SPADES_SETTING(cg_centerMessageSmallFont);
+SPADES_SETTING(cg_damageIndicators);
 
 namespace spades {
 	extern std::string g_pendingServerName;
@@ -1353,6 +1354,43 @@ namespace spades {
 
 		void Client::TeamplayPlayerSpawned(int playerId) {
 			teamplay->PlayerSpawned(playerId);
+		}
+
+#pragma mark - Damage Markers
+
+		void Client::DamageMarkerReceived(int playerId, int amount) {
+			SPADES_MARK_FUNCTION();
+
+			if (!cg_damageIndicators || amount == 0 || !world)
+				return;
+			if (playerId < 0 || playerId >= static_cast<int>(world->GetNumPlayerSlots()))
+				return;
+
+			// Damage the local player dealt to itself has no one to float over: the
+			// number would sit inside the camera.
+			auto victim = world->GetPlayer(static_cast<unsigned int>(playerId));
+			if (!victim || victim->IsLocalPlayer())
+				return;
+
+			// The server sends one packet per hit, so the pellets of a shotgun blast
+			// arrive as a burst. Every packet received during a frame is handled before
+			// `time` advances, so hits on the same player within one frame add up to one
+			// number, as the client's own prediction does for a single shot (see
+			// `BulletHitPlayer`). A time window instead would also fold together
+			// consecutive shots of an automatic weapon.
+			for (auto it = damageIndicators.rbegin(); it != damageIndicators.rend(); ++it) {
+				DamageIndicator& indicator = *it;
+				if (indicator.playerId != playerId || indicator.lastHitTime != time)
+					continue;
+				if ((indicator.damage < 0) != (amount < 0))
+					continue; // damage and heals are never folded into one number
+
+				indicator.Accumulate(amount, time);
+				return;
+			}
+
+			damageIndicators.push_back(
+			  DamageIndicator::Make(playerId, amount, victim->GetEye(), time, true));
 		}
 
 		bool Client::ResolveCrosshairWorldPos(Vector3& out) {

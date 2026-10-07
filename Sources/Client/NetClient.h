@@ -50,14 +50,6 @@ namespace spades {
 		class Client;
 		class Player;
 
-		enum NetExtensionType {
-			ExtensionTypePlayerProperties = 0,
-			ExtensionTypeTeamplay = 48,
-			ExtensionTypePlayerLimit = 192,
-			ExtensionTypeMessageTypes = 193,
-			ExtensionTypeKickReason = 194,
-		};
-
 		/** An extension announced by the server during the handshake. */
 		struct ServerExtensionInfo {
 			uint8_t id;
@@ -112,6 +104,7 @@ namespace spades {
 			/** Extensions implemented in this client (map of extension id → version) */
 			std::unordered_map<uint8_t, uint8_t> implementedExtensions{
 			  {ExtensionTypePlayerProperties, 1},
+			  {ExtensionTypeDamageMarkers, 1},
 			  {ExtensionTypeTeamplay, 1},
 			  {ExtensionTypePlayerLimit, 1},
 			  {ExtensionTypeMessageTypes, 1},
@@ -149,6 +142,7 @@ namespace spades {
 			bool HandleHandshakePackets(NetPacketReader&);
 			void HandleExtensionPacket(NetPacketReader&);
 			void HandleTeamplayPacket(NetPacketReader&);
+			void HandleDamageMarkerPacket(NetPacketReader&);
 
 			/** Whether the server negotiated the given extension during the handshake. */
 			bool HasExtension(NetExtensionType type) const {
@@ -236,6 +230,10 @@ namespace spades {
 			void SendWeaponChange(WeaponType) override;
 			void SendTeamplayPing(Vector3 position, const std::string& reason) override;
 			void SendHandShakeValid(int challenge);
+
+			bool ServerReportsDamage() const override {
+				return HasExtension(ExtensionTypeDamageMarkers);
+			}
 
 			double GetDownlinkBps() override { return bandwidthMonitor->GetDownlinkBps(); }
 			double GetUplinkBps() override { return bandwidthMonitor->GetUplinkBps(); }

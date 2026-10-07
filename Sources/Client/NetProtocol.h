@@ -79,7 +79,18 @@ namespace spades {
 			PacketTypeVersionSend = 34,    // C2S
 			PacketTypeExtensionInfo = 60,
 			PacketTypePlayerProperties = 64,
+			PacketTypeDamageMarker = 96, // S2C, extension id 32 (`64 + extension id`)
 			PacketTypeTeamplay = 112, // S2C2P, extension id 48 (`64 + extension id`)
+		};
+
+		/** Protocol extension ids, as negotiated through `PacketTypeExtensionInfo`. */
+		enum NetExtensionType {
+			ExtensionTypePlayerProperties = 0,
+			ExtensionTypeDamageMarkers = 32,
+			ExtensionTypeTeamplay = 48,
+			ExtensionTypePlayerLimit = 192,
+			ExtensionTypeMessageTypes = 193,
+			ExtensionTypeKickReason = 194,
 		};
 
 		/** Sub packet ids of `PacketTypeTeamplay`. Every extension packet
@@ -260,6 +271,52 @@ namespace spades {
 			if (r.GetType() != PacketTypeTeamplay || r.GetNumRemainingBytes() < 1)
 				return {};
 			return static_cast<TeamplaySubPacketType>(r.Peek(0));
+		}
+
+		/** One entry of an ExtensionInfo packet. */
+		struct ExtensionEntry {
+			std::uint8_t id;
+			std::uint8_t version;
+		};
+
+		/** Reads a `PacketTypeExtensionInfo` packet whose type byte has been consumed:
+		 * the extensions it lists, with their versions. */
+		inline std::vector<ExtensionEntry> ReadExtensionInfo(NetPacketReader& r) {
+			std::vector<ExtensionEntry> entries(r.ReadByte());
+			for (ExtensionEntry& entry : entries) {
+				entry.id = r.ReadByte();
+				entry.version = r.ReadByte();
+			}
+			return entries;
+		}
+
+		/** A *Damage Markers* packet: a hit the local player dealt, as the server applied
+		 * it. A negative amount is a heal. */
+		struct DamageMarker {
+			int playerId;
+			int amount;
+		};
+
+		/** Reads a `PacketTypeDamageMarker` packet whose type byte has been consumed.
+		 * The packet length selects the width of the amount (UByte, signed LE Short or
+		 * signed LE Int); a packet of any other length is dropped. */
+		inline stmp::optional<DamageMarker> ReadDamageMarker(NetPacketReader& r) {
+			DamageMarker marker;
+			switch (r.GetLength()) {
+				case 1 + 1 + 1:
+					marker.playerId = r.ReadByte();
+					marker.amount = r.ReadByte();
+					return marker;
+				case 1 + 1 + 2:
+					marker.playerId = r.ReadByte();
+					marker.amount = static_cast<std::int16_t>(r.ReadShort());
+					return marker;
+				case 1 + 1 + 4:
+					marker.playerId = r.ReadByte();
+					marker.amount = static_cast<std::int32_t>(r.ReadInt());
+					return marker;
+				default: return {};
+			}
 		}
 
 	} // namespace client

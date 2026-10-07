@@ -414,9 +414,11 @@ namespace spades {
 					// Skip the server's WeaponReload echo for the local player: the
 					// client-sent packet is already recorded in SendReload(), so
 					// recording the server response would produce a double reload.
+					// Skip Damage Markers too: they are not part of a demo, whose
+					// replay predicts its own damage numbers.
 					if (demoRecorder && demoRecorder->IsRecording()) {
 						auto data = reader.GetData();
-						bool skip = false;
+						bool skip = reader.GetType() == PacketTypeDamageMarker;
 						if (data.size() >= 2 &&
 						    static_cast<uint8_t>(data[0]) == PacketTypeWeaponReload) {
 							auto localPlayer = GetLocalPlayerOrNull();
@@ -610,6 +612,7 @@ namespace spades {
 		std::string GetExtensionDisplayName(uint8_t id) {
 			switch (id) {
 				case ExtensionTypePlayerProperties: return "Player Properties";
+				case ExtensionTypeDamageMarkers: return "Damage Markers";
 				case ExtensionTypeTeamplay: return "Teamplay";
 				case ExtensionTypePlayerLimit: return "Player Limit";
 				case ExtensionTypeMessageTypes: return "Message Types";
@@ -624,6 +627,13 @@ namespace spades {
 			switch (r.GetType()) {
 				case PacketTypeHandShakeInit: SendHandShakeValid(r.ReadInt()); return true;
 				case PacketTypeExtensionInfo: HandleExtensionPacket(r); return true;
+				case PacketTypeDamageMarker:
+					// Until the world exists, a marker has no victim to float over: on the
+					// first connect there is no world yet, and on a map change the hit
+					// was dealt in the world being replaced, whose players may be gone or
+					// someone else by the time the next map is in. It is dropped rather
+					// than parked with the world packets.
+					return status != NetClientStatusConnected;
 				case PacketTypeTeamplay: {
 					auto sub = PeekTeamplaySubPacket(r);
 
@@ -714,15 +724,11 @@ namespace spades {
 		}
 
 		void NetClient::HandleExtensionPacket(spades::client::NetPacketReader& r) {
-			int extCount = r.ReadByte();
-			for (int i = 0; i < extCount; i++) {
-				int extId = r.ReadByte();
-				int extVer = r.ReadByte();
-
+			for (const ExtensionEntry& ext : ReadExtensionInfo(r)) {
 				// some servers announce the same extension more than once
 				bool alreadyAnnounced = false;
 				for (const auto& e : serverExtensions) {
-					if (e.id == extId) {
+					if (e.id == ext.id) {
 						alreadyAnnounced = true;
 						break;
 					}
@@ -730,17 +736,16 @@ namespace spades {
 				if (alreadyAnnounced)
 					continue;
 
-				auto got = implementedExtensions.find(extId);
+				auto got = implementedExtensions.find(ext.id);
 				bool supported = got != implementedExtensions.end();
 
-				serverExtensions.push_back({static_cast<uint8_t>(extId),
-				                            static_cast<uint8_t>(extVer),
-				                            supported});
+				serverExtensions.push_back({ext.id, ext.version, supported});
 
 				if (!supported) {
-					SPLog("Client does not support extension %d v%d", extId, extVer);
+					SPLog("Client does not support extension %d v%d", (int)ext.id,
+					      (int)ext.version);
 				} else {
-					SPLog("Client supports extension %d v%d", extId, extVer);
+					SPLog("Client supports extension %d v%d", (int)ext.id, (int)ext.version);
 					extensions.emplace(got->first, got->second);
 				}
 			}
@@ -862,11 +867,30 @@ namespace spades {
 			}
 		}
 
+		void NetClient::HandleDamageMarkerPacket(spades::client::NetPacketReader& r) {
+			SPADES_MARK_FUNCTION();
+
+			if (!HasExtension(ExtensionTypeDamageMarkers)) {
+				SPLog("Ignoring a Damage Markers packet from a server that did not "
+					  "negotiate the extension");
+				return;
+			}
+
+			auto marker = ReadDamageMarker(r);
+			if (!marker) {
+				SPLog("Ignoring a Damage Markers packet of length %d", (int)r.GetLength());
+				return;
+			}
+
+			client->DamageMarkerReceived(marker->playerId, marker->amount);
+		}
+
 		void NetClient::HandleGamePacket(spades::client::NetPacketReader& r) {
 			SPADES_MARK_FUNCTION();
 
 			switch (r.GetType()) {
 				case PacketTypeTeamplay: HandleTeamplayPacket(r); break;
+				case PacketTypeDamageMarker: HandleDamageMarkerPacket(r); break;
 				case PacketTypePositionData: {
 					Player& p = GetLocalPlayer();
 					if (r.GetLength() != 13) {
