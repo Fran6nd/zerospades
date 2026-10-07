@@ -787,7 +787,8 @@ namespace spades {
 		      helper(&ui->GetHelper()),
 		      cg_demoAutoRecord("cg_demoAutoRecord", nullptr),
 		      cg_demoAutoPrune("cg_demoAutoPrune", nullptr),
-		      cg_demoMaxFiles("cg_demoMaxFiles", nullptr) {
+		      cg_demoMaxFiles("cg_demoMaxFiles", nullptr),
+		      cl_zsUpdatePrompt("cl_zsUpdatePrompt", nullptr) {
 			UIManager* manager = &GetManager();
 			float mainWidth = size.x - 240.0F;
 
@@ -873,6 +874,18 @@ namespace spades {
 				button->activated = [this](UIElement& s) { OnBrowseDemosFolderPressed(s); };
 				AddChild(button.GetPointerOrNull());
 			}
+
+			// Only the startup prompt is optional; the main menu banner always shows.
+			AddConfigLabel(*this, 0.0F, 276.0F, 24.0F, _Tr("StartupScreen", "Updates"));
+			{
+				Handle<CheckBox> button = Handle<CheckBox>::New(manager);
+				button->caption =
+				  _Tr("StartupScreen", "Show a prompt when a new version is available");
+				button->SetBounds(AABB2(0.0F, 306.0F, mainWidth, 20.0F));
+				button->activated = [this](UIElement& s) { OnUpdatePromptChanged(s); };
+				AddChild(button.GetPointerOrNull());
+				buttonUpdatePrompt = button.GetPointerOrNull();
+			}
 		}
 
 		void StartupScreenGenericTab::LoadConfig() {
@@ -880,6 +893,11 @@ namespace spades {
 			buttonAutoRecord->toggled = static_cast<int>(cg_demoAutoRecord) != 0;
 			buttonAutoPrune->toggled = static_cast<int>(cg_demoAutoPrune) != 0;
 			fieldMaxDemos->SetText(static_cast<std::string>(cg_demoMaxFiles));
+			buttonUpdatePrompt->toggled = static_cast<int>(cl_zsUpdatePrompt) != 0;
+		}
+
+		void StartupScreenGenericTab::OnUpdatePromptChanged(UIElement&) {
+			cl_zsUpdatePrompt = buttonUpdatePrompt->toggled ? 1 : 0;
 		}
 
 		void StartupScreenGenericTab::OnAutoRecordChanged(UIElement&) {

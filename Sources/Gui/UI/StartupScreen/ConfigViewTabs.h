@@ -151,7 +151,7 @@ namespace spades {
 			void LoadConfig();
 		};
 
-		/** The Generic tab: language, tools, demo recording defaults. */
+		/** The Generic tab: language, tools, demo recording defaults, update prompt. */
 		class StartupScreenGenericTab : public ui::UIElement {
 			StartupScreenUI* ui;         // weak
 			StartupScreenHelper* helper; // weak
@@ -159,14 +159,17 @@ namespace spades {
 			ui::CheckBox* buttonAutoRecord;
 			ui::CheckBox* buttonAutoPrune;
 			ui::Field* fieldMaxDemos;
+			ui::CheckBox* buttonUpdatePrompt;
 
 			Settings::ItemHandle cg_demoAutoRecord;
 			Settings::ItemHandle cg_demoAutoPrune;
 			Settings::ItemHandle cg_demoMaxFiles;
+			Settings::ItemHandle cl_zsUpdatePrompt;
 
 			void OnAutoRecordChanged(ui::UIElement&);
 			void OnAutoPruneChanged(ui::UIElement&);
 			void OnMaxDemosChanged(ui::UIElement&);
+			void OnUpdatePromptChanged(ui::UIElement&);
 			void OnBrowseDemosFolderPressed(ui::UIElement&);
 			void OnBrowseUserDirectoryPressed(ui::UIElement&);
 			void OnResetSettingsPressed(ui::UIElement&);
