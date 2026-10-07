@@ -40,14 +40,13 @@ DEFINE_SPADES_SETTING(cg_classicWeaponRecoil, "1");
 namespace spades {
 	namespace client {
 
-		// Time for a remote player's rendered orientation to cover half of the
-		// distance to the one the server last reported. Larger is smoother but lags
-		// further behind; this value reproduces the rate the filter settled at back
-		// when the game happened to run at exactly 60fps, which is what it was
-		// originally tuned against.
-		constexpr float kOrientationSmoothingHalfLife = 0.11F;
-		static_assert(kOrientationSmoothingHalfLife > 0.0F,
-					  "half-life drives a division and must be positive");
+		// Time constant, in seconds, of the relaxation of a remote player's rendered
+		// orientation towards the one the server last reported. Larger is smoother but
+		// lags further behind. This value keeps 0.9 of the error per 1/60 s step
+		// (tau = (1/60) / -ln 0.9), the rate the filter was originally tuned at.
+		constexpr float kOrientationSmoothingTimeConstant = 0.158F;
+		static_assert(kOrientationSmoothingTimeConstant > 0.0F,
+					  "the time constant drives a division and must be positive");
 
 		Player::Player(World& w, int pId, WeaponType wType, int tId) : world(w) {
 			SPADES_MARK_FUNCTION();
@@ -384,12 +383,15 @@ namespace spades {
 			if (!(dt > 0.0F))
 				return; // paused, or a degenerate frame time
 
-			// Exponential filter expressed as a half-life: half of the error between
-			// the smoothed and the networked orientation is removed every
-			// kOrientationSmoothingHalfLife seconds. Deriving the blend factor from
-			// the time actually elapsed, rather than assuming a fixed step, is what
-			// keeps the settling rate identical no matter how often this is called.
-			float const blend = 1.0F - powf(0.5F, dt / kOrientationSmoothingHalfLife);
+			// The smoothed orientation s relaxes towards the networked one o:
+			//
+			//     ds/dt = -(s - o) / tau
+			//
+			// Over a step of dt with o held, the exact solution keeps exp(-dt / tau) of
+			// the error. Being exact rather than an Euler step, it composes: two steps
+			// of dt / 2 land where one step of dt does, so the settling rate is the
+			// same however often this is called.
+			float const blend = 1.0F - expf(-dt / kOrientationSmoothingTimeConstant);
 
 			// Near-antipodal orientations have no meaningful linear interpolation:
 			// the blend passes through the origin and the direction is lost. Snap,
