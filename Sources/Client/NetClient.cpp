@@ -234,7 +234,8 @@ namespace spades {
 			enet_initialize();
 			SPLog("ENet initialized");
 
-			host = enet_host_create(NULL, 1, 1, 100000, 100000);
+			// Unlimited, so the server doesn't throttle what it sends us
+			host = enet_host_create(NULL, 1, 1, 0, 0);
 			SPLog("ENet host created");
 			if (!host)
 				SPRaise("Failed to create ENet host");
