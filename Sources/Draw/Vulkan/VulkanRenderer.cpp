@@ -2287,16 +2287,10 @@ namespace spades {
 			// which preserves the directional shadow shafts that occluders
 			// cast through the in-scattered sunlight. Drawing a flat
 			// fogColor sky here would double-tint sky pixels and erase that
-			// shaft contrast.
-			//
-			// Sky.frag is kept as a workaround for the Vulkan Fog2 port,
-			// which produces dimmer in-scatter than GL and leaves a near-
-			// black sky on a black clear. We only suppress Sky.frag when
-			// Fog1 is what actually runs (the variant selection mirrors
-			// VulkanFogFilter's): r_fogShadow != 0 AND not (Fog2 active).
-			const bool useFog2Pass = settings.UsesFog2();
-			const bool useFog1Pass = ((int)settings.r_fogShadow != 0) && !useFog2Pass;
-			if (!useFog1Pass)
+			// shaft contrast. That holds for Fog2 as for Fog1, now that Fog2
+			// reads the depth through `sceneDepthSampleImage` and its in-scatter
+			// matches GL's.
+			if ((int)settings.r_fogShadow == 0)
 				RenderSky(commandBuffer);
 
 			// Render map
