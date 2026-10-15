@@ -1545,7 +1545,9 @@ namespace spades {
 				if (!isMeleeHit)
 					weaponStats.hits[by.GetWeaponType()]++;
 
-				if ((bool)cg_damageIndicators && !isMeleeHit) {
+				// Not for teammates
+				if ((bool)cg_damageIndicators && !isMeleeHit &&
+				    (!by.IsTeammate(hurtPlayer) || world->IsModeFFA())) {
 					int dmg = by.GetWeapon().GetDamage(type);
 					auto& indicator = hitScanState.indicatorByPlayer[hurtPlayer.GetId()];
 					if (indicator) {
