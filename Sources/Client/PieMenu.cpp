@@ -21,6 +21,8 @@
 
 #include "PieMenu.h"
 
+#include <cmath>
+#include <cstdlib>
 #include <iterator>
 
 #include <Core/CP437.h>
@@ -212,7 +214,24 @@ namespace spades {
 			return out;
 		}
 
-		std::string ExpandPieText(const std::string& text, int targetPlayerId) {
+		namespace {
+			// A number with a fixed count of decimals and a `.` whatever the locale,
+			// which printf would follow.
+			std::string Fixed(float value, int decimals) {
+				long scale = 1;
+				for (int i = 0; i < decimals; i++)
+					scale *= 10;
+				long n = std::lround(static_cast<double>(value) * static_cast<double>(scale));
+				std::string out = n < 0 ? "-" : "";
+				n = std::labs(n);
+				std::string frac = std::to_string(n % scale);
+				frac.insert(0, static_cast<size_t>(decimals) - frac.size(), '0');
+				return out + std::to_string(n / scale) + "." + frac;
+			}
+		} // namespace
+
+		std::string ExpandPieText(const std::string& text, int targetPlayerId,
+								  const PieAim& aim) {
 			std::string out;
 			out.reserve(text.size());
 
@@ -226,6 +245,14 @@ namespace spades {
 				if (token == 'p') {
 					if (targetPlayerId >= 0)
 						out += "#" + std::to_string(targetPlayerId);
+				} else if (token == 'b') {
+					if (aim.block)
+						out += std::to_string(aim.block->x) + " " + std::to_string(aim.block->y) +
+							   " " + std::to_string(aim.block->z);
+				} else if (token == 'r') {
+					out += Fixed(aim.origin.x, 2) + " " + Fixed(aim.origin.y, 2) + " " +
+						   Fixed(aim.origin.z, 2) + " " + Fixed(aim.direction.x, 4) + " " +
+						   Fixed(aim.direction.y, 4) + " " + Fixed(aim.direction.z, 4);
 				} else if (token == '%') {
 					out += '%';
 				} else {

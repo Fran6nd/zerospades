@@ -689,6 +689,8 @@ namespace spades {
 			 * again on release would drift away from what they were pointing at. */
 			Vector3 pieMenuPingPos;
 			bool pieMenuPingValid;
+			// The camera ray when the menu opened, for a slice's `%b` and `%r`.
+			PieAim pieMenuAim;
 
 			void DrawScene();
 			void AddGrenadeToScene(Grenade&);

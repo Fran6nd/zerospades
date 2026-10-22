@@ -778,6 +778,18 @@ namespace spades {
 			pieMenuPingValid =
 			  !pieMenuSpectating && lp.IsAlive() && ResolveCrosshairWorldPos(pieMenuPingPos);
 
+			// The camera actually drawn, the free one for a spectator: a slice's %r
+			// and %b describe what it looked at as the menu opened.
+			pieMenuAim = PieAim();
+			pieMenuAim.origin = lastSceneDef.viewOrigin;
+			pieMenuAim.direction = lastSceneDef.viewAxis[2].Normalize();
+			GameMap::RayCastResult ray =
+			  world->GetMap()->CastRay2(pieMenuAim.origin, pieMenuAim.direction, 256);
+			if (ray.hit && !ray.startSolid &&
+				MakeVector2(ray.hitPos.x - pieMenuAim.origin.x, ray.hitPos.y - pieMenuAim.origin.y)
+					.GetLength() <= FOG_DISTANCE)
+				pieMenuAim.block = ray.hitBlock;
+
 			pieMenuView->Open(std::move(pies), context, targetId);
 			return true;
 		}
@@ -813,7 +825,7 @@ namespace spades {
 			if (!net || !world)
 				return;
 
-			std::string text = ExpandPieText(slice.text, targetPlayerId);
+			std::string text = ExpandPieText(slice.text, targetPlayerId, pieMenuAim);
 
 			switch (slice.action) {
 				case PieAction::Chat:

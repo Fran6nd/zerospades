@@ -26,6 +26,7 @@
 #include <string>
 #include <vector>
 
+#include <Core/Math.h>
 #include <Core/TMPUtils.h>
 
 namespace spades {
@@ -95,14 +96,25 @@ namespace spades {
 			std::vector<Pie> PiesFor(PieContext) const;
 		};
 
+		/** Where the camera looked when the menu opened, for `%b` and `%r`. */
+		struct PieAim {
+			Vector3 origin = {0.0F, 0.0F, 0.0F};
+			/** Of length 1. */
+			Vector3 direction = {0.0F, 0.0F, 1.0F};
+			/** The first solid block on the ray, within the fog. */
+			stmp::optional<IntVector3> block;
+		};
+
 		/**
 		 * Expands a slice's Text, once and without re-scanning the result.
 		 *
 		 * `%p` becomes the target as a command's player argument, `#` and its id, or
-		 * nothing when there is no target. `%%` becomes `%`. Any other `%` is left as
-		 * it is.
+		 * nothing when there is no target. `%b` becomes the block aimed at, `x y z`,
+		 * or nothing. `%r` becomes the camera ray, `x y z dx dy dz`. `%%` becomes
+		 * `%`. Any other `%` is left as it is.
 		 */
-		std::string ExpandPieText(const std::string& text, int targetPlayerId);
+		std::string ExpandPieText(const std::string& text, int targetPlayerId,
+								  const PieAim& aim);
 
 		/**
 		 * Reads a Menu sub packet, from just after its sub packet id to the end of
