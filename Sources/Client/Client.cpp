@@ -737,9 +737,17 @@ namespace spades {
 
 			// Hot tracking resolves against the camera target, so once dead it would
 			// follow whoever the spectated teammate is aiming at. Dead players broadcast.
+			// A spectator, staff spectating included, has a context of their own, and
+			// aims with whatever camera they are looking through.
 			int targetId = -1;
 			PieContext context = PieContextWorld;
-			if (lp.IsAlive()) {
+			pieMenuSpectating = IsSpectatingForPieMenu();
+			if (pieMenuSpectating) {
+				context = PieContextSpectator;
+				auto aimed = PlayerAtScreenCenter();
+				if (aimed)
+					targetId = aimed->GetId();
+			} else if (lp.IsAlive()) {
 				auto hot = HotTrackedPlayer(true);
 				if (hot) {
 					Player& target = std::get<0>(*hot);
@@ -759,9 +767,35 @@ namespace spades {
 			// called out as they opened the menu, not to wherever the crosshair
 			// drifted while they picked a slice. A dead player is looking through
 			// somebody else's eyes, so there is nothing of their own to point at.
-			pieMenuPingValid = lp.IsAlive() && ResolveCrosshairWorldPos(pieMenuPingPos);
+			pieMenuPingValid =
+			  !pieMenuSpectating && lp.IsAlive() && ResolveCrosshairWorldPos(pieMenuPingPos);
 
 			pieMenuView->Open(std::move(pies), context, targetId);
+		}
+
+		bool Client::IsSpectatingForPieMenu() {
+			auto maybePlayer = world ? world->GetLocalPlayer() : stmp::optional<Player&>();
+			return staffSpectating || (maybePlayer && maybePlayer->IsSpectator());
+		}
+
+		stmp::optional<Player&> Client::PlayerAtScreenCenter() {
+			if (!world)
+				return {};
+
+			// The camera actually drawn: free, or behind or inside a followed
+			// player. Looking out of someone's eyes, they are not what is aimed at.
+			const Vector3 origin = lastSceneDef.viewOrigin;
+			const Vector3 dir = lastSceneDef.viewAxis[2];
+			stmp::optional<int> exclude;
+			if (IsFirstPerson(GetCameraMode()))
+				exclude = GetCameraTargetPlayerId();
+			else
+				exclude = world->GetLocalPlayerIndex();
+
+			World::WeaponRayCastResult res = world->WeaponRayCast(origin, dir, exclude);
+			if (!res.hit || !res.playerId)
+				return {};
+			return world->GetPlayer(*res.playerId);
 		}
 
 		void Client::CommitPieSlice(const PieSlice& slice, int targetPlayerId) {
@@ -867,22 +901,16 @@ namespace spades {
 			paletteView->Update(dt);
 
 			// Close the pie menu if the conditions that let it open no longer hold
-			// (changed team to spectator, entered limbo, opened the console or a
+			// (started or stopped spectating, entered limbo, opened the console or a
 			// scripted UI). Dying is not one of them — the menu stays usable through
 			// the respawn wait.
 			if (pieMenuView->IsOpen()) {
-				bool shouldClose = true;
 				// Anything that takes the mouse takes the menu with it — the console
 				// included, which swallows the key release that would have closed it.
-				if (!NeedsAbsoluteMouseCoordinate() && !staffSpectating) {
-					auto maybePlayer = world->GetLocalPlayer();
-					if (maybePlayer) {
-						Player& lp = maybePlayer.value();
-						if (!lp.IsSpectator())
-							shouldClose = false;
-					}
-				}
-				if (shouldClose)
+				// Its context was fixed as it opened, and means nothing once the
+				// player has crossed between playing and spectating.
+				if (NeedsAbsoluteMouseCoordinate() || !world || !world->GetLocalPlayer() ||
+					IsSpectatingForPieMenu() != pieMenuSpectating)
 					pieMenuView->Close();
 			}
 			pieMenuView->Update(dt);

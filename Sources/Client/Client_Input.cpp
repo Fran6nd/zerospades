@@ -712,8 +712,9 @@ namespace spades {
 
 				// Pie menu: hold to open, release to commit. Stays available while dead
 				// and waiting to respawn, which is when calling out what just happened
-				// matters most. What a slice sends, and where, is the slice's own.
-				if (CheckKey(cg_keyPieMenu, name) && !localPlayerIsSpectating) {
+				// matters most. Spectators get the server's spectator rings. What a
+				// slice sends, and where, is the slice's own.
+				if (CheckKey(cg_keyPieMenu, name)) {
 					if (down && !pieMenuView->IsOpen()) {
 						OpenPieMenu();
 					} else if (!down && pieMenuView->IsOpen()) {

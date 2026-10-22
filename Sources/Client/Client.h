@@ -600,6 +600,13 @@ namespace spades {
 			/** Sends what a chosen slice sends. `targetPlayerId` is the player aimed
 			 * at when the menu opened, or `-1`. */
 			void CommitPieSlice(const PieSlice&, int targetPlayerId);
+			/** Whether the menu would open on the spectator context. */
+			bool IsSpectatingForPieMenu();
+			/** The player under the centre of the screen, through whatever camera is
+			 * drawn. */
+			stmp::optional<Player&> PlayerAtScreenCenter();
+			/** Whether the menu on show opened on the spectator context. */
+			bool pieMenuSpectating = false;
 			void DrawDamageIndicators();
 
 			// ── Teamplay ───────────────────────────────────────────
