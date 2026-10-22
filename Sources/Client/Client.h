@@ -37,6 +37,7 @@
 #include "IWorldListener.h"
 #include "MumbleLink.h"
 #include "NoiseSampler.h"
+#include "PieMenu.h"
 #include "Player.h"
 #include <Core/Math.h>
 #include <Core/ServerAddress.h>
@@ -175,6 +176,9 @@ namespace spades {
 
 			// pie menu
 			std::unique_ptr<PieMenuView> pieMenuView;
+			/** The rings the menu opens on: the client's own until a server sends its
+			 * own, which then replace them entirely. */
+			PieMenu activePieMenu = BuiltInPieMenu();
 
 			// unified cursor used by all UI overlays
 			std::unique_ptr<gui::SoftwareCursor> cursor;
@@ -590,6 +594,9 @@ namespace spades {
 			// Opens the pie menu on the ring set the crosshair calls for. The context
 			// is resolved once, here, and then stays put for as long as the menu is up.
 			void OpenPieMenu();
+			/** Sends what a chosen slice sends. `targetPlayerId` is the player aimed
+			 * at when the menu opened, or `-1`. */
+			void CommitPieSlice(const PieSlice&, int targetPlayerId);
 			void DrawDamageIndicators();
 
 			// ── Teamplay ───────────────────────────────────────────

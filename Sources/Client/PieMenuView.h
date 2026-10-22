@@ -25,6 +25,7 @@
 #include <string>
 #include <vector>
 
+#include "PieMenu.h"
 #include <Core/Math.h>
 
 namespace spades {
@@ -33,33 +34,24 @@ namespace spades {
 		class IFont;
 		class IRenderer;
 
+		/**
+		 * Draws a pie menu and tracks the slice the player is flicking towards. It
+		 * knows nothing of where its rings came from: `Client` hands it the pies a
+		 * context offers when it opens, and asks it which slice was chosen when it
+		 * closes.
+		 */
 		class PieMenuView {
 		public:
-			// What the crosshair is on when the menu opens decides which set of rings
-			// is offered. It is fixed from then on: the aim is free to leave, and a
-			// message meant for someone must not need them held under the crosshair.
-			enum class Variant { World, Teammate, Enemy };
 			enum Slice { None = -1 };
 
-			static constexpr int kSliceCount = 6;
+			static constexpr int kSliceCount = kPieSliceCount;
 			static constexpr float kSliceSpan = kTwoPi / static_cast<float>(kSliceCount);
 
 		private:
-			// A single ring of messages. Rings are cycled in place while the menu is
-			// held, so every message stays exactly one gesture away from the centre.
+			// What a ring draws, made ready for drawing once when the menu opens.
 			struct Page {
-				std::string name;                            // centre caption
-				bool global = false;                         // chat channel
-				// Drawn as they are and sent as they are: one string, so what a
-				// player picks is character for character what everybody reads.
-				// A ring set is content rather than chrome — one day a server
-				// will supply its own, in whatever language its players speak —
-				// so none of it goes through the translation catalogue.
+				std::string theme;
 				std::array<std::string, kSliceCount> labels;
-				// Slices that drop a Teamplay ping instead of chatting. A ring
-				// carries its own, so a "where" ring can point at places while
-				// the ring beside it only talks.
-				std::array<bool, kSliceCount> pings{};
 			};
 
 			IRenderer& renderer;
@@ -67,7 +59,7 @@ namespace spades {
 			IFont* bigFont;
 
 			bool open = false;
-			Variant variant = Variant::World;
+			int contextIndex = 0;
 			int targetPlayerId = -1;
 			Vector2 cursor = {0.0F, 0.0F};
 			int selection = None;
@@ -82,14 +74,15 @@ namespace spades {
 
 			std::array<float, kSliceCount> highlight{};
 
-			std::vector<Page> worldPages;
-			std::vector<Page> teammatePages;
-			std::vector<Page> enemyPages;
+			// The rings on offer, fixed when the menu opens: a ring must not change
+			// under a held thumb, whatever arrives while it is held.
+			std::vector<Pie> pies;
+			std::vector<Page> pages;
 
 			// Ring each context was last left on. A player who works out of one ring
 			// gets it back on the next open instead of paying for the flip every time.
-			static constexpr int kVariantCount = 3;
-			std::array<int, kVariantCount> lastPage{};
+			static constexpr int kContextCount = 4;
+			std::array<int, kContextCount> lastPage{};
 
 			// Precomputed per-slice ray params (sin/cos of θ_c ± α).
 			// Populated once in the constructor; used by scanline fill.
@@ -97,56 +90,37 @@ namespace spades {
 			std::array<SliceRay, kSliceCount> sliceRays;
 			std::array<float, kSliceCount> sliceCenterAngles;
 
-			const std::vector<Page>& CurrentPages() const {
-				switch (variant) {
-					case Variant::Teammate: return teammatePages;
-					case Variant::Enemy: return enemyPages;
-					default: return worldPages;
-				}
-			}
 			const Page& CurrentPage() const;
+			const Pie& CurrentPie() const;
 			void RestorePage();
+			void UpdateSelection();
 			void DrawPageIndicator(Vector2 center, float rOuter, float alpha);
 
 		public:
 			PieMenuView(Client*, IFont* font, IFont* bigFont);
 			~PieMenuView();
 
-			void Open(Variant v, int targetPlayerId = -1);
+			/** Opens on the pies a context offers, which must not be empty.
+			 * `targetPlayerId` is the player aimed at, or `-1`. */
+			void Open(std::vector<Pie> pies, PieContext context, int targetPlayerId = -1);
 			int Close();
+
+			/** Forgets the ring each context was left on, for a menu whose rings
+			 * are not the ones remembered. */
+			void ForgetRings() { lastPage.fill(0); }
 
 			bool IsOpen() const { return open; }
 			int GetTargetPlayerId() const { return targetPlayerId; }
 			int GetSelection() const { return selection; }
 			int GetPage() const { return page; }
-			int GetPageCount() const { return static_cast<int>(CurrentPages().size()); }
+			int GetPageCount() const { return static_cast<int>(pages.size()); }
 
-			// Chat channel the ring currently shown commits to. Only meaningful for
-			// the World variant; Player rings always go out as private messages.
-			bool IsCurrentPageGlobal() const { return CurrentPage().global; }
-
-			// Text of the highlighted slice, as drawn and as sent.
-			const std::string& GetSelectionLabel() const;
+			/** The highlighted slice, or null when none is. */
+			const PieSlice* GetSelectedSlice() const;
 
 			// Move to the next (dir > 0) or previous (dir < 0) ring, wrapping around.
 			// The cursor is kept, so the slice under it stays selected across the flip.
 			void CyclePage(int dir);
-
-			/**
-			 * Whether a slice drops a *Teamplay* ping rather than sending its
-			 * message on chat. The ping carries the slice's wire text (the same
-			 * string `GetSelectionLabel` returns) as its reason, so what other
-			 * players read is the same either way.
-			 *
-			 * It is a property of the ring on show, not of the menu: a ring aimed
-			 * at a place points at one, while a ring aimed at a person has nowhere
-			 * to put a marker and only talks.
-			 */
-			bool SlicePings(int index) const {
-				if (index < 0 || index >= kSliceCount)
-					return false;
-				return CurrentPage().pings[static_cast<size_t>(index)];
-			}
 
 			void HandleMouseDelta(float dx, float dy);
 			void Update(float dt);

@@ -23,7 +23,6 @@
 
 #include <algorithm>
 #include <cmath>
-#include <iterator>
 #include <limits>
 #include <vector>
 
@@ -258,118 +257,23 @@ namespace spades {
 				return ToUpperCase(key);
 			}
 
-			// Ring definitions. Slice order is top, then clockwise; Affirmative and
-			// Negative occupy the same slots in both variants so the gesture transfers.
-			struct PageDef {
-				const char* name;
-				bool global;
-				const char* labels[PieMenuView::kSliceCount];
-				// Slices that drop a Teamplay ping on whatever the crosshair was
-				// on instead of talking, falling back to the same message on chat
-				// where the server does not allow pings. The ping carries the
-				// slice's own label as its reason: the extension assigns no reason
-				// values, and a receiving client renders the string as it came, so
-				// a made-up token would only show up as "tear" on another screen.
-				bool pings[PieMenuView::kSliceCount];
-			};
-
-			// Layout rule, held across every ring: slice 0 is at the top and the
-			// rest follow clockwise, the vertical axis carries a pair of opposites,
-			// the right half is about them and the left half is about us.
-			//
-			// The ring a message sits on is what says how it travels, so nobody has
-			// to remember it slice by slice: the first ring points at a place, the
-			// second one talks, the third one calls the game.
-
-			// Every slice names somewhere, so every slice drops a marker there: on the
-			// ground, or on the player the crosshair was on, where the ray met them.
-			// A server without the extension gets the same words on team chat.
-			constexpr PageDef kPointPage = {
-			  "Point", false,
-			  {"Enemy Here!", "Tear It Down!", "Watch This Spot",
-			   "Go Here!", "Let's Dig Here", "Help Me Build"},
-			  {true, true, true, true, true, true}};
-
-			// Offered when the crosshair is on terrain rather than on a player.
-			const PageDef kWorldPages[] = {
-				kPointPage,
-				// Said to the team, about nowhere in particular: a marker would only
-				// put "thank you" on a piece of ground.
-				{"Social", false,
-				 {"Affirmative", "Thank You", "Hi!",
-				  "Negative", "Sorry!", "Help Me"},
-				 {false, false, false, false, false, false}},
-				// The objective rather than the ground: where the intel is and what
-				// to do about it is already known to everyone, so none of it points.
-				{"Tactics", false,
-				 {"Attack!", "Get the Intel!", "Enemy Has the Intel!",
-				  "Fall Back!", "Regroup on Me", "Defend the Intel!"},
-				 {false, false, false, false, false, false}},
-			};
-
-			// Offered while the crosshair is on a teammate, and sent to them alone.
-			// A person is not a place, so their own rings do not point; the rings keep
-			// the order they have on terrain, and Social keeps the same six words, so
-			// the gesture is the same whoever it is aimed at. Point comes last, one
-			// flip back from the first ring, so calling a spot never needs the
-			// crosshair taken off a player first.
-			const PageDef kTeammatePages[] = {
-				// Directions are relative to the teammate under the crosshair, which
-				// makes them exact in a way a broadcast "our right" cannot be. Up,
-				// down, left and right sit where they point; the two threats that
-				// have no direction take the lower corners.
-				{"Warn", false,
-				 {"Above You!", "On Your Right!", "Behind You!",
-				  "Below You!", "Sniper on You!", "On Your Left!"},
-				 {false, false, false, false, false, false}},
-				{"Social", false,
-				 {"Affirmative", "Thank You", "Hi!",
-				  "Negative", "Sorry!", "Help Me"},
-				 {false, false, false, false, false, false}},
-				{"Cooperate", false,
-				 {"Follow Me", "Cover Me", "Let Me Through",
-				  "Stay Here", "Boost Me Up", "Help Me Build"},
-				 {false, false, false, false, false, false}},
-				kPointPage,
-			};
-
-			// Offered only while the crosshair is on an enemy. The taunt goes out on
-			// global chat so the whole server reads it, addressed to the player it was
-			// aimed at; Point, as on a teammate, is one flip away.
-			const PageDef kEnemyPages[] = {
-				// A taunt goes to the whole server, at the player it was aimed at;
-				// a team marker has no business carrying one.
-				{"Taunt", true,
-				 {"I See You", "Nice Try", "Miss Me?",
-				  "Too Easy", "Behind You...", "Say Goodbye"},
-				 {false, false, false, false, false, false}},
-				kPointPage,
-			};
+			// A label or a theme came off the wire, so it is made safe to draw: what
+			// the font cannot lay out on one line is dropped. Only what is drawn is
+			// touched; the Text a slice sends goes out exactly as it came.
+			std::string DisplayText(const std::string& text) {
+				std::string out;
+				out.reserve(text.size());
+				for (char c : StripNewlines(text)) {
+					auto u = static_cast<unsigned char>(c);
+					if (u >= 0x20 && u != 0x7F)
+						out += c;
+				}
+				return TrimSpaces(out);
+			}
 		} // namespace
 
 		PieMenuView::PieMenuView(Client* c, IFont* f, IFont* big)
 			: renderer(c->GetRenderer()), font(f), bigFont(big) {
-			auto buildPages = [](const PageDef* defs, size_t count) {
-				std::vector<Page> pages;
-				pages.reserve(count);
-				for (size_t i = 0; i < count; i++) {
-					const PageDef& def = defs[i];
-					Page p;
-					p.name = def.name;
-					p.global = def.global;
-					for (int s = 0; s < kSliceCount; s++) {
-						p.labels[static_cast<size_t>(s)] = def.labels[s];
-						p.pings[static_cast<size_t>(s)] = def.pings[s];
-					}
-					pages.push_back(std::move(p));
-				}
-				return pages;
-			};
-
-			worldPages = buildPages(kWorldPages, std::size(kWorldPages));
-			teammatePages = buildPages(kTeammatePages, std::size(kTeammatePages));
-			enemyPages = buildPages(kEnemyPages, std::size(kEnemyPages));
-
 			const float halfSliceRad = kSliceSpan * 0.5F - DEG2RAD(kSliceGapDeg) * 0.5F;
 			for (int i = 0; i < kSliceCount; i++) {
 				float center = -kHalfPi + kSliceSpan * static_cast<float>(i);
@@ -383,22 +287,40 @@ namespace spades {
 		PieMenuView::~PieMenuView() {}
 
 		const PieMenuView::Page& PieMenuView::CurrentPage() const {
-			const auto& pages = CurrentPages();
 			SPAssert(!pages.empty());
-			size_t idx = static_cast<size_t>(std::max(0, page));
-			if (idx >= pages.size())
-				idx = pages.size() - 1;
-			return pages[idx];
+			return pages[static_cast<size_t>(Clamp(page, 0, GetPageCount() - 1))];
+		}
+
+		const Pie& PieMenuView::CurrentPie() const {
+			SPAssert(!pies.empty());
+			return pies[static_cast<size_t>(Clamp(page, 0, GetPageCount() - 1))];
 		}
 
 		void PieMenuView::RestorePage() {
-			int remembered = lastPage[static_cast<size_t>(variant)];
+			int remembered = lastPage[static_cast<size_t>(contextIndex)];
 			page = std::max(0, std::min(remembered, GetPageCount() - 1));
 		}
 
-		void PieMenuView::Open(Variant v, int tgtId) {
+		void PieMenuView::Open(std::vector<Pie> newPies, PieContext context, int tgtId) {
+			SPAssert(!newPies.empty());
+
+			pies = std::move(newPies);
+			pages.clear();
+			pages.reserve(pies.size());
+			for (const Pie& pie : pies) {
+				Page p;
+				p.theme = DisplayText(pie.theme);
+				for (int i = 0; i < kSliceCount; i++)
+					p.labels[static_cast<size_t>(i)] =
+					  DisplayText(pie.slices[static_cast<size_t>(i)].DisplayLabel());
+				pages.push_back(std::move(p));
+			}
+
+			contextIndex = 0;
+			while (contextIndex < kContextCount - 1 && !(context & (1 << contextIndex)))
+				contextIndex++;
+
 			open = true;
-			variant = v;
 			targetPlayerId = tgtId;
 			cursor = {0.0F, 0.0F};
 			selection = None;
@@ -429,9 +351,12 @@ namespace spades {
 				return;
 
 			page = ((page + dir) % count + count) % count;
-			lastPage[static_cast<size_t>(variant)] = page;
+			lastPage[static_cast<size_t>(contextIndex)] = page;
 			pagePhase = 0.0F;
 			hintNeeded = false;
+
+			// The wedge under the cursor may be empty on the new ring.
+			UpdateSelection();
 		}
 
 		void PieMenuView::Update(float dt) {
@@ -458,11 +383,10 @@ namespace spades {
 			}
 		}
 
-		const std::string& PieMenuView::GetSelectionLabel() const {
-			static const std::string empty;
-			if (selection < 0 || selection >= kSliceCount)
-				return empty;
-			return CurrentPage().labels[static_cast<size_t>(selection)];
+		const PieSlice* PieMenuView::GetSelectedSlice() const {
+			if (!open || selection < 0 || selection >= kSliceCount)
+				return nullptr;
+			return &CurrentPie().slices[static_cast<size_t>(selection)];
 		}
 
 		void PieMenuView::HandleMouseDelta(float dx, float dy) {
@@ -477,9 +401,13 @@ namespace spades {
 			if (len > maxR) {
 				cursor.x *= maxR / len;
 				cursor.y *= maxR / len;
-				len = maxR;
 			}
 
+			UpdateSelection();
+		}
+
+		void PieMenuView::UpdateSelection() {
+			float len = sqrtf(cursor.x * cursor.x + cursor.y * cursor.y);
 			if (len < kDeadZone) {
 				selection = None;
 				return;
@@ -492,6 +420,10 @@ namespace spades {
 
 			// kSliceCount equal slices, top slice centered at angle 0.
 			int idx = static_cast<int>(floorf((angle + kSliceSpan * 0.5F) / kSliceSpan)) % kSliceCount;
+
+			// An empty wedge sends nothing, so it is never highlighted as if it would.
+			if (CurrentPie().slices[static_cast<size_t>(idx)].action == PieAction::None)
+				idx = None;
 			selection = idx;
 		}
 
@@ -577,7 +509,7 @@ namespace spades {
 			} else if (font) {
 				// Nothing aimed at yet: name the ring instead, so which one is up
 				// can be read at a glance rather than inferred from six labels.
-				const std::string& pageName = CurrentPage().name;
+				const std::string& pageName = CurrentPage().theme;
 				Vector2 sz = font->Measure(pageName);
 				Vector2 pos = {center.x - sz.x * 0.5F, center.y - sz.y * 0.5F};
 				float a = alpha * easedPage * 0.55F;

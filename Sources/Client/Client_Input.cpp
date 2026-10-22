@@ -712,52 +712,18 @@ namespace spades {
 
 				// Pie menu: hold to open, release to commit. Stays available while dead
 				// and waiting to respawn, which is when calling out what just happened
-				// matters most. Aim at a teammate to send a DM, or at an enemy to taunt
-				// them on global chat; otherwise broadcast on team chat, or drop a ping
-				// when the slice points somewhere and the server allows it.
+				// matters most. What a slice sends, and where, is the slice's own.
 				if (CheckKey(cg_keyPieMenu, name) && !localPlayerIsSpectating) {
 					if (down && !pieMenuView->IsOpen()) {
 						OpenPieMenu();
 					} else if (!down && pieMenuView->IsOpen()) {
+						// Read while the menu still stands: closing it forgets the
+						// ring on show, and with it the slice.
 						int targetId = pieMenuView->GetTargetPlayerId();
-						// All three are read while the menu still stands: closing it
-						// forgets which ring was on show, and the ring is what says
-						// whether the slice points at somewhere and which channel it
-						// speaks on.
-						std::string msg = pieMenuView->GetSelectionLabel();
-						bool global = pieMenuView->IsCurrentPageGlobal();
-						bool slicePings = pieMenuView->SlicePings(pieMenuView->GetSelection());
+						const PieSlice* chosen = pieMenuView->GetSelectedSlice();
+						PieSlice slice = chosen ? *chosen : PieSlice();
 						pieMenuView->Close();
-						if (!msg.empty() && net) {
-							// Where a message goes is decided by the message, not by
-							// what the menu was opened on: a slice that points at a
-							// place is for the team, and one that only talks is for
-							// whoever it was aimed at.
-							if (slicePings) {
-								// The marker says it better than the message does, but
-								// the message is what reaches a server without the
-								// extension — so the chat is the fallback, not a double.
-								// Either way the same words go out, as the ping's reason
-								// or as the chat line.
-								if (!(pieMenuPingValid && SendTeamplayPing(pieMenuPingPos, msg)))
-									net->SendChat(msg, global);
-							} else if (targetId >= 0 && global) {
-								// A ring that speaks to the whole server is aimed at an
-								// enemy, and servers do not carry private messages
-								// across teams — so it goes out on global chat with the
-								// target's name on it, landing personally all the same.
-								std::string target = world->GetPlayerName(targetId);
-								net->SendChat(target.empty() ? msg : target + ", " + msg, true);
-							} else if (targetId >= 0) {
-								// Said to the teammate under the crosshair rather than
-								// to the room.
-								char cmd[128];
-								std::snprintf(cmd, sizeof(cmd), "/pm #%d %s", targetId, msg.c_str());
-								net->SendChat(cmd, false);
-							} else {
-								net->SendChat(msg, global);
-							}
-						}
+						CommitPieSlice(slice, targetId);
 						pieMenuPingValid = false;
 						// The attack buttons were the menu's controls, so whatever is
 						// still held was held to browse rings, not to attack with. It

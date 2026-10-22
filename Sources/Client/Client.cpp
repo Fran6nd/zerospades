@@ -720,16 +720,21 @@ namespace spades {
 			// Hot tracking resolves against the camera target, so once dead it would
 			// follow whoever the spectated teammate is aiming at. Dead players broadcast.
 			int targetId = -1;
-			auto variant = PieMenuView::Variant::World;
+			PieContext context = PieContextWorld;
 			if (lp.IsAlive()) {
 				auto hot = HotTrackedPlayer(true);
 				if (hot) {
 					Player& target = std::get<0>(*hot);
 					targetId = target.GetId();
-					variant = lp.IsTeammate(target) ? PieMenuView::Variant::Teammate
-													: PieMenuView::Variant::Enemy;
+					context = lp.IsTeammate(target) ? PieContextTeammate : PieContextEnemy;
 				}
 			}
+
+			// A context with no pies has no menu, and no other context's rings
+			// stand in for it.
+			std::vector<Pie> pies = activePieMenu.PiesFor(context);
+			if (pies.empty())
+				return;
 
 			// Where a ping would land is settled here with the rest of the context
 			// and not re-resolved: the marker belongs to the place the player
@@ -738,7 +743,43 @@ namespace spades {
 			// somebody else's eyes, so there is nothing of their own to point at.
 			pieMenuPingValid = lp.IsAlive() && ResolveCrosshairWorldPos(pieMenuPingPos);
 
-			pieMenuView->Open(variant, targetId);
+			pieMenuView->Open(std::move(pies), context, targetId);
+		}
+
+		void Client::CommitPieSlice(const PieSlice& slice, int targetPlayerId) {
+			SPADES_MARK_FUNCTION();
+
+			if (!net || !world)
+				return;
+
+			std::string text =
+			  ExpandPieText(slice.text, targetPlayerId,
+							targetPlayerId >= 0 ? world->GetPlayerName(targetPlayerId) : "",
+							activePieMenu.clientTokens);
+
+			switch (slice.action) {
+				case PieAction::Chat:
+					if (!text.empty())
+						net->SendChatUTF8(text, slice.global);
+					break;
+				case PieAction::Ping:
+					// The marker says it better than the words do, but the words are
+					// what reach a server that allows no pings — so the chat is the
+					// fallback, not a double. Either way the same words go out, as the
+					// ping's reason or as the chat line.
+					if (pieMenuPingValid && SendTeamplayPing(pieMenuPingPos, text))
+						break;
+					if (!text.empty())
+						net->SendChatUTF8(text, slice.global);
+					break;
+				case PieAction::Command:
+					// The client reads none of it: it is a chat line for the server,
+					// always on the team channel.
+					if (!text.empty())
+						net->SendChatUTF8(text, false);
+					break;
+				case PieAction::None: break;
+			}
 		}
 
 		void Client::RunFrame(float dt) {
