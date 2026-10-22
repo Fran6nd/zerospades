@@ -81,6 +81,7 @@ namespace spades {
 			PacketTypePlayerProperties = 64,
 			PacketTypeDamageMarker = 96, // S2C, extension id 32 (`64 + extension id`)
 			PacketTypeTeamplay = 112, // S2C2P, extension id 48 (`64 + extension id`)
+			PacketTypePieMenu = 113,  // S2C, extension id 0x31 (`64 + extension id`)
 		};
 
 		/** Protocol extension ids, as negotiated through `PacketTypeExtensionInfo`. */
@@ -88,6 +89,7 @@ namespace spades {
 			ExtensionTypePlayerProperties = 0,
 			ExtensionTypeDamageMarkers = 32,
 			ExtensionTypeTeamplay = 48,
+			ExtensionTypePieMenu = 0x31,
 			ExtensionTypePlayerLimit = 192,
 			ExtensionTypeMessageTypes = 193,
 			ExtensionTypeKickReason = 194,
@@ -99,6 +101,11 @@ namespace spades {
 			TeamplaySubConfig = 0,  // S2C
 			TeamplaySubPing = 1,    // C2S2P
 			TeamplaySubESPMark = 2, // S2C
+		};
+
+		/** Sub packet ids of `PacketTypePieMenu`. */
+		enum PieMenuSubPacketType : std::uint8_t {
+			PieMenuSubMenu = 0, // S2C
 		};
 
 		/** The fixed part of each Teamplay sub packet, in bytes, counted from just after

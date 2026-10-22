@@ -23,6 +23,9 @@
 
 #include <iterator>
 
+#include <Core/Math.h>
+#include <Core/Strings.h>
+
 namespace spades {
 	namespace client {
 
@@ -112,6 +115,60 @@ namespace spades {
 			   "{}"},
 			};
 
+			constexpr size_t kMaxPies = 10;
+			constexpr size_t kMaxThemeBytes = 32;
+			constexpr size_t kMaxLabelBytes = 48;
+
+			constexpr std::uint8_t kKnownContexts =
+			  PieContextWorld | PieContextTeammate | PieContextEnemy | PieContextSpectator;
+			constexpr std::uint8_t kSliceFlagGlobal = 1 << 0;
+
+			/** Walks the packet, failing rather than reading past its end. */
+			class MenuReader {
+				const std::string& data;
+				size_t pos = 0;
+
+			public:
+				std::string error;
+
+				explicit MenuReader(const std::string& d) : data(d) {}
+
+				bool AtEnd() const { return pos == data.size(); }
+
+				bool Byte(std::uint8_t& out) {
+					if (pos >= data.size()) {
+						error = "a record runs past the end of the packet";
+						return false;
+					}
+					out = static_cast<std::uint8_t>(data[pos++]);
+					return true;
+				}
+
+				/** A UTF-8 Text: a UByte length, checked against `maxBytes`, then
+				 * that many bytes, which must be well-formed UTF-8. */
+				bool Text(std::string& out, size_t maxBytes, const char* what) {
+					std::uint8_t len;
+					if (!Byte(len))
+						return false;
+					if (len > maxBytes) {
+						error = Format("a {0} of {1} bytes is longer than {2}", what,
+									   static_cast<int>(len), static_cast<int>(maxBytes));
+						return false;
+					}
+					if (data.size() - pos < len) {
+						error = "a record runs past the end of the packet";
+						return false;
+					}
+					out.assign(data, pos, len);
+					pos += len;
+					if (!IsWellFormedUTF8(out)) {
+						error = Format("a {0} is not well-formed UTF-8", what);
+						return false;
+					}
+					return true;
+				}
+			};
+
 			// Labels never hold a `%`, so they can go into the Text as they are.
 			std::string FormatText(const char* format, const std::string& label) {
 				std::string out = format;
@@ -158,6 +215,64 @@ namespace spades {
 			}
 
 			return out;
+		}
+
+		stmp::optional<PieMenu> ParsePieMenu(const std::string& data, std::string& error) {
+			MenuReader r(data);
+			PieMenu menu;
+
+			auto fail = [&]() -> stmp::optional<PieMenu> {
+				error = r.error;
+				return {};
+			};
+
+			std::uint8_t pieCount;
+			if (!r.Byte(pieCount))
+				return fail();
+			if (pieCount > kMaxPies) {
+				r.error = Format("a Pie Count of {0} is more than {1}",
+								 static_cast<int>(pieCount), static_cast<int>(kMaxPies));
+				return fail();
+			}
+
+			menu.pies.resize(pieCount);
+			for (Pie& pie : menu.pies) {
+				std::uint8_t contexts, themeMessageId;
+				if (!r.Byte(contexts) || !r.Byte(themeMessageId) ||
+					!r.Text(pie.theme, kMaxThemeBytes, "Theme"))
+					return fail();
+
+				// Reserved bits are ignored, never a reason to refuse.
+				pie.contexts = contexts & kKnownContexts;
+
+				for (PieSlice& slice : pie.slices) {
+					std::uint8_t action, messageId, flags;
+					if (!r.Byte(action) || !r.Byte(messageId) || !r.Byte(flags) ||
+						!r.Text(slice.text, 255, "Text") ||
+						!r.Text(slice.label, kMaxLabelBytes, "Label"))
+						return fail();
+
+					// An unknown action is read as one that does nothing.
+					slice.action = action <= static_cast<std::uint8_t>(PieAction::Command)
+									 ? static_cast<PieAction>(action)
+									 : PieAction::None;
+					slice.global = (flags & kSliceFlagGlobal) != 0;
+
+					if ((slice.action == PieAction::Chat ||
+						 slice.action == PieAction::Command) &&
+						slice.text.empty()) {
+						r.error = "a CHAT or COMMAND slice has an empty Text";
+						return fail();
+					}
+				}
+			}
+
+			if (!r.AtEnd()) {
+				r.error = "bytes remain after the last pie";
+				return fail();
+			}
+
+			return menu;
 		}
 
 		PieMenu BuiltInPieMenu() {

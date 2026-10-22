@@ -707,9 +707,27 @@ namespace spades {
 			}
 		}
 
+		void Client::PieMenuReceived(PieMenu menu) { pendingPieMenu = std::move(menu); }
+
 		void Client::OpenPieMenu() {
 			if (!pieMenuView || !world)
 				return;
+
+			// A menu that arrived since the last open takes over now, whole. Its
+			// rings are not the ones remembered, so neither is where each was left.
+			if (pendingPieMenu) {
+				activePieMenu = std::move(*pendingPieMenu);
+				pendingPieMenu.reset();
+				pieMenuView->ForgetRings();
+			}
+
+			// The server has said there is no menu here, and the client's own does
+			// not come back. Say so instead of swallowing the key.
+			if (activePieMenu.pies.empty()) {
+				ShowAlert(_Tr("Client", "This server does not offer a quick menu."),
+						  AlertType::Notice);
+				return;
+			}
 
 			auto maybePlayer = world->GetLocalPlayer();
 			if (!maybePlayer)

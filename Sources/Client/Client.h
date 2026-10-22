@@ -179,6 +179,9 @@ namespace spades {
 			/** The rings the menu opens on: the client's own until a server sends its
 			 * own, which then replace them entirely. */
 			PieMenu activePieMenu = BuiltInPieMenu();
+			/** The menu the server sent last, waiting for the next open: a ring must
+			 * not change under a held thumb. */
+			stmp::optional<PieMenu> pendingPieMenu;
 
 			// unified cursor used by all UI overlays
 			std::unique_ptr<gui::SoftwareCursor> cursor;
@@ -801,6 +804,11 @@ namespace spades {
 			 * out of `PlayerSpawned` because a demo seek skips the rest of that work but
 			 * still has to rebuild the marks in force at the destination. */
 			void TeamplayPlayerSpawned(int playerId);
+
+			// ── Pie Menu, called by the net client ─────────────────
+			/** The server sent a menu, which replaces the one shown from the next
+			 * time the menu opens. One with no pies means no menu at all. */
+			void PieMenuReceived(PieMenu);
 
 			// ── Damage Markers, called by the net client ───────────
 			/** The server applied `amount` damage to a player the local player hit. A

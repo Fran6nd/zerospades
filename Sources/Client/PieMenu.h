@@ -26,6 +26,8 @@
 #include <string>
 #include <vector>
 
+#include <Core/TMPUtils.h>
+
 namespace spades {
 	namespace client {
 
@@ -98,6 +100,13 @@ namespace spades {
 		 */
 		std::string ExpandPieText(const std::string& text, int targetPlayerId,
 								  const std::string& targetName, bool clientTokens);
+
+		/**
+		 * Reads a Menu sub packet, from just after its sub packet id to the end of
+		 * the packet. The menu is applied whole or not at all, so anything wrong
+		 * anywhere refuses all of it: the result is empty and `error` says why.
+		 */
+		stmp::optional<PieMenu> ParsePieMenu(const std::string& data, std::string& error);
 
 		/** The rings the client offers until a server sends its own. */
 		PieMenu BuiltInPieMenu();
