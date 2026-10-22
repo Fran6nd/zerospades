@@ -804,10 +804,7 @@ namespace spades {
 			if (!net || !world)
 				return;
 
-			std::string text =
-			  ExpandPieText(slice.text, targetPlayerId,
-							targetPlayerId >= 0 ? world->GetPlayerName(targetPlayerId) : "",
-							activePieMenu.clientTokens);
+			std::string text = ExpandPieText(slice.text, targetPlayerId);
 
 			switch (slice.action) {
 				case PieAction::Chat:

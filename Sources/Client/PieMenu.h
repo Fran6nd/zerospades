@@ -83,9 +83,6 @@ namespace spades {
 
 		struct PieMenu {
 			std::vector<Pie> pies;
-			/** Lets the slices use `%n`, which only the client's own rings may: the
-			 * protocol leaves every token but `%p` and `%%` reserved. */
-			bool clientTokens = false;
 
 			/** The pies offered in a context, in the order they were defined. */
 			std::vector<Pie> PiesFor(PieContext) const;
@@ -95,11 +92,10 @@ namespace spades {
 		 * Expands a slice's Text, once and without re-scanning the result.
 		 *
 		 * `%p` becomes the target as a command's player argument, `#` and its id, or
-		 * nothing when there is no target. `%%` becomes `%`. With `clientTokens`, `%n`
-		 * becomes the target's name. Any other `%` is left as it is.
+		 * nothing when there is no target. `%%` becomes `%`. Any other `%` is left as
+		 * it is.
 		 */
-		std::string ExpandPieText(const std::string& text, int targetPlayerId,
-								  const std::string& targetName, bool clientTokens);
+		std::string ExpandPieText(const std::string& text, int targetPlayerId);
 
 		/**
 		 * Reads a Menu sub packet, from just after its sub packet id to the end of

@@ -102,13 +102,12 @@ namespace spades {
 			   {"Follow Me", "Cover Me", "Let Me Through",
 				"Stay Here", "Boost Me Up", "Help Me Build"},
 			   "/pm %p {}"},
-			  // A taunt goes to the whole server, at the player it was aimed at:
-			  // servers do not carry private messages across teams, so it goes out
-			  // on global chat with the target's name on it.
+			  // A taunt goes to the whole server: servers do not carry private
+			  // messages across teams.
 			  {PieContextEnemy, "Taunt", PieAction::Chat, true,
 			   {"I See You", "Nice Try", "Miss Me?",
 				"Too Easy", "Behind You...", "Say Goodbye"},
-			   "%n, {}"},
+			   "{}"},
 			  {kPlayerContexts, "Point", PieAction::Ping, false,
 			   {"Enemy Here!", "Tear It Down!", "Watch This Spot",
 				"Go Here!", "Let's Dig Here", "Help Me Build"},
@@ -187,8 +186,7 @@ namespace spades {
 			return out;
 		}
 
-		std::string ExpandPieText(const std::string& text, int targetPlayerId,
-								  const std::string& targetName, bool clientTokens) {
+		std::string ExpandPieText(const std::string& text, int targetPlayerId) {
 			std::string out;
 			out.reserve(text.size());
 
@@ -204,8 +202,6 @@ namespace spades {
 						out += "#" + std::to_string(targetPlayerId);
 				} else if (token == '%') {
 					out += '%';
-				} else if (token == 'n' && clientTokens) {
-					out += targetName;
 				} else {
 					// Reserved: both characters stay as they are.
 					out += '%';
@@ -277,7 +273,6 @@ namespace spades {
 
 		PieMenu BuiltInPieMenu() {
 			PieMenu menu;
-			menu.clientTokens = true;
 			menu.pies.reserve(std::size(kPieDefs));
 
 			for (const PieDef& def : kPieDefs) {
