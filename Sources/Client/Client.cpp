@@ -730,10 +730,12 @@ namespace spades {
 			}
 
 			// The server has said there is no menu here, and the client's own does
-			// not come back. Say so instead of swallowing the key.
+			// not come back. Say so instead of swallowing the key — except to a
+			// spectator, whose key goes on to whatever else it is bound to.
 			if (activePieMenu.pies.empty()) {
-				ShowAlert(_Tr("Client", "This server does not offer a quick menu."),
-						  AlertType::Notice);
+				if (!IsSpectatingForPieMenu())
+					ShowAlert(_Tr("Client", "This server does not offer a quick menu."),
+							  AlertType::Notice);
 				return false;
 			}
 
