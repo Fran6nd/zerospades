@@ -257,6 +257,65 @@ namespace spades {
 				return ToUpperCase(key);
 			}
 
+			// How wide a label may run inside its wedge, at the label radius, with
+			// some room left on either side.
+			constexpr float kLabelMaxWidth = 108.0F;
+
+			// A slice is styled by what it sends, so a wedge that pings, one that
+			// speaks and one that runs a command need not be told apart by reading.
+			Vector3 ActionAccent(PieAction action) {
+				switch (action) {
+					case PieAction::Ping: return MakeVector3(1.0F, 0.78F, 0.3F);
+					case PieAction::Command: return MakeVector3(0.5F, 0.78F, 1.0F);
+					default: return MakeVector3(1.0F, 1.0F, 1.0F);
+				}
+			}
+
+			// Cuts a line short, at a codepoint boundary, so that it fits with an
+			// ellipsis after it.
+			std::string Ellipsize(IFont& font, const std::string& text, float maxWidth) {
+				if (font.Measure(text).x <= maxWidth)
+					return text;
+				std::string cut = text;
+				while (!cut.empty()) {
+					cut.pop_back();
+					while (!cut.empty() && IsUTF8Continuation(cut.back()))
+						cut.pop_back();
+					std::string candidate = TrimSpaces(cut) + "...";
+					if (font.Measure(candidate).x <= maxWidth)
+						return candidate;
+				}
+				return "...";
+			}
+
+			// Lays a label out on one line, or two broken at the space that balances
+			// them best, cutting short whatever still does not fit.
+			std::vector<std::string> FitLines(IFont& font, const std::string& text,
+											  float maxWidth) {
+				if (text.empty())
+					return {};
+				if (font.Measure(text).x <= maxWidth)
+					return {text};
+
+				size_t bestSplit = std::string::npos;
+				float bestWidth = std::numeric_limits<float>::infinity();
+				for (size_t i = text.find(' '); i != std::string::npos;
+					 i = text.find(' ', i + 1)) {
+					float w = std::max(font.Measure(text.substr(0, i)).x,
+									   font.Measure(text.substr(i + 1)).x);
+					if (w < bestWidth) {
+						bestWidth = w;
+						bestSplit = i;
+					}
+				}
+
+				if (bestSplit == std::string::npos)
+					return {Ellipsize(font, text, maxWidth)};
+
+				return {Ellipsize(font, TrimSpaces(text.substr(0, bestSplit)), maxWidth),
+						Ellipsize(font, TrimSpaces(text.substr(bestSplit + 1)), maxWidth)};
+			}
+
 			// A label or a theme came off the wire, so it is made safe to draw: what
 			// the font cannot lay out on one line is dropped. Only what is drawn is
 			// touched; the Text a slice sends goes out exactly as it came.
@@ -310,9 +369,11 @@ namespace spades {
 			for (const Pie& pie : pies) {
 				Page p;
 				p.theme = DisplayText(pie.theme);
-				for (int i = 0; i < kSliceCount; i++)
-					p.labels[static_cast<size_t>(i)] =
-					  DisplayText(pie.slices[static_cast<size_t>(i)].DisplayLabel());
+				for (size_t i = 0; i < kSliceCount; i++) {
+					p.labels[i] = DisplayText(pie.slices[i].DisplayLabel());
+					p.lines[i] = FitLines(*font, p.labels[i], kLabelMaxWidth);
+					p.actions[i] = pie.slices[i].action;
+				}
 				pages.push_back(std::move(p));
 			}
 
@@ -458,12 +519,18 @@ namespace spades {
 			auto sliceOuter = [&](int i) { return rOuter + kHighlightReach * highlight[i]; };
 
 			// Slices
+			const auto& actions = CurrentPage().actions;
 			for (int i = 0; i < kSliceCount; i++) {
 				float h = highlight[i];
-				float fillA = (0.08F + (0.85F - 0.08F) * h) * alpha;
+				// An empty wedge is never highlighted, and sits back from the rest.
+				float restA = actions[i] == PieAction::None ? 0.03F : 0.08F;
+				float fillA = (restA + (0.85F - restA) * h) * alpha;
+				Vector3 accent = ActionAccent(actions[i]);
 				const SliceRay& rr = sliceRays[i];
-				DrawSliceFill(renderer, MakeVector4(fillA, fillA, fillA, fillA), center, rInner,
-							  sliceOuter(i), rr.s1, rr.c1, rr.s2, rr.c2);
+				DrawSliceFill(renderer,
+							  MakeVector4(accent.x * fillA, accent.y * fillA, accent.z * fillA,
+										  fillA),
+							  center, rInner, sliceOuter(i), rr.s1, rr.c1, rr.s2, rr.c2);
 			}
 
 			// Outer and inner outline rings (thin). The outer one is drawn slice by
@@ -486,30 +553,50 @@ namespace spades {
 				Vector2 dir = {cosf(sliceCenterAngles[i]), sinf(sliceCenterAngles[i])};
 				Vector2 p = center + dir * rLabel;
 
-				const std::string& label = labels[i];
-				Vector2 sz = font->Measure(label);
-				Vector2 textPos = {p.x - sz.x * 0.5F, p.y - sz.y * 0.5F};
+				const auto& lines = CurrentPage().lines[i];
+				if (lines.empty())
+					continue;
 
 				float textA = (0.85F + 0.15F * h) * alpha * easedPage;
-				Vector4 textColor = MakeVector4(1, 1, 1, textA);
+				if (actions[i] == PieAction::None)
+					textA *= 0.4F;
+				Vector3 accent = ActionAccent(actions[i]);
+				Vector4 textColor = MakeVector4(accent.x, accent.y, accent.z, textA);
 				Vector4 textShadow = MakeVector4(0, 0, 0, 0.6F * textA);
-				font->DrawShadow(label, textPos, 1.0F, textColor, textShadow);
+
+				float lineH = font->Measure("A").y;
+				float y = p.y - lineH * static_cast<float>(lines.size()) * 0.5F;
+				for (const std::string& line : lines) {
+					float w = font->Measure(line).x;
+					font->DrawShadow(line, MakeVector2(p.x - w * 0.5F, y), 1.0F, textColor,
+									 textShadow);
+					y += lineH;
+				}
 			}
 
 			// Center readout: currently selected slice label, scaled by its highlight
 			if (selection >= 0 && selection < kSliceCount && bigFont) {
 				float h = highlight[selection];
 				const std::string& centerLabel = labels[selection];
-				Vector2 sz = bigFont->Measure(centerLabel);
+				// The hole in the middle is all it has: the big font while it fits,
+				// then the small one, cut short if even that does not.
+				float maxW = 2.0F * rInner - 12.0F;
+				IFont* centerFont = bigFont;
+				std::string text = centerLabel;
+				if (bigFont->Measure(text).x > maxW) {
+					centerFont = font;
+					text = Ellipsize(*font, text, maxW);
+				}
+				Vector2 sz = centerFont->Measure(text);
 				Vector2 pos = {center.x - sz.x * 0.5F, center.y - sz.y * 0.5F};
 				float a = h * alpha * easedPage;
 				Vector4 col = MakeVector4(a, a, a, a);
 				Vector4 shd = MakeVector4(0, 0, 0, 0.7F * a);
-				bigFont->DrawShadow(centerLabel, pos, 1.0F, col, shd);
+				centerFont->DrawShadow(text, pos, 1.0F, col, shd);
 			} else if (font) {
 				// Nothing aimed at yet: name the ring instead, so which one is up
 				// can be read at a glance rather than inferred from six labels.
-				const std::string& pageName = CurrentPage().theme;
+				std::string pageName = Ellipsize(*font, CurrentPage().theme, 2.0F * rInner - 12.0F);
 				Vector2 sz = font->Measure(pageName);
 				Vector2 pos = {center.x - sz.x * 0.5F, center.y - sz.y * 0.5F};
 				float a = alpha * easedPage * 0.55F;

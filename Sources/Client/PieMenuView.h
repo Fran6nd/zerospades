@@ -52,6 +52,9 @@ namespace spades {
 			struct Page {
 				std::string theme;
 				std::array<std::string, kSliceCount> labels;
+				// Each label broken into the lines that fit inside its wedge.
+				std::array<std::vector<std::string>, kSliceCount> lines;
+				std::array<PieAction, kSliceCount> actions{};
 			};
 
 			IRenderer& renderer;
