@@ -69,6 +69,8 @@ namespace spades {
 			std::string text;
 			/** What it draws. Empty means the Text is drawn. */
 			std::string label;
+			/** Shown while the slice is highlighted, never sent. Empty means none. */
+			std::string tooltip;
 
 			const std::string& DisplayLabel() const { return label.empty() ? text : label; }
 		};

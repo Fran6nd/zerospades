@@ -23,6 +23,7 @@
 
 #include <iterator>
 
+#include <Core/CP437.h>
 #include <Core/Math.h>
 #include <Core/Strings.h>
 
@@ -117,6 +118,8 @@ namespace spades {
 			constexpr size_t kMaxPies = 10;
 			constexpr size_t kMaxThemeBytes = 32;
 			constexpr size_t kMaxLabelBytes = 48;
+			constexpr size_t kMaxTextBytes = 255;
+			constexpr size_t kMaxTooltipBytes = 128;
 
 			constexpr std::uint8_t kKnownContexts =
 			  PieContextWorld | PieContextTeammate | PieContextEnemy | PieContextSpectator;
@@ -143,36 +146,40 @@ namespace spades {
 					return true;
 				}
 
-				/** A UTF-8 Text: a UByte length, checked against `maxBytes`, then
-				 * that many bytes, which must be well-formed UTF-8. */
-				bool Text(std::string& out, size_t maxBytes, const char* what) {
-					std::uint8_t len;
-					if (!Byte(len))
+				/** A NUL-terminated string, at most `maxBytes` before its NUL, a
+				 * `0xff` prefix included. It is Code Page 437, or UTF-8 behind the
+				 * prefix, and comes out as UTF-8. */
+				bool String(std::string& out, size_t maxBytes, const char* what) {
+					auto end = data.find('\0', pos);
+					if (end == std::string::npos) {
+						error = Format("a {0} runs past the end of the packet", what);
 						return false;
-					if (len > maxBytes) {
+					}
+					std::string raw = data.substr(pos, end - pos);
+					pos = end + 1;
+					if (raw.size() > maxBytes) {
 						error = Format("a {0} of {1} bytes is longer than {2}", what,
-									   static_cast<int>(len), static_cast<int>(maxBytes));
+									   static_cast<int>(raw.size()), static_cast<int>(maxBytes));
 						return false;
 					}
-					if (data.size() - pos < len) {
-						error = "a record runs past the end of the packet";
-						return false;
-					}
-					out.assign(data, pos, len);
-					pos += len;
-					if (!IsWellFormedUTF8(out)) {
-						error = Format("a {0} is not well-formed UTF-8", what);
-						return false;
-					}
-					// A control character would be sent in a chat line that ends at
-					// the first NUL and goes on past a newline, or drawn as nothing;
-					// the protocol lets a client refuse a menu outright, so it does.
-					for (char c : out) {
+					// A control character would be sent in a chat line that goes on
+					// past a newline, or drawn as nothing; the protocol lets a client
+					// refuse a menu outright, so it does.
+					for (char c : raw) {
 						auto u = static_cast<unsigned char>(c);
 						if (u < 0x20 || u == 0x7F) {
 							error = Format("a {0} holds a control character", what);
 							return false;
 						}
+					}
+					if (!raw.empty() && static_cast<unsigned char>(raw[0]) == 0xFF) {
+						out = raw.substr(1);
+						if (!IsWellFormedUTF8(out)) {
+							error = Format("a {0} is not well-formed UTF-8", what);
+							return false;
+						}
+					} else {
+						out = CP437::Decode(raw);
 					}
 					return true;
 				}
@@ -190,7 +197,7 @@ namespace spades {
 
 		bool operator==(const PieSlice& a, const PieSlice& b) {
 			return a.action == b.action && a.global == b.global && a.text == b.text &&
-				   a.label == b.label;
+				   a.label == b.label && a.tooltip == b.tooltip;
 		}
 
 		bool operator==(const Pie& a, const Pie& b) {
@@ -254,7 +261,7 @@ namespace spades {
 			for (Pie& pie : menu.pies) {
 				std::uint8_t contexts, themeMessageId;
 				if (!r.Byte(contexts) || !r.Byte(themeMessageId) ||
-					!r.Text(pie.theme, kMaxThemeBytes, "Theme"))
+					!r.String(pie.theme, kMaxThemeBytes, "Theme"))
 					return fail();
 
 				// Reserved bits are ignored, never a reason to refuse.
@@ -263,8 +270,9 @@ namespace spades {
 				for (PieSlice& slice : pie.slices) {
 					std::uint8_t action, messageId, flags;
 					if (!r.Byte(action) || !r.Byte(messageId) || !r.Byte(flags) ||
-						!r.Text(slice.text, 255, "Text") ||
-						!r.Text(slice.label, kMaxLabelBytes, "Label"))
+						!r.String(slice.text, kMaxTextBytes, "Text") ||
+						!r.String(slice.label, kMaxLabelBytes, "Label") ||
+						!r.String(slice.tooltip, kMaxTooltipBytes, "Tooltip"))
 						return fail();
 
 					// An unknown action is read as one that does nothing.
@@ -272,13 +280,6 @@ namespace spades {
 									 ? static_cast<PieAction>(action)
 									 : PieAction::None;
 					slice.global = (flags & kSliceFlagGlobal) != 0;
-
-					if ((slice.action == PieAction::Chat ||
-						 slice.action == PieAction::Command) &&
-						slice.text.empty()) {
-						r.error = "a CHAT or COMMAND slice has an empty Text";
-						return fail();
-					}
 				}
 			}
 
