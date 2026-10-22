@@ -604,6 +604,67 @@ namespace spades {
 		return out;
 	}
 
+	bool IsUTF8Continuation(char c) { return (static_cast<unsigned char>(c) & 0xC0) == 0x80; }
+
+	std::string DropIllFormedUTF8(const std::string& s) {
+		std::string out;
+		out.reserve(s.size());
+
+		for (size_t i = 0; i < s.size();) {
+			auto lead = static_cast<unsigned char>(s[i]);
+
+			size_t len;
+			uint32_t cp;
+			if (lead < 0x80) {
+				len = 1;
+				cp = lead;
+			} else if ((lead & 0xE0) == 0xC0) {
+				len = 2;
+				cp = lead & 0x1F;
+			} else if ((lead & 0xF0) == 0xE0) {
+				len = 3;
+				cp = lead & 0x0F;
+			} else if ((lead & 0xF8) == 0xF0) {
+				len = 4;
+				cp = lead & 0x07;
+			} else { // a continuation byte on its own, or a 5+ byte lead
+				i++;
+				continue;
+			}
+
+			if (i + len > s.size())
+				break; // truncated at the end of the string
+
+			bool ok = true;
+			for (size_t j = 1; j < len; j++) {
+				if (!IsUTF8Continuation(s[i + j])) {
+					ok = false;
+					break;
+				}
+				cp = (cp << 6) | (static_cast<unsigned char>(s[i + j]) & 0x3F);
+			}
+
+			// An overlong encoding, a surrogate half or a codepoint past the end
+			// of Unicode is ill-formed even when every byte is in the right shape.
+			if (ok) {
+				static const uint32_t kMinimum[5] = {0, 0, 0x80, 0x800, 0x10000};
+				ok = cp >= kMinimum[len] && cp <= 0x10FFFF &&
+					 !(cp >= 0xD800 && cp <= 0xDFFF);
+			}
+
+			if (ok)
+				out.append(s, i, len);
+
+			i += ok ? len : 1;
+		}
+
+		return out;
+	}
+
+	bool IsWellFormedUTF8(const std::string& s) {
+		return DropIllFormedUTF8(s).size() == s.size();
+	}
+
 	std::string TrimSpaces(const std::string& str) {
 		size_t pos = str.find_first_not_of(" \t\n\r");
 		if (pos == std::string::npos)

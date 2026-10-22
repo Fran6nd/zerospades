@@ -1031,6 +1031,19 @@ namespace spades {
 	std::vector<std::string> SplitIntoLines(const std::string&);
 	std::string Replace(const std::string&, const std::string&, const std::string&);
 	std::string StripNewlines(const std::string&);
+
+	bool IsUTF8Continuation(char c);
+	/**
+	 * Copies the string without the byte sequences that are not well-formed UTF-8.
+	 *
+	 * Text from the network arrives as raw bytes from a stranger, and everything
+	 * downstream — measuring it, laying it out, drawing it — assumes valid UTF-8.
+	 * Rejecting the whole string over one bad byte would lose text that is otherwise
+	 * readable, so the bad bytes are dropped and the rest kept.
+	 */
+	std::string DropIllFormedUTF8(const std::string&);
+	/** Whether every byte belongs to a well-formed UTF-8 sequence. */
+	bool IsWellFormedUTF8(const std::string&);
 	std::string TrimSpaces(const std::string&);
 	std::string ToLowerCase(const std::string&);
 	std::string ToUpperCase(const std::string&);
