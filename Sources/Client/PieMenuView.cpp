@@ -260,6 +260,11 @@ namespace spades {
 			// How wide a label may run inside its wedge, at the label radius, with
 			// some room left on either side.
 			constexpr float kLabelMaxWidth = 108.0F;
+			// A tooltip is read under the ring, as wide as the ring itself.
+			constexpr float kTooltipMaxWidth = 2.0F * kRingOuter;
+			// From the ring's furthest reach to the first tooltip line, clear of the
+			// page dots below the ring.
+			constexpr float kTooltipGap = 26.0F;
 
 			// A slice is styled by what it sends, so a wedge that pings, one that
 			// speaks and one that runs a command need not be told apart by reading.
@@ -390,6 +395,7 @@ namespace spades {
 					if (p.labels[i].empty() && slice.action != PieAction::None)
 						p.labels[i] = "?";
 					p.lines[i] = FitLines(*font, p.labels[i], kLabelMaxWidth);
+					p.tooltips[i] = FitLines(*font, DisplayText(slice.tooltip), kTooltipMaxWidth);
 					p.actions[i] = pie.slices[i].action;
 				}
 				pages.push_back(std::move(p));
@@ -623,6 +629,22 @@ namespace spades {
 			}
 
 			DrawPageIndicator(center, rOuter, alpha);
+
+			// The highlighted slice's tooltip, under the ring and its page dots: the
+			// hole in the middle is too small for a sentence.
+			if (selection >= 0 && selection < kSliceCount && font) {
+				const auto& tip = CurrentPage().tooltips[selection];
+				float a = highlight[selection] * alpha * easedPage;
+				float lineH = font->Measure("A").y;
+				float y = center.y + rOuter + kHighlightReach + kTooltipGap;
+				for (const std::string& line : tip) {
+					float w = font->Measure(line).x;
+					font->DrawShadow(line, MakeVector2(center.x - w * 0.5F, y), 1.0F,
+									 MakeVector4(0.85F * a, 0.85F * a, 0.85F * a, a),
+									 MakeVector4(0, 0, 0, 0.6F * a));
+					y += lineH;
+				}
+			}
 		}
 
 		void PieMenuView::DrawPageIndicator(Vector2 center, float rOuter, float alpha) {

@@ -54,6 +54,8 @@ namespace spades {
 				std::array<std::string, kSliceCount> labels;
 				// Each label broken into the lines that fit inside its wedge.
 				std::array<std::vector<std::string>, kSliceCount> lines;
+				// Each tooltip broken into the lines it takes under the ring.
+				std::array<std::vector<std::string>, kSliceCount> tooltips;
 				std::array<PieAction, kSliceCount> actions{};
 			};
 
