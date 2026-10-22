@@ -209,6 +209,12 @@ namespace spades {
 
 			scriptedUI->CloseUI();
 
+			// A held menu belongs to the world it opened in: its ping position and
+			// its target mean nothing in the next one.
+			if (pieMenuView)
+				pieMenuView->Close();
+			pieMenuPingValid = false;
+
 			RemoveAllLocalEntities();
 
 			lastHealth = 100;
@@ -709,16 +715,18 @@ namespace spades {
 
 		void Client::PieMenuReceived(PieMenu menu) { pendingPieMenu = std::move(menu); }
 
-		void Client::OpenPieMenu() {
+		bool Client::OpenPieMenu() {
 			if (!pieMenuView || !world)
-				return;
+				return false;
 
-			// A menu that arrived since the last open takes over now, whole. Its
-			// rings are not the ones remembered, so neither is where each was left.
+			// A menu that arrived since the last open takes over now, whole. Where
+			// each ring was left is only worth remembering for the same rings: a
+			// server sends its menu again once it knows the player's locale.
 			if (pendingPieMenu) {
+				if (pendingPieMenu->pies != activePieMenu.pies)
+					pieMenuView->ForgetRings();
 				activePieMenu = std::move(*pendingPieMenu);
 				pendingPieMenu.reset();
-				pieMenuView->ForgetRings();
 			}
 
 			// The server has said there is no menu here, and the client's own does
@@ -726,12 +734,12 @@ namespace spades {
 			if (activePieMenu.pies.empty()) {
 				ShowAlert(_Tr("Client", "This server does not offer a quick menu."),
 						  AlertType::Notice);
-				return;
+				return false;
 			}
 
 			auto maybePlayer = world->GetLocalPlayer();
 			if (!maybePlayer)
-				return;
+				return false;
 
 			Player& lp = maybePlayer.value();
 
@@ -760,7 +768,7 @@ namespace spades {
 			// stand in for it.
 			std::vector<Pie> pies = activePieMenu.PiesFor(context);
 			if (pies.empty())
-				return;
+				return false;
 
 			// Where a ping would land is settled here with the rest of the context
 			// and not re-resolved: the marker belongs to the place the player
@@ -771,6 +779,7 @@ namespace spades {
 			  !pieMenuSpectating && lp.IsAlive() && ResolveCrosshairWorldPos(pieMenuPingPos);
 
 			pieMenuView->Open(std::move(pies), context, targetId);
+			return true;
 		}
 
 		bool Client::IsSpectatingForPieMenu() {

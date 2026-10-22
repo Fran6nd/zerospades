@@ -596,7 +596,8 @@ namespace spades {
 
 			// Opens the pie menu on the ring set the crosshair calls for. The context
 			// is resolved once, here, and then stays put for as long as the menu is up.
-			void OpenPieMenu();
+			/** Returns whether the menu opened. */
+			bool OpenPieMenu();
 			/** Sends what a chosen slice sends. `targetPlayerId` is the player aimed
 			 * at when the menu opened, or `-1`. */
 			void CommitPieSlice(const PieSlice&, int targetPlayerId);

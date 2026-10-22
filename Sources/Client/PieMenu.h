@@ -81,6 +81,11 @@ namespace spades {
 			std::array<PieSlice, kPieSliceCount> slices;
 		};
 
+		bool operator==(const PieSlice&, const PieSlice&);
+		bool operator==(const Pie&, const Pie&);
+		inline bool operator!=(const PieSlice& a, const PieSlice& b) { return !(a == b); }
+		inline bool operator!=(const Pie& a, const Pie& b) { return !(a == b); }
+
 		struct PieMenu {
 			std::vector<Pie> pies;
 

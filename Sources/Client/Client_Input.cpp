@@ -713,10 +713,12 @@ namespace spades {
 				// Pie menu: hold to open, release to commit. Stays available while dead
 				// and waiting to respawn, which is when calling out what just happened
 				// matters most. Spectators get the server's spectator rings. What a
-				// slice sends, and where, is the slice's own.
+				// slice sends, and where, is the slice's own. A spectator offered no
+				// rings keeps the key for whatever else it is bound to, as before.
 				if (CheckKey(cg_keyPieMenu, name)) {
 					if (down && !pieMenuView->IsOpen()) {
-						OpenPieMenu();
+						if (OpenPieMenu() || !localPlayerIsSpectating)
+							return;
 					} else if (!down && pieMenuView->IsOpen()) {
 						// Read while the menu still stands: closing it forgets the
 						// ring on show, and with it the slice.
@@ -731,8 +733,10 @@ namespace spades {
 						// takes a fresh press to mean that again: the menu can only
 						// ever cost an action, never invent one.
 						weapInput = WeaponInput();
+						return;
+					} else if (!localPlayerIsSpectating) {
+						return;
 					}
-					return;
 				}
 
 				// Cycle the pie menu's rings with the attack buttons, which are

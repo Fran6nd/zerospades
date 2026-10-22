@@ -276,16 +276,26 @@ namespace spades {
 			std::string Ellipsize(IFont& font, const std::string& text, float maxWidth) {
 				if (font.Measure(text).x <= maxWidth)
 					return text;
-				std::string cut = text;
-				while (!cut.empty()) {
-					cut.pop_back();
-					while (!cut.empty() && IsUTF8Continuation(cut.back()))
-						cut.pop_back();
-					std::string candidate = TrimSpaces(cut) + "...";
-					if (font.Measure(candidate).x <= maxWidth)
-						return candidate;
+
+				// Searched for rather than walked back one character at a time: a
+				// menu can hold sixty labels of 255 bytes, all fitted as it opens.
+				std::vector<size_t> bounds; // codepoint starts, past the first
+				for (size_t i = 1; i < text.size(); i++)
+					if (!IsUTF8Continuation(text[i]))
+						bounds.push_back(i);
+
+				auto candidate = [&](size_t n) {
+					return TrimSpaces(text.substr(0, n == 0 ? 0 : bounds[n - 1])) + "...";
+				};
+				size_t lo = 0, hi = bounds.size(); // candidate(lo) is the fallback
+				while (lo < hi) {
+					size_t mid = (lo + hi + 1) / 2;
+					if (font.Measure(candidate(mid)).x <= maxWidth)
+						lo = mid;
+					else
+						hi = mid - 1;
 				}
-				return "...";
+				return candidate(lo);
 			}
 
 			// Lays a label out on one line, or two broken at the space that balances
@@ -370,7 +380,15 @@ namespace spades {
 				Page p;
 				p.theme = DisplayText(pie.theme);
 				for (size_t i = 0; i < kSliceCount; i++) {
-					p.labels[i] = DisplayText(pie.slices[i].DisplayLabel());
+					// A label that draws as nothing must not hide a slice that
+					// sends something: what it sends is drawn instead, and failing
+					// that a mark, so the wedge never passes for an empty one.
+					const PieSlice& slice = pie.slices[i];
+					p.labels[i] = DisplayText(slice.label);
+					if (p.labels[i].empty())
+						p.labels[i] = DisplayText(slice.text);
+					if (p.labels[i].empty() && slice.action != PieAction::None)
+						p.labels[i] = "?";
 					p.lines[i] = FitLines(*font, p.labels[i], kLabelMaxWidth);
 					p.actions[i] = pie.slices[i].action;
 				}

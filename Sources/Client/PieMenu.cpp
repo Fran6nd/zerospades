@@ -164,6 +164,16 @@ namespace spades {
 						error = Format("a {0} is not well-formed UTF-8", what);
 						return false;
 					}
+					// A control character would be sent in a chat line that ends at
+					// the first NUL and goes on past a newline, or drawn as nothing;
+					// the protocol lets a client refuse a menu outright, so it does.
+					for (char c : out) {
+						auto u = static_cast<unsigned char>(c);
+						if (u < 0x20 || u == 0x7F) {
+							error = Format("a {0} holds a control character", what);
+							return false;
+						}
+					}
 					return true;
 				}
 			};
@@ -177,6 +187,15 @@ namespace spades {
 				return out;
 			}
 		} // namespace
+
+		bool operator==(const PieSlice& a, const PieSlice& b) {
+			return a.action == b.action && a.global == b.global && a.text == b.text &&
+				   a.label == b.label;
+		}
+
+		bool operator==(const Pie& a, const Pie& b) {
+			return a.contexts == b.contexts && a.theme == b.theme && a.slices == b.slices;
+		}
 
 		std::vector<Pie> PieMenu::PiesFor(PieContext context) const {
 			std::vector<Pie> out;

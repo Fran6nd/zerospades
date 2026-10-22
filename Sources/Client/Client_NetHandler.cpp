@@ -38,6 +38,7 @@
 #include "ChatWindow.h"
 #include "ClientUI.h"
 #include "LimboView.h"
+#include "PieMenuView.h"
 #include "Teamplay.h"
 
 #include "GameMap.h"
@@ -354,6 +355,14 @@ namespace spades {
 			// A mark or a ping outlives its owner otherwise, and the slot can be reused
 			// by whoever connects next.
 			teamplay->PlayerLeft(playerId);
+
+			// A menu aimed at this player would otherwise name whoever takes the slot
+			// next, so it closes without sending anything.
+			if (pieMenuView && pieMenuView->IsOpen() &&
+				pieMenuView->GetTargetPlayerId() == playerId) {
+				pieMenuView->Close();
+				pieMenuPingValid = false;
+			}
 
 			// Choose the next player if a follow cam is active on this player
 			if (FollowsNonLocalPlayer(GetCameraMode()) && GetCameraTargetPlayerId() == playerId) {
