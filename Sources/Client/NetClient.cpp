@@ -19,6 +19,7 @@
 
  */
 
+#include <algorithm>
 #include <limits>
 #include <math.h>
 #include <string.h>
@@ -1790,6 +1791,23 @@ namespace spades {
 			w.WriteByte((uint8_t)GetLocalPlayer().GetId());
 			w.WriteByte((uint8_t)(global ? 0 : 1));
 			w.WriteString(text);
+			w.WriteByte((uint8_t)0);
+			enet_peer_send(peer, 0, w.CreatePacket());
+		}
+
+		void NetClient::SendChatUTF8(const std::string& text, bool global) {
+			SPADES_MARK_FUNCTION();
+
+			bool ascii = std::all_of(text.begin(), text.end(), [](char c) {
+				return static_cast<unsigned char>(c) < 0x80;
+			});
+
+			NetPacketWriter w(PacketTypeChatMessage);
+			w.WriteByte((uint8_t)GetLocalPlayer().GetId());
+			w.WriteByte((uint8_t)(global ? 0 : 1));
+			if (!ascii)
+				w.WriteByte((uint8_t)UTFSign);
+			w.WriteRawString(text);
 			w.WriteByte((uint8_t)0);
 			enet_peer_send(peer, 0, w.CreatePacket());
 		}

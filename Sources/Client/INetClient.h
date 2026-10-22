@@ -86,6 +86,13 @@ namespace spades {
 			virtual void SendBlockAction(IntVector3, BlockActionType) = 0;
 			virtual void SendBlockLine(IntVector3 v1, IntVector3 v2) = 0;
 			virtual void SendChat(std::string, bool global) = 0;
+			/**
+			 * Sends a chat line the way the protocol extensions define their UTF-8 text
+			 * to be sent: as it is when it is all ASCII, and otherwise behind the `0xff`
+			 * prefix of *UTF-8 Chat*. Unlike `SendChat`, it never falls back on Code
+			 * Page 437, whatever `cg_unicode` says, so the server reads the exact bytes.
+			 */
+			virtual void SendChatUTF8(const std::string&, bool global) = 0;
 			virtual void SendReload() = 0;
 			virtual void SendTeamChange(int team) = 0;
 			virtual void SendWeaponChange(WeaponType) = 0;

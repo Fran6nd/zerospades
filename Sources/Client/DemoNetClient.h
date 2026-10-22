@@ -146,6 +146,7 @@ namespace spades {
 			void SendBlockAction(IntVector3, BlockActionType) override {}
 			void SendBlockLine(IntVector3, IntVector3) override {}
 			void SendChat(std::string, bool) override {}
+			void SendChatUTF8(const std::string&, bool) override {}
 			void SendReload() override {}
 			void SendTeamChange(int) override {}
 			void SendWeaponChange(WeaponType) override {}
