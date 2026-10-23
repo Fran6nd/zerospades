@@ -86,7 +86,7 @@ namespace spades {
 
 			// Ring each context was last left on. A player who works out of one ring
 			// gets it back on the next open instead of paying for the flip every time.
-			static constexpr int kContextCount = 4;
+			static constexpr int kContextCount = 5;
 			std::array<int, kContextCount> lastPage{};
 
 			// Precomputed per-slice ray params (sin/cos of θ_c ± α).

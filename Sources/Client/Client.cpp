@@ -744,9 +744,9 @@ namespace spades {
 			Player& lp = maybePlayer.value();
 
 			// Hot tracking resolves against the camera target, so once dead it would
-			// follow whoever the spectated teammate is aiming at. Dead players broadcast.
-			// A spectator, staff spectating included, has a context of their own, and
-			// aims with whatever camera they are looking through.
+			// follow whoever the spectated teammate is aiming at. A dead player and a
+			// spectator, staff spectating included, each have a context of their own;
+			// a spectator aims with whatever camera they are looking through.
 			int targetId = -1;
 			PieContext context = PieContextWorld;
 			pieMenuSpectating = IsSpectatingForPieMenu();
@@ -755,7 +755,9 @@ namespace spades {
 				auto aimed = PlayerAtScreenCenter();
 				if (aimed)
 					targetId = aimed->GetId();
-			} else if (lp.IsAlive()) {
+			} else if (!lp.IsAlive()) {
+				context = PieContextDead;
+			} else {
 				auto hot = HotTrackedPlayer(true);
 				if (hot) {
 					Player& target = std::get<0>(*hot);

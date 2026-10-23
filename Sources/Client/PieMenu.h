@@ -53,12 +53,14 @@ namespace spades {
 		};
 
 		/** What the crosshair is on when the menu opens, as the bits of a pie's
-		 * Contexts mask. A spectator only ever opens on `PieContextSpectator`. */
+		 * Contexts mask. A spectator only ever opens on `PieContextSpectator`, and a
+		 * dead player on `PieContextDead`. */
 		enum PieContext : std::uint8_t {
 			PieContextWorld = 1 << 0,
 			PieContextTeammate = 1 << 1,
 			PieContextEnemy = 1 << 2,
 			PieContextSpectator = 1 << 3,
+			PieContextDead = 1 << 4,
 		};
 
 		struct PieSlice {

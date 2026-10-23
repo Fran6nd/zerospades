@@ -73,14 +73,15 @@ namespace spades {
 				"Go Here!", "Let's Dig Here", "Help Me Build"},
 			   "{}"},
 			  // Said to the team, about nowhere in particular: a marker would only
-			  // put "thank you" on a piece of ground.
-			  {PieContextWorld, "Social", PieAction::Chat, false,
+			  // put "thank you" on a piece of ground. Still at hand while dead, which
+			  // is when calling out what just happened matters most.
+			  {PieContextWorld | PieContextDead, "Social", PieAction::Chat, false,
 			   {"Affirmative", "Thank You", "Hi!",
 				"Negative", "Sorry!", "Help Me"},
 			   "{}"},
 			  // The objective rather than the ground: where the intel is and what to
 			  // do about it is already known to everyone, so none of it points.
-			  {PieContextWorld, "Tactics", PieAction::Chat, false,
+			  {PieContextWorld | PieContextDead, "Tactics", PieAction::Chat, false,
 			   {"Attack!", "Get the Intel!", "Enemy Has the Intel!",
 				"Fall Back!", "Regroup on Me", "Defend the Intel!"},
 			   "{}"},
@@ -124,7 +125,8 @@ namespace spades {
 			constexpr size_t kMaxTooltipBytes = 128;
 
 			constexpr std::uint8_t kKnownContexts =
-			  PieContextWorld | PieContextTeammate | PieContextEnemy | PieContextSpectator;
+			  PieContextWorld | PieContextTeammate | PieContextEnemy | PieContextSpectator |
+			  PieContextDead;
 			constexpr std::uint8_t kSliceFlagGlobal = 1 << 0;
 
 			/** Walks the packet, failing rather than reading past its end. */
