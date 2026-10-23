@@ -118,12 +118,6 @@ namespace spades {
 			   "{}"},
 			};
 
-			constexpr size_t kMaxPies = 10;
-			constexpr size_t kMaxThemeBytes = 32;
-			constexpr size_t kMaxLabelBytes = 48;
-			constexpr size_t kMaxTextBytes = 255;
-			constexpr size_t kMaxTooltipBytes = 128;
-
 			constexpr std::uint8_t kKnownContexts =
 			  PieContextWorld | PieContextTeammate | PieContextEnemy | PieContextSpectator |
 			  PieContextDead;
@@ -150,10 +144,9 @@ namespace spades {
 					return true;
 				}
 
-				/** A NUL-terminated string, at most `maxBytes` before its NUL, a
-				 * `0xff` prefix included. It is Code Page 437, or UTF-8 behind the
-				 * prefix, and comes out as UTF-8. */
-				bool String(std::string& out, size_t maxBytes, const char* what) {
+				/** A NUL-terminated string, Code Page 437 or UTF-8 behind a `0xff`
+				 * prefix, which comes out as UTF-8. */
+				bool String(std::string& out, const char* what) {
 					auto end = data.find('\0', pos);
 					if (end == std::string::npos) {
 						error = Format("a {0} runs past the end of the packet", what);
@@ -161,11 +154,6 @@ namespace spades {
 					}
 					std::string raw = data.substr(pos, end - pos);
 					pos = end + 1;
-					if (raw.size() > maxBytes) {
-						error = Format("a {0} of {1} bytes is longer than {2}", what,
-									   static_cast<int>(raw.size()), static_cast<int>(maxBytes));
-						return false;
-					}
 					// Control bytes are kept, as chat keeps them: CP437 decodes them to
 					// its symbols, and in UTF-8 they are colour codes. Drawing makes
 					// them safe; sending passes them on.
@@ -273,17 +261,12 @@ namespace spades {
 			std::uint8_t pieCount;
 			if (!r.Byte(pieCount))
 				return fail();
-			if (pieCount > kMaxPies) {
-				r.error = Format("a Pie Count of {0} is more than {1}",
-								 static_cast<int>(pieCount), static_cast<int>(kMaxPies));
-				return fail();
-			}
 
 			menu.pies.resize(pieCount);
 			for (Pie& pie : menu.pies) {
 				std::uint8_t contexts, themeMessageId;
 				if (!r.Byte(contexts) || !r.Byte(themeMessageId) ||
-					!r.String(pie.theme, kMaxThemeBytes, "Theme"))
+					!r.String(pie.theme, "Theme"))
 					return fail();
 
 				// Reserved bits are ignored, never a reason to refuse.
@@ -292,9 +275,9 @@ namespace spades {
 				for (PieSlice& slice : pie.slices) {
 					std::uint8_t action, messageId, flags;
 					if (!r.Byte(action) || !r.Byte(messageId) || !r.Byte(flags) ||
-						!r.String(slice.text, kMaxTextBytes, "Text") ||
-						!r.String(slice.label, kMaxLabelBytes, "Label") ||
-						!r.String(slice.tooltip, kMaxTooltipBytes, "Tooltip"))
+						!r.String(slice.text, "Text") ||
+						!r.String(slice.label, "Label") ||
+						!r.String(slice.tooltip, "Tooltip"))
 						return fail();
 
 					// An unknown action is read as one that does nothing.
