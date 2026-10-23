@@ -783,11 +783,12 @@ namespace spades {
 			pieMenuAim = PieAim();
 			pieMenuAim.origin = lastSceneDef.viewOrigin;
 			pieMenuAim.direction = lastSceneDef.viewAxis[2].Normalize();
-			GameMap::RayCastResult ray =
-			  world->GetMap()->CastRay2(pieMenuAim.origin, pieMenuAim.direction, 256);
-			if (ray.hit && !ray.startSolid &&
-				MakeVector2(ray.hitPos.x - pieMenuAim.origin.x, ray.hitPos.y - pieMenuAim.origin.y)
-					.GetLength() <= FOG_DISTANCE)
+			// The aim has no length limit: enough voxel steps to cross the whole
+			// map, and a server that wants a limit applies its own.
+			const auto& map = world->GetMap();
+			GameMap::RayCastResult ray = map->CastRay2(pieMenuAim.origin, pieMenuAim.direction,
+													   map->Width() + map->Height() + map->Depth());
+			if (ray.hit && !ray.startSolid)
 				pieMenuAim.block = ray.hitBlock;
 
 			pieMenuView->Open(std::move(pies), context, targetId);
