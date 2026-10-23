@@ -1842,8 +1842,12 @@ namespace spades {
 		void NetClient::SendChatUTF8(const std::string& text, bool global) {
 			SPADES_MARK_FUNCTION();
 
+			// Only printable ASCII reads the same in CP437 and UTF-8: a control byte
+			// is a symbol in CP437 but a colour code in UTF-8, so a line holding one
+			// keeps the 0xff prefix to keep its UTF-8 meaning.
 			bool ascii = std::all_of(text.begin(), text.end(), [](char c) {
-				return static_cast<unsigned char>(c) < 0x80;
+				auto u = static_cast<unsigned char>(c);
+				return u >= 0x20 && u < 0x7F;
 			});
 
 			NetPacketWriter w(PacketTypeChatMessage);
