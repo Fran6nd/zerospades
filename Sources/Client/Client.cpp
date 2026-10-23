@@ -832,8 +832,8 @@ namespace spades {
 
 			switch (slice.action) {
 				case PieAction::Chat:
-					if (!text.empty())
-						net->SendChatUTF8(text, slice.global);
+					// An empty line is still a chat line: the spec lets it through.
+					net->SendChatUTF8(text, slice.global);
 					break;
 				case PieAction::Ping:
 					// The marker says it better than the words do, but the words are
@@ -842,14 +842,12 @@ namespace spades {
 					// ping's reason or as the chat line.
 					if (pieMenuPingValid && SendTeamplayPing(pieMenuPingPos, text))
 						break;
-					if (!text.empty())
-						net->SendChatUTF8(text, slice.global);
+					net->SendChatUTF8(text, slice.global);
 					break;
 				case PieAction::Command:
 					// The client reads none of it: it is a chat line for the server,
 					// always on the team channel.
-					if (!text.empty())
-						net->SendChatUTF8(text, false);
+					net->SendChatUTF8(text, false);
 					break;
 				case PieAction::None: break;
 			}
