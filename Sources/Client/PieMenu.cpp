@@ -166,16 +166,9 @@ namespace spades {
 									   static_cast<int>(raw.size()), static_cast<int>(maxBytes));
 						return false;
 					}
-					// A control character would be sent in a chat line that goes on
-					// past a newline, or drawn as nothing; the protocol lets a client
-					// refuse a menu outright, so it does.
-					for (char c : raw) {
-						auto u = static_cast<unsigned char>(c);
-						if (u < 0x20 || u == 0x7F) {
-							error = Format("a {0} holds a control character", what);
-							return false;
-						}
-					}
+					// Control bytes are kept, as chat keeps them: CP437 decodes them to
+					// its symbols, and in UTF-8 they are colour codes. Drawing makes
+					// them safe; sending passes them on.
 					if (!raw.empty() && static_cast<unsigned char>(raw[0]) == 0xFF) {
 						out = raw.substr(1);
 						if (!IsWellFormedUTF8(out)) {
