@@ -65,8 +65,7 @@ namespace spades {
 
 		struct PieSlice {
 			PieAction action = PieAction::None;
-			/** Sent on global chat rather than team chat. Means nothing for a
-			 * `Command`, which always goes to the team. */
+			/** Sent on global chat rather than team chat. */
 			bool global = false;
 			/** What it sends, before substitution. */
 			std::string text;

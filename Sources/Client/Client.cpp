@@ -846,8 +846,8 @@ namespace spades {
 					break;
 				case PieAction::Command:
 					// The client reads none of it: it is a chat line for the server,
-					// always on the team channel.
-					net->SendChatUTF8(text, false);
+					// sent as CHAT is; servers find the command by its leading /.
+					net->SendChatUTF8(text, slice.global);
 					break;
 				case PieAction::None: break;
 			}
