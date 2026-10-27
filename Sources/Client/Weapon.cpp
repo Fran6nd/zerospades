@@ -72,6 +72,8 @@ namespace spades {
 		}
 
 		float Weapon::GetReloadProgress() {
+			if (reloadEndTime <= reloadStartTime)
+				return 1.0F; // cancelled
 			return (time - reloadStartTime) / (reloadEndTime - reloadStartTime);
 		}
 
@@ -160,8 +162,9 @@ namespace spades {
 			// set new ammo and stock
 			Restock(ammo, stock);
 
-			// handle shotgun reload
-			if (IsReloadSlow())
+			// handle shotgun reload: next shell only with the gun in hand (a server may answer
+			// a reload cancelled by a tool switch)
+			if (IsReloadSlow() && owner.IsToolWeapon())
 				Reload();
 
 			if (world.GetListener() && IsClipFull())
@@ -196,16 +199,9 @@ namespace spades {
 		void Weapon::AbortReload() {
 			SPADES_MARK_FUNCTION_DEBUG();
 
+			// End the animation too: a cancelled reload no longer blocks firing or reloading
 			reloading = false;
-			//reloadEndTime = time;
-		}
-
-		void Weapon::ForceReloadDone() {
-			reloading = false; // force reload completion
-
-			int newStock = std::max(0, stock - GetClipSize() + ammo);
-			ammo += stock - newStock;
-			stock = newStock;
+			reloadEndTime = std::min(reloadEndTime, time);
 		}
 
 		class RifleWeapon3 : public Weapon {
