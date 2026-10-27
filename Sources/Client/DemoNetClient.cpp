@@ -63,6 +63,7 @@ namespace spades {
 				void PlayerDryFiredWeapon(Player&) override {}
 				void PlayerReloadingWeapon(Player&) override {}
 				void PlayerReloadedWeapon(Player&) override {}
+				void PlayerAbortedReload(Player&, float) override {}
 				void PlayerChangedTool(Player&) override {}
 				void PlayerPulledGrenadePin(Player&) override {}
 				void PlayerThrewGrenade(Player&, stmp::optional<const Grenade&>) override {}

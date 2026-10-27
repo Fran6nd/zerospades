@@ -18,6 +18,7 @@
 
  */
 
+#include <chrono>
 #include <cstdlib>
 #include <cstring>
 #include <exception>
@@ -178,6 +179,12 @@ namespace spades {
 				bool stereo;
 				bool local;
 				client::AudioParam param;
+				// The tag it was played under, see `SetPlayTag`.
+				int tag = 0;
+				// Fading out since `fadeStart`, then stopped.
+				bool fading = false;
+				std::chrono::steady_clock::time_point fadeStart;
+				float fadeGain = 0.0F;
 
 				ALSrc(Internal* i) : internal(i) {
 					SPADES_MARK_FUNCTION();
@@ -384,6 +391,54 @@ namespace spades {
 
 			std::vector<ALSrc*> srcs;
 
+			// The tag given to sounds played now, see `SetPlayTag`.
+			int playTag = 0;
+
+			// Long enough to avoid a click, short enough to read as a stop.
+			static constexpr float kStopFadeSeconds = 0.05F;
+
+			// Every allocated source starts untagged by an earlier play and unfaded.
+			ALSrc* AllocTaggedChunk() {
+				ALSrc* src = AllocChunk();
+				if (src) {
+					src->tag = playTag;
+					src->fading = false;
+				}
+				return src;
+			}
+
+			void StopTagged(int tag) {
+				SPADES_MARK_FUNCTION();
+
+				for (ALSrc* src : srcs) {
+					if (src->tag != tag || src->fading || !src->IsPlaying())
+						continue;
+					src->fading = true;
+					src->fadeStart = std::chrono::steady_clock::now();
+					al::qalGetSourcef(src->handle, AL_GAIN, &src->fadeGain);
+					ALCheckErrorPrecise();
+				}
+			}
+
+			// Called every frame from `Respatialize`.
+			void UpdateFades() {
+				auto now = std::chrono::steady_clock::now();
+				for (ALSrc* src : srcs) {
+					if (!src->fading)
+						continue;
+					float t = std::chrono::duration<float>(now - src->fadeStart).count() /
+							  kStopFadeSeconds;
+					if (t >= 1.0F || !src->IsPlaying()) {
+						src->Terminate();
+						src->fading = false;
+						src->tag = 0;
+						continue;
+					}
+					al::qalSourcef(src->handle, AL_GAIN, src->fadeGain * (1.0F - t));
+					ALCheckErrorPrecise();
+				}
+			}
+
 			// reverb simulator
 			int roomHistoryPos;
 			std::vector<float> roomHistory;
@@ -586,7 +641,7 @@ namespace spades {
 			void Play(ALAudioChunk* chunk, const Vector3& origin, const client::AudioParam& param) {
 				SPADES_MARK_FUNCTION();
 
-				ALSrc* src = AllocChunk();
+				ALSrc* src = AllocTaggedChunk();
 				if (UNLIKELY(!src))
 					return;
 
@@ -600,7 +655,7 @@ namespace spades {
 						   const client::AudioParam& param) {
 				SPADES_MARK_FUNCTION();
 
-				ALSrc* src = AllocChunk();
+				ALSrc* src = AllocTaggedChunk();
 				if (!src)
 					return;
 
@@ -613,7 +668,7 @@ namespace spades {
 			void PlayLocal(ALAudioChunk* chunk, const client::AudioParam& param) {
 				SPADES_MARK_FUNCTION();
 
-				ALSrc* src = AllocChunk();
+				ALSrc* src = AllocTaggedChunk();
 				if (!src)
 					return;
 
@@ -637,6 +692,8 @@ namespace spades {
 				ALCheckError();
 				al::qalListenerfv(AL_ORIENTATION, orient);
 				ALCheckError();
+
+				UpdateFades();
 
 				// do reverb simulation
 				if (useEAX) {
@@ -837,6 +894,16 @@ namespace spades {
 			SPADES_MARK_FUNCTION();
 
 			d->PlayLocal(static_cast<ALAudioChunk*>(chunk), param);
+		}
+
+		void ALDevice::SetPlayTag(int tag) { d->playTag = tag; }
+
+		void ALDevice::StopTagged(int tag) {
+			SPADES_MARK_FUNCTION();
+
+			// 0 is every untagged sound, never one group to stop.
+			if (tag != 0)
+				d->StopTagged(tag);
 		}
 
 		void ALDevice::Respatialize(const spades::Vector3& eye, const spades::Vector3& front,

@@ -112,6 +112,11 @@ namespace spades {
 			void EjectedBrass();
 			void ReloadingWeapon();
 			void ReloadedWeapon();
+			/** Stops the sounds the skin started for the reload, then tells the skin
+			 * how far through its animation the reload was. */
+			void ReloadAborted(float progress);
+			/** The audio tag of this player's reload sounds; never 0. */
+			int ReloadSoundTag() const { return player.GetId() + 1; }
 
 			float GetSprintState() { return sprintState; }
 

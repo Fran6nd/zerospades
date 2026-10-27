@@ -62,5 +62,16 @@ namespace spades {
 			Vector3 GetMuzzlePosition();
 			Vector3 GetCaseEjectPosition();
 		};
+
+		/** Optional: told when a reload ends without completing, after its sounds
+		 * were stopped, with how far through its animation it was. */
+		class ScriptIWeaponSkin4 {
+			asIScriptObject* obj;
+
+		public:
+			ScriptIWeaponSkin4(asIScriptObject* obj);
+			bool ImplementsInterface();
+			void ReloadAborted(float progress);
+		};
 	} // namespace client
 } // namespace spades

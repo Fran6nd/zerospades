@@ -199,9 +199,17 @@ namespace spades {
 		void Weapon::AbortReload() {
 			SPADES_MARK_FUNCTION_DEBUG();
 
+			// Only a reload still playing out is aborted; one whose animation is over
+			// is merely waiting for the server.
+			float progress = GetReloadProgress();
+			bool inProgress = progress < 1.0F;
+
 			// End the animation too: a cancelled reload no longer blocks firing or reloading
 			reloading = false;
 			reloadEndTime = std::min(reloadEndTime, time);
+
+			if (inProgress && world.GetListener())
+				world.GetListener()->PlayerAbortedReload(owner, progress);
 		}
 
 		class RifleWeapon3 : public Weapon {

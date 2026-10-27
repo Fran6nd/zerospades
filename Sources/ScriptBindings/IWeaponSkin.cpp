@@ -207,6 +207,28 @@ namespace spades {
 			return *reinterpret_cast<Vector3*>(ctx->GetReturnObject());
 		}
 
+		ScriptIWeaponSkin4::ScriptIWeaponSkin4(asIScriptObject* obj) : obj(obj) {
+			SPAssert(obj);
+			SPAssert(obj->GetObjectType());
+		}
+
+		bool ScriptIWeaponSkin4::ImplementsInterface() {
+			return obj->GetObjectType()->Implements(
+			  obj->GetEngine()->GetTypeInfoByName("IWeaponSkin4"));
+		}
+
+		void ScriptIWeaponSkin4::ReloadAborted(float progress) {
+			SPADES_MARK_FUNCTION_DEBUG();
+			static ScriptFunction func("IWeaponSkin4", "void ReloadAborted(float)");
+			ScriptContextHandle ctx = func.Prepare();
+			int r;
+			r = ctx->SetObject((void*)obj);
+			ScriptManager::CheckError(r);
+			r = ctx->SetArgFloat(0, progress);
+			ScriptManager::CheckError(r);
+			ctx.ExecuteChecked();
+		}
+
 		class IWeaponSkinRegistrar : public ScriptObjectRegistrar {
 		public:
 			IWeaponSkinRegistrar() : ScriptObjectRegistrar("IWeaponSkin") {}
@@ -221,6 +243,8 @@ namespace spades {
 						r = eng->RegisterInterface("IWeaponSkin2");
 						manager->CheckError(r);
 						r = eng->RegisterInterface("IWeaponSkin3");
+						manager->CheckError(r);
+						r = eng->RegisterInterface("IWeaponSkin4");
 						manager->CheckError(r);
 						break;
 					case PhaseObjectMember:
@@ -248,6 +272,8 @@ namespace spades {
 						manager->CheckError(r);
 						r = eng->RegisterInterfaceMethod("IWeaponSkin3", "Vector3 get_MuzzlePosition()");
 						r = eng->RegisterInterfaceMethod("IWeaponSkin3", "Vector3 get_CaseEjectPosition()");
+						manager->CheckError(r);
+						r = eng->RegisterInterfaceMethod("IWeaponSkin4", "void ReloadAborted(float)");
 						manager->CheckError(r);
 						break;
 					default: break;

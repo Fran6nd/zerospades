@@ -59,6 +59,15 @@ namespace spades {
 			virtual void PlayLocal(IAudioChunk*, const Vector3& origin, const AudioParam&) = 0;
 			virtual void PlayLocal(IAudioChunk*, const AudioParam&) = 0;
 
+			/**
+			 * Tags every sound played from now on with `tag`, until it is set back to
+			 * `0`, so that they can be stopped together with `StopTagged`.
+			 */
+			virtual void SetPlayTag(int tag) { (void)tag; }
+
+			/** Fades out and stops every sound still playing with `tag`. */
+			virtual void StopTagged(int tag) { (void)tag; }
+
 			virtual void Respatialize(const Vector3& eye, const Vector3& front,
 			                          const Vector3& up) = 0;
 		};

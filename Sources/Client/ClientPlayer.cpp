@@ -1676,10 +1676,31 @@ namespace spades {
 				}
 			}
 
+			// Whatever the skin plays for the reload is tagged as this player's, so an
+			// aborted reload can stop it.
 			{
+				IAudioDevice& audioDevice = client.GetAudioDevice();
+				struct TagScope {
+					IAudioDevice& dev;
+					~TagScope() { dev.SetPlayTag(0); }
+				} scope{audioDevice};
+				audioDevice.SetPlayTag(ReloadSoundTag());
+
 				ScriptIWeaponSkin interface(skin);
 				interface.ReloadingWeapon();
 			}
+		}
+
+		void ClientPlayer::ReloadAborted(float progress) {
+			client.GetAudioDevice().StopTagged(ReloadSoundTag());
+
+			// FIXME: what if current tool isn't weapon?
+			asIScriptObject* skin =
+			  ShouldRenderInThirdPersonView() ? weaponSkin : weaponViewSkin;
+
+			ScriptIWeaponSkin4 interface(skin);
+			if (interface.ImplementsInterface())
+				interface.ReloadAborted(progress);
 		}
 
 		void ClientPlayer::ReloadedWeapon() {

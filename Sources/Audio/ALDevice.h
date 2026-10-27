@@ -56,6 +56,9 @@ namespace spades {
 			               const client::AudioParam&) override;
 			void PlayLocal(client::IAudioChunk*, const client::AudioParam&) override;
 
+			void SetPlayTag(int tag) override;
+			void StopTagged(int tag) override;
+
 			void Respatialize(const Vector3& eye, const Vector3& front, const Vector3& up) override;
 		};
 	} // namespace audio

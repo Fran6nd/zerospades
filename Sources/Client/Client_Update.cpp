@@ -957,6 +957,13 @@ namespace spades {
 			clientPlayers.at(playerId)->ReloadingWeapon();
 		}
 
+		void Client::PlayerAbortedReload(spades::client::Player& p, float progress) {
+			SPADES_MARK_FUNCTION();
+
+			if (ClientPlayer* cp = clientPlayers.at(p.GetId()).GetPointerOrNull())
+				cp->ReloadAborted(progress);
+		}
+
 		void Client::PlayerReloadedWeapon(spades::client::Player& p) {
 			SPADES_MARK_FUNCTION();
 
