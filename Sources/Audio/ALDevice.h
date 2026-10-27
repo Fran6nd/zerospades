@@ -47,6 +47,7 @@ namespace spades {
 			static std::vector<std::string> DeviceList();
 
 			void ClearCache() override;
+			void ReloadResources(const ResourceChanges&) override;
 
 			void SetGameMap(client::GameMap*) override;
 

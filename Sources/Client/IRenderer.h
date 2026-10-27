@@ -30,6 +30,7 @@
 
 namespace spades {
 	class Bitmap;
+	class ResourceChanges;
 	class VoxelModel;
 	namespace client {
 		class GameMap;
@@ -142,6 +143,13 @@ namespace spades {
 			 * implementation may partially or completely ignore the request.
 			 */
 			virtual void ClearCache() {}
+
+			/**
+			 * Reloads, in place, the models and images loaded via `RegisterModel`
+			 * and `RegisterImage` from a file in `changes`, so their holders see the
+			 * new content. One that fails to load keeps its old content.
+			 */
+			virtual void ReloadResources(const ResourceChanges& changes) {}
 
 			virtual Handle<IImage> CreateImage(Bitmap&) = 0;
 			virtual Handle<IModel> CreateModel(VoxelModel&) = 0;

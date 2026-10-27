@@ -27,6 +27,7 @@
 #include "ConfigConsoleResponder.h"
 #include "ConsoleHelper.h"
 #include "ConsoleScreen.h"
+#include <Gui/ModOverlay.h>
 #include <Gui/UI/Console/ConsoleUI.h>
 #include <Gui/Utils/ConsoleCommand.h>
 
@@ -182,6 +183,7 @@ namespace spades {
 			constexpr const char* CMD_HELP = "help";
 			constexpr const char* CMD_CLEARGFXCACHE = "cleargfxcache";
 			constexpr const char* CMD_CLEARSFXCACHE = "clearsfxcache";
+			constexpr const char* CMD_MODSAPPLY = "mods_apply";
 
 			// Built on the first call, after the language is known, and reused afterwards. The
 			// candidate iterators keep a reference to it, so it must outlive them.
@@ -191,6 +193,7 @@ namespace spades {
 				  {CMD_CLEARGFXCACHE,
 				   _Tr("Client", "Clear the GFX (models and images) cache, forcing reload")},
 				  {CMD_CLEARSFXCACHE, _Tr("Client", "Clear the SFX cache, forcing reload")},
+				  {CMD_MODSAPPLY, _Tr("Client", "Apply the enabled mods without a restart")},
 				};
 				return commands;
 			}
@@ -218,6 +221,15 @@ namespace spades {
 					return true;
 				}
 				audioDevice->ClearCache();
+				return true;
+			} else if (command->GetName() == CMD_MODSAPPLY) {
+				if (command->GetNumArguments() != 0) {
+					SPLog("Usage: %s (no arguments)", CMD_MODSAPPLY);
+					return true;
+				}
+				std::string error;
+				if (ModOverlay::Apply(*renderer, *audioDevice, error) == ModApplyResult::NeedsRestart)
+					SPLog("This change takes a restart: apply it from the Mods tab.");
 				return true;
 			}
 			return ConfigConsoleResponder::ExecCommand(command) || subview->ExecCommand(command);

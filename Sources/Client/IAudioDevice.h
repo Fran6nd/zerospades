@@ -24,6 +24,7 @@
 #include <Core/RefCountedObject.h>
 
 namespace spades {
+	class ResourceChanges;
 	namespace client {
 		class IAudioChunk;
 		class GameMap;
@@ -52,6 +53,13 @@ namespace spades {
 			 * ignore the request.
 			 */
 			virtual void ClearCache() {}
+
+			/**
+			 * Reloads, in place, the chunks loaded via `RegisterSound` from a file in
+			 * `changes`, so their holders play the new sound. One that fails to load
+			 * keeps its old sound.
+			 */
+			virtual void ReloadResources(const ResourceChanges& changes) {}
 
 			virtual void SetGameMap(GameMap*) = 0;
 

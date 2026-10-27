@@ -18,9 +18,12 @@
 
  */
 #include <memory>
+#include <utility>
 
 #include "SWModel.h"
+#include <Core/FileManager.h>
 #include <Core/IStream.h>
+#include <Core/ResourceChanges.h>
 #include <Core/VoxelModelLoader.h>
 
 namespace spades {
@@ -106,6 +109,14 @@ namespace spades {
 
 		SWModel::~SWModel() {}
 
+		void SWModel::Replace(SWModel& other) {
+			std::swap(rawModel, other.rawModel);
+			std::swap(radius, other.radius);
+			std::swap(center, other.center);
+			std::swap(renderData, other.renderData);
+			std::swap(renderDataAddr, other.renderDataAddr);
+		}
+
 		IntVector3 SWModel::GetDimensions() {
 			return {rawModel->GetWidth(), rawModel->GetHeight(), rawModel->GetDepth()};
 		}
@@ -150,5 +161,23 @@ namespace spades {
 		}
 
 		void SWModelManager::ClearCache() { models.clear(); }
+
+		void SWModelManager::ReloadResources(const ResourceChanges& changes) {
+			for (const auto& entry : models) {
+				if (!changes.Contains(entry.first) &&
+				    !changes.Contains(VoxelModelLoader::GetMetadataPath(entry.first)))
+					continue;
+				// Gone with a disabled mod: keep what is loaded.
+				if (!FileManager::FileExists(entry.first.c_str()))
+					continue;
+				try {
+					auto vm = VoxelModelLoader::Load(entry.first.c_str());
+					entry.second->Replace(*CreateModel(*vm));
+				} catch (const std::exception& ex) {
+					// Broken: keep what is loaded.
+					SPLog("Model '%s' not reloaded: %s", entry.first.c_str(), ex.what());
+				}
+			}
+		}
 	} // namespace draw
 } // namespace spades

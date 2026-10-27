@@ -27,13 +27,15 @@
 #include <Core/RefCountedObject.h>
 
 namespace spades {
+	class ResourceChanges;
 	namespace draw {
 		class GLModel;
+		class GLOptimizedVoxelModel;
 		class GLRenderer;
 		class GLModelManager {
 			GLRenderer& renderer;
-			std::map<std::string, Handle<GLModel>> models;
-			Handle<GLModel> CreateModel(const char*);
+			std::map<std::string, Handle<GLOptimizedVoxelModel>> models;
+			Handle<GLOptimizedVoxelModel> CreateModel(const char*);
 
 		public:
 			GLModelManager(GLRenderer&);
@@ -41,6 +43,8 @@ namespace spades {
 			Handle<GLModel> RegisterModel(const char*);
 
 			void ClearCache();
+			/** Gives the cached models from a changed file their new content. */
+			void ReloadResources(const ResourceChanges&);
 		};
 	} // namespace draw
 } // namespace spades

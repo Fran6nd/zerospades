@@ -33,6 +33,7 @@
 #include <Core/Exception.h>
 #include <Core/FileManager.h>
 #include <Core/IAudioStream.h>
+#include <Core/ResourceChanges.h>
 #include <Core/Settings.h>
 
 DEFINE_SPADES_SETTING(s_volume, "100");
@@ -156,6 +157,12 @@ namespace spades {
 			}
 
 			ALuint GetFormat() { return format; }
+
+			/** Takes the sound of `other`, which gets this chunk's old buffer. */
+			void Replace(ALAudioChunk& other) {
+				std::swap(handle, other.handle);
+				std::swap(format, other.format);
+			}
 		};
 
 		class ALDevice::Internal {
@@ -567,6 +574,19 @@ namespace spades {
 					delete srcs[i];
 			}
 
+			// OpenAL can't delete a buffer a source still has attached.
+			void StopSourcesPlaying(ALuint buffer) {
+				SPADES_MARK_FUNCTION();
+
+				for (ALSrc* src : srcs) {
+					ALint attached;
+					al::qalGetSourcei(src->handle, AL_BUFFER, &attached);
+					ALCheckError();
+					if (static_cast<ALuint>(attached) == buffer)
+						src->Terminate();
+				}
+			}
+
 			ALSrc* AllocChunk() {
 				SPADES_MARK_FUNCTION();
 
@@ -817,6 +837,25 @@ namespace spades {
 				chunk.second->Release();
 
 			chunks.clear();
+		}
+
+		void ALDevice::ReloadResources(const ResourceChanges& changes) {
+			SPADES_MARK_FUNCTION();
+
+			for (const auto& entry : chunks) {
+				// Gone with a disabled mod: keep what is loaded.
+				if (!changes.Contains(entry.first) ||
+				    !FileManager::FileExists(entry.first.c_str()))
+					continue;
+				try {
+					Handle<ALAudioChunk> fresh{CreateChunk(entry.first.c_str()), false};
+					d->StopSourcesPlaying(entry.second->GetHandle());
+					entry.second->Replace(*fresh);
+				} catch (const std::exception& ex) {
+					// Broken: keep what is loaded.
+					SPLog("Sound '%s' not reloaded: %s", entry.first.c_str(), ex.what());
+				}
+			}
 		}
 
 		void ALDevice::Play(client::IAudioChunk* chunk, const spades::Vector3& origin,

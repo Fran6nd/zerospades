@@ -162,6 +162,13 @@ namespace spades {
 			modelManager->ClearCache();
 		}
 
+		void SWRenderer::ReloadResources(const ResourceChanges& changes) {
+			SPADES_MARK_FUNCTION();
+			EnsureValid();
+			imageManager->ReloadResources(changes);
+			modelManager->ReloadResources(changes);
+		}
+
 		Handle<client::IImage> SWRenderer::CreateImage(spades::Bitmap& bmp) {
 			SPADES_MARK_FUNCTION();
 			EnsureValid();

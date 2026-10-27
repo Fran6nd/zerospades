@@ -213,6 +213,12 @@ namespace spades {
 		void Client::UpdateWorld(float dt, float gameplayDt) {
 			SPADES_MARK_FUNCTION();
 
+			// Mods changed the skin scripts: build the players' skins again.
+			for (std::size_t i = 0; i < clientPlayers.size(); i++) {
+				if (clientPlayers[i] && !clientPlayers[i]->HasCurrentSkins())
+					PlayerObjectSet(static_cast<int>(i));
+			}
+
 			stmp::optional<Player&> maybePlayer = world->GetLocalPlayer();
 
 			bool isDemoMode = IsDemoMode();

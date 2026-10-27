@@ -751,15 +751,20 @@ namespace spades {
 
 		void ModsScreenHelper::ClearEnabledMods() { WriteEnabled({}); }
 
-		std::vector<std::string> ModsScreenHelper::GetEnabledModPakPaths() {
-			// Resolve the enabled names to pak paths relative to the resource
-			// root, in enabled order. Runs at startup before any instance
-			// exists, so a throwaway helper does the directory scan. Names with
-			// no matching mod on disk are skipped.
+		void ModsScreenHelper::SetEnabledMods(const std::vector<std::string>& modNames) {
+			WriteEnabled(modNames);
+		}
+
+		std::vector<std::string>
+		ModsScreenHelper::GetModPakPaths(const std::vector<std::string>& modNames) {
+			// Resolve the names to pak paths relative to the resource root, in
+			// the given order. Runs at startup before any instance exists, so a
+			// throwaway helper does the directory scan. Names with no matching
+			// mod on disk are skipped.
 			Handle<ModsScreenHelper> h = Handle<ModsScreenHelper>::New();
 			h->RebuildModsCache();
 			std::vector<std::string> out;
-			for (const std::string& name : ReadEnabled()) {
+			for (const std::string& name : modNames) {
 				const ModEntry* m = h->FindMod(name);
 				if (m == nullptr)
 					continue;

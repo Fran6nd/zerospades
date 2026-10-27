@@ -775,8 +775,8 @@ namespace spades {
 
 		void MainScreenMainMenu::UpdateModsStatus() {
 			if (modsApplyButton != nullptr) {
-				// Toggles already persist; Apply only restarts to make pending
-				// changes live, so it's actionable only when something changed.
+				// Toggles already persist; Apply makes pending changes live, so
+				// it's actionable only when something changed.
 				modsApplyButton->enable = modsDirty && !modsDownloading;
 			}
 			if (modsDownloading) {
@@ -805,7 +805,7 @@ namespace spades {
 			}
 			if (modsDirty) {
 				modsStatusLabel->text =
-				    _Tr("MainScreen", "Press 'Apply changes' to restart and apply your mods.");
+				    _Tr("MainScreen", "Press 'Apply changes' to apply your mods.");
 				return;
 			}
 			modsStatusLabel->text = "";
@@ -839,17 +839,38 @@ namespace spades {
 			UpdateModsStatus();
 		}
 
-		// Apply = restart now so the enabled set is mounted. Toggles are already
-		// saved, so this just relaunches straight back into the Mods tab.
+		// Apply = mount the enabled set. Toggles are already saved. The change
+		// takes effect in place when every file it touches can be reloaded, and
+		// otherwise relaunches straight back into the Mods tab.
 		void MainScreenMainMenu::OnApplyModsPressed(UIElement&) {
 			if (modsDownloading)
 				return;
-			helper->RelaunchForMods();
+			std::string error;
+			switch (helper->ApplyMods(error)) {
+				case ModApplyResult::Applied:
+					modsDirty = false;
+					LoadModList();
+					modsStatusLabel->text = _Tr("MainScreen", "Mods applied.");
+					break;
+				case ModApplyResult::NeedsRestart: helper->RelaunchForMods(); break;
+				case ModApplyResult::Refused: {
+					// The previous set is enabled again, so nothing is pending.
+					modsDirty = false;
+					LoadModList();
+					Handle<AlertScreen> al = Handle<AlertScreen>::New(
+					    this,
+					    _Tr("MainScreen", "These mods were not applied: their scripts don't build.") +
+					      "\n\n" + error,
+					    200.0F, true);
+					al->Run();
+					break;
+				}
+			}
 		}
 
 		void MainScreenMainMenu::OnResetModsPressed(UIElement&) {
 			Handle<ConfirmScreen> cs = Handle<ConfirmScreen>::New(
-			    this, _Tr("MainScreen", "Disable all mods? This takes effect after a restart."),
+			    this, _Tr("MainScreen", "Disable all mods? This takes effect on Apply."),
 			    200.0F, true);
 			cs->closed = [this](UIElement& s) { OnResetConfirmed(s); };
 			cs->Run();
@@ -866,7 +887,7 @@ namespace spades {
 		}
 
 		// Clicking a row toggles the mod in the enabled set. The change is saved
-		// immediately and takes effect the next time the game starts.
+		// immediately and takes effect on Apply.
 		void MainScreenMainMenu::OnModToggle(const std::string& modName) {
 			if (modsDownloading)
 				return;
