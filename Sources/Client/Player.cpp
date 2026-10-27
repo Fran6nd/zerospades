@@ -305,11 +305,8 @@ namespace spades {
 		void Player::SetTool(ToolType t) {
 			SPADES_MARK_FUNCTION();
 
-			// Switching away from the gun cancels its reload, as on the server: the reload is
-			// never completed here, only by the server's WeaponReload
-			if (t != ToolWeapon)
-				weapon->AbortReload();
-
+			// Switching away from the gun leaves its reload running, as piqueserver does: only
+			// the server's WeaponReload ends it, which a server that cancels sends right away
 			tool = t;
 
 			cookingGrenade = false;

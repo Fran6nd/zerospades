@@ -217,9 +217,9 @@ namespace spades {
 			  obj->GetEngine()->GetTypeInfoByName("IWeaponSkin4"));
 		}
 
-		void ScriptIWeaponSkin4::ReloadAborted(float progress) {
+		bool ScriptIWeaponSkin4::ReloadAborted(float progress) {
 			SPADES_MARK_FUNCTION_DEBUG();
-			static ScriptFunction func("IWeaponSkin4", "void ReloadAborted(float)");
+			static ScriptFunction func("IWeaponSkin4", "bool ReloadAborted(float)");
 			ScriptContextHandle ctx = func.Prepare();
 			int r;
 			r = ctx->SetObject((void*)obj);
@@ -227,6 +227,7 @@ namespace spades {
 			r = ctx->SetArgFloat(0, progress);
 			ScriptManager::CheckError(r);
 			ctx.ExecuteChecked();
+			return ctx->GetReturnByte() != 0;
 		}
 
 		class IWeaponSkinRegistrar : public ScriptObjectRegistrar {
@@ -273,7 +274,7 @@ namespace spades {
 						r = eng->RegisterInterfaceMethod("IWeaponSkin3", "Vector3 get_MuzzlePosition()");
 						r = eng->RegisterInterfaceMethod("IWeaponSkin3", "Vector3 get_CaseEjectPosition()");
 						manager->CheckError(r);
-						r = eng->RegisterInterfaceMethod("IWeaponSkin4", "void ReloadAborted(float)");
+						r = eng->RegisterInterfaceMethod("IWeaponSkin4", "bool ReloadAborted(float)");
 						manager->CheckError(r);
 						break;
 					default: break;

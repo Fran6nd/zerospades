@@ -42,6 +42,8 @@ namespace spades {
 		class ClientPlayer : public RefCountedObject {
 			Client& client;
 			Player& player;
+			/** The audio tag of this player's reload sounds. */
+			int reloadSoundTag;
 
 			float sprintState;
 			float aimDownState;
@@ -112,11 +114,9 @@ namespace spades {
 			void EjectedBrass();
 			void ReloadingWeapon();
 			void ReloadedWeapon();
-			/** Stops the sounds the skin started for the reload, then tells the skin
-			 * how far through its animation the reload was. */
+			/** Tells the skin how far through its animation the reload was, then
+			 * stops the sounds the skin started for it unless the skin keeps them. */
 			void ReloadAborted(float progress);
-			/** The audio tag of this player's reload sounds; never 0. */
-			int ReloadSoundTag() const { return player.GetId() + 1; }
 
 			float GetSprintState() { return sprintState; }
 

@@ -420,6 +420,17 @@ namespace spades {
 				}
 			}
 
+			// Stops every fading sound now, for when no frame may come to finish it.
+			void FinishFades() {
+				for (ALSrc* src : srcs) {
+					if (!src->fading)
+						continue;
+					src->Terminate();
+					src->fading = false;
+					src->tag = 0;
+				}
+			}
+
 			// Called every frame from `Respatialize`.
 			void UpdateFades() {
 				auto now = std::chrono::steady_clock::now();
@@ -915,6 +926,8 @@ namespace spades {
 
 		void ALDevice::SetGameMap(client::GameMap* mp) {
 			SPADES_MARK_FUNCTION_DEBUG();
+			// Frames, which advance fades, may pause while the world changes.
+			d->FinishFades();
 			client::GameMap* oldMap = d->map;
 			d->map = mp;
 			if (mp)

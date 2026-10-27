@@ -281,8 +281,21 @@ namespace spades {
 			float ScreenHeight() { return base->ScreenHeight(); }
 		};
 
+		namespace {
+			// Never 0, which leaves a sound untagged, and never shared, so a sound
+			// still playing for a player who left is not stopped by whoever takes
+			// their id next.
+			int NextReloadSoundTag() {
+				static int next = 0;
+				if (++next <= 0)
+					next = 1;
+				return next;
+			}
+		} // namespace
+
 		ClientPlayer::ClientPlayer(Player& p, Client& c)
-			: client(c), player(p), hasValidOriginMatrix(false) {
+			: client(c), player(p), reloadSoundTag(NextReloadSoundTag()),
+			  hasValidOriginMatrix(false) {
 			SPADES_MARK_FUNCTION();
 
 			sprintState = 0.0F;
@@ -1684,7 +1697,7 @@ namespace spades {
 					IAudioDevice& dev;
 					~TagScope() { dev.SetPlayTag(0); }
 				} scope{audioDevice};
-				audioDevice.SetPlayTag(ReloadSoundTag());
+				audioDevice.SetPlayTag(reloadSoundTag);
 
 				ScriptIWeaponSkin interface(skin);
 				interface.ReloadingWeapon();
@@ -1692,15 +1705,19 @@ namespace spades {
 		}
 
 		void ClientPlayer::ReloadAborted(float progress) {
-			client.GetAudioDevice().StopTagged(ReloadSoundTag());
-
 			// FIXME: what if current tool isn't weapon?
 			asIScriptObject* skin =
 			  ShouldRenderInThirdPersonView() ? weaponSkin : weaponViewSkin;
 
+			// The skin is told first and may keep its reload sounds playing; a skin
+			// that does not know about aborts has them faded out.
+			bool stopSounds = true;
 			ScriptIWeaponSkin4 interface(skin);
 			if (interface.ImplementsInterface())
-				interface.ReloadAborted(progress);
+				stopSounds = interface.ReloadAborted(progress);
+
+			if (stopSounds)
+				client.GetAudioDevice().StopTagged(reloadSoundTag);
 		}
 
 		void ClientPlayer::ReloadedWeapon() {

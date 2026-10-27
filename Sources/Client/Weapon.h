@@ -43,10 +43,24 @@ namespace spades {
 			float reloadStartTime;
 			float reloadEndTime;
 
+			// Local player only. A shotgun loads shell by shell, and the server answers each with
+			// a WeaponReload about one round trip after the shell's animation, so the client
+			// animates shells back to back by itself and counts those the server has yet to
+			// confirm.
+			int unconfirmedShells;
+			// The last time the reload moved: an animation playing or a WeaponReload received.
+			float lastReloadActivityTime;
+
 			bool lastDryFire;
 
 			int ammo;
 			int stock;
+
+			void StartReloadAnimation();
+			bool NeedsAnotherShell();
+			void UpdateLocalReload();
+			void FinishReload();
+			void GiveUpWaitingForServer();
 
 		public:
 			Weapon(World&, Player&);
@@ -78,7 +92,9 @@ namespace spades {
 			bool FrameNext(float);
 
 			void Reload();
-			void AbortReload();
+			/** Ends the reload; returns whether its animation was still playing out,
+			 * which makes it aborted. */
+			bool AbortReload();
 
 			bool IsShooting() const { return shooting; }
 			bool IsReloading() const { return reloading; }
@@ -87,6 +103,8 @@ namespace spades {
 			int GetStock() { return stock; }
 
 			// for local player
+			/** Applies a WeaponReload from the server: a shell or a magazine loaded, or, when
+			 * nothing was taken from the reserve, the reload ended there. */
 			void ReloadDone(int ammo, int stock);
 
 			bool IsClipFull();

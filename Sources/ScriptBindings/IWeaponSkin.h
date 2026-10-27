@@ -63,15 +63,22 @@ namespace spades {
 			Vector3 GetCaseEjectPosition();
 		};
 
-		/** Optional: told when a reload ends without completing, after its sounds
-		 * were stopped, with how far through its animation it was. */
+		/** Optional, for a skin that reacts to a reload ending without completing:
+		 * a death, a shot interrupting a slow reload, or the server ending it,
+		 * e.g. on a tool change. The client never aborts a reload on a tool change
+		 * by itself; a server that does so answers with a WeaponReload taking
+		 * nothing from the reserve, its ammo is applied and the reload counts as
+		 * aborted if its animation was still playing. Told how far through its
+		 * animation the reload was; returns whether the engine should fade out the
+		 * sounds the skin played from ReloadingWeapon(). Later
+		 * reload-lifecycle callbacks belong here rather than in a new interface. */
 		class ScriptIWeaponSkin4 {
 			asIScriptObject* obj;
 
 		public:
 			ScriptIWeaponSkin4(asIScriptObject* obj);
 			bool ImplementsInterface();
-			void ReloadAborted(float progress);
+			bool ReloadAborted(float progress);
 		};
 	} // namespace client
 } // namespace spades
