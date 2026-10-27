@@ -284,6 +284,12 @@ namespace spades {
 			imageManager->ClearCache();
 		}
 
+		void GLRenderer::ReloadResources(const ResourceChanges& changes) {
+			SPADES_MARK_FUNCTION();
+			imageManager->ReloadResources(changes);
+			modelManager->ReloadResources(changes);
+		}
+
 		Handle<client::IImage> GLRenderer::CreateImage(spades::Bitmap& bmp) {
 			SPADES_MARK_FUNCTION();
 			return GLImage::FromBitmap(bmp, device.GetPointerOrNull()).Cast<client::IImage>();

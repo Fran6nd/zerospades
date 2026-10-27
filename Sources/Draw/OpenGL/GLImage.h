@@ -52,6 +52,8 @@ namespace spades {
 			float GetInvHeight() { return invHeight; }
 
 			void SubImage(Bitmap* bmp, int x, int y);
+			/** Gives the same texture the content and size of `bmp`. */
+			void Replace(Bitmap& bmp);
 			void Invalidate();
 
 			void Update(Bitmap& bmp, int x, int y) override { SubImage(&bmp, x, y); }

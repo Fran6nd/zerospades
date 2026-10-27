@@ -21,6 +21,7 @@
 #pragma once
 
 #include <array>
+#include <cstdint>
 
 #include "Player.h"
 #include <Core/Math.h>
@@ -71,6 +72,9 @@ namespace spades {
 			asIScriptObject* weaponViewSkin;
 			asIScriptObject* grenadeViewSkin;
 
+			// ScriptManager::GetGeneration() of the module the skins come from.
+			std::uint64_t skinScriptGeneration;
+
 			asIScriptObject* GetCurrentSkin(bool viewSkin);
 
 			Handle<SandboxedRenderer> sandboxedRenderer;
@@ -102,6 +106,11 @@ namespace spades {
 		public:
 			ClientPlayer(Player& p, Client&);
 			Player& GetPlayer() const { return player; }
+
+			/** False once the skin scripts were reloaded: the skins are then rebuilt. */
+			bool HasCurrentSkins() const {
+				return skinScriptGeneration == ScriptManager::GetInstance()->GetGeneration();
+			}
 
 			void Update(float dt);
 			void AddToScene();

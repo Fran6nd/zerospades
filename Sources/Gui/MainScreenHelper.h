@@ -26,6 +26,7 @@
 
 #include <Core/RefCountedObject.h>
 #include <Core/TMPUtils.h>
+#include <Gui/ModOverlay.h>
 
 namespace spades {
 	class ServerItem;
@@ -127,6 +128,7 @@ namespace spades {
 			bool ShouldOpenModsTab();
 			bool IsTryingMod();
 			void RelaunchForMods();
+			ModApplyResult ApplyMods(std::string& error);
 		};
 	}
 }
