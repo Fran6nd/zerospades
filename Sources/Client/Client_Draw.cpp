@@ -256,6 +256,8 @@ namespace spades {
 			// minimal HUD: just a 2px progress bar at the bottom
 			if (!demoHudVisible) {
 				const float barH = 2.0F;
+				demoTimelineRect = AABB2(0.0F, sh - barH, sw, barH);
+				demoTimelineVisible = true;
 				renderer->SetColorAlphaPremultiplied(MakeVector4(0, 0, 0, 0.4F));
 				renderer->DrawFilledRect(0, sh - barH, sw, sh);
 				renderer->SetColorAlphaPremultiplied(barColor);
@@ -299,6 +301,10 @@ namespace spades {
 			const float barY = (sh - edgeMargin) - barH;
 			const float barW = (sw - edgeMargin) - durSize.x - barGap - barX;
 			const float progressBarW = barW * progress;
+
+			// Remember the bar so the mouse can hit-test it (see IsOverDemoTimeline).
+			demoTimelineRect = AABB2(barX, barY, barW, barH);
+			demoTimelineVisible = true;
 
 			const float textY = barY + (barH - curSize.y) * 0.5F;
 
@@ -344,6 +350,65 @@ namespace spades {
 			// draw time labels
 			font.DrawShadow(curStr, MakeVector2(timelineX, textY), 1.0F, white, shadow);
 			font.DrawShadow(durStr, MakeVector2((sw - edgeMargin) - durSize.x, textY), 1.0F, white, shadow);
+		}
+
+		bool Client::IsOverDemoTimeline(float x, float y) {
+			if (!demoTimelineVisible)
+				return false;
+
+			// Be generous: the bar itself can be as thin as 2 px.
+			const float padX = 4.0F;
+			const float padTop = 12.0F;
+			const float minX = demoTimelineRect.GetMinX() - padX;
+			const float maxX = demoTimelineRect.GetMinX() + demoTimelineRect.GetWidth() + padX;
+			const float minY = demoTimelineRect.GetMinY() - padTop;
+			return x >= minX && x <= maxX && y >= minY;
+		}
+
+		float Client::DemoTimelineTimeAt(float x) {
+			const float w = demoTimelineRect.GetWidth();
+			if (w <= 0.0F)
+				return 0.0F;
+			float t = (x - demoTimelineRect.GetMinX()) / w;
+			t = std::max(0.0F, std::min(1.0F, t));
+			return t * demoNet->GetDuration();
+		}
+
+		void Client::DrawDemoCursor() {
+			if (!IsDemoCursorMode() || !demoCursorHasPos)
+				return;
+
+			const float sw = renderer->ScreenWidth();
+			const float cx = cursor->GetPosition().x;
+			const float cy = cursor->GetPosition().y;
+
+			// Hover marker and time tooltip while pointing at the bar.
+			if (demoTimelineVisible && (demoTimelineDragging || IsOverDemoTimeline(cx, cy))) {
+				const float barMinX = demoTimelineRect.GetMinX();
+				const float barMaxX = barMinX + demoTimelineRect.GetWidth();
+				const float barY = demoTimelineRect.GetMinY();
+				const float barH = demoTimelineRect.GetHeight();
+				const float markerX = std::max(barMinX, std::min(barMaxX, cx));
+
+				renderer->SetColorAlphaPremultiplied(MakeVector4(0.9F, 0.9F, 0.9F, 0.9F));
+				renderer->DrawFilledRect(markerX - 1.0F, barY, markerX + 1.0F, barY + barH);
+
+				const float t = DemoTimelineTimeAt(cx);
+				const int mins = static_cast<int>(t) / 60;
+				const int secs = static_cast<int>(t) % 60;
+				char buf[16];
+				snprintf(buf, sizeof(buf), "%d:%02d", mins, secs);
+
+				IFont& font = fontManager->GetGuiFont();
+				const Vector2 size = font.Measure(buf);
+				const float tx = std::max(4.0F, std::min(sw - size.x - 4.0F, markerX - size.x * 0.5F));
+				const float ty = barY - size.y - 10.0F;
+				font.DrawShadow(buf, MakeVector2(tx, ty), 1.0F, MakeVector4(1, 1, 1, 1),
+				                MakeVector4(0, 0, 0, 0.5F));
+			}
+
+			// The shared pointer, so it looks and animates like the one in the menus.
+			cursor->Draw();
 		}
 
 		void Client::DrawRecordingIndicator() {
@@ -2640,6 +2705,10 @@ namespace spades {
 				DrawAlert();
 			}
 
+			// The timeline can only be clicked while it is on screen; the playback
+			// HUD sets this flag again when it draws the bar.
+			demoTimelineVisible = false;
+
 			if (shouldDrawHUD) {
 				// draw demo hud
 				if (isDemoMode)
@@ -2650,6 +2719,10 @@ namespace spades {
 				if (cg_stats)
 					DrawStats();
 			}
+
+			// Mouse cursor for the demo timeline (paused demos only)
+			if (isDemoMode)
+				DrawDemoCursor();
 
 			// draw limbo view (above everything)
 			if (IsLimboViewActive() && !scriptedUI->NeedsInput())

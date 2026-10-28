@@ -902,6 +902,12 @@ namespace spades {
 				}
 			}
 
+			// The timeline cursor only exists while the demo is paused.
+			if (!IsDemoCursorMode()) {
+				demoCursorHasPos = false;
+				demoTimelineDragging = false;
+			}
+
 			hurtRingView->Update(dt);
 			centerMessageView->Update(dt);
 			mapView->Update(dt);

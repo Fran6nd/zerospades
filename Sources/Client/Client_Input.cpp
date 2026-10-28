@@ -149,6 +149,10 @@ namespace spades {
 			if (IsLimboViewActive())
 				return true;
 
+			// Paused demo: free the cursor so the progress bar can be clicked.
+			if (IsDemoCursorMode())
+				return true;
+
 			return false;
 		}
 
@@ -169,6 +173,17 @@ namespace spades {
 			// and turn the head at once without doing both badly.
 			if (pieMenuView && pieMenuView->IsOpen()) {
 				pieMenuView->HandleMouseDelta(x, y);
+				return;
+			}
+
+			// Paused demo: the mouse is an absolute cursor for the progress bar.
+			if (IsDemoCursorMode()) {
+				cursor->SetPosition(MakeVector2(x, y));
+				demoCursorHasPos = true;
+				if (demoTimelineDragging) {
+					demoSeekPendingTime = DemoTimelineTimeAt(x);
+					demoNet->SeekPreview(demoSeekPendingTime);
+				}
 				return;
 			}
 
@@ -424,6 +439,29 @@ namespace spades {
 				// In demo mode, we're always spectating without a local player
 				bool isDemoMode = IsDemoMode();
 				if (isDemoMode) {
+					// Timeline cursor (paused demo): left click or drag on the progress bar.
+					if (IsDemoCursorMode()) {
+						if (demoTimelineDragging && CheckKey(cg_keyDemoPlayPause, name)) {
+							// Do not resume or reload while a drag is still uncommitted.
+							return;
+						}
+						if (name == "LeftMouseButton") {
+							const Vector2 cursorPos = cursor->GetPosition();
+							if (down && demoCursorHasPos &&
+								IsOverDemoTimeline(cursorPos.x, cursorPos.y)) {
+								demoTimelineDragging = true;
+								demoSeekPendingTime = DemoTimelineTimeAt(cursorPos.x);
+								demoNet->SeekPreview(demoSeekPendingTime);
+								return;
+							} else if (!down && demoTimelineDragging) {
+								demoTimelineDragging = false;
+								demoSeekPendingTime = DemoTimelineTimeAt(cursorPos.x);
+								demoNet->Seek(demoSeekPendingTime);
+								return;
+							}
+						}
+					}
+
 					// Allow screenshot / mapshot keys during playback — they don't
 					// require a local player and are commonly used to capture demos.
 					if (CheckKey(cg_keySceneshot, name) && down) {

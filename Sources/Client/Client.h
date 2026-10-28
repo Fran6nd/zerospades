@@ -127,6 +127,14 @@ namespace spades {
 			float demoSeekPendingTime = 0.0F;	// target time to commit on key release
 			bool demoHudVisible = true;
 
+			// Timeline cursor: while the demo is paused the mouse becomes an
+			// absolute cursor that can click and drag the progress bar. The pointer
+			// itself is the shared SoftwareCursor (`cursor`), same as the menus use.
+			AABB2 demoTimelineRect;               // bar rect from the last HUD draw
+			bool demoTimelineVisible = false;     // true only if the bar was drawn this frame
+			bool demoCursorHasPos = false;        // false until the first absolute motion event
+			bool demoTimelineDragging = false;
+
 			// Automated one-shot follow for menuless demo replay (--replay-demo):
 			// once the world has loaded the requested player is followed. Unused
 			// unless EnableDemoReplayFollow() has been called.
@@ -580,6 +588,9 @@ namespace spades {
 			void DrawAlivePlayersCount();
 			void DrawRecordingIndicator();
 			void DrawDemoPlaybackHUD();
+			void DrawDemoCursor();
+			bool IsOverDemoTimeline(float x, float y);
+			float DemoTimelineTimeAt(float x);
 			void DrawHurtSprites();
 			void DrawScreenEffect(bool hurt, float fadeTime = 0.35F);
 			void DrawAlert();
@@ -714,6 +725,8 @@ namespace spades {
 
 			bool HasLocalPlayer();
 			bool IsDemoMode() const { return demoNet != nullptr; }
+			/** True while a paused demo exposes the mouse as an absolute cursor. */
+			bool IsDemoCursorMode() const { return demoNet != nullptr && demoNet->IsPaused(); }
 			DemoNetClient* GetDemoNetClient() { return demoNet.get(); }
 			void ReloadDemo();
 			
