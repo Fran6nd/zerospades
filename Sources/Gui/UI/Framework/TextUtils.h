@@ -56,6 +56,16 @@ namespace spades {
 			 */
 			std::vector<std::string> WrapText(client::IFont& font, const std::string& text,
 			                                  float maxWidth);
+
+			/**
+			 * Wraps `text` like `WrapText`, but returns the byte offset at which each row starts
+			 * instead of copies of the rows, so a position in `text` can be mapped to its row.
+			 * Row `i` spans [result[i], result[i + 1]), the last one ends at `text.size()`. No byte
+			 * is dropped: the space where a row breaks stays at the end of its row. Always returns
+			 * at least one offset (0).
+			 */
+			std::vector<int> WrapTextOffsets(client::IFont& font, const std::string& text,
+			                                 float maxWidth);
 		} // namespace ui
 	} // namespace gui
 } // namespace spades

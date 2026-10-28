@@ -87,56 +87,76 @@ namespace spades {
 
 			std::vector<std::string> WrapText(client::IFont& font, const std::string& text,
 			                                  float maxWidth) {
+				const std::vector<int> starts = WrapTextOffsets(font, text, maxWidth);
 				std::vector<std::string> rows;
-				if (font.Measure(text).x <= maxWidth) {
-					rows.push_back(text);
-					return rows;
-				}
+				rows.reserve(starts.size());
+				for (size_t i = 0; i < starts.size(); i++) {
+					const bool last = i + 1 == starts.size();
+					const int begin = starts[i];
+					int end = last ? static_cast<int>(text.size()) : starts[i + 1];
 
-				std::string row;
-				size_t lastSpace = std::string::npos; // position of the last space in `row`
-				size_t i = 0;
-				while (i < text.size()) {
+					// The offsets keep the space a row breaks at, at the end of its row. The rows
+					// are returned without it. The last row only has one when it did not fit.
+					if (end - begin > 1 && text[end - 1] == ' ' &&
+					    (!last || font.Measure(text.substr(begin, end - begin)).x > maxWidth))
+						end--;
+
+					rows.push_back(text.substr(begin, end - begin));
+				}
+				return rows;
+			}
+
+			std::vector<int> WrapTextOffsets(client::IFont& font, const std::string& text,
+			                                 float maxWidth) {
+				std::vector<int> starts(1, 0);
+				if (font.Measure(text).x <= maxWidth)
+					return starts;
+
+				const int length = static_cast<int>(text.size());
+				int rowStart = 0;
+				// offset right after the last space of the current row, `rowStart` when it has none
+				int lastBreak = 0;
+				int i = 0;
+				while (i < length) {
 					// one whole UTF-8 character
-					size_t len = 1;
-					while (i + len < text.size() &&
+					int len = 1;
+					while (i + len < length &&
 					       (static_cast<unsigned char>(text[i + len]) & 0xC0) == 0x80)
 						len++;
-					std::string ch = text.substr(i, len);
 
-					if (!row.empty() && font.Measure(row + ch).x > maxWidth) {
-						if (ch == " ") {
-							// the space itself would overflow: end the row here and drop it
-							rows.push_back(row);
-							row.clear();
-							lastSpace = std::string::npos;
+					// A row always keeps at least one character, so a character wider than
+					// `maxWidth` cannot loop forever.
+					if (i > rowStart &&
+					    font.Measure(text.substr(rowStart, i + len - rowStart)).x > maxWidth) {
+						if (text[i] == ' ') {
+							// a space that does not fit stays at the end of its row, so the next row
+							// does not start with it
 							i += len;
-						} else if (lastSpace != std::string::npos && lastSpace > 0) {
-							// break at the last space; the rest of the word starts the next row
-							std::string rest = row.substr(lastSpace + 1);
-							row.resize(lastSpace);
-							rows.push_back(row);
-							row = rest;
-							lastSpace = std::string::npos;
-							// `ch` is handled again, now against the shorter row
-						} else {
-							// no space to break at: split the word here
-							rows.push_back(row);
-							row.clear();
-							lastSpace = std::string::npos;
-							// `ch` starts the next row
+							if (i < length) {
+								rowStart = i;
+								starts.push_back(rowStart);
+								lastBreak = rowStart;
+							}
+							continue;
 						}
+
+						// the row is full: break after its last space so the word stays whole,
+						// otherwise split the word here
+						if (lastBreak > rowStart + 1)
+							rowStart = lastBreak;
+						else
+							rowStart = i;
+						starts.push_back(rowStart);
+						lastBreak = rowStart;
+						// `i` is handled again, now against the new row
 						continue;
 					}
 
-					if (ch == " ")
-						lastSpace = row.size();
-					row += ch;
+					if (text[i] == ' ')
+						lastBreak = i + len;
 					i += len;
 				}
-				if (!row.empty())
-					rows.push_back(row);
-				return rows;
+				return starts;
 			}
 		} // namespace ui
 	} // namespace gui

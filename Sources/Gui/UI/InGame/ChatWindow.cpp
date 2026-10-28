@@ -53,6 +53,12 @@ namespace spades {
 		using gui::ui::UIManager;
 
 		namespace {
+			/** The longest message the composer accepts, in characters. */
+			constexpr int kMaxMessageLength = 90;
+
+			/** Space between the centered composer and the frame behind it. */
+			constexpr float kCenteredPad = 8.0F;
+
 			/** The color a history line is drawn in: the recorded color, lightened. */
 			Vector4 HistoryColor(Vector4 color) {
 				color.x = Mix(color.x, 1.0F, 0.5F);
@@ -558,8 +564,10 @@ namespace spades {
 			{
 				Handle<Label> label = Handle<Label>::New(manager);
 				label->backgroundColor = MakeVector4(0.0F, 0.0F, 0.0F, 0.5F);
-				label->SetBounds(AABB2(winX - 8.0F, winY - 8.0F, winW + 16.0F, winH + 16.0F));
+				label->SetBounds(AABB2(winX - kCenteredPad, winY - kCenteredPad,
+				                       winW + kCenteredPad * 2.0F, winH + kCenteredPad * 2.0F));
 				AddChild(label.GetPointerOrNull());
+				background = label.GetPointerOrNull();
 			}
 			{
 				Handle<Button> button = Handle<Button>::New(manager);
@@ -578,18 +586,12 @@ namespace spades {
 				button->activated = [this](UIElement& s) { OnCancel(s); };
 				AddChild(button.GetPointerOrNull());
 			}
-			{
-				Handle<CommandField> f =
-				    Handle<CommandField>::New(manager, &ui->GetChatHistory());
-				field = f.GetPointerOrNull();
-				field->SetBounds(AABB2(winX, winY, winW, 30.0F));
-				field->placeholder = _Tr("Client", "Type a message, use / for commands.");
-				field->maxLength = 90;
-				field->removeNewlines = true;
-				field->changed = [this](UIElement& s) { OnFieldChanged(s); };
-				field->tabPressed = [this]() { SetIsTeamChat(!GetIsTeamChat()); };
-				AddChild(field);
-			}
+
+			// a long message continues on the next row, which is as tall as the text
+			IFont* fieldFont = GetFont();
+			const float rowPitch = fieldFont ? fieldFont->Measure("A").y : 22.0F;
+			BuildField(AABB2(winX, winY, winW, 30.0F), rowPitch);
+
 			{
 				Handle<SimpleButton> button = Handle<SimpleButton>::New(manager);
 				button->toggle = true;
@@ -738,23 +740,40 @@ namespace spades {
 			}
 
 			// composer
-			{
-				Handle<CommandField> f = Handle<CommandField>::New(manager, &ui->GetChatHistory());
-				field = f.GetPointerOrNull();
-				field->SetBounds(AABB2(contentX, composerY, contentW, rowH));
-				field->placeholder = _Tr("Client", "Type a message, use / for commands.");
-				field->maxLength = 90;
-				field->removeNewlines = true;
-				field->changed = [this](UIElement& s) { OnFieldChanged(s); };
-				field->tabPressed = [this]() { SetIsTeamChat(!isTeamChat); };
+			historyBaseH = historyH;
+			separatorBaseY = separatorY;
+			BuildField(AABB2(contentX, composerY, contentW, rowH), rowHeight);
+
+			UpdateState();
+		}
+
+		void ClientChatWindow::BuildField(const AABB2& bounds, float lineHeight) {
+			Handle<CommandField> f = Handle<CommandField>::New(&GetManager(), &ui->GetChatHistory());
+			field = f.GetPointerOrNull();
+			field->SetBounds(bounds);
+			field->placeholder = _Tr("Client", "Type a message, use / for commands.");
+			field->maxLength = kMaxMessageLength;
+			field->removeNewlines = true;
+			// A long message continues on the next row, so the window does not have to be
+			// wider. It is only visual: the message is still sent as one line.
+			field->wrapLines = true;
+			field->lineHeight = lineHeight;
+			field->changed = [this](UIElement& s) { OnFieldChanged(s); };
+			field->tabPressed = [this]() { SetIsTeamChat(!isTeamChat); };
+
+			// Only a window with a history has a place for the list of matches, which takes the
+			// place of the history. Without one, the field shows its own list.
+			if (viewer) {
 				field->configListChanged = [this](const std::vector<CommandFieldEntry>& entries,
 				                                  size_t prefixLength, bool active) {
 					OnConfigListChanged(entries, prefixLength, active);
 				};
-				AddChild(field);
 			}
+			AddChild(field);
 
-			UpdateState();
+			composerBottom = bounds.max.y;
+			composerBaseH = bounds.max.y - bounds.min.y;
+			composerRowPitch = lineHeight;
 		}
 
 		void ClientChatWindow::BuildHistory(float x, float y, float w, float h, float rowHeight,
@@ -859,6 +878,45 @@ namespace spades {
 			UpdateHints();
 		}
 
+		void ClientChatWindow::UpdateComposerLayout() {
+			const bool docked = (mode == ChatWindowMode::Docked);
+			if (!field || (docked && !viewer))
+				return;
+
+			// Each extra row of text makes the composer taller. The docked history gives up that
+			// height, so it keeps showing whole rows. At least one history row is left.
+			const int rows = std::max(1, field->GetNumTextRows());
+			float extra = static_cast<float>(rows - 1) * composerRowPitch;
+			if (docked)
+				extra = std::min(extra, std::max(0.0F, historyBaseH - viewer->rowHeight));
+
+			const float fieldH = composerBaseH + extra;
+			if (std::fabs(field->size.y - fieldH) < 0.5F)
+				return;
+
+			// A history that was at its end must stay there when it gets shorter, or its newest
+			// lines would be cut off.
+			const bool atEnd = docked && viewer->GetTopRowIndex() >= viewer->GetMaxTopRowIndex();
+
+			field->SetBounds(AABB2(field->position.x, composerBottom - fieldH, field->size.x, fieldH));
+
+			if (docked) {
+				viewer->SetBounds(AABB2(viewer->position.x, viewer->position.y, viewer->size.x,
+				                        historyBaseH - extra));
+				if (atEnd) {
+					viewer->ScrollToEnd();
+					viewer->Layout();
+				}
+				separatorY = separatorBaseY - extra;
+			} else if (background) {
+				// the frame keeps its bottom edge and its distance to the composer
+				const float bottom = background->position.y + background->size.y;
+				const float top = composerBottom - fieldH - kCenteredPad;
+				background->SetBounds(
+				    AABB2(background->position.x, top, background->size.x, bottom - top));
+			}
+		}
+
 		void ClientChatWindow::UpdateHints() {
 			if (!field || !hintSwitch)
 				return;
@@ -918,7 +976,11 @@ namespace spades {
 
 		void ClientChatWindow::OnSetGlobal(UIElement&) { SetIsTeamChat(false); }
 		void ClientChatWindow::OnSetTeam(UIElement&) { SetIsTeamChat(true); }
-		void ClientChatWindow::OnFieldChanged(UIElement&) { UpdateState(); }
+		void ClientChatWindow::OnFieldChanged(UIElement&) {
+			// before the entry list is laid out over the history, which copies its bounds
+			UpdateComposerLayout();
+			UpdateState();
+		}
 
 		void ClientChatWindow::Close() { ui->SetActiveUI(nullptr); }
 

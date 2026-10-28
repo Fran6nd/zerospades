@@ -147,9 +147,28 @@ namespace spades {
 			float separatorY = 0.0F;
 			float headerSeparatorY = 0.0F;
 
+			// The composer grows upwards while its text wraps onto more rows. These are the values
+			// with a single-row composer.
+			float composerBottom = 0.0F; // bottom edge of the composer, which stays in place
+			float composerBaseH = 0.0F;
+			float composerRowPitch = 0.0F; // height added by each further row of text
+
+			// Docked: the history gives up the height the composer grows by.
+			float historyBaseH = 0.0F;
+			float separatorBaseY = 0.0F;
+
+			// Centered: the frame behind the composer follows its top edge. Weak; owned as a child.
+			gui::ui::Label* background = nullptr;
+
 			void BuildPanel();
 			void BuildHistory(float x, float y, float w, float h, float rowHeight,
 			                  bool interactive);
+
+			/**
+			 * Creates the composer in `bounds`. Its bottom edge stays in place while it grows with
+			 * its text. `lineHeight` is the distance between two rows of text.
+			 */
+			void BuildField(const AABB2& bounds, float lineHeight);
 
 			void OnSetGlobal(gui::ui::UIElement& sender);
 			void OnSetTeam(gui::ui::UIElement& sender);
@@ -160,6 +179,7 @@ namespace spades {
 			void OnConfigListChanged(const std::vector<CommandFieldEntry>& entries,
 			                         size_t prefixLength, bool active);
 			void UpdateHints();
+			void UpdateComposerLayout();
 
 		protected:
 			virtual void Close();

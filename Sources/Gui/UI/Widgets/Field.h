@@ -27,6 +27,7 @@
 
 namespace spades {
 	namespace client {
+		class IFont;
 		class IRenderer;
 	}
 	namespace gui {
@@ -54,9 +55,20 @@ namespace spades {
 				void EraseUndoHistory();
 
 				int PointToCharIndex(float x) const;
+				/** Same, for the part [begin, end) of the text: one row of a wrapping field. */
+				int PointToCharIndex(float x, int begin, int end) const;
 				int ClampCursorPosition(int pos) const;
 				bool FitsInBox(const std::string& text) const;
 				std::string TruncateToFit(const std::string& text) const;
+
+				// The rows of a wrapping field, measured again only when the text or the width
+				// changes.
+				mutable std::string wrappedText;
+				mutable float wrappedWidth = -1.0F;
+				mutable client::IFont* wrappedFont = nullptr; // weak
+				mutable std::vector<int> wrappedRows;
+				const std::vector<int>& GetRowStarts(const std::string& t) const;
+				float GetRowPitch() const;
 
 				void DrawHighlight(client::IRenderer& r, float x, float y, float w, float h);
 				void DrawBeam(client::IRenderer& r, float x, float y, float h);
@@ -80,6 +92,20 @@ namespace spades {
 				Vector2 textOrigin = MakeVector2(0, 0);
 				float textScale = 1.0F;
 
+				/**
+				 * When true, a text wider than the field continues on the next row instead of
+				 * being refused. The wrap is only visual: the text is still a single line.
+				 * `maxLength` then counts characters instead of bytes. The owner makes the field
+				 * tall enough for `GetNumTextRows()` rows.
+				 */
+				bool wrapLines = false;
+
+				/** Distance between two rows of a wrapping field; 0 uses the height of the font. */
+				float lineHeight = 0.0F;
+
+				/** Number of rows the text takes: 1 unless `wrapLines` is set. */
+				int GetNumTextRows() const;
+
 				FieldBase(UIManager* manager);
 
 				const std::string& GetText() const { return text; }
@@ -102,7 +128,7 @@ namespace spades {
 
 				AABB2 GetTextInputRect() const override;
 
-				int PointToCharIndex(Vector2 pt) const { return PointToCharIndex(pt.x); }
+				int PointToCharIndex(Vector2 pt) const;
 
 				void Select(int start, int length = 0);
 				void SelectAll();

@@ -19,6 +19,7 @@
  */
 
 #include <algorithm>
+#include <cmath>
 
 #include "DrawUtils.h"
 #include "Field.h"
@@ -32,6 +33,16 @@
 namespace spades {
 	namespace gui {
 		namespace ui {
+			namespace {
+				/** Index of the row holding byte `offset`; a break belongs to the row it starts. */
+				size_t RowOfOffset(const std::vector<int>& rows, int offset) {
+					size_t row = 0;
+					while (row + 1 < rows.size() && rows[row + 1] <= offset)
+						row++;
+					return row;
+				}
+			} // namespace
+
 			FieldBase::FieldBase(UIManager* manager) : UIElement(manager) {
 				isMouseInteractive = true;
 				acceptsFocus = true;
@@ -153,37 +164,94 @@ namespace spades {
 					return AABB2();
 				Vector2 textPos = textOrigin;
 				Vector2 siz = size;
-				float width = font->Measure(text.substr(0, cursorPosition)).x;
+				int rowStart = 0;
+				if (wrapLines) {
+					const std::vector<int>& rows = GetRowStarts(text);
+					size_t row = RowOfOffset(rows, cursorPosition);
+					rowStart = rows[row];
+					textPos.y += GetRowPitch() * static_cast<float>(row);
+				}
+				float width = font->Measure(text.substr(rowStart, cursorPosition - rowStart)).x;
 				float fontHeight = font->Measure("A").y;
 				return AABB2(textPos.x + width, textPos.y, siz.x - textPos.x - width, fontHeight);
 			}
 
 			int FieldBase::PointToCharIndex(float x) const {
+				return PointToCharIndex(x, 0, static_cast<int>(text.size()));
+			}
+
+			int FieldBase::PointToCharIndex(float x, int begin, int end) const {
 				x -= textOrigin.x;
 				if (x < 0.0F)
-					return 0;
+					return begin;
 				x /= textScale;
-				int len = static_cast<int>(text.size());
+				const std::string row = text.substr(begin, end - begin);
+				int len = static_cast<int>(row.size());
 				float lastWidth = 0.0F;
 				client::IFont* font = GetFont();
 				if (!font)
-					return 0;
+					return begin;
 				int idx = 0;
 				for (int i = 1; i <= len; i++) {
 					int lastIdx = idx;
-					idx = GetByteIndexForString(text, 1, idx);
-					float width = font->Measure(text.substr(0, idx)).x;
+					idx = GetByteIndexForString(row, 1, idx);
+					float width = font->Measure(row.substr(0, idx)).x;
 					if (width > x) {
 						if (x < (lastWidth + width) * 0.5F)
-							return lastIdx;
+							return begin + lastIdx;
 						else
-							return idx;
+							return begin + idx;
 					}
 					lastWidth = width;
 					if (idx >= len)
-						return len;
+						return begin + len;
 				}
-				return len;
+				return begin + len;
+			}
+
+			int FieldBase::PointToCharIndex(Vector2 pt) const {
+				if (!wrapLines)
+					return PointToCharIndex(pt.x);
+
+				// pick the row under the point, then the character in that row
+				const std::vector<int>& rows = GetRowStarts(text);
+				size_t row = 0;
+				const float pitch = GetRowPitch();
+				if (pitch > 0.0F) {
+					int r = static_cast<int>(std::floor((pt.y - textOrigin.y) / pitch));
+					row = static_cast<size_t>(Clamp(r, 0, static_cast<int>(rows.size()) - 1));
+				}
+				int begin = rows[row];
+				int end = (row + 1 < rows.size()) ? rows[row + 1] : static_cast<int>(text.size());
+				return PointToCharIndex(pt.x, begin, end);
+			}
+
+			const std::vector<int>& FieldBase::GetRowStarts(const std::string& t) const {
+				client::IFont* font = GetFont();
+				const float width = std::max(size.x - textOrigin.x * 2.0F, 1.0F) / textScale;
+				if (font != wrappedFont || width != wrappedWidth || t != wrappedText) {
+					wrappedFont = font;
+					wrappedWidth = width;
+					wrappedText = t;
+					if (font)
+						wrappedRows = WrapTextOffsets(*font, t, width);
+					else
+						wrappedRows.assign(1, 0);
+				}
+				return wrappedRows;
+			}
+
+			float FieldBase::GetRowPitch() const {
+				if (lineHeight > 0.0F)
+					return lineHeight;
+				client::IFont* font = GetFont();
+				return font ? font->Measure("A").y : 0.0F;
+			}
+
+			int FieldBase::GetNumTextRows() const {
+				if (!wrapLines)
+					return 1;
+				return static_cast<int>(GetRowStarts(text).size());
 			}
 
 			int FieldBase::ClampCursorPosition(int pos) const {
@@ -234,8 +302,12 @@ namespace spades {
 				std::string oldText = GetSelectedText();
 				SetSelectedText(t);
 
-				// if text overflows, deny the insertion
-				if (!FitsInBox(text) || static_cast<int>(text.size()) > maxLength) {
+				// If text overflows, deny the insertion. A wrapping field has no width limit, and
+				// its length is counted in characters, not in bytes.
+				const bool overflows =
+				  wrapLines ? GetCharIndexForString(text, static_cast<int>(text.size())) > maxLength
+				            : (!FitsInBox(text) || static_cast<int>(text.size()) > maxLength);
+				if (overflows) {
 					SetSelectedText(oldText);
 					return;
 				}
@@ -407,34 +479,65 @@ namespace spades {
 					              text.substr(GetSelectionStart());
 				}
 
-				if (IsFocused()) {
-					float fontHeight = font->Measure("A").y;
+				// Where each row of the displayed text starts: a single one unless `wrapLines`.
+				std::vector<int> rows(1, 0);
+				if (wrapLines)
+					rows = GetRowStarts(displayText);
+				const float fontHeight = font->Measure("A").y;
+				const float rowPitch = wrapLines ? GetRowPitch() : fontHeight;
+				auto rowEnd = [&](size_t i) {
+					return (i + 1 < rows.size()) ? rows[i + 1]
+					                             : static_cast<int>(displayText.size());
+				};
 
+				// Highlights [s, e) of the displayed text, or underlines it when `underline` is set.
+				auto drawSpan = [&](int s, int e, bool underline) {
+					for (size_t i = 0; i < rows.size(); i++) {
+						int a = std::max(s, rows[i]);
+						int b = std::min(e, rowEnd(i));
+						if (b <= a)
+							continue;
+						float x1 = font->Measure(displayText.substr(rows[i], a - rows[i])).x;
+						float x2 = font->Measure(displayText.substr(rows[i], b - rows[i])).x;
+						float y = textPos.y + rowPitch * static_cast<float>(i);
+						if (underline)
+							DrawEditingLine(r, textPos.x + x1, y, x2 - x1, fontHeight);
+						else
+							DrawHighlight(r, textPos.x + x1, y, x2 - x1, fontHeight);
+					}
+				};
+
+				if (IsFocused()) {
 					// draw selection
 					int start = markStart;
 					int end = markEnd;
 					if (end == start) {
-						float x = font->Measure(displayText.substr(0, start)).x;
-						DrawBeam(r, x + textPos.x, textPos.y, fontHeight);
+						size_t row = RowOfOffset(rows, start);
+						float x = font->Measure(displayText.substr(rows[row], start - rows[row])).x;
+						DrawBeam(r, x + textPos.x, textPos.y + rowPitch * static_cast<float>(row),
+						         fontHeight);
 					} else {
-						float x1 = font->Measure(displayText.substr(0, start)).x;
-						float x2 = font->Measure(displayText.substr(0, end)).x;
-						DrawHighlight(r, textPos.x + x1, textPos.y, x2 - x1, fontHeight);
+						drawSpan(start, end, false);
 					}
 
 					// draw composition underline
 					if (composition.size() > 0) {
 						start = GetSelectionStart();
 						end = start + static_cast<int>(composition.size());
-						float x1 = font->Measure(displayText.substr(0, start)).x;
-						float x2 = font->Measure(displayText.substr(0, end)).x;
-						DrawEditingLine(r, textPos.x + x1, textPos.y, x2 - x1, fontHeight);
+						drawSpan(start, end, true);
 					}
 				}
 
 				if (displayText.size() == 0) {
 					if (IsEnabled())
 						font->Draw(placeholder, textPos, textScale, placeholderColor);
+				} else if (wrapLines) {
+					const Vector4 color = IsEnabled() ? textColor : disabledTextColor;
+					for (size_t i = 0; i < rows.size(); i++) {
+						font->Draw(displayText.substr(rows[i], rowEnd(i) - rows[i]),
+						           MakeVector2(textPos.x, textPos.y + rowPitch * static_cast<float>(i)),
+						           textScale, color);
+					}
 				} else {
 					font->Draw(IsFocused() ? displayText : TruncateToFit(displayText), textPos,
 					           textScale, IsEnabled() ? textColor : disabledTextColor);
