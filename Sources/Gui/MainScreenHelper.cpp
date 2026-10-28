@@ -48,6 +48,7 @@ DEFINE_SPADES_SETTING(cl_serverListUrlFallback, "https://checkpoint.aos.coffee/s
 namespace spades {
 	extern std::string g_pendingMapName;
 	extern std::string g_pendingServerName;
+	extern std::string g_pendingGameMode;
 
 	namespace {
 		struct CURLEasyDeleter {
@@ -490,10 +491,12 @@ namespace spades {
 			}
 			g_pendingMapName = mapName;
 			g_pendingServerName = hostname; // fallback: use address as server name
+			g_pendingGameMode.clear();      // never carry over the previous server's mode
 			if (result) {
 				for (const auto& item : result->list) {
 					if (item->GetAddress() == hostname) {
 						g_pendingServerName = item->GetName(); // prefer human-readable name
+						g_pendingGameMode = item->GetGameMode();
 						if (g_pendingMapName.empty())
 							g_pendingMapName = item->GetMapName(); // resolve from cached list
 						break;

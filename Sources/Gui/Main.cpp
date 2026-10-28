@@ -189,6 +189,7 @@ namespace {
 namespace spades {
 	std::string g_pendingMapName;
 	std::string g_pendingServerName;
+	std::string g_pendingGameMode;
 }
 
 namespace {

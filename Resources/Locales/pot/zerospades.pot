@@ -1,59 +1,64 @@
-#: Sources/Client/Client.cpp:185 Sources/Client/Client.cpp:1219
-#: Sources/Client/Client_NetHandler.cpp:408
+#: Sources/Client/Client.cpp:185 Sources/Client/Client.cpp:1319
+#: Sources/Client/Client_NetHandler.cpp:409
 #: Sources/Gui/UI/Components/LimboMenu.cpp:66
 msgctxt "Client"
 msgid "Spectator"
 msgstr ""
 
-#: Sources/Client/Client.cpp:1178
+#: Sources/Client/Client.cpp:757
+msgctxt "Client"
+msgid "This server does not offer a quick menu."
+msgstr ""
+
+#: Sources/Client/Client.cpp:1278
 #, c++-format
 msgctxt "Client"
 msgid "Map saved: {0}"
 msgstr ""
 
-#: Sources/Client/Client.cpp:1182 Sources/Client/Client.cpp:1187
+#: Sources/Client/Client.cpp:1282 Sources/Client/Client.cpp:1287
 msgctxt "Client"
 msgid "Saving map failed: "
 msgstr ""
 
-#: Sources/Client/Client.cpp:1216 Sources/Gui/UI/InGame/ChatWindow.cpp:597
-#: Sources/Gui/UI/InGame/ChatWindow.cpp:692
+#: Sources/Client/Client.cpp:1316 Sources/Gui/UI/InGame/ChatWindow.cpp:599
+#: Sources/Gui/UI/InGame/ChatWindow.cpp:694
 msgctxt "Client"
 msgid "Global"
 msgstr ""
 
-#: Sources/Client/Client.cpp:1216 Sources/Gui/UI/InGame/ChatWindow.cpp:607
-#: Sources/Gui/UI/InGame/ChatWindow.cpp:702
+#: Sources/Client/Client.cpp:1316 Sources/Gui/UI/InGame/ChatWindow.cpp:609
+#: Sources/Gui/UI/InGame/ChatWindow.cpp:704
 msgctxt "Client"
 msgid "Team"
 msgstr ""
 
-#: Sources/Client/Client.cpp:1226
+#: Sources/Client/Client.cpp:1326
 msgctxt "Client"
 msgid "(DEAD)"
 msgstr ""
 
-#: Sources/Client/Client.cpp:1228
+#: Sources/Client/Client.cpp:1328
 msgctxt "Client"
 msgid "(SPEC)"
 msgstr ""
 
-#: Sources/Client/Client.cpp:1236 Sources/Client/Client.cpp:1263
+#: Sources/Client/Client.cpp:1335
 msgctxt "Client"
 msgid "[Global]"
 msgstr ""
 
-#: Sources/Client/Client.cpp:1309
+#: Sources/Client/Client.cpp:1386
 msgctxt "Client"
 msgid "The server"
 msgstr ""
 
-#: Sources/Client/Client.cpp:1444
+#: Sources/Client/Client.cpp:1501
 msgctxt "Client"
 msgid "This server does not allow team pings."
 msgstr ""
 
-#: Sources/Client/Client.cpp:1499
+#: Sources/Client/Client.cpp:1567
 msgctxt "Client"
 msgid "[PM] "
 msgstr ""
@@ -95,434 +100,431 @@ msgctxt "Client"
 msgid "NOW LOADING"
 msgstr ""
 
-#: Sources/Client/Client_Draw.cpp:1088
+#: Sources/Client/Client_Draw.cpp:1152
 msgctxt "Client"
 msgid "YOU ARE MARKED"
 msgstr ""
 
-#: Sources/Client/Client_Draw.cpp:1486
+#: Sources/Client/Client_Draw.cpp:1550
 #, c++-format
 msgctxt "Client"
 msgid "[{0}] Grab color"
 msgstr ""
 
-#: Sources/Client/Client_Draw.cpp:1487
+#: Sources/Client/Client_Draw.cpp:1551
 #, c++-format
 msgctxt "Client"
 msgid "[{0}/{1}] Navigate up/down"
 msgstr ""
 
-#: Sources/Client/Client_Draw.cpp:1489
+#: Sources/Client/Client_Draw.cpp:1553
 #, c++-format
 msgctxt "Client"
 msgid "[{0}/{1}] Navigate left/right"
 msgstr ""
 
-#: Sources/Client/Client_Draw.cpp:1491
+#: Sources/Client/Client_Draw.cpp:1555
 #, c++-format
 msgctxt "Client"
 msgid "[{0}] Toggle extended palette"
 msgstr ""
 
-#: Sources/Client/Client_Draw.cpp:1499
+#: Sources/Client/Client_Draw.cpp:1563
 #, c++-format
 msgctxt "Client"
 msgid "#{0} / RGB({1}, {2}, {3})"
 msgstr ""
 
-#: Sources/Client/Client_Draw.cpp:1548
+#: Sources/Client/Client_Draw.cpp:1612
 #, c++-format
 msgctxt "Client"
 msgid "Accuracy: {0}%"
 msgstr ""
 
-#: Sources/Client/Client_Draw.cpp:1552
+#: Sources/Client/Client_Draw.cpp:1616
 #, c++-format
 msgctxt "Client"
 msgid "Kill/Death Ratio: {0}"
 msgstr ""
 
-#: Sources/Client/Client_Draw.cpp:1553
+#: Sources/Client/Client_Draw.cpp:1617
 #, c++-format
 msgctxt "Client"
 msgid "Kill Streak: {0}, Best: {1}"
 msgstr ""
 
-#: Sources/Client/Client_Draw.cpp:1554
+#: Sources/Client/Client_Draw.cpp:1618
 #, c++-format
 msgctxt "Client"
 msgid "Melee Kills: {0}"
 msgstr ""
 
-#: Sources/Client/Client_Draw.cpp:1555
+#: Sources/Client/Client_Draw.cpp:1619
 #, c++-format
 msgctxt "Client"
 msgid "Grenade Kills: {0}"
 msgstr ""
 
-#: Sources/Client/Client_Draw.cpp:1558
+#: Sources/Client/Client_Draw.cpp:1622
 #, c++-format
 msgctxt "Client"
 msgid "Blocks Placed: {0}"
 msgstr ""
 
-#: Sources/Client/Client_Draw.cpp:1891
+#: Sources/Client/Client_Draw.cpp:1955
 msgctxt "Client"
 msgid "Reloading"
 msgstr ""
 
-#: Sources/Client/Client_Draw.cpp:1899
+#: Sources/Client/Client_Draw.cpp:1963
 #, c++-format
 msgctxt "Client"
 msgid "Press [{0}] to Reload"
 msgstr ""
 
-#: Sources/Client/Client_Draw.cpp:2053
+#: Sources/Client/Client_Draw.cpp:2115
 #, c++-format
 msgctxt "Client"
 msgid "You will respawn in: {0}"
 msgstr ""
 
-#: Sources/Client/Client_Draw.cpp:2054
+#: Sources/Client/Client_Draw.cpp:2116
 msgctxt "Client"
 msgid "Waiting for respawn"
 msgstr ""
 
-#: Sources/Client/Client_Draw.cpp:2130
+#: Sources/Client/Client_Draw.cpp:2192
 #, c++-format
 msgctxt "Client"
 msgid "Following {0} [#{1}]"
 msgstr ""
 
-#: Sources/Client/Client_Draw.cpp:2135
+#: Sources/Client/Client_Draw.cpp:2197
 #, c++-format
 msgctxt "Client"
 msgid "Respawning in: {0}"
 msgstr ""
 
-#: Sources/Client/Client_Draw.cpp:2140
+#: Sources/Client/Client_Draw.cpp:2202
 #, c++-format
 msgctxt "Client"
 msgid "[{0}] Cycle camera mode"
 msgstr ""
 
-#: Sources/Client/Client_Draw.cpp:2141
+#: Sources/Client/Client_Draw.cpp:2203
 #, c++-format
 msgctxt "Client"
 msgid "[{0}/{1}] Next/Prev player"
 msgstr ""
 
-#: Sources/Client/Client_Draw.cpp:2144
+#: Sources/Client/Client_Draw.cpp:2206
 #, c++-format
 msgctxt "Client"
 msgid "[{0}] Unfollow"
 msgstr ""
 
-#: Sources/Client/Client_Draw.cpp:2147
+#: Sources/Client/Client_Draw.cpp:2209
 #, c++-format
 msgctxt "Client"
 msgid "[{0}/{1}] Follow a player"
 msgstr ""
 
-#: Sources/Client/Client_Draw.cpp:2152
+#: Sources/Client/Client_Draw.cpp:2214
 #, c++-format
 msgctxt "Client"
 msgid "[{0}/{1}] Go up/down"
 msgstr ""
 
-#: Sources/Client/Client_Draw.cpp:2154
+#: Sources/Client/Client_Draw.cpp:2216
 #, c++-format
 msgctxt "Client"
 msgid "[{0}] Hold to Zoom"
 msgstr ""
 
-#: Sources/Client/Client_Draw.cpp:2158
+#: Sources/Client/Client_Draw.cpp:2220
 #, c++-format
 msgctxt "Client"
 msgid "[{0}] Toggle player names"
 msgstr ""
 
-#: Sources/Client/Client_Draw.cpp:2161
+#: Sources/Client/Client_Draw.cpp:2223
 #, c++-format
 msgctxt "Client"
 msgid "[{0}] Toggle ESP"
 msgstr ""
 
-#: Sources/Client/Client_Draw.cpp:2169
+#: Sources/Client/Client_Draw.cpp:2231
 #, c++-format
 msgctxt "Client"
 msgid "[{0}] Resume"
 msgstr ""
 
-#: Sources/Client/Client_Draw.cpp:2170
+#: Sources/Client/Client_Draw.cpp:2232
 #, c++-format
 msgctxt "Client"
 msgid "[{0}] Pause"
 msgstr ""
 
-#: Sources/Client/Client_Draw.cpp:2171
+#: Sources/Client/Client_Draw.cpp:2233
 #, c++-format
 msgctxt "Client"
 msgid "[{0}/{1}] Seek +/-5s"
 msgstr ""
 
-#: Sources/Client/Client_Draw.cpp:2176
+#: Sources/Client/Client_Draw.cpp:2238
 #, c++-format
 msgctxt "Client"
 msgid "[{0}/{1}] Speed: {2}x"
 msgstr ""
 
-#: Sources/Client/Client_Draw.cpp:2178
+#: Sources/Client/Client_Draw.cpp:2240
 #, c++-format
 msgctxt "Client"
 msgid "[{0}] Toggle Demo HUD"
 msgstr ""
 
-#: Sources/Client/Client_Draw.cpp:2180
+#: Sources/Client/Client_Draw.cpp:2242
 #, c++-format
 msgctxt "Client"
 msgid "[{0}] Select Team/Weapon"
 msgstr ""
 
-#: Sources/Client/Client_Draw.cpp:2246
+#: Sources/Client/Client_Draw.cpp:2308
 msgctxt "Client"
 msgid "N"
 msgstr ""
 
-#: Sources/Client/Client_Draw.cpp:2246
+#: Sources/Client/Client_Draw.cpp:2308
 msgctxt "Client"
 msgid "NE"
 msgstr ""
 
-#: Sources/Client/Client_Draw.cpp:2247
+#: Sources/Client/Client_Draw.cpp:2309
 msgctxt "Client"
 msgid "E"
 msgstr ""
 
-#: Sources/Client/Client_Draw.cpp:2247
+#: Sources/Client/Client_Draw.cpp:2309
 msgctxt "Client"
 msgid "SE"
 msgstr ""
 
-#: Sources/Client/Client_Draw.cpp:2248
+#: Sources/Client/Client_Draw.cpp:2310
 msgctxt "Client"
 msgid "S"
 msgstr ""
 
-#: Sources/Client/Client_Draw.cpp:2248
+#: Sources/Client/Client_Draw.cpp:2310
 msgctxt "Client"
 msgid "SW"
 msgstr ""
 
-#: Sources/Client/Client_Draw.cpp:2249
+#: Sources/Client/Client_Draw.cpp:2311
 msgctxt "Client"
 msgid "W"
 msgstr ""
 
-#: Sources/Client/Client_Draw.cpp:2249
+#: Sources/Client/Client_Draw.cpp:2311
 msgctxt "Client"
 msgid "NW"
 msgstr ""
 
-#: Sources/Client/Client_Draw.cpp:2737
+#: Sources/Client/Client_Draw.cpp:2807
 #, c++-format
 msgctxt "Client"
 msgid "Connecting to {0}"
 msgstr ""
 
-#: Sources/Client/Client_Draw.cpp:2743
+#: Sources/Client/Client_Draw.cpp:2813
 msgctxt "Client"
 msgid "[Esc] Cancel"
 msgstr ""
 
-#: Sources/Client/Client_Input.cpp:409
+#: Sources/Client/Client_Input.cpp:424
 #, c++-format
 msgctxt "Client"
 msgid "Volume: {0}%"
 msgstr ""
 
-#: Sources/Client/Client_Input.cpp:655 Sources/Client/Client_Input.cpp:1043
+#: Sources/Client/Client_Input.cpp:693 Sources/Client/Client_Input.cpp:1051
 #, c++-format
 msgctxt "Client"
 msgid "Press [{0}] to enable HUD"
 msgstr ""
 
-#: Sources/Client/Client_Input.cpp:700
+#: Sources/Client/Client_Input.cpp:738
 msgctxt "Client"
 msgid "This server does not allow showing teammates."
 msgstr ""
 
-#: Sources/Client/Client_Input.cpp:865
+#: Sources/Client/Client_Input.cpp:873
 msgctxt "Client"
 msgid "Recording stopped"
 msgstr ""
 
-#: Sources/Client/Client_Input.cpp:876 Sources/Client/Client_NetHandler.cpp:159
+#: Sources/Client/Client_Input.cpp:884 Sources/Client/Client_NetHandler.cpp:161
 #, c++-format
 msgctxt "Client"
 msgid "Recording demo: {0}"
 msgstr ""
 
-#: Sources/Client/Client_Input.cpp:878
+#: Sources/Client/Client_Input.cpp:886
 msgctxt "Client"
 msgid "Failed to start demo recording"
 msgstr ""
 
-#: Sources/Client/Client_Input.cpp:967
+#: Sources/Client/Client_Input.cpp:975
 msgctxt "Client"
 msgid "Out of Blocks"
 msgstr ""
 
-#: Sources/Client/Client_Input.cpp:974
+#: Sources/Client/Client_Input.cpp:982
 msgctxt "Client"
 msgid "Out of Ammo"
 msgstr ""
 
-#: Sources/Client/Client_Input.cpp:981
+#: Sources/Client/Client_Input.cpp:989
 msgctxt "Client"
 msgid "Out of Grenades"
 msgstr ""
 
-#: Sources/Client/Client_Input.cpp:1081
+#: Sources/Client/Client_Input.cpp:1089
 #, c++-format
 msgctxt "Client"
 msgid "zerovl {0}"
 msgstr ""
 
-#: Sources/Client/Client_NetHandler.cpp:140
+#: Sources/Client/Client_NetHandler.cpp:141
 #, c++-format
 msgctxt "Client"
 msgid "Welcome to the server, {0}!"
 msgstr ""
 
-#: Sources/Client/Client_NetHandler.cpp:150
+#: Sources/Client/Client_NetHandler.cpp:151
 #, c++-format
 msgctxt "Client"
 msgid "You are connected with {0} ({2}) on {1}"
 msgstr ""
 
-#: Sources/Client/Client_NetHandler.cpp:179
+#: Sources/Client/Client_NetHandler.cpp:181
 #, c++-format
 msgctxt "Client"
 msgid "{0} captured a Neutral Territory"
 msgstr ""
 
-#: Sources/Client/Client_NetHandler.cpp:181
+#: Sources/Client/Client_NetHandler.cpp:183
 #, c++-format
 msgctxt "Client"
 msgid "{0} captured {1}'s Territory"
 msgstr ""
 
-#: Sources/Client/Client_NetHandler.cpp:190
+#: Sources/Client/Client_NetHandler.cpp:192
 #, c++-format
 msgctxt "Client"
 msgid "{0} captured a neutral territory"
 msgstr ""
 
-#: Sources/Client/Client_NetHandler.cpp:193
+#: Sources/Client/Client_NetHandler.cpp:195
 #, c++-format
 msgctxt "Client"
 msgid "{0} captured {1}'s territory"
 msgstr ""
 
-#: Sources/Client/Client_NetHandler.cpp:215
+#: Sources/Client/Client_NetHandler.cpp:217
 #, c++-format
 msgctxt "Client"
 msgid "{0} captured {1}'s Intel"
 msgstr ""
 
-#: Sources/Client/Client_NetHandler.cpp:219
+#: Sources/Client/Client_NetHandler.cpp:221
 #, c++-format
 msgctxt "Client"
 msgid "You captured {0}'s Intel"
 msgstr ""
 
-#: Sources/Client/Client_NetHandler.cpp:224
+#: Sources/Client/Client_NetHandler.cpp:226
 #, c++-format
 msgctxt "Client"
 msgid "{0} captured {1}'s intel"
 msgstr ""
 
-#: Sources/Client/Client_NetHandler.cpp:247
+#: Sources/Client/Client_NetHandler.cpp:249
 #, c++-format
 msgctxt "Client"
 msgid "{0} picked up {1}'s Intel"
 msgstr ""
 
-#: Sources/Client/Client_NetHandler.cpp:251
+#: Sources/Client/Client_NetHandler.cpp:253
 #, c++-format
 msgctxt "Client"
 msgid "You picked up {0}'s Intel"
 msgstr ""
 
-#: Sources/Client/Client_NetHandler.cpp:256
+#: Sources/Client/Client_NetHandler.cpp:258
 #, c++-format
 msgctxt "Client"
 msgid "{0} picked up {1}'s intel"
 msgstr ""
 
-#: Sources/Client/Client_NetHandler.cpp:277
+#: Sources/Client/Client_NetHandler.cpp:279
 #, c++-format
 msgctxt "Client"
 msgid "{0} dropped {1}'s Intel"
 msgstr ""
 
-#: Sources/Client/Client_NetHandler.cpp:281
+#: Sources/Client/Client_NetHandler.cpp:283
 #, c++-format
 msgctxt "Client"
 msgid "You dropped {0}'s Intel"
 msgstr ""
 
-#: Sources/Client/Client_NetHandler.cpp:286
+#: Sources/Client/Client_NetHandler.cpp:288
 #, c++-format
 msgctxt "Client"
 msgid "{0} dropped {1}'s intel"
 msgstr ""
 
-#: Sources/Client/Client_NetHandler.cpp:378
-#: Sources/Client/Client_NetHandler.cpp:386
+#: Sources/Client/Client_NetHandler.cpp:385
 #, c++-format
 msgctxt "Client"
 msgid "Player {0} has left"
 msgstr ""
 
-#: Sources/Client/Client_NetHandler.cpp:380
 #: Sources/Client/Client_NetHandler.cpp:388
 msgctxt "Client"
 msgid " (ragequit)"
 msgstr ""
 
-#: Sources/Client/Client_NetHandler.cpp:412
+#: Sources/Client/Client_NetHandler.cpp:413
 msgctxt "Client"
 msgid "You are now a spectator"
 msgstr ""
 
-#: Sources/Client/Client_NetHandler.cpp:413
+#: Sources/Client/Client_NetHandler.cpp:414
 #, c++-format
 msgctxt "Client"
 msgid "You joined {0} team"
 msgstr ""
 
 #: Sources/Client/Client_NetHandler.cpp:419
-#: Sources/Client/Client_NetHandler.cpp:425
 #, c++-format
 msgctxt "Client"
 msgid "{0} joined {1} team"
 msgstr ""
 
-#: Sources/Client/Client_NetHandler.cpp:452
+#: Sources/Client/Client_NetHandler.cpp:448
 #, c++-format
 msgctxt "Client"
 msgid "{0} Wins!"
 msgstr ""
 
-#: Sources/Client/Client_NetHandler.cpp:459
+#: Sources/Client/Client_NetHandler.cpp:455
 #, c++-format
 msgctxt "Client"
 msgid "{0} wins!"
 msgstr ""
 
-#: Sources/Client/Client_Update.cpp:765
+#: Sources/Client/Client_Update.cpp:754
 #, c++-format
 msgctxt "Client"
 msgid "{0} block"
@@ -530,128 +532,128 @@ msgid_plural "{0} blocks"
 msgstr[0] ""
 msgstr[1] ""
 
-#: Sources/Client/Client_Update.cpp:770
+#: Sources/Client/Client_Update.cpp:759
 msgctxt "Client"
 msgid "-- blocks"
 msgstr ""
 
-#: Sources/Client/Client_Update.cpp:1276
+#: Sources/Client/Client_Update.cpp:1285
 #: Sources/Gui/UI/Components/LimboMenu.cpp:67
 msgctxt "Client"
 msgid "Rifle"
 msgstr ""
 
-#: Sources/Client/Client_Update.cpp:1277
+#: Sources/Client/Client_Update.cpp:1286
 #: Sources/Gui/UI/Components/LimboMenu.cpp:68
 msgctxt "Client"
 msgid "SMG"
 msgstr ""
 
-#: Sources/Client/Client_Update.cpp:1278
+#: Sources/Client/Client_Update.cpp:1287
 #: Sources/Gui/UI/Components/LimboMenu.cpp:69
 msgctxt "Client"
 msgid "Shotgun"
 msgstr ""
 
-#: Sources/Client/Client_Update.cpp:1282
+#: Sources/Client/Client_Update.cpp:1291
 msgctxt "Client"
 msgid "Fall"
 msgstr ""
 
-#: Sources/Client/Client_Update.cpp:1283
+#: Sources/Client/Client_Update.cpp:1292
 msgctxt "Client"
 msgid "Melee"
 msgstr ""
 
-#: Sources/Client/Client_Update.cpp:1284
+#: Sources/Client/Client_Update.cpp:1293
 msgctxt "Client"
 msgid "Grenade"
 msgstr ""
 
-#: Sources/Client/Client_Update.cpp:1285
+#: Sources/Client/Client_Update.cpp:1294
 msgctxt "Client"
 msgid "Headshot"
 msgstr ""
 
-#: Sources/Client/Client_Update.cpp:1286
+#: Sources/Client/Client_Update.cpp:1295
 msgctxt "Client"
 msgid "Team Change"
 msgstr ""
 
-#: Sources/Client/Client_Update.cpp:1287
+#: Sources/Client/Client_Update.cpp:1296
 msgctxt "Client"
 msgid "Weapon Change"
 msgstr ""
 
-#: Sources/Client/Client_Update.cpp:1339
+#: Sources/Client/Client_Update.cpp:1348
 msgctxt "Client"
 msgid "Revenge!"
 msgstr ""
 
-#: Sources/Client/Client_Update.cpp:1347
+#: Sources/Client/Client_Update.cpp:1356
 msgctxt "Client"
 msgid "Dominating!"
 msgstr ""
 
-#: Sources/Client/Client_Update.cpp:1378
+#: Sources/Client/Client_Update.cpp:1387
 #, c++-format
 msgctxt "Client"
 msgid "You were killed by {0}"
 msgstr ""
 
-#: Sources/Client/Client_Update.cpp:1380
+#: Sources/Client/Client_Update.cpp:1389
 #, c++-format
 msgctxt "Client"
 msgid "You have killed {0}"
 msgstr ""
 
-#: Sources/Client/Client_Update.cpp:1576
+#: Sources/Client/Client_Update.cpp:1585
 #, c++-format
 msgctxt "Client"
 msgid "You hit {0} from: {1} blocks "
 msgstr ""
 
-#: Sources/Client/Client_Update.cpp:1596
+#: Sources/Client/Client_Update.cpp:1605
 msgctxt "Client"
 msgid "TORSO"
 msgstr ""
 
-#: Sources/Client/Client_Update.cpp:1597
+#: Sources/Client/Client_Update.cpp:1606
 msgctxt "Client"
 msgid "ARMS"
 msgstr ""
 
-#: Sources/Client/Client_Update.cpp:1598
+#: Sources/Client/Client_Update.cpp:1607
 msgctxt "Client"
 msgid "LEGS"
 msgstr ""
 
-#: Sources/Client/Client_Update.cpp:1599
+#: Sources/Client/Client_Update.cpp:1608
 msgctxt "Client"
 msgid "MELEE"
 msgstr ""
 
-#: Sources/Client/Client_Update.cpp:1600
+#: Sources/Client/Client_Update.cpp:1609
 msgctxt "Client"
 msgid "HEAD"
 msgstr ""
 
-#: Sources/Client/Client_Update.cpp:1929
+#: Sources/Client/Client_Update.cpp:1938
 msgctxt "Client"
 msgid "You are taking damage. Find solid ground!"
 msgstr ""
 
-#: Sources/Client/Client_Update.cpp:1947
+#: Sources/Client/Client_Update.cpp:1956
 msgctxt "Client"
 msgid "Insufficient blocks."
 msgstr ""
 
-#: Sources/Client/Client_Update.cpp:1950
+#: Sources/Client/Client_Update.cpp:1959
 msgctxt "Client"
 msgid "You cannot place a block there."
 msgstr ""
 
-#: Sources/Client/DemoNetClient.cpp:103 Sources/Client/NetClient.cpp:321
+#: Sources/Client/DemoNetClient.cpp:103 Sources/Client/NetClient.cpp:323
 msgctxt "NetClient"
 msgid "Not connected"
 msgstr ""
@@ -694,78 +696,78 @@ msgctxt "NetClient"
 msgid "Loading map from demo ({0}%)"
 msgstr ""
 
-#: Sources/Client/NetClient.cpp:310
+#: Sources/Client/NetClient.cpp:312
 msgctxt "NetClient"
 msgid "Connecting to the server"
 msgstr ""
 
-#: Sources/Client/NetClient.cpp:445
+#: Sources/Client/NetClient.cpp:449
 msgctxt "NetClient"
 msgid "Awaiting for state"
 msgstr ""
 
-#: Sources/Client/NetClient.cpp:461 Sources/Client/NetClient.cpp:1359
+#: Sources/Client/NetClient.cpp:465 Sources/Client/NetClient.cpp:1404
 msgctxt "NetClient"
 msgid "Loading snapshot"
 msgstr ""
 
-#: Sources/Client/NetClient.cpp:507
+#: Sources/Client/NetClient.cpp:511
 msgctxt "NetClient"
 msgid "Connected"
 msgstr ""
 
-#: Sources/Client/NetClient.cpp:516 Sources/Client/NetClient.cpp:521
+#: Sources/Client/NetClient.cpp:520 Sources/Client/NetClient.cpp:525
 msgctxt "NetClient"
 msgid "Error"
 msgstr ""
 
-#: Sources/Client/NetClient.cpp:601
+#: Sources/Client/NetClient.cpp:605
 msgctxt "NetClient"
 msgid "You are banned from this server."
 msgstr ""
 
-#: Sources/Client/NetClient.cpp:602
+#: Sources/Client/NetClient.cpp:606
 msgctxt "NetClient"
 msgid "Your network's public address has too many connections to this server."
 msgstr ""
 
-#: Sources/Client/NetClient.cpp:603
+#: Sources/Client/NetClient.cpp:607
 msgctxt "NetClient"
 msgid "Incompatible client protocol version."
 msgstr ""
 
-#: Sources/Client/NetClient.cpp:604
+#: Sources/Client/NetClient.cpp:608
 msgctxt "NetClient"
 msgid "Server full"
 msgstr ""
 
-#: Sources/Client/NetClient.cpp:605
+#: Sources/Client/NetClient.cpp:609
 msgctxt "NetClient"
 msgid "Server shutdown"
 msgstr ""
 
-#: Sources/Client/NetClient.cpp:606
+#: Sources/Client/NetClient.cpp:610
 msgctxt "NetClient"
 msgid "You were kicked from this server."
 msgstr ""
 
-#: Sources/Client/NetClient.cpp:607
+#: Sources/Client/NetClient.cpp:611
 msgctxt "NetClient"
 msgid "Invalid name"
 msgstr ""
 
-#: Sources/Client/NetClient.cpp:608
+#: Sources/Client/NetClient.cpp:612
 msgctxt "NetClient"
 msgid "Unknown Reason"
 msgstr ""
 
-#: Sources/Client/NetClient.cpp:620
+#: Sources/Client/NetClient.cpp:625
 #, c++-format
 msgctxt "NetClient"
 msgid "Unknown (ID {0})"
 msgstr ""
 
-#: Sources/Client/NetClient.cpp:2038
+#: Sources/Client/NetClient.cpp:2104
 #, c++-format
 msgctxt "NetClient"
 msgid "{0} second remaining"
@@ -773,7 +775,7 @@ msgid_plural "{0} seconds remaining"
 msgstr[0] ""
 msgstr[1] ""
 
-#: Sources/Client/NetClient.cpp:2041
+#: Sources/Client/NetClient.cpp:2107
 #, c++-format
 msgctxt "NetClient"
 msgid "{0} minute remaining"
@@ -781,13 +783,13 @@ msgid_plural "{0} minutes remaining"
 msgstr[0] ""
 msgstr[1] ""
 
-#: Sources/Client/PieMenuView.cpp:618
+#: Sources/Client/PieMenuView.cpp:678
 #, c++-format
 msgctxt "Client"
 msgid "{0} More"
 msgstr ""
 
-#: Sources/Client/ScoreboardView.cpp:115 Sources/Client/ScoreboardView.cpp:457
+#: Sources/Client/ScoreboardView.cpp:115 Sources/Client/ScoreboardView.cpp:456
 #, c++-format
 msgctxt "Client"
 msgid "Spectator{1}"
@@ -826,12 +828,12 @@ msgctxt "Client"
 msgid "Clear the SFX cache, forcing reload"
 msgstr ""
 
-#: Sources/Gui/Main.cpp:982
+#: Sources/Gui/Main.cpp:983
 msgctxt "Main"
 msgid "Localization System Loaded"
 msgstr ""
 
-#: Sources/Gui/Main.cpp:1060 Sources/Gui/Runner.cpp:56
+#: Sources/Gui/Main.cpp:1061 Sources/Gui/Runner.cpp:56
 #, c++-format
 msgctxt "Main"
 msgid ""
@@ -842,12 +844,12 @@ msgid ""
 "See SystemMessages.log for more details."
 msgstr ""
 
-#: Sources/Gui/Main.cpp:1068 Sources/Gui/Runner.cpp:62
+#: Sources/Gui/Main.cpp:1069 Sources/Gui/Runner.cpp:62
 msgctxt "Main"
 msgid "ZeroSpades Fatal Error"
 msgstr ""
 
-#: Sources/Gui/MainScreen.cpp:180
+#: Sources/Gui/MainScreen.cpp:179
 msgctxt "MainScreen"
 msgid "NOW LOADING"
 msgstr ""
@@ -904,7 +906,7 @@ msgstr ""
 
 #: Sources/Gui/UI/Components/LimboMenu.cpp:325
 #: Sources/Gui/UI/InGame/ChatLogWindow.cpp:95
-#: Sources/Gui/UI/InGame/ChatWindow.cpp:576
+#: Sources/Gui/UI/InGame/ChatWindow.cpp:584
 #: Sources/Gui/UI/MainScreen/MainMenu.cpp:632
 #: Sources/Gui/UI/Settings/PreferenceView.cpp:138
 msgctxt "Client"
@@ -953,7 +955,7 @@ msgid "Later"
 msgstr ""
 
 #: Sources/Gui/UI/Console/ConsoleCommandField.cpp:113
-#: Sources/Gui/UI/InGame/ChatWindow.cpp:358
+#: Sources/Gui/UI/InGame/ChatWindow.cpp:364
 #, c++-format
 msgctxt "Client"
 msgid "+{0} more"
@@ -979,147 +981,147 @@ msgctxt "Client"
 msgid "Say Team"
 msgstr ""
 
-#: Sources/Gui/UI/InGame/ChatWindow.cpp:73
+#: Sources/Gui/UI/InGame/ChatWindow.cpp:79
 msgctxt "Client"
 msgid "List the commands of the server"
 msgstr ""
 
-#: Sources/Gui/UI/InGame/ChatWindow.cpp:74
+#: Sources/Gui/UI/InGame/ChatWindow.cpp:80
 msgctxt "Client"
 msgid "Print all available commands"
 msgstr ""
 
-#: Sources/Gui/UI/InGame/ChatWindow.cpp:75
+#: Sources/Gui/UI/InGame/ChatWindow.cpp:81
 msgctxt "Client"
 msgid "Shows the current time limit"
 msgstr ""
 
-#: Sources/Gui/UI/InGame/ChatWindow.cpp:76
+#: Sources/Gui/UI/InGame/ChatWindow.cpp:82
 msgctxt "Client"
 msgid "Shows information about your client"
 msgstr ""
 
-#: Sources/Gui/UI/InGame/ChatWindow.cpp:77
+#: Sources/Gui/UI/InGame/ChatWindow.cpp:83
 msgctxt "Client"
 msgid "Shows what weapon a given player is using"
 msgstr ""
 
-#: Sources/Gui/UI/InGame/ChatWindow.cpp:78
+#: Sources/Gui/UI/InGame/ChatWindow.cpp:84
 msgctxt "Client"
 msgid "Shows who's got the enemy intel"
 msgstr ""
 
-#: Sources/Gui/UI/InGame/ChatWindow.cpp:79
+#: Sources/Gui/UI/InGame/ChatWindow.cpp:85
 msgctxt "Client"
 msgid "Shows player's accuracy per weapon"
 msgstr ""
 
-#: Sources/Gui/UI/InGame/ChatWindow.cpp:80
+#: Sources/Gui/UI/InGame/ChatWindow.cpp:86
 msgctxt "Client"
 msgid "Shows K/D ratio"
 msgstr ""
 
-#: Sources/Gui/UI/InGame/ChatWindow.cpp:81
+#: Sources/Gui/UI/InGame/ChatWindow.cpp:87
 msgctxt "Client"
 msgid "Shows how many kills in a row you got without dying"
 msgstr ""
 
-#: Sources/Gui/UI/InGame/ChatWindow.cpp:82
+#: Sources/Gui/UI/InGame/ChatWindow.cpp:88
 msgctxt "Client"
 msgid "Shows current server latency in milliseconds"
 msgstr ""
 
-#: Sources/Gui/UI/InGame/ChatWindow.cpp:83
+#: Sources/Gui/UI/InGame/ChatWindow.cpp:89
 msgctxt "Client"
 msgid "Show you the server rules"
 msgstr ""
 
-#: Sources/Gui/UI/InGame/ChatWindow.cpp:84
+#: Sources/Gui/UI/InGame/ChatWindow.cpp:90
 msgctxt "Client"
 msgid "Use a medkit"
 msgstr ""
 
-#: Sources/Gui/UI/InGame/ChatWindow.cpp:85
+#: Sources/Gui/UI/InGame/ChatWindow.cpp:91
 msgctxt "Client"
 msgid "Kill yourself or a given player"
 msgstr ""
 
-#: Sources/Gui/UI/InGame/ChatWindow.cpp:86
+#: Sources/Gui/UI/InGame/ChatWindow.cpp:92
 msgctxt "Client"
 msgid "Make you or a given player no longer receive chat messages"
 msgstr ""
 
-#: Sources/Gui/UI/InGame/ChatWindow.cpp:87
+#: Sources/Gui/UI/InGame/ChatWindow.cpp:93
 msgctxt "Client"
 msgid "Unstick yourself or a given player"
 msgstr ""
 
-#: Sources/Gui/UI/InGame/ChatWindow.cpp:88
+#: Sources/Gui/UI/InGame/ChatWindow.cpp:94
 msgctxt "Client"
 msgid "Air support! Try it out just like that for more details"
 msgstr ""
 
-#: Sources/Gui/UI/InGame/ChatWindow.cpp:89
+#: Sources/Gui/UI/InGame/ChatWindow.cpp:95
 msgctxt "Client"
 msgid "Summon an apocalypse on the enemy team"
 msgstr ""
 
-#: Sources/Gui/UI/InGame/ChatWindow.cpp:90
+#: Sources/Gui/UI/InGame/ChatWindow.cpp:96
 msgctxt "Client"
 msgid "Creates or joins a squad, letting you spawn with friends"
 msgstr ""
 
-#: Sources/Gui/UI/InGame/ChatWindow.cpp:91
+#: Sources/Gui/UI/InGame/ChatWindow.cpp:97
 msgctxt "Client"
 msgid "Log in if you're staff or a trusted member of this server"
 msgstr ""
 
-#: Sources/Gui/UI/InGame/ChatWindow.cpp:92
+#: Sources/Gui/UI/InGame/ChatWindow.cpp:98
 msgctxt "Client"
 msgid "Send a private message to a given player"
 msgstr ""
 
-#: Sources/Gui/UI/InGame/ChatWindow.cpp:93
+#: Sources/Gui/UI/InGame/ChatWindow.cpp:99
 msgctxt "Client"
 msgid "Send a message to all admins currently online"
 msgstr ""
 
-#: Sources/Gui/UI/InGame/ChatWindow.cpp:94
+#: Sources/Gui/UI/InGame/ChatWindow.cpp:100
 msgctxt "Client"
 msgid "Start votekick against a player"
 msgstr ""
 
-#: Sources/Gui/UI/InGame/ChatWindow.cpp:95
+#: Sources/Gui/UI/InGame/ChatWindow.cpp:101
 msgctxt "Client"
 msgid "Cancels a votekick"
 msgstr ""
 
-#: Sources/Gui/UI/InGame/ChatWindow.cpp:98
+#: Sources/Gui/UI/InGame/ChatWindow.cpp:104
 msgctxt "Client"
 msgid "Heal and refill yourself or a given player"
 msgstr ""
 
-#: Sources/Gui/UI/InGame/ChatWindow.cpp:99
+#: Sources/Gui/UI/InGame/ChatWindow.cpp:105
 msgctxt "Client"
 msgid "Go into god mode"
 msgstr ""
 
-#: Sources/Gui/UI/InGame/ChatWindow.cpp:100
+#: Sources/Gui/UI/InGame/ChatWindow.cpp:106
 msgctxt "Client"
 msgid "Hold control and press space to fly"
 msgstr ""
 
-#: Sources/Gui/UI/InGame/ChatWindow.cpp:295
+#: Sources/Gui/UI/InGame/ChatWindow.cpp:301
 msgctxt "Client"
 msgid "No matching commands or settings"
 msgstr ""
 
-#: Sources/Gui/UI/InGame/ChatWindow.cpp:566
+#: Sources/Gui/UI/InGame/ChatWindow.cpp:574
 msgctxt "Client"
 msgid "Send"
 msgstr ""
 
-#: Sources/Gui/UI/InGame/ChatWindow.cpp:567
+#: Sources/Gui/UI/InGame/ChatWindow.cpp:575
 #: Sources/Gui/UI/MainScreen/MainMenu.cpp:240
 #: Sources/Gui/UI/MainScreen/MainMenu.cpp:449
 #: Sources/Gui/UI/StartupScreen/StartupMainMenu.cpp:54
@@ -1127,101 +1129,141 @@ msgctxt "Client"
 msgid "[Enter]"
 msgstr ""
 
-#: Sources/Gui/UI/InGame/ChatWindow.cpp:575
+#: Sources/Gui/UI/InGame/ChatWindow.cpp:583
 msgctxt "Client"
 msgid "Cancel"
 msgstr ""
 
-#: Sources/Gui/UI/InGame/ChatWindow.cpp:586
-#: Sources/Gui/UI/InGame/ChatWindow.cpp:745
-msgctxt "Client"
-msgid "Type a message, use / for commands."
-msgstr ""
-
-#: Sources/Gui/UI/InGame/ChatWindow.cpp:615
-#: Sources/Gui/UI/InGame/ChatWindow.cpp:728
-#: Sources/Gui/UI/InGame/ChatWindow.cpp:902
+#: Sources/Gui/UI/InGame/ChatWindow.cpp:617
+#: Sources/Gui/UI/InGame/ChatWindow.cpp:730
+#: Sources/Gui/UI/InGame/ChatWindow.cpp:960
 msgctxt "Client"
 msgid "[Tab] Switch"
 msgstr ""
 
-#: Sources/Gui/UI/InGame/ChatWindow.cpp:719
-#: Sources/Gui/UI/InGame/ChatWindow.cpp:886
+#: Sources/Gui/UI/InGame/ChatWindow.cpp:721
+#: Sources/Gui/UI/InGame/ChatWindow.cpp:944
 msgctxt "Client"
 msgid "[Enter] Send  [Esc] Cancel"
 msgstr ""
 
-#: Sources/Gui/UI/InGame/ChatWindow.cpp:884
+#: Sources/Gui/UI/InGame/ChatWindow.cpp:754
+msgctxt "Client"
+msgid "Type a message, use / for commands."
+msgstr ""
+
+#: Sources/Gui/UI/InGame/ChatWindow.cpp:942
 msgctxt "Client"
 msgid "[Tab] Autocomplete  [Enter] Send  [Esc] Cancel"
 msgstr ""
 
-#: Sources/Gui/UI/InGame/ChatWindow.cpp:900
+#: Sources/Gui/UI/InGame/ChatWindow.cpp:958
 msgctxt "Client"
 msgid "[Tab] Autocomplete"
 msgstr ""
 
-#: Sources/Gui/UI/InGame/ClientMenu.cpp:70
+#: Sources/Gui/UI/InGame/ClientMenu.cpp:51
+msgctxt "Client"
+msgid "Capture the Flag"
+msgstr ""
+
+#: Sources/Gui/UI/InGame/ClientMenu.cpp:53
+msgctxt "Client"
+msgid "Territory Control"
+msgstr ""
+
+#: Sources/Gui/UI/InGame/ClientMenu.cpp:55
+msgctxt "Client"
+msgid "Tower of Babel"
+msgstr ""
+
+#: Sources/Gui/UI/InGame/ClientMenu.cpp:57
+msgctxt "Client"
+msgid "Arena"
+msgstr ""
+
+#: Sources/Gui/UI/InGame/ClientMenu.cpp:59
+msgctxt "Client"
+msgid "Push"
+msgstr ""
+
+#: Sources/Gui/UI/InGame/ClientMenu.cpp:61
+msgctxt "Client"
+msgid "Team Deathmatch"
+msgstr ""
+
+#: Sources/Gui/UI/InGame/ClientMenu.cpp:63
+msgctxt "Client"
+msgid "Free for All"
+msgstr ""
+
+#: Sources/Gui/UI/InGame/ClientMenu.cpp:98
 msgctxt "Client"
 msgid "Back to Game"
 msgstr ""
 
-#: Sources/Gui/UI/InGame/ClientMenu.cpp:77
+#: Sources/Gui/UI/InGame/ClientMenu.cpp:105
 msgctxt "Client"
 msgid "Chat Log"
 msgstr ""
 
-#: Sources/Gui/UI/InGame/ClientMenu.cpp:84
+#: Sources/Gui/UI/InGame/ClientMenu.cpp:112
 msgctxt "Client"
 msgid "Setup"
 msgstr ""
 
-#: Sources/Gui/UI/InGame/ClientMenu.cpp:91
+#: Sources/Gui/UI/InGame/ClientMenu.cpp:119
 msgctxt "Client"
 msgid "Exit Demo"
 msgstr ""
 
-#: Sources/Gui/UI/InGame/ClientMenu.cpp:92
+#: Sources/Gui/UI/InGame/ClientMenu.cpp:120
 msgctxt "Client"
 msgid "Disconnect"
 msgstr ""
 
-#: Sources/Gui/UI/InGame/ClientMenu.cpp:101
+#: Sources/Gui/UI/InGame/ClientMenu.cpp:129
 msgctxt "Client"
 msgid "[Esc] Back to Game"
 msgstr ""
 
-#: Sources/Gui/UI/InGame/ClientMenu.cpp:173
+#: Sources/Gui/UI/InGame/ClientMenu.cpp:201
 #, c++-format
 msgctxt "Client"
 msgid "{0}h {1}m {2}s"
 msgstr ""
 
-#: Sources/Gui/UI/InGame/ClientMenu.cpp:175
+#: Sources/Gui/UI/InGame/ClientMenu.cpp:203
 #, c++-format
 msgctxt "Client"
 msgid "{0}m {1}s"
 msgstr ""
 
-#: Sources/Gui/UI/InGame/ClientMenu.cpp:177
+#: Sources/Gui/UI/InGame/ClientMenu.cpp:205
 #, c++-format
 msgctxt "Client"
 msgid "{0}s"
 msgstr ""
 
-#: Sources/Gui/UI/InGame/ClientMenu.cpp:179
+#: Sources/Gui/UI/InGame/ClientMenu.cpp:207
 #, c++-format
 msgctxt "Client"
 msgid "Session time: {0}"
 msgstr ""
 
-#: Sources/Gui/UI/InGame/ClientMenu.cpp:186
+#: Sources/Gui/UI/InGame/ClientMenu.cpp:214
 #, c++-format
 msgctxt "Client"
 msgid "Connected to: {0}"
 msgstr ""
 
-#: Sources/Gui/UI/InGame/ClientMenu.cpp:194
+#: Sources/Gui/UI/InGame/ClientMenu.cpp:222
+#, c++-format
+msgctxt "Client"
+msgid "Game mode: {0}"
+msgstr ""
+
+#: Sources/Gui/UI/InGame/ClientMenu.cpp:230
 msgctxt "Client"
 msgid "Server extensions:"
 msgstr ""

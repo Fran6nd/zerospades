@@ -38,6 +38,34 @@ namespace spades {
 		using gui::ui::UIElement;
 		using gui::ui::UIManager;
 
+		namespace {
+			// Maps the game mode string announced by the server to a translatable display
+			// name. Unknown modes are shown exactly as the server announced them.
+			std::string GetGameModeDisplayName(const std::string& raw) {
+				std::string trimmed = TrimSpaces(raw);
+				if (trimmed.empty())
+					return trimmed;
+
+				std::string key = ToLowerCase(trimmed);
+				if (key == "ctf")
+					return _Tr("Client", "Capture the Flag");
+				if (key == "tc")
+					return _Tr("Client", "Territory Control");
+				if (key == "babel")
+					return _Tr("Client", "Tower of Babel");
+				if (key == "arena")
+					return _Tr("Client", "Arena");
+				if (key == "push")
+					return _Tr("Client", "Push");
+				if (key == "tdm")
+					return _Tr("Client", "Team Deathmatch");
+				if (key == "ffa")
+					return _Tr("Client", "Free for All");
+
+				return trimmed;
+			}
+		} // namespace
+
 		ClientMenu::ClientMenu(ClientUI* ui)
 		    : UIElement(&ui->GetUIManager()), ui(ui), helper(&ui->GetHelper()) {
 			preferenceState = Handle<PreferenceViewPersistedState>::New();
@@ -185,7 +213,15 @@ namespace spades {
 			if (!serverName.empty()) {
 				std::string serverStr = _Tr("Client", "Connected to: {0}", serverName);
 				guiFont.DrawShadow(serverStr, MakeVector2(x, y), 1.0F, white, shadow);
-				y += guiFont.Measure(serverStr).y + 2.0F;
+				y += guiFont.Measure(serverStr).y;
+			}
+
+			// draw game mode announced by the server list
+			std::string gameMode = GetGameModeDisplayName(helper->GetGameMode());
+			if (!gameMode.empty()) {
+				std::string modeStr = _Tr("Client", "Game mode: {0}", gameMode);
+				guiFont.DrawShadow(modeStr, MakeVector2(x, y), 1.0F, white, shadow);
+				y += guiFont.Measure(modeStr).y;
 			}
 
 			// draw extensions announced by the server

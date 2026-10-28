@@ -140,6 +140,7 @@ namespace spades {
 
 			ServerAddress hostname;
 			std::string serverName;
+			std::string gameMode;
 
 			std::unique_ptr<World> world;
 			Handle<GameMap> map;
@@ -717,6 +718,8 @@ namespace spades {
 			void ReloadDemo();
 			
 			const std::string& GetServerName() const { return serverName; }
+			/** Game mode announced by the server list; empty for direct connects and demos. */
+			const std::string& GetGameMode() const { return gameMode; }
 			
 			/** Extensions announced by the server; empty in demo mode or before the handshake. */
 			std::vector<ServerExtensionInfo> GetServerExtensions() const {

@@ -53,6 +53,8 @@ namespace spades {
 			float GetClientTime() const;
 			
 			std::string GetServerName() const;
+			/** Game mode announced by the server list; empty if unknown. */
+			std::string GetGameMode() const;
 			
 			std::vector<ServerExtensionInfo> GetServerExtensions() const;
 		};

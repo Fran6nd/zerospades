@@ -75,6 +75,7 @@ SPADES_SETTING(cg_damageIndicators);
 
 namespace spades {
 	extern std::string g_pendingServerName;
+	extern std::string g_pendingGameMode;
 
 	namespace client {
 
@@ -696,6 +697,7 @@ namespace spades {
 				const std::string& pending = g_pendingServerName;
 				bool isAddress = pending.empty() || pending == hostStr || pending == fullHostStr;
 				serverName = isAddress ? hostname.GetDisplayName() : pending;
+				gameMode = g_pendingGameMode;
 
 				net = stmp::make_unique<NetClient>(this);
 				net->Connect(hostname);
