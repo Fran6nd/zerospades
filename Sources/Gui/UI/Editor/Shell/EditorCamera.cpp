@@ -92,6 +92,24 @@ namespace spades {
 			return MakeVector3(cp * cosf(yaw), cp * sinf(yaw), -sinf(pitch));
 		}
 
+		void EditorCamera::Carry(const Matrix4& change) {
+			const Vector3 eye = target - Forward() * distance;
+			const Vector3 movedTarget =
+			  (change * MakeVector4(target.x, target.y, target.z, 1.0F)).GetXYZ();
+			const Vector3 movedEye = (change * MakeVector4(eye.x, eye.y, eye.z, 1.0F)).GetXYZ();
+			const Vector3 toTarget = movedTarget - movedEye;
+			const float length = toTarget.GetLength();
+			target = movedTarget;
+			flying = false;
+			if (length <= 0.0F)
+				return; // the eye landed on the target: keep the angles it had
+			distance = length;
+			const Vector3 forward = toTarget * (1.0F / length);
+			yaw = std::atan2(forward.y, forward.x);
+			pitch = -std::asin(std::max(-1.0F, std::min(1.0F, forward.z)));
+			snapping = false;
+		}
+
 		float EditorCamera::ViewDistance() const {
 			return std::max(kMinViewDistance, distance * kViewDistanceFactor);
 		}

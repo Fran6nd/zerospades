@@ -20,6 +20,8 @@
 
 #include "DocumentTypes.h"
 #include "UI/Editor/KV6/KV6EditorView.h"
+#include "UI/Editor/Scene/SceneEditorView.h"
+#include "UI/Editor/Shell/EditorHandOff.h"
 #include "MainScreen.h"
 #include "MainScreenHelper.h"
 #include <Client/Client.h>
@@ -88,7 +90,11 @@ namespace spades {
 						            .Cast<View>();
 						return "";
 					case DocumentKind::Scene:
-					case DocumentKind::Map: break; // no editor for these yet
+						subview = Handle<SceneEditorView>::New(&*renderer, &*audioDevice,
+						                                       &*fontManager, cursor, path, isNew)
+						            .Cast<View>();
+						return "";
+					case DocumentKind::Map: break; // no editor for this yet
 				}
 			} catch (const std::exception& ex) {
 				SPLog("[!] Error while opening the editor: %s", ex.what());
@@ -273,9 +279,19 @@ namespace spades {
 				if (!subview->WantsToBeClosed())
 					return;
 
+				// An editor may close to hand over to the editor of another kind
+				// of document, which then opens as if from the main screen.
+				std::string next;
+				if (auto* handOff = dynamic_cast<IEditorHandOff*>(subview.GetPointerOrNull()))
+					next = handOff->DocumentToOpenNext();
 				subview->Closing();
 				subview = NULL;
 				RestoreRenderer();
+				if (!next.empty()) {
+					const std::string msg = OpenEditor(next, false, nullptr);
+					if (!msg.empty())
+						helper->errorMessage = msg;
+				}
 			} catch (const std::exception& ex) {
 				SPLog("[!] Error while running a game client: %s", ex.what());
 				subview->Closing();

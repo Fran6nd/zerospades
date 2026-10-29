@@ -61,6 +61,15 @@ namespace spades {
 				target += delta;
 				flyTarget += delta;
 			}
+			/**
+			 * Carries the eye and the orbited point through `change`, reading the
+			 * orbit back off the pair: when the space the view looks at changes
+			 * (a scene shown from inside another of its objects), what was on
+			 * screen stays where it was. A flight in progress is dropped.
+			 */
+			void Carry(const Matrix4& change);
+			/** The point the camera orbits, in the space it looks at. */
+			const Vector3& Target() const { return target; }
 
 			// --- Input --------------------------------------------------------
 			/** Follows the modifiers the movement depends on (Control and the

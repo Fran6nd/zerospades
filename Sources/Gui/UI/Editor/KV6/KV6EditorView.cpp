@@ -340,6 +340,15 @@ namespace spades {
 			ConfirmDiscardChanges([this] {
 				ShowModelFileDialog("Open Model", FileBrowserPurpose::Open, std::string(),
 				                    [this](const std::string& path) {
+					                    // Another kind of document opens in its own
+					                    // editor, which takes over from this one.
+					                    const DocumentType* type = FindDocumentType(path);
+					                    if (type && type->editable &&
+					                        type->kind != DocumentKind::Model) {
+						                    handOffPath = path;
+						                    wantsClose = true;
+						                    return;
+					                    }
 					                    if (!LoadModel(path))
 						                    ShowMessage("Could not open " +
 						                                LocalFileSystem::GetFileName(path) + ".");

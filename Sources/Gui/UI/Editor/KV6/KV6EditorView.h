@@ -36,6 +36,7 @@
 #include <Gui/UI/Components/FileBrowser/FileBrowserTypes.h>
 #include <Gui/UI/Components/SoftwareCursor.h>
 #include <Gui/UI/Editor/Shell/EditorCamera.h>
+#include <Gui/UI/Editor/Shell/EditorHandOff.h>
 #include <Gui/UI/Editor/Shell/NavigationCube.h>
 #include <Gui/UI/Editor/Voxel/VoxelEditorHost.h>
 #include <Gui/View.h>
@@ -62,7 +63,10 @@ namespace spades {
 		 * insert). It consumes relative mouse motion and draws a software cursor
 		 * for the 2D UI (which may be shared across views).
 		 */
-		class KV6EditorView : public View, public IVoxelEditorHost, public IEditorMenuHost {
+		class KV6EditorView : public View,
+		                      public IVoxelEditorHost,
+		                      public IEditorMenuHost,
+		                      public IEditorHandOff {
 		public:
 			KV6EditorView(client::IRenderer* renderer, client::IAudioDevice* audioDevice,
 			              client::FontManager* fontManager, SoftwareCursor* cursor,
@@ -80,6 +84,9 @@ namespace spades {
 			void RunFrame(float dt) override;
 			void Closing() override {}
 			bool WantsToBeClosed() override { return wantsClose; }
+
+			// --- IEditorHandOff -----------------------------------------------
+			std::string DocumentToOpenNext() const override { return handOffPath; }
 
 			// --- IVoxelEditorHost ---------------------------------------------
 			const GizmoView& CurrentView() const override { return cam.View(); }
@@ -119,6 +126,9 @@ namespace spades {
 
 			float globalTime = 0.0F;
 			bool wantsClose = false;
+			// Set when a document of another kind (a scene) was opened from here;
+			// the main screen opens it in its own editor once this one has closed.
+			std::string handOffPath;
 			bool wantScreenShot = false; // set by the screenshot key, served at end of frame
 
 			// --- Camera -------------------------------------------------------
@@ -162,7 +172,8 @@ namespace spades {
 			/** Asks for a path with the shared file browser, then saves to it.
 			 *  `after` runs only once the document has actually been written. */
 			void OpenSaveAsDialog(std::function<void()> after = std::function<void()>());
-			/** Opens another model in place of this one, guarding unsaved changes. */
+			/** Opens another model in place of this one, guarding unsaved changes;
+			 *  a scene opens in the scene editor instead. */
 			void OpenDocument();
 			/** Loads `path` and starts placing its voxels in the current document,
 			 *  which is a paste from a file rather than a change of document. */
