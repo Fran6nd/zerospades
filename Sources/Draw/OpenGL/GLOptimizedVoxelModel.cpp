@@ -998,6 +998,11 @@ namespace spades {
 				modelMatrixU(outlinesProgram);
 				modelMatrixU.SetValue(modelMatrix);
 
+				static GLProgramUniform outlineColor("outlineColor");
+				outlineColor(outlinesProgram);
+				outlineColor.SetValue(param.outlineColor.x, param.outlineColor.y,
+				                      param.outlineColor.z);
+
 				bool isMirrored = Vector3::Dot(Vector3::Cross(axisX, axisY), axisZ) < 0.0F;
 				if (isMirrored)
 					device.FrontFace(IGLDevice::CCW);
