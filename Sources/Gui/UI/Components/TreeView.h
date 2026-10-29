@@ -73,6 +73,13 @@ namespace spades {
 				bool active = false;
 				// Drawn fainter: an item that is there but holds less (a group).
 				bool dimmed = false;
+				// Greyed out: an item that is there but out of sight.
+				bool hidden = false;
+				// Something wrong with it, which the host explains elsewhere:
+				// drawn in red and marked.
+				bool flagged = false;
+				// A short word drawn faint at the row's right ("locked").
+				std::string badge;
 			};
 
 			/** Where a dragged item would land relative to the item under it. */

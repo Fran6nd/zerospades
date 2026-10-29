@@ -63,6 +63,11 @@ namespace spades {
 			const Vector4 kGhostBg = MakeVector4(0.05F, 0.05F, 0.07F, 0.85F);
 			const Vector4 kScrollColor = MakeVector4(1.0F, 1.0F, 1.0F, 0.25F);
 			const Vector4 kFreshTextBg = MakeVector4(0.3F, 0.5F, 0.9F, 0.45F);
+			const Vector4 kFlagColor = MakeVector4(1.0F, 0.4F, 0.35F, 1.0F);
+			const Vector4 kHiddenTextColor = MakeVector4(0.45F, 0.45F, 0.48F, 0.7F);
+			const Vector4 kBadgeColor = MakeVector4(0.6F, 0.6F, 0.66F, 0.8F);
+			const float kBadgeGap = 8.0F;
+			const float kFlagWidth = 3.0F;
 		} // namespace
 
 		TreeView::TreeView(client::IAudioDevice* audioDevice) : sounds(audioDevice) {}
@@ -468,10 +473,29 @@ namespace spades {
 					                std::max(0.0F, right - (labelX - kRenameInset)));
 					continue;
 				}
-				const std::string label = ui::ElideText(font, item.label, right - labelX);
+				// The badge keeps its place at the right; the label takes what is left.
+				float labelRight = right;
+				if (!item.badge.empty()) {
+					const Vector2 badgeSize = font.Measure(item.badge);
+					if (badgeSize.x + kBadgeGap < right - labelX) {
+						labelRight = right - badgeSize.x - kBadgeGap;
+						font.Draw(item.badge,
+						          MakeVector2(right - badgeSize.x, y + (kRowHeight - badgeSize.y) * 0.5F),
+						          1.0F, kBadgeColor);
+					}
+				}
+				if (item.flagged) {
+					OverlayColorNP(renderer, kFlagColor);
+					OverlayFillRect(renderer, left, y, kFlagWidth, kRowHeight);
+				}
+				const std::string label = ui::ElideText(font, item.label, labelRight - labelX);
 				const Vector2 size = font.Measure(label);
 				font.Draw(label, MakeVector2(labelX, y + (kRowHeight - size.y) * 0.5F), 1.0F,
-				          item.active ? kActiveTextColor : item.dimmed ? kDimTextColor : kTextColor);
+				          item.flagged  ? kFlagColor
+				          : item.hidden ? kHiddenTextColor
+				          : item.active ? kActiveTextColor
+				          : item.dimmed ? kDimTextColor
+				                        : kTextColor);
 			}
 
 			// Where a drop beside an item lands: a line at the depth it would take.
