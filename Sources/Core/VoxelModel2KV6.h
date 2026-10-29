@@ -87,6 +87,12 @@ namespace spades {
 		 */
 		bool locked = false;
 
+		/**
+		 * Not drawn, and neither is anything under it: kept in the file, but
+		 * out of sight wherever the scene is shown.
+		 */
+		bool hidden = false;
+
 		// Animation keyframes (if empty, object is static)
 		std::vector<TransformKeyframe> keyframes;
 
@@ -118,7 +124,7 @@ namespace spades {
 	 *   Position: float[3] (local transform)
 	 *   Rotation: float[4] (quaternion x,y,z,w; local transform)
 	 *   Scale: float[3] (local transform)
-	 *   Flags: uint8 (bit 0: locked; the other bits are zero)
+	 *   Flags: uint8 (bit 0: locked; bit 1: hidden; the other bits are zero)
 	 *   HasModel: uint8 (0=group node, 1=has KV6 voxel data)
 	 *   [If HasModel==1]: Embedded KV6 data (no magic, just header+blocks+indices)
 	 *   NumKeyframes: uint16

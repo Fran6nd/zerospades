@@ -148,8 +148,11 @@ namespace spades {
 			throw CharacterSkinError(path, Printf(format, args...));
 		}
 
-		void ReadJoint(const VoxelObject& object, CharacterJoint joint) {
+		// `hidden` says something above is out of sight, which puts all of
+		// this out of sight too: its voxels stay in the file, but are not drawn.
+		void ReadJoint(const VoxelObject& object, CharacterJoint joint, bool hidden) {
 			const char* name = RuleOf(joint).name;
+			hidden = hidden || object.hidden;
 			if (object.model)
 				Fail("Joint '%s' holds voxels; joints are empties, put the voxels in one of its "
 				     "slots (%s)",
@@ -174,9 +177,9 @@ namespace spades {
 				const JointRule* rule = JointNamed(child.name);
 				const int slot = SlotNamed(child.name);
 				if (rule && rule->parent == joint)
-					ReadJoint(child, rule->joint);
+					ReadJoint(child, rule->joint, hidden);
 				else if (slot >= 0 && (RuleOf(joint).slots & (1u << unsigned(slot))))
-					ReadSlot(child, joint, CharacterSlot(slot));
+					ReadSlot(child, joint, CharacterSlot(slot), hidden);
 				else
 					Fail("'%s' cannot hang under '%s'; only %s can", child.name.c_str(), name,
 					     Allowed(joint).c_str());
@@ -188,7 +191,9 @@ namespace spades {
 			}
 		}
 
-		void ReadSlot(const VoxelObject& object, CharacterJoint joint, CharacterSlot slot) {
+		void ReadSlot(const VoxelObject& object, CharacterJoint joint, CharacterSlot slot,
+		              bool hidden) {
+			hidden = hidden || object.hidden;
 			if (object.model)
 				Fail("Slot '%s' of '%s' holds voxels itself; slots are empties, put the voxels in "
 				     "objects under it",
@@ -197,18 +202,19 @@ namespace spades {
 			slotPaths[std::size_t(joint)][std::size_t(slot)] = path;
 			for (const VoxelObject& child : object.children) {
 				path.push_back(child.name);
-				ReadContent(child, LocalOf(object), joint, slot);
+				ReadContent(child, LocalOf(object), joint, slot, hidden);
 				path.pop_back();
 			}
 		}
 
 		void ReadContent(const VoxelObject& object, const Matrix4& above, CharacterJoint joint,
-		                 CharacterSlot slot) {
+		                 CharacterSlot slot, bool hidden) {
+			hidden = hidden || object.hidden;
 			if (JointNamed(object.name) || SlotNamed(object.name) >= 0)
 				Fail("'%s' is a joint or slot name and cannot be used inside a slot (under '%s')",
 				     object.name.c_str(), RuleOf(joint).name);
 			const Matrix4 local = above * LocalOf(object);
-			if (object.model) {
+			if (object.model && !hidden) {
 				if (++partCount > kMaxParts)
 					Fail("The skin holds more than %zu voxel objects", kMaxParts);
 				voxelCount += CountSolids(*object.model);
@@ -218,7 +224,7 @@ namespace spades {
 			}
 			for (const VoxelObject& child : object.children) {
 				path.push_back(child.name);
-				ReadContent(child, local, joint, slot);
+				ReadContent(child, local, joint, slot, hidden);
 				path.pop_back();
 			}
 		}
@@ -283,6 +289,7 @@ namespace spades {
 		// Player at the top, or under the one root a scene made in the editor
 		// keeps everything in.
 		const VoxelObject* player = nullptr;
+		bool rootHidden = false;
 		if (scene.size() == 1 && scene[0].name == "Player") {
 			player = &scene[0];
 		} else if (scene.size() == 1 && !scene[0].model && scene[0].children.size() == 1 &&
@@ -293,6 +300,7 @@ namespace spades {
 			    !IsUnscaled(root.scale))
 				reader.Fail("The scene root holding 'Player' is moved, turned or scaled");
 			player = &root.children[0];
+			rootHidden = root.hidden;
 		} else {
 			reader.Fail("A skin holds a single object called 'Player' at its top");
 		}
@@ -301,7 +309,7 @@ namespace spades {
 			reader.Fail("'Player' is moved; it stands for the player's feet and stays at the "
 			            "origin");
 
-		reader.ReadJoint(*player, CharacterJoint::Player);
+		reader.ReadJoint(*player, CharacterJoint::Player, rootHidden);
 		skin.rest[std::size_t(CharacterJoint::Player)] = MakeVector3(0.0F, 0.0F, 0.0F);
 		reader.CheckBounds();
 		return skin;

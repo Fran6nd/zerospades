@@ -117,7 +117,9 @@ namespace spades {
 	 * joint's or slot's name. Nothing else may hang from a joint. A file made
 	 * in the editor, whose scene root holds Player, is read the same.
 	 *
-	 * Keyframes in the file are ignored: the game drives the joints itself.
+	 * Hidden objects, and what is under them, are part of the structure but
+	 * are not drawn: a hidden slot shows nothing. Keyframes in the file are
+	 * ignored: the game drives the joints itself.
 	 */
 	class CharacterSkin {
 	public:

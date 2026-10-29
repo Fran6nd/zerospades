@@ -31,6 +31,8 @@ namespace spades {
 	namespace {
 		// Object flags, one bit each.
 		constexpr uint8_t kFlagLocked = 1u << 0;
+		constexpr uint8_t kFlagHidden = 1u << 1;
+		constexpr uint8_t kKnownFlags = kFlagLocked | kFlagHidden;
 
 		VoxelObject LoadObject(IStream& stream, int depth = 0) {
 			if (depth > 64)
@@ -68,9 +70,10 @@ namespace spades {
 			uint8_t flags;
 			if (stream.Read(&flags, sizeof(flags)) < sizeof(flags))
 				SPRaise(".2kv6 file truncated: failed to read flags at depth %d", depth);
-			if ((flags & ~kFlagLocked) != 0)
+			if ((flags & ~kKnownFlags) != 0)
 				SPRaise("Unknown .2kv6 object flags 0x%02x at depth %d", unsigned(flags), depth);
 			obj.locked = (flags & kFlagLocked) != 0;
+			obj.hidden = (flags & kFlagHidden) != 0;
 
 			// Read hasModel flag
 			uint8_t hasModel;
@@ -159,7 +162,8 @@ namespace spades {
 			stream.Write(rotData, sizeof(rotData));
 			stream.Write(scaleData, sizeof(scaleData));
 
-			const uint8_t flags = obj.locked ? kFlagLocked : 0;
+			const uint8_t flags =
+			  uint8_t((obj.locked ? kFlagLocked : 0) | (obj.hidden ? kFlagHidden : 0));
 			stream.Write(&flags, sizeof(flags));
 
 			// Write hasModel flag
