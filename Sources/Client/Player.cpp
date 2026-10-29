@@ -90,7 +90,6 @@ namespace spades {
 
 			cookingGrenade = false;
 			grenadeTime = 0.0F;
-			lastReloadingTime = 0.0F;
 
 			blockCursorActive = false;
 			blockCursorDragging = false;
@@ -306,6 +305,8 @@ namespace spades {
 		void Player::SetTool(ToolType t) {
 			SPADES_MARK_FUNCTION();
 
+			// Switching away from the gun leaves its reload running, as piqueserver does: only
+			// the server's WeaponReload ends it, which a server that cancels sends right away
 			tool = t;
 
 			cookingGrenade = false;
@@ -537,14 +538,6 @@ namespace spades {
 
 			if (weapon->FrameNext(dt))
 				FireWeapon();
-
-			if (weapon->GetReloadProgress() < 1.0F) {
-				lastReloadingTime = world.GetTime();
-			} else if (weapon->IsReloading()) {
-				// for some reason server didn't return a WeaponReload packet.
-				if (world.GetTime() - lastReloadingTime > 5.0F)
-					weapon->ForceReloadDone();
-			}
 
 			// perform restock for local player
 			if (isLocal && pendingRestock) {

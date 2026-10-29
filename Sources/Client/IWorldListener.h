@@ -52,6 +52,10 @@ namespace spades {
 			virtual void PlayerDryFiredWeapon(Player&) = 0;
 			virtual void PlayerReloadingWeapon(Player&) = 0;
 			virtual void PlayerReloadedWeapon(Player&) = 0;
+			/** A reload whose animation was playing ended without completing, a shot,
+			 * a death or the server ending it, `progress` of the way through its
+			 * animation. */
+			virtual void PlayerAbortedReload(Player&, float progress) = 0;
 			virtual void PlayerChangedTool(Player&) = 0;
 			virtual void PlayerPulledGrenadePin(Player&) = 0;
 			virtual void PlayerThrewGrenade(Player&, stmp::optional<const Grenade&>) = 0;

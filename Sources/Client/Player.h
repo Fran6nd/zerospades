@@ -124,7 +124,6 @@ namespace spades {
 			IntVector3 blockCursorPos;
 			IntVector3 blockCursorDragPos;
 			bool lastSingleBlockBuildSeqDone;
-			float lastReloadingTime;
 
 			bool pendingPlaceBlock;
 			bool canPending;

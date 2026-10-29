@@ -858,6 +858,7 @@ namespace spades {
 			void PlayerEjectedBrass(Player&) override;
 			void PlayerDryFiredWeapon(Player&) override;
 			void PlayerReloadingWeapon(Player&) override;
+			void PlayerAbortedReload(Player&, float progress) override;
 			void PlayerReloadedWeapon(Player&) override;
 			void PlayerChangedTool(Player&) override;
 			void PlayerPulledGrenadePin(Player&) override;

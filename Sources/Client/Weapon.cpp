@@ -39,6 +39,8 @@ namespace spades {
 		      nextShotTime(0.0F),
 		      reloadStartTime(-101.0F),
 		      reloadEndTime(-100.0F),
+		      unconfirmedShells(0),
+		      lastReloadActivityTime(0.0F),
 		      lastDryFire(false) {
 			SPADES_MARK_FUNCTION();
 		}
@@ -55,6 +57,7 @@ namespace spades {
 			SPADES_MARK_FUNCTION();
 			shooting = false;
 			reloading = false;
+			unconfirmedShells = 0;
 			ammo = GetClipSize();
 			stock = GetMaxStock();
 			time = 0.0F;
@@ -72,6 +75,8 @@ namespace spades {
 		}
 
 		float Weapon::GetReloadProgress() {
+			if (reloadEndTime <= reloadStartTime)
+				return 1.0F; // cancelled
 			return (time - reloadStartTime) / (reloadEndTime - reloadStartTime);
 		}
 
@@ -94,7 +99,9 @@ namespace spades {
 			bool dryFire = false;
 
 			if (shooting && (!reloading || IsReloadSlow())) {
-				reloading = false; // abort slow reload
+				// A shot interrupts a slow reload, as on the servers.
+				if (reloading)
+					AbortReload();
 
 				if (!shootingPreviously)
 					nextShotTime = std::max(nextShotTime, time);
@@ -122,7 +129,9 @@ namespace spades {
 			}
 
 			if (reloading) {
-				if (time >= reloadEndTime && !ownerIsLocalPlayer) {
+				if (ownerIsLocalPlayer) {
+					UpdateLocalReload();
+				} else if (time >= reloadEndTime) {
 					// A reload was completed.
 					//
 					// For remote players, the server does not send any information regarding the
@@ -151,21 +160,108 @@ namespace spades {
 			return fired;
 		}
 
+		// The server is the only one to change ammo on a reload. The client plays the reload
+		// meanwhile:
+		//
+		// - a magazine is one animation, then a wait for the server's WeaponReload;
+		// - shells are animated back to back, as long as the shells not yet confirmed would
+		//   not overfill the magazine or empty the reserve. Each WeaponReload confirms shells
+		//   already animated, so it never cuts the shell playing now. Shells are only
+		//   animated with the gun in hand; a server that keeps loading through a tool switch
+		//   (piqueserver) still has its ammo applied;
+		// - a WeaponReload taking nothing from the reserve is the server ending the reload
+		//   without loading (lsd on a tool switch): the reload is aborted;
+		// - a reload the server never answers is given up on after a while, see
+		//   GiveUpWaitingForServer.
+
+		// Seconds without an animation or a WeaponReload after which the server is deemed to
+		// have dropped the reload.
+		static constexpr float kReloadAnswerTimeout = 5.0F;
+
 		void Weapon::ReloadDone(int ammo, int stock) {
 			SPADES_MARK_FUNCTION_DEBUG();
 
-			// reload completion received from the server.
-			reloading = false;
+			// The answer to a reload already over here (a shot, a death, a timeout) only sets the
+			// ammo; it never starts a reload again.
+			if (!reloading) {
+				Restock(ammo, stock);
+				return;
+			}
 
-			// set new ammo and stock
+			lastReloadActivityTime = time;
+
+			int loaded = this->stock - stock;
 			Restock(ammo, stock);
 
-			// handle shotgun reload
-			if (IsReloadSlow())
-				Reload();
+			if (loaded <= 0) {
+				AbortReload();
+				return;
+			}
 
-			if (world.GetListener() && IsClipFull())
+			if (IsReloadSlow()) {
+				unconfirmedShells = std::max(0, unconfirmedShells - loaded);
+
+				// More shells to come: the one playing now goes on.
+				if (!IsClipFull() && this->stock > 0)
+					return;
+			}
+
+			FinishReload();
+		}
+
+		void Weapon::StartReloadAnimation() {
+			reloadStartTime = time;
+			reloadEndTime = time + GetReloadTime();
+			lastReloadActivityTime = time;
+
+			if (world.GetListener())
+				world.GetListener()->PlayerReloadingWeapon(owner);
+		}
+
+		bool Weapon::NeedsAnotherShell() {
+			return ammo + unconfirmedShells < GetClipSize() && unconfirmedShells < stock;
+		}
+
+		void Weapon::UpdateLocalReload() {
+			if (time < reloadEndTime) {
+				lastReloadActivityTime = time;
+				return;
+			}
+
+			if (IsReloadSlow() && owner.IsToolWeapon() && NeedsAnotherShell()) {
+				unconfirmedShells++;
+				StartReloadAnimation();
+				return;
+			}
+
+			// Waiting for the server.
+			if (time - lastReloadActivityTime > kReloadAnswerTimeout)
+				GiveUpWaitingForServer();
+		}
+
+		void Weapon::FinishReload() {
+			// A shell the server confirmed before its animation ended here is loaded all the same.
+			reloading = false;
+			unconfirmedShells = 0;
+			reloadEndTime = std::min(reloadEndTime, time);
+
+			if (world.GetListener())
 				world.GetListener()->PlayerReloadedWeapon(owner);
+		}
+
+		void Weapon::GiveUpWaitingForServer() {
+			// A server may drop a reload without a word (lsd before 093109a, on a tool switch).
+			// A magazine is then loaded here, as servers used to agree with; shells are not, the
+			// server having already sent the count of those it loaded.
+			if (IsReloadSlow()) {
+				AbortReload();
+				return;
+			}
+
+			int newStock = std::max(0, stock - GetClipSize() + ammo);
+			ammo += stock - newStock;
+			stock = newStock;
+			FinishReload();
 		}
 
 		void Weapon::Reload() {
@@ -186,26 +282,27 @@ namespace spades {
 
 			reloading = true;
 			shooting = false;
-			reloadStartTime = time;
-			reloadEndTime = time + GetReloadTime();
-
-			if (world.GetListener())
-				world.GetListener()->PlayerReloadingWeapon(owner);
+			unconfirmedShells = IsReloadSlow() ? 1 : 0;
+			StartReloadAnimation();
 		}
 
-		void Weapon::AbortReload() {
+		bool Weapon::AbortReload() {
 			SPADES_MARK_FUNCTION_DEBUG();
 
+			// Only a reload still playing out is aborted; one whose animation is over
+			// is merely waiting for the server.
+			float progress = GetReloadProgress();
+			bool inProgress = progress < 1.0F;
+
+			// End the animation too: a cancelled reload no longer blocks firing or reloading
 			reloading = false;
-			//reloadEndTime = time;
-		}
+			unconfirmedShells = 0;
+			reloadEndTime = std::min(reloadEndTime, time);
 
-		void Weapon::ForceReloadDone() {
-			reloading = false; // force reload completion
+			if (inProgress && world.GetListener())
+				world.GetListener()->PlayerAbortedReload(owner, progress);
 
-			int newStock = std::max(0, stock - GetClipSize() + ammo);
-			ammo += stock - newStock;
-			stock = newStock;
+			return inProgress;
 		}
 
 		class RifleWeapon3 : public Weapon {
