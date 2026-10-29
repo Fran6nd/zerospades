@@ -122,6 +122,7 @@ namespace spades {
 		                         EditorUI& ui, SoftwareCursor& cursor, const Config& config)
 		    : document(document),
 		      host(host),
+		      scene(config.scene),
 		      renderer(&renderer),
 		      fontManager(&fontManager),
 		      ui(ui),
@@ -151,6 +152,8 @@ namespace spades {
 					break;
 				}
 			}
+			if (activeTool < int(tools.size()))
+				activeToolByMode[tools[activeTool].mode] = activeTool;
 			WireUI();
 		}
 
@@ -161,7 +164,7 @@ namespace spades {
 			// now; the toolbar only reports clicks on enabled buttons.
 			ui.GetToolbar()->OnModeClicked = [this](const std::string& id) {
 				for (const ModeInfo& info : Modes()) {
-					if (id == info.id && ModeSupported(info.mode))
+					if (id == info.id)
 						SetMode(info.mode);
 				}
 			};
@@ -248,7 +251,7 @@ namespace spades {
 
 		// --- Document ---------------------------------------------------------
 
-		void VoxelEditor::DocumentReplaced() {
+		void VoxelEditor::DocumentReplaced(EditorMode mode) {
 			// Nothing of the old document's edit state carries over but which
 			// axes mirror: that is how the user works, not part of the document.
 			MirrorSetup kept;
@@ -263,9 +266,18 @@ namespace spades {
 			previewedColors.reset();
 			previewedPlacement.reset();
 			undo.Clear();
-			// The mirror planes start on the new document's pivot.
+			// The mirror planes start on the new document's pivot, read in Edit
+			// mode, where the pivot is in the document's own voxels.
 			PlaceMirrorPlane(GetPivot());
 			NoteDocumentColors();
+			// This is the state the document starts in, so the mode is set
+			// rather than journaled as a step.
+			edit.mode = ModeSupported(mode) ? mode : FallbackMode();
+			if (!ModeSupported(edit.mode))
+				edit.mode = EditorMode::Edit;
+			if (edit.mode != EditorMode::Edit)
+				ui.GetColorPicker()->Close();
+			ReconcileTool();
 			NotifyDocumentChanged();
 		}
 
@@ -382,6 +394,11 @@ namespace spades {
 
 			Vector3 eye, dir;
 			view.Ray(host.AimPosition(), eye, dir);
+			// The cursor meets the voxels where they are drawn: in Object mode a
+			// scene shows them at the active object's place.
+			const Matrix4 toVoxels = host.DocumentToToolSpace().Inversed();
+			eye = (toVoxels * MakeVector4(eye.x, eye.y, eye.z, 1.0F)).GetXYZ();
+			dir = (toVoxels * MakeVector4(dir.x, dir.y, dir.z, 0.0F)).GetXYZ();
 
 			// The renderer centres voxel (x,y,z) at world (x,y,z), so traverse in a
 			// +0.5-shifted space where each integer cell maps to a voxel index.
@@ -703,6 +720,9 @@ namespace spades {
 		}
 
 		bool VoxelEditor::SamplingArmed() const {
+			// Sampling reads a voxel's colour, which only Edit mode is about.
+			if (edit.mode != EditorMode::Edit)
+				return false;
 			return altHeld || ui.GetColorPicker()->GetEyedropperMode();
 		}
 
@@ -1528,12 +1548,47 @@ namespace spades {
 
 		void VoxelEditor::UndoApplyOrigin(const Vector3& origin) { document.SetOrigin(origin); }
 
+		// A snapshot is a plain copy, as the large parts are shared until
+		// changed, with the host's part as it stands.
+		EditState VoxelEditor::UndoSnapshotState() const {
+			EditState state = edit;
+			if (scene)
+				state.host = scene->SnapshotJournal();
+			return state;
+		}
+
+		void VoxelEditor::UndoRestoreState(const EditState& state) {
+			const EditorMode previous = edit.mode;
+			edit = state;
+			edit.host.reset(); // the host keeps its own
+			// The step may have changed which object is edited, or the mode: the
+			// document follows the host's state back.
+			if (scene)
+				scene->RestoreJournal(state.host, previous);
+		}
+
+		template <class Replay> bool VoxelEditor::WhileReplaying(Replay replay) {
+			replaying = true;
+			bool applied = false;
+			try {
+				applied = replay();
+			} catch (...) {
+				replaying = false;
+				throw;
+			}
+			replaying = false;
+			// The mode or the active object may have come back changed; the tool
+			// that belongs to them takes over now that journaling is safe again.
+			ReconcileMode();
+			return applied;
+		}
+
 		// Undo and redo replay the one history, pending voxels included: a
 		// move or a turn is a step like any edit, so nothing is placed first.
 		void VoxelEditor::Undo() {
 			EndPreviews(); // the history holds only what was committed
 			std::string label = undo.UndoLabel();
-			if (!undo.Undo()) {
+			if (!WhileReplaying([this] { return undo.Undo(); })) {
 				SetStatus("Nothing to undo");
 				return;
 			}
@@ -1544,7 +1599,7 @@ namespace spades {
 		void VoxelEditor::Redo() {
 			EndPreviews(); // the history holds only what was committed
 			std::string label = undo.RedoLabel();
-			if (!undo.Redo()) {
+			if (!WhileReplaying([this] { return undo.Redo(); })) {
 				SetStatus("Nothing to redo");
 				return;
 			}
@@ -1563,12 +1618,23 @@ namespace spades {
 
 		// --- Pivot ------------------------------------------------------------
 
-		Vector3 VoxelEditor::GetPivot() const { return document.Origin() * -1.0F; }
+		// The pivot is a point of the document's own voxels; tools see it in the
+		// space they work in, which is the scene in a scene's Object mode.
+		Vector3 VoxelEditor::GetPivot() const {
+			const Vector3 pivot = document.Origin() * -1.0F;
+			return (host.DocumentToToolSpace() * MakeVector4(pivot.x, pivot.y, pivot.z, 1.0F))
+			  .GetXYZ();
+		}
+
+		Vector3 VoxelEditor::PivotToDocument(const Vector3& pivot) const {
+			const Matrix4 fromTools = host.DocumentToToolSpace().Inversed();
+			return (fromTools * MakeVector4(pivot.x, pivot.y, pivot.z, 1.0F)).GetXYZ();
+		}
 
 		void VoxelEditor::SetPivot(const Vector3& pivot) {
 			DocumentCommand command(*this);
 			Vector3 before = document.Origin();
-			Vector3 after = pivot * -1.0F;
+			Vector3 after = PivotToDocument(pivot) * -1.0F;
 			if (after.x == before.x && after.y == before.y && after.z == before.z)
 				return;
 			VoxelUndoStack::Step step(undo, "Set Pivot");
@@ -1581,7 +1647,7 @@ namespace spades {
 		void VoxelEditor::PreviewPivot(const Vector3& pivot) {
 			if (!previewedOrigin)
 				previewedOrigin = document.Origin();
-			document.SetOrigin(pivot * -1.0F);
+			document.SetOrigin(PivotToDocument(pivot) * -1.0F);
 		}
 
 		// --- Mirror -----------------------------------------------------------
@@ -1591,7 +1657,7 @@ namespace spades {
 				return false;
 			// Mirroring is a modelling aid for Edit mode; it must not silently
 			// reshape anything while another mode is driving the document.
-			if (currentMode != EditorMode::Edit)
+			if (edit.mode != EditorMode::Edit)
 				return false;
 			return edit.mirror.enabled[axis];
 		}
@@ -1700,20 +1766,97 @@ namespace spades {
 			return tools[static_cast<size_t>(index)].tool->Label();
 		}
 
-		void VoxelEditor::SelectTool(int index) {
-			SetMode(EditorMode::Edit);
-			SetActiveTool(index);
-		}
+		void VoxelEditor::SelectTool(int index) { SetActiveTool(index); }
 
 		void VoxelEditor::SetActiveTool(int index) {
-			if (index >= 0 && index < int(tools.size()))
-				Activate(index, currentMode);
+			if (index < 0 || index >= int(tools.size()))
+				return;
+			// A tool of another mode takes its mode with it, which is a journaled
+			// change like any other; the mode goes straight to this tool rather
+			// than to the one it was last left in.
+			if (tools[index].mode != edit.mode) {
+				activeToolByMode[tools[index].mode] = index;
+				SetMode(tools[index].mode);
+				if (tools[index].mode != edit.mode)
+					return; // the mode was refused, so its tools stay out of reach
+			}
+			Activate(index);
 		}
 
-		void VoxelEditor::SetMode(EditorMode mode) { Activate(activeTool, mode); }
+		bool VoxelEditor::ModeSupported(EditorMode mode) const {
+			switch (mode) {
+				case EditorMode::Object: return scene != nullptr;
+				// One object of a scene at a time is edited, and only one there is.
+				case EditorMode::Edit: return !scene || scene->CanEditActiveObject();
+				case EditorMode::Animation: break; // still to come
+			}
+			return false;
+		}
 
-		void VoxelEditor::Activate(int toolIndex, EditorMode mode) {
-			if (toolIndex == activeTool && mode == currentMode)
+		void VoxelEditor::SetMode(EditorMode mode) {
+			if (mode == edit.mode || !ModeSupported(mode))
+				return;
+			// Never mid-press: the tool taking over would see a drag it never saw
+			// start, and the one left behind would never see its release.
+			if (lmbHeld || rmbHeld)
+				return;
+			if (scene)
+				scene->ModeChanging();
+			DocumentCommand command(*this);
+			VoxelUndoStack::Step step(undo, "Change Mode");
+			// A voxel selection names voxels of the document, in the mode that
+			// edits them: leaving that mode drops it rather than carrying it into
+			// work on whole objects.
+			edit.selection.Clear();
+			const EditorMode previous = edit.mode;
+			edit.mode = mode;
+			// The picker edits the brush colour, which only voxel work uses.
+			if (mode != EditorMode::Edit)
+				ui.GetColorPicker()->Close();
+			if (scene)
+				scene->ModeChanged(previous);
+			ReconcileTool();
+		}
+
+		void VoxelEditor::ReconcileMode() {
+			if (replaying)
+				return; // settled once the replay is over (see WhileReplaying)
+			if (!ModeSupported(edit.mode))
+				edit.mode = FallbackMode();
+			ReconcileTool();
+		}
+
+		void VoxelEditor::ReconcileTool() {
+			// Each tool belongs to one mode; the mode in hand comes back to the
+			// tool it was left in, or to its first.
+			if (activeTool >= 0 && activeTool < int(tools.size()) &&
+			    tools[activeTool].mode == edit.mode)
+				return;
+			int wanted = -1;
+			auto remembered = activeToolByMode.find(edit.mode);
+			if (remembered != activeToolByMode.end() && remembered->second < int(tools.size()) &&
+			    tools[remembered->second].mode == edit.mode)
+				wanted = remembered->second;
+			if (wanted < 0) {
+				const std::vector<int> available = ToolsIn(edit.mode);
+				if (available.empty())
+					return; // a mode with no tools of its own keeps what it has
+				wanted = available.front();
+			}
+			Activate(wanted);
+		}
+
+		std::vector<int> VoxelEditor::ToolsIn(EditorMode mode) const {
+			std::vector<int> indices;
+			for (int i = 0; i < int(tools.size()); i++) {
+				if (tools[i].mode == mode)
+					indices.push_back(i);
+			}
+			return indices;
+		}
+
+		void VoxelEditor::Activate(int toolIndex) {
+			if (toolIndex == activeTool)
 				return;
 			// A number being typed into the sub-toolbar belongs to the tool whose
 			// box it is: it is settled here, while that tool is still the one
@@ -1725,7 +1868,8 @@ namespace spades {
 			if (VoxelTool* previous = ActiveTool())
 				previous->OnDeactivate(*this);
 			activeTool = toolIndex;
-			currentMode = mode;
+			if (toolIndex >= 0 && toolIndex < int(tools.size()))
+				activeToolByMode[tools[toolIndex].mode] = toolIndex;
 			if (VoxelTool* current = ActiveTool())
 				current->OnActivate(*this);
 		}
@@ -1765,9 +1909,9 @@ namespace spades {
 			// Never mid-press: the tool taking over would see a drag it never saw start.
 			if (key.empty() || lmbHeld || rmbHeld || KeyIsTaken(key))
 				return false;
-			for (size_t i = 0; i < tools.size(); i++) {
+			for (int i : ToolsIn(edit.mode)) {
 				if (!tools[i].hotKey.empty() && EqualsIgnoringCase(tools[i].hotKey, key)) {
-					SetActiveTool(int(i));
+					SetActiveTool(i);
 					return true;
 				}
 			}
@@ -1784,9 +1928,13 @@ namespace spades {
 		}
 
 		VoxelTool* VoxelEditor::ActiveTool() {
-			if (currentMode == EditorMode::Edit && activeTool >= 0 && activeTool < int(tools.size()))
-				return tools[activeTool].tool.get();
-			return nullptr;
+			if (activeTool < 0 || activeTool >= int(tools.size()))
+				return nullptr;
+			// A tool only acts in the mode it belongs to: switching modes hands
+			// over to that mode's own tool.
+			if (tools[activeTool].mode != edit.mode)
+				return nullptr;
+			return tools[activeTool].tool.get();
 		}
 
 		// --- Input ------------------------------------------------------------
@@ -1856,6 +2004,8 @@ namespace spades {
 				edit.placement = std::move(*previewedPlacement);
 				previewedPlacement.reset();
 			}
+			if (scene)
+				scene->EndPreviews();
 		}
 
 		void VoxelEditor::NotifyDocumentChanged() {
@@ -1884,13 +2034,19 @@ namespace spades {
 			// A shortcut changes the document or the placement under a drag in
 			// progress (a paste replaces it), so that drag is abandoned.
 			CancelToolInteraction();
-			if (EqualsIgnoringCase(key, "c"))
-				CopySelection();
-			else if (EqualsIgnoringCase(key, "x"))
-				CutSelection();
-			else if (EqualsIgnoringCase(key, "v"))
-				Paste();
-			else if (EqualsIgnoringCase(key, "z")) {
+			// The clipboard carries voxels of the document, so it belongs to Edit
+			// mode; undo and redo work in any.
+			const bool voxelWork = edit.mode == EditorMode::Edit;
+			if (EqualsIgnoringCase(key, "c")) {
+				if (voxelWork)
+					CopySelection();
+			} else if (EqualsIgnoringCase(key, "x")) {
+				if (voxelWork)
+					CutSelection();
+			} else if (EqualsIgnoringCase(key, "v")) {
+				if (voxelWork)
+					Paste();
+			} else if (EqualsIgnoringCase(key, "z")) {
 				if (shiftHeld)
 					Redo();
 				else
@@ -2004,7 +2160,11 @@ namespace spades {
 			if (down && EditorKeyMatches(cg_keyDelete, key)) {
 				// Like a Ctrl shortcut, it edits behind the tool's back.
 				CancelToolInteraction();
-				DeleteSelection();
+				// The key removes what the mode is about: objects, or voxels.
+				if (edit.mode == EditorMode::Object && scene)
+					scene->DeleteSelectedObjects();
+				else
+					DeleteSelection();
 				return true;
 			}
 			return false;
@@ -2054,6 +2214,14 @@ namespace spades {
 		}
 
 		void VoxelEditor::DrawScene() {
+			// The pending voxels, the mirror planes and the selection all belong
+			// to the voxels being edited, so they are drawn only where those are
+			// the subject: Object mode is about whole objects instead.
+			if (edit.mode != EditorMode::Edit) {
+				if (VoxelTool* tool = ActiveTool())
+					tool->DrawScene(*this);
+				return;
+			}
 			// Pending voxels (a paste, an import) render solid at their temporary
 			// position, in a document that does not hold them yet.
 			if (edit.placing && placementModel) {
@@ -2108,7 +2276,9 @@ namespace spades {
 
 			client::IFont& font = fontManager->GetSmallGuiFont();
 			const float lineH = 22.0F;
-			const float left = 16.0F;
+			// The text keeps clear of the host's panels.
+			const float margin = 16.0F;
+			const float left = host.ViewportLeftInset() + margin;
 
 			// The host's keys first, then the editor's, named as they are bound:
 			// the help never names a key that does something else. The tools' own
@@ -2117,17 +2287,25 @@ namespace spades {
 			auto add = [&](const std::string& part) {
 				help += (help.empty() ? std::string() : kHintSeparator) + part;
 			};
-			add("[Alt+LMB] pick colour");
-			add("[Ctrl+Z/Y] undo/redo");
-			add("[Ctrl+C/X/V] copy/cut/paste");
+			// Colours, the clipboard and the voxels the delete key removes are
+			// Edit mode's; Object mode works on whole objects and says so.
 			const std::string deleteKey = cg_keyDelete;
-			if (!deleteKey.empty())
-				add("[" + deleteKey + "] delete selection");
+			if (edit.mode == EditorMode::Edit) {
+				add("[Alt+LMB] pick colour");
+				add("[Ctrl+Z/Y] undo/redo");
+				add("[Ctrl+C/X/V] copy/cut/paste");
+				if (!deleteKey.empty())
+					add("[" + deleteKey + "] delete selection");
+			} else {
+				add("[Ctrl+Z/Y] undo/redo");
+				if (!deleteKey.empty())
+					add("[" + deleteKey + "] delete objects");
+			}
 
 			// Text stays clear of the colour picker when it is open.
-			float right = sw - left;
+			float right = sw - margin;
 			if (picker.IsOpen())
-				right = std::min(right, picker.GetBounds().GetMinX() - left);
+				right = std::min(right, picker.GetBounds().GetMinX() - margin);
 			const float width = std::max(0.0F, right - left);
 
 			// Bottom up: the help, the tool hint above it, the status above that.
@@ -2160,16 +2338,15 @@ namespace spades {
 				btn.id = info.id;
 				btn.label = info.label;
 				btn.enabled = ModeSupported(info.mode);
-				btn.active = info.mode == currentMode;
+				btn.active = info.mode == edit.mode;
 				modeButtons.push_back(btn);
 			}
 			ui.GetToolbar()->SetModeButtons(modeButtons);
 
 			// Tool buttons. A hot key the editor already uses for something else
 			// never reaches the tool, so the button does not claim it.
-			int toolCount = (currentMode == EditorMode::Edit) ? int(tools.size()) : 0;
 			std::vector<Toolbar::ToolbarButton> toolButtons;
-			for (int i = 0; i < toolCount; i++) {
+			for (int i : ToolsIn(edit.mode)) {
 				Toolbar::ToolbarButton btn;
 				btn.id = tools[i].id;
 				btn.label = tools[i].tool->Label();
@@ -2180,7 +2357,12 @@ namespace spades {
 			}
 			ui.GetToolbar()->SetToolButtons(toolButtons);
 
-			ui.GetToolbar()->SetColorSwatch(currentColor, ui.GetColorPicker()->IsOpen());
+			// The brush colour belongs to voxel work: Object mode has no use for
+			// it, so neither the swatch nor its picker is offered there.
+			if (edit.mode == EditorMode::Edit)
+				ui.GetToolbar()->SetColorSwatch(currentColor, ui.GetColorPicker()->IsOpen());
+			else
+				ui.GetToolbar()->HideColorSwatch();
 			ui.GetToolbar()->SetUndoButton(undo.CanUndo());
 			ui.GetToolbar()->SetRedoButton(undo.CanRedo());
 

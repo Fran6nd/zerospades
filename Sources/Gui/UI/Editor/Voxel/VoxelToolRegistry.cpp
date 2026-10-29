@@ -22,6 +22,7 @@
 
 #include "DrawTool.h"
 #include "MirrorTool.h"
+#include "ObjectTool.h"
 #include "PaintTool.h"
 #include "PivotTool.h"
 #include "SelectTool.h"
@@ -56,6 +57,15 @@ namespace spades {
 				registry.Register(Make<TransformTool>(), "transform", kEditingGroup, "T");
 				registry.Register(Make<MirrorTool>(), "mirror", kSetupGroup, "M");
 				registry.Register(Make<PivotTool>(), "pivot", kSetupGroup, "O");
+				// Object mode, for an editor whose document is a scene: one tool
+				// picks objects and places them with every gizmo handle at once,
+				// and the same Pivot tool as Edit mode's moves the pivot of the
+				// object in hand, which in Object mode is what it turns and scales
+				// about.
+				registry.Register(Make<ObjectSelectTool>(), "objectSelect", kEditingGroup, "Q",
+				                  EditorMode::Object);
+				registry.Register(Make<PivotTool>(), "objectPivot", kSetupGroup, "O",
+				                  EditorMode::Object);
 			}
 			return registry;
 		}

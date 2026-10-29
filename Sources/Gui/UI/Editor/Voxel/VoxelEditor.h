@@ -21,6 +21,7 @@
 #pragma once
 
 #include <cstdint>
+#include <map>
 #include <optional>
 #include <string>
 #include <utility>
@@ -71,6 +72,10 @@ namespace spades {
 				// middle of the document (a paste) or on its pivot (an import):
 				// for documents too large to see whole.
 				bool placeAtAim = false;
+				// The scene the document is the active object of, which opens
+				// Object mode; null for a document that is no scene. It must
+				// outlive the editor.
+				IVoxelSceneHost* scene = nullptr;
 			};
 
 			/** `document`, `host`, `ui` and `cursor` must outlive this; the
@@ -84,8 +89,9 @@ namespace spades {
 
 			// --- Document lifecycle -------------------------------------------
 			/** The document now holds something else entirely (new, opened):
-			 *  forget the old one's history, selection and pending voxels. */
-			void DocumentReplaced();
+			 *  forget the old one's history, selection and pending voxels, and
+			 *  start in `mode` (a scene opens on its objects). */
+			void DocumentReplaced(EditorMode mode = EditorMode::Edit);
 			/** Names the document's state: equal ids, same voxels. For a host's
 			 *  "unsaved changes"; pending voxels are not in it (HasPlacement). */
 			long DocumentStateId() const { return undo.DocumentStateId(); }
@@ -117,6 +123,34 @@ namespace spades {
 
 			void Undo();
 			void Redo();
+			/**
+			 * The history the document's steps go to, for a host journaling a
+			 * change of its own (see IVoxelSceneHost) inside a DocumentCommand.
+			 */
+			VoxelUndoStack& History() { return undo; }
+			/** While an undo or a redo is being replayed: nothing may journal a
+			 *  step of its own then. */
+			bool IsReplaying() const { return replaying; }
+
+			// --- Modes ----------------------------------------------------------
+			EditorMode CurrentMode() const { return edit.mode; }
+			/** Whether `mode` applies now: Object mode to a scene, Edit mode to a
+			 *  document with something to edit. Animation is to come. */
+			bool ModeSupported(EditorMode mode) const;
+			/**
+			 * Switches to `mode` as one undo step, dropping a voxel selection that
+			 * belonged to the mode being left. Refused when the mode does not
+			 * apply, or while a mouse button is held (the incoming tool would see
+			 * a drag it never saw start).
+			 */
+			void SetMode(EditorMode mode);
+			/**
+			 * Puts the mode back to one that applies, and the active tool to one of
+			 * that mode, once the host changed what there is to edit. Journals
+			 * nothing of itself: called inside a step it joins it, and it waits
+			 * out a replay, after which the editor calls it.
+			 */
+			void ReconcileMode();
 
 			/** The box of what the selection commands act on: the voxels waiting
 			 *  to be placed while there are some, else the selection. False when
@@ -124,10 +158,12 @@ namespace spades {
 			bool SelectionBounds(IntVector3& lo, IntVector3& hi) const;
 
 			// --- Tools, for a host offering them elsewhere (a pie menu) ---------
+			// Every mode's, in toolbar order within each.
 			int ToolCount() const { return int(tools.size()); }
 			/** The label of tool `index`, as on its toolbar button. */
 			std::string ToolLabel(int index) const;
-			/** Makes tool `index` the active one, as its toolbar button does. */
+			/** Makes tool `index` the active one, as its toolbar button does,
+			 *  switching to its mode. */
 			void SelectTool(int index);
 
 			// --- Input, in the host's routing order ---------------------------
@@ -156,6 +192,8 @@ namespace spades {
 			void CancelToolInteraction();
 			bool IsCtrlHeld() const { return ctrlHeld; }
 			bool IsShiftHeld() const { return shiftHeld; }
+			/** Whether a mouse button pressed on the viewport is still held. */
+			bool IsPointerHeld() const { return lmbHeld || rmbHeld; }
 			/** Backs out of the top of the Escape chain; false with nothing to
 			 *  back out of (the host then opens its menu). */
 			bool EscapeOnce();
@@ -239,10 +277,12 @@ namespace spades {
 			Vector3 GetPivot() const override;
 			void SetPivot(const Vector3& pivot) override;
 			void PreviewPivot(const Vector3& pivot) override;
+			IVoxelSceneHost* Scene() override { return scene; }
 
 		private:
 			IVoxelDocument& document;
 			IVoxelEditorHost& host;
+			IVoxelSceneHost* const scene;
 			Handle<client::IRenderer> renderer;
 			Handle<client::FontManager> fontManager;
 			EditorUI& ui;
@@ -255,9 +295,17 @@ namespace spades {
 			void UndoApplyVoxel(int x, int y, int z, bool solid, std::uint32_t color) override;
 			void UndoApplyReframe(int w, int h, int d, int ox, int oy, int oz) override;
 			void UndoApplyOrigin(const Vector3& origin) override;
-			EditState UndoSnapshotState() const override { return edit; }
-			void UndoRestoreState(const EditState& state) override { edit = state; }
+			EditState UndoSnapshotState() const override;
+			void UndoRestoreState(const EditState& state) override;
 			void UndoReplayed() override {}
+			// Set while the history replays a step into the document. Tool
+			// lifecycles run arbitrary code (a pending placement being written
+			// out), which must not journal a step of its own inside a replay:
+			// that would commit into the group being replayed. Whatever the
+			// replay leaves to settle is settled once it is over.
+			bool replaying = false;
+			// Runs an undo or a redo with `replaying` set; returns what it did.
+			template <class Replay> bool WhileReplaying(Replay replay);
 
 			bool InBounds(int x, int y, int z) const;
 			// Inside the volume and editable: the only voxels edits touch.
@@ -268,11 +316,14 @@ namespace spades {
 			void WriteVoxel(int x, int y, int z, bool solid, std::uint32_t color);
 
 			// --- Mode (Blender-style) -----------------------------------------
-			// Voxels are only edited in Edit mode. Object and Animation are shown
-			// greyed out: they arrive with .2kv6 scenes.
-			enum class EditorMode { Object, Edit, Animation };
-			EditorMode currentMode = EditorMode::Edit;
-			static bool ModeSupported(EditorMode mode) { return mode == EditorMode::Edit; }
+			// Voxels are only edited in Edit mode. Object mode needs a scene, and
+			// Animation is shown greyed out until it arrives. The mode is
+			// journaled state (see EditState::mode).
+			/** The mode to fall back to when the one in hand stops applying. */
+			EditorMode FallbackMode() const { return scene ? EditorMode::Object : EditorMode::Edit; }
+			// The active tool back to one of the current mode: the one it was
+			// left in, or its first.
+			void ReconcileTool();
 			struct ModeInfo {
 				EditorMode mode;
 				const char* id;
@@ -281,18 +332,24 @@ namespace spades {
 			static const std::vector<ModeInfo>& Modes();
 
 			// --- Tools --------------------------------------------------------
+			// Every registered tool, of every mode; the toolbar shows those of the
+			// current one, and each mode remembers which of its tools was in use.
 			std::vector<VoxelToolSlot> tools;
 			int activeTool = 0;
-			VoxelTool* ActiveTool(); // active tool in Edit mode, else null
+			std::map<EditorMode, int> activeToolByMode;
+			/** The indices of `tools` belonging to `mode`, in toolbar order. */
+			std::vector<int> ToolsIn(EditorMode mode) const;
+			VoxelTool* ActiveTool(); // the current mode's active tool, or null
 			int ToolIndex(const std::string& id) const;
 			// The active tool's option `id` if it is of `type`, else null: where a
 			// click on the option bar lands.
 			ToolOption* ActiveOption(const std::string& id, ToolOption::Type type);
+			// A tool of another mode switches to that mode, as a journaled step.
 			void SetActiveTool(int index);
-			void SetMode(EditorMode mode);
 			// Deactivates the outgoing tool (where a pending placement lands) and
-			// activates tool `toolIndex` in `mode`.
-			void Activate(int toolIndex, EditorMode mode);
+			// activates tool `toolIndex`. The tool decides the mode: each belongs
+			// to exactly one.
+			void Activate(int toolIndex);
 			// Keys 1-9 pick the active tool's sub-tools, in bar order.
 			static std::string SubToolHotKey(int index);
 			bool SwitchByHotKey(const std::string& key);
@@ -406,6 +463,9 @@ namespace spades {
 			// --- Mirror -------------------------------------------------------
 			void PlaceMirrorPlane(const Vector3& plane);
 			void DrawMirrorPlanes();
+
+			// A pivot given in the tools' space, back in the document's voxels.
+			Vector3 PivotToDocument(const Vector3& pivot) const;
 
 			// --- Picking ------------------------------------------------------
 			// The host's view in document coordinates (see DocumentOrigin):

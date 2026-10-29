@@ -23,11 +23,13 @@
 #include <algorithm>
 #include <cstddef>
 #include <cstdint>
+#include <memory>
 #include <string>
 #include <vector>
 
 #include <Core/CopyOnWrite.h>
 #include <Core/Math.h>
+#include <Gui/UI/Editor/Shell/EditorMode.h>
 
 #include "VoxelSelection.h"
 
@@ -125,6 +127,20 @@ namespace spades {
 		};
 
 		/**
+		 * What a host journals beside the voxels (see IVoxelSceneHost): a
+		 * scene's objects and which of them are picked. Never changed once
+		 * made, so the states of the history share it.
+		 */
+		class JournaledHostState {
+		public:
+			virtual ~JournaledHostState() {}
+			virtual bool Equals(const JournaledHostState& other) const = 0;
+			/** Heap bytes this holds that `other` does not share; all of them
+			 *  when `other` is null. */
+			virtual std::size_t UnsharedBytes(const JournaledHostState* other) const = 0;
+		};
+
+		/**
 		 * Everything besides the voxels that an undo step restores: what the
 		 * user moved, turned or selected along with the model. Each step keeps
 		 * this state from before and after it, so every such change undoes and
@@ -135,20 +151,31 @@ namespace spades {
 		 * copy is cheap because the large parts are shared until changed.
 		 */
 		struct EditState {
+			// Which mode the editor is in. It belongs here so that switching
+			// modes undoes and redoes with everything else: the history and what
+			// is on screen never drift apart, and a replay restores the mode its
+			// step was made in.
+			EditorMode mode = EditorMode::Edit;
 			VoxelSelection selection; // only ever solid voxels
 			MirrorSetup mirror;
 			bool placing = false;       // whether a paste or an import is waiting
 			PendingPlacement placement; // empty unless placing
+			// The host's journaled state, in the snapshots the history keeps; null
+			// for a host that keeps none. The editor's live state never holds it,
+			// as the host keeps its own.
+			std::shared_ptr<const JournaledHostState> host;
 
 			/** Heap bytes this holds that `other` does not share: its cost on top of it. */
 			std::size_t UnsharedBytes(const EditState& other) const {
 				return selection.UnsharedBytes(other.selection) +
-				       (placing ? placement.UnsharedBytes(other.placement) : 0);
+				       (placing ? placement.UnsharedBytes(other.placement) : 0) +
+				       ((host && host != other.host) ? host->UnsharedBytes(other.host.get()) : 0);
 			}
 
 			bool operator==(const EditState& o) const {
-				return selection == o.selection && mirror == o.mirror && placing == o.placing &&
-				       (!placing || placement == o.placement);
+				return mode == o.mode && selection == o.selection && mirror == o.mirror &&
+				       placing == o.placing && (!placing || placement == o.placement) &&
+				       (host == o.host || (host && o.host && host->Equals(*o.host)));
 			}
 			bool operator!=(const EditState& o) const { return !(*this == o); }
 		};

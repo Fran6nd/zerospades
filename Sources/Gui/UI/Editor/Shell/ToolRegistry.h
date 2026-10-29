@@ -26,6 +26,8 @@
 #include <utility>
 #include <vector>
 
+#include "EditorMode.h"
+
 namespace spades {
 	namespace gui {
 		/** A tool as the editor holds it: the instance, and its toolbar button's place. */
@@ -33,6 +35,8 @@ namespace spades {
 			std::unique_ptr<Tool> tool;
 			// Names the tool for the toolbar, whatever its label or position.
 			std::string id;
+			// The mode whose toolbar carries it.
+			EditorMode mode = EditorMode::Edit;
 			// Buttons of one group sit together, a separator apart from the next.
 			int group = 0;
 			// The key that activates the tool; empty for none.
@@ -55,9 +59,11 @@ namespace spades {
 			using Factory = std::function<std::unique_ptr<Tool>()>;
 			using Slot = BasicToolSlot<Tool>;
 
-			// Append a tool factory; registration order is toolbar order.
-			void Register(Factory f, const std::string& id, int group, const std::string& hotKey) {
-				entries.push_back({std::move(f), id, group, hotKey});
+			// Append a tool factory; registration order is toolbar order, within
+			// the mode the tool belongs to.
+			void Register(Factory f, const std::string& id, int group, const std::string& hotKey,
+			              EditorMode mode = EditorMode::Edit) {
+				entries.push_back({std::move(f), id, mode, group, hotKey});
 			}
 
 			// Instantiate every registered tool into `out` (cleared first).
@@ -68,6 +74,7 @@ namespace spades {
 					Slot slot;
 					slot.tool = entry.make();
 					slot.id = entry.id;
+					slot.mode = entry.mode;
 					slot.group = entry.group;
 					slot.hotKey = entry.hotKey;
 					out.push_back(std::move(slot));
@@ -78,6 +85,7 @@ namespace spades {
 			struct Entry {
 				Factory make;
 				std::string id;
+				EditorMode mode;
 				int group;
 				std::string hotKey;
 			};

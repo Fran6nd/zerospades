@@ -134,6 +134,18 @@ namespace spades {
 				pending.records.push_back(std::move(record));
 			}
 
+			/**
+			 * Notes that the step open changes the document, for a change the
+			 * state carries rather than the records (a scene's objects, their
+			 * names, where they sit). Without this such a step replays correctly
+			 * but leaves the document looking unmodified, and closing it would
+			 * throw the work away. Ignored outside a step.
+			 */
+			void MarkDocumentChanged() {
+				if (depth != 0)
+					pending.changesDocument = true;
+			}
+
 			// --- history ------------------------------------------------------
 			bool CanUndo() const { return !undoGroups.empty(); }
 			bool CanRedo() const { return !redoGroups.empty(); }
@@ -198,6 +210,9 @@ namespace spades {
 				std::size_t bytes = 0; // what keeping it costs; see BytesOf
 				long documentBefore = 0, documentAfter = 0;
 				unsigned action = 0; // the user action it was recorded in, 0 for none
+				bool changesDocument = false; // see MarkDocumentChanged; implied by records
+
+				bool ChangesDocument() const { return changesDocument || !records.empty(); }
 			};
 
 			// Open / close the pending group; only through Step, so they pair up.
@@ -221,7 +236,7 @@ namespace spades {
 				// wrong document, so the history starts afresh instead.
 				try {
 					pending.after = sink.UndoSnapshotState();
-					if (!pending.records.empty() || pending.before != pending.after)
+					if (pending.ChangesDocument() || pending.before != pending.after)
 						Commit();
 					else
 						pending = Group();
@@ -240,7 +255,7 @@ namespace spades {
 				// Only steps that change the document advance its id (which drives
 				// the dirty flag); steps that change only the rest of the state
 				// share the surrounding document state.
-				pending.documentAfter = pending.records.empty() ? documentId : ++nextDocumentId;
+				pending.documentAfter = pending.ChangesDocument() ? ++nextDocumentId : documentId;
 				documentId = pending.documentAfter;
 				pending.action = action;
 
@@ -258,9 +273,10 @@ namespace spades {
 					                    std::make_move_iterator(pending.records.end()));
 					step.after = std::move(pending.after);
 					step.documentAfter = pending.documentAfter;
+					step.changesDocument = step.changesDocument || pending.changesDocument;
 					// An action that put everything back (select, then deselect)
 					// leaves nothing to undo, so it leaves no step either.
-					if (step.records.empty() && !(step.before != step.after)) {
+					if (!step.ChangesDocument() && !(step.before != step.after)) {
 						undoGroups.pop_back();
 					} else {
 						step.bytes = BytesOf(step);

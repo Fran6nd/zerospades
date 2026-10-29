@@ -26,6 +26,8 @@
 #include <Core/Math.h>
 #include <Gui/UI/Editor/Shell/EditorContext.h>
 
+#include "VoxelSceneHost.h"
+
 namespace spades {
 	namespace gui {
 		/**
@@ -203,6 +205,11 @@ namespace spades {
 			// step. A preview lasts until the user action ends or a command runs:
 			// commit it with SetPivot before then, or the pivot goes back.
 			virtual void PreviewPivot(const Vector3& pivot) = 0;
+
+			// --- Scene ----------------------------------------------------------
+			/** The scene the document is one object of, which Object mode's tools
+			 *  work on; null when the document is no scene. */
+			virtual IVoxelSceneHost* Scene() = 0;
 		};
 	} // namespace gui
 } // namespace spades

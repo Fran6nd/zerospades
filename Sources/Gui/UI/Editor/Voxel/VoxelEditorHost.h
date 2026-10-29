@@ -47,6 +47,17 @@ namespace spades {
 			 * model is rendered; a map's voxel `i` spans `i` to `i + 1` instead.
 			 */
 			virtual Vector3 DocumentOrigin() const { return MakeVector3(0.0F, 0.0F, 0.0F); }
+			/**
+			 * Where the document's voxels sit in the space the view and the tools
+			 * work in, for a host showing the document as one object of a scene
+			 * in a mode about the whole scene (Object mode): picking and the
+			 * pivot go through it there. Identity while the document is what the
+			 * view works in.
+			 */
+			virtual Matrix4 DocumentToToolSpace() const { return Matrix4::Identity(); }
+			/** How much of the viewport's left the host's own panels cover, which
+			 *  the hint lines keep clear of. */
+			virtual float ViewportLeftInset() const { return 0.0F; }
 
 			/** Keys the host acts on itself (the camera's, the screenshot key),
 			 *  which no tool may take as its hot key. */
