@@ -22,6 +22,10 @@
 
 #include <array>
 #include <cstddef>
+#include <functional>
+#include <stdexcept>
+#include <string>
+#include <utility>
 #include <vector>
 
 #include "Math.h"
@@ -77,6 +81,18 @@ namespace spades {
 	};
 
 	/**
+	 * Why a scene is no character skin, and which object of it is at fault:
+	 * its names from the top of the scene down (empty when it is the scene
+	 * as a whole), so an editor can point at it.
+	 */
+	class CharacterSkinError : public std::runtime_error {
+	public:
+		CharacterSkinError(std::vector<std::string> path, const std::string& message)
+		    : std::runtime_error(message), path(std::move(path)) {}
+		std::vector<std::string> path;
+	};
+
+	/**
 	 * A character skin read from a .2kv6, checked against the one structure
 	 * the game knows how to animate:
 	 *
@@ -92,8 +108,10 @@ namespace spades {
 	 *        ├─ UpperArm         [Stand]
 	 *        └─ Forearm          [Stand]
 	 *
-	 * Joints are empties that may only be moved: no voxels, no turn, no
-	 * scale, since the game turns them about their own axes. Slots are empties
+	 * Joints are locked empties that may only be moved: no voxels, no turn,
+	 * no scale, since the game turns them about their own axes. Being locked
+	 * is what says the joint still belongs to the template; unlocking one in
+	 * an editor gives that up, and the game then refuses the skin. Slots are empties
 	 * named as above, each optional; anything under a slot is the skin's own
 	 * (voxels and empties, turned and scaled freely) as long as it takes no
 	 * joint's or slot's name. Nothing else may hang from a joint. A file made
@@ -104,10 +122,22 @@ namespace spades {
 	class CharacterSkin {
 	public:
 		/**
-		 * Reads a skin out of a loaded .2kv6. Throws, saying what is wrong,
-		 * when the scene breaks the structure or the limits below.
+		 * Reads a skin out of a loaded .2kv6. Throws CharacterSkinError,
+		 * saying what is wrong and where, when the scene breaks the structure
+		 * or the limits below.
 		 */
 		static CharacterSkin FromScene(const std::vector<VoxelObject>& scene);
+
+		/**
+		 * The skin template: every joint, locked and placed where the classic
+		 * body has its parts turn, each slot filled from the classic part
+		 * `part` gives for a file name ("Torso.kv6", "LegCrouch.kv6"...). A
+		 * part it has none of (a null handle) leaves its slot out. The same
+		 * layout the classic parts have always been drawn in, so a skin built
+		 * from a set of them looks exactly like it.
+		 */
+		static std::vector<VoxelObject>
+		BuildTemplate(const std::function<Handle<VoxelModel>(const std::string& file)>& part);
 
 		static const char* JointName(CharacterJoint joint);
 		static const char* SlotName(CharacterSlot slot);

@@ -80,6 +80,13 @@ namespace spades {
 		Vector4 rotation; ///< Quaternion (x, y, z, w); identity = (0, 0, 0, 1)
 		Vector3 scale;
 
+		/**
+		 * Held in place by a template: an editor keeps it from being renamed,
+		 * deleted, moved under another object, turned or scaled, and lets it be
+		 * unlocked only on purpose. A character skin's joints must be locked.
+		 */
+		bool locked = false;
+
 		// Animation keyframes (if empty, object is static)
 		std::vector<TransformKeyframe> keyframes;
 
@@ -111,6 +118,7 @@ namespace spades {
 	 *   Position: float[3] (local transform)
 	 *   Rotation: float[4] (quaternion x,y,z,w; local transform)
 	 *   Scale: float[3] (local transform)
+	 *   Flags: uint8 (bit 0: locked; the other bits are zero)
 	 *   HasModel: uint8 (0=group node, 1=has KV6 voxel data)
 	 *   [If HasModel==1]: Embedded KV6 data (no magic, just header+blocks+indices)
 	 *   NumKeyframes: uint16
