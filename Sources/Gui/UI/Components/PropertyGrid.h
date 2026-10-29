@@ -79,7 +79,7 @@ namespace spades {
 			struct Row {
 				std::string caption;
 				std::vector<Field> fields; // none: a section heading
-				Toggle toggle;
+				Toggle toggle;             // beside the caption, or the heading
 			};
 
 			explicit PropertyGrid(client::IAudioDevice* audioDevice = nullptr);

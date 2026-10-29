@@ -103,6 +103,9 @@ namespace spades {
 				const Row& row = rows[i];
 				captionY[i] = y;
 				if (row.fields.empty()) {
+					if (!row.toggle.id.empty())
+						togglePlaces.push_back(
+						  {i, AABB2(left + width - kToggleWidth, y, kToggleWidth, kCaptionHeight)});
 					y += kHeadingHeight;
 					continue;
 				}
@@ -384,7 +387,8 @@ namespace spades {
 				const Row& row = rows[i];
 				const float y = captionY[i];
 				if (row.fields.empty()) {
-					const std::string text = ui::ElideText(font, row.caption, width);
+					const float room = row.toggle.id.empty() ? width : width - kToggleWidth - kPad;
+					const std::string text = ui::ElideText(font, row.caption, room);
 					font.Draw(text, MakeVector2(left, y + 2.0F), 1.0F, kHeadingColor);
 					OverlayColorNP(renderer, kRuleColor);
 					OverlayFillRect(renderer, left, y + kHeadingHeight - 4.0F, width, 1.0F);
