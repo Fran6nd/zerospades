@@ -158,6 +158,7 @@ namespace spades {
 			Handle<client::IModel> CreateModel(VoxelModel &) override;
 
 			void ClearCache() override;
+			void ReloadResources(const ResourceChanges&) override;
 
 			bool IsRendererSW() const override { return true; }
 

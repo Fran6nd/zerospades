@@ -35,6 +35,7 @@
 #include <AngelScript/addons/scriptmathcomplex.h>
 #include <AngelScript/addons/scriptstdstring.h>
 #include <AngelScript/addons/weakref.h>
+#include <cstdint>
 #include <list>
 #include <mutex>
 
@@ -52,14 +53,36 @@ namespace spades {
 		std::list<Context*> contextFreeList;
 
 		asIScriptEngine* engine;
+		std::uint64_t generation = 1;
 
 		ScriptManager();
 		~ScriptManager();
+
+		/** Builds `Scripts/Main.as`, and what it includes, into a new module. */
+		void BuildModule(const char* name);
+		/** `BuildModule`, returning the first error instead of raising. */
+		std::string TryBuildModule(const char* name);
 
 	public:
 		static ScriptManager* GetInstance();
 
 		static void CheckError(int);
+
+		/**
+		 * Builds the scripts as they are mounted now into a scratch module, then
+		 * discards it. Returns the first error, or "" if they build.
+		 */
+		std::string CheckScripts();
+
+		/**
+		 * Builds the scripts as they are mounted now and, if they build, puts them
+		 * in place of the module "Client". Returns the first error, or "" on
+		 * success. What the old module made keeps working until it is released.
+		 */
+		std::string ReloadScripts();
+
+		/** Changes each time `ReloadScripts` replaces the module. */
+		std::uint64_t GetGeneration() const { return generation; }
 
 		asIScriptEngine* GetEngine() const { return engine; }
 

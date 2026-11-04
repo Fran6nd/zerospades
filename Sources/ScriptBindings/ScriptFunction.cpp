@@ -24,9 +24,11 @@
 namespace spades {
 
 	void ScriptFunction::Load(asIScriptEngine* eng) {
-		if (eng != lastEngine) {
+		// Usually a static: look the function up again once the module is rebuilt.
+		std::uint64_t generation = ScriptManager::GetInstance()->GetGeneration();
+		if (generation != loadedGeneration) {
 			func = NULL;
-			lastEngine = eng;
+			loadedGeneration = generation;
 		}
 		if (func == NULL) {
 			asIScriptModule* module = eng->GetModule("Client");
@@ -54,10 +56,10 @@ namespace spades {
 	}
 
 	ScriptFunction::ScriptFunction(const std::string& decl)
-	    : decl(decl), type(), lastEngine(NULL), func(NULL) {}
+	    : decl(decl), type(), loadedGeneration(0), func(NULL) {}
 
 	ScriptFunction::ScriptFunction(const std::string& type, const std::string& decl)
-	    : decl(decl), type(type), lastEngine(NULL), func(NULL) {}
+	    : decl(decl), type(type), loadedGeneration(0), func(NULL) {}
 
 	ScriptContextHandle ScriptFunction::Prepare() {
 		ScriptContextHandle ctx = ScriptManager::GetInstance()->GetContext();

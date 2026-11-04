@@ -311,6 +311,7 @@ namespace spades {
 
 			ScriptContextHandle ctx;
 			IAudioDevice& audio = client.GetAudioDevice();
+			skinScriptGeneration = ScriptManager::GetInstance()->GetGeneration();
 
 			sandboxedRenderer = Handle<SandboxedRenderer>::New(client.GetRenderer());
 			IRenderer& renderer = *sandboxedRenderer;

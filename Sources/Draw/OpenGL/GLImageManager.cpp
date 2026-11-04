@@ -26,6 +26,7 @@
 #include <Core/Debug.h>
 #include <Core/FileManager.h>
 #include <Core/IStream.h>
+#include <Core/ResourceChanges.h>
 
 namespace spades {
 	namespace draw {
@@ -89,5 +90,23 @@ namespace spades {
 		}
 
 		void GLImageManager::ClearCache() { images.clear(); }
+
+		void GLImageManager::ReloadResources(const ResourceChanges& changes) {
+			SPADES_MARK_FUNCTION();
+
+			for (const auto& entry : images) {
+				// Gone with a disabled mod: keep what is loaded.
+				if (!changes.Contains(entry.first) ||
+				    !FileManager::FileExists(entry.first.c_str()))
+					continue;
+				try {
+					Handle<Bitmap> bmp = Bitmap::Load(entry.first);
+					entry.second->Replace(*bmp);
+				} catch (const std::exception& ex) {
+					// Broken: keep what is loaded.
+					SPLog("Image '%s' not reloaded: %s", entry.first.c_str(), ex.what());
+				}
+			}
+		}
 	} // namespace draw
 } // namespace spades
