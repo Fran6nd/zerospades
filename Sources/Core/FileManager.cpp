@@ -133,6 +133,14 @@ namespace spades {
 		g_fileSystems.push_front(fs);
 	}
 
+	void FileManager::RemoveFileSystem(spades::IFileSystem* fs) {
+		SPADES_MARK_FUNCTION();
+		if (!fs)
+			SPInvalidArgument("fs");
+		g_fileSystems.remove(fs);
+		delete fs;
+	}
+
 	std::string FileManager::ReadAllBytes(const char* fn) {
 		SPADES_MARK_FUNCTION();
 
@@ -164,5 +172,6 @@ namespace spades {
 	void FileManager::Close() {
 		for (auto* fs : g_fileSystems)
 			delete fs;
+		g_fileSystems.clear();
 	}
 } // namespace spades

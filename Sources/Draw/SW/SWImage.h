@@ -27,6 +27,7 @@
 #include <Core/Math.h>
 
 namespace spades {
+	class ResourceChanges;
 	namespace draw {
 		class SWImage : public client::IImage {
 			std::vector<uint32_t> bmp;
@@ -58,6 +59,9 @@ namespace spades {
 
 			void Update(Bitmap&, int x, int y) override;
 
+			/** Takes the pixels of `other`, which gets this image's old ones. */
+			void Replace(SWImage& other);
+
 			float GetWidth() override { return w; }
 			float GetHeight() override { return h; }
 
@@ -85,6 +89,8 @@ namespace spades {
 			Handle<SWImage> GetWhiteImage();
 
 			void ClearCache();
+			/** Gives the cached images from a changed file their new content. */
+			void ReloadResources(const ResourceChanges&);
 		};
 	} // namespace draw
 } // namespace spades

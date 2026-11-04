@@ -18,9 +18,12 @@
 
  */
 
+#include <utility>
+
 #include "SWImage.h"
 #include <Core/FileManager.h>
 #include <Core/IStream.h>
+#include <Core/ResourceChanges.h>
 
 namespace spades {
 	namespace draw {
@@ -114,6 +117,19 @@ namespace spades {
 			isWhite = false;
 		}
 
+		void SWImage::Replace(SWImage& other) {
+			std::swap(bmp, other.bmp);
+			std::swap(ew, other.ew);
+			std::swap(eh, other.eh);
+			std::swap(pw, other.pw);
+			std::swap(ph, other.ph);
+			std::swap(isWhite, other.isWhite);
+			std::swap(w, other.w);
+			std::swap(h, other.h);
+			std::swap(iw, other.iw);
+			std::swap(ih, other.ih);
+		}
+
 		SWImageManager::~SWImageManager() {}
 
 		Handle<SWImage> SWImageManager::RegisterImage(const std::string& name) {
@@ -148,5 +164,21 @@ namespace spades {
 		}
 
 		void SWImageManager::ClearCache() { images.clear(); }
+
+		void SWImageManager::ReloadResources(const ResourceChanges& changes) {
+			for (const auto& entry : images) {
+				// Gone with a disabled mod: keep what is loaded.
+				if (!changes.Contains(entry.first) ||
+				    !FileManager::FileExists(entry.first.c_str()))
+					continue;
+				try {
+					Handle<Bitmap> bitmap = Bitmap::Load(entry.first);
+					entry.second->Replace(*CreateImage(*bitmap));
+				} catch (const std::exception& ex) {
+					// Broken: keep what is loaded.
+					SPLog("Image '%s' not reloaded: %s", entry.first.c_str(), ex.what());
+				}
+			}
+		}
 	} // namespace draw
 } // namespace spades

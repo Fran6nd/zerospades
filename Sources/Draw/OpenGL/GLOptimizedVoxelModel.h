@@ -87,6 +87,9 @@ namespace spades {
 		public:
 			GLOptimizedVoxelModel(VoxelModel*, GLRenderer& r);
 
+			/** Takes the geometry of `other`, which gets this model's old one. */
+			void Replace(GLOptimizedVoxelModel& other);
+
 			static void PreloadShaders(GLRenderer&);
 
 			void Prerender(std::vector<client::ModelRenderParam> params, bool ghostPass) override;

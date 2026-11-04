@@ -27,6 +27,7 @@
 #include <Core/VoxelModel.h>
 
 namespace spades {
+	class ResourceChanges;
 	namespace draw {
 		class SWModelRenderer;
 
@@ -45,6 +46,9 @@ namespace spades {
 
 		public:
 			SWModel(VoxelModel& model);
+
+			/** Takes the voxels of `other`, which gets this model's old ones. */
+			void Replace(SWModel& other);
 
 			float GetRadius() { return radius; }
 			Vector3 GetCenter() { return center; }
@@ -65,6 +69,8 @@ namespace spades {
 			Handle<SWModel> CreateModel(VoxelModel&);
 
 			void ClearCache();
+			/** Gives the cached models from a changed file their new content. */
+			void ReloadResources(const ResourceChanges&);
 		};
 	} // namespace draw
 } // namespace spades

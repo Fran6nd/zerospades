@@ -24,7 +24,9 @@
 #include "GLOptimizedVoxelModel.h"
 #include "GLRenderer.h"
 #include <Core/Debug.h>
+#include <Core/FileManager.h>
 #include <Core/IStream.h>
+#include <Core/ResourceChanges.h>
 #include <Core/Settings.h>
 #include <Core/VoxelModel.h>
 #include <Core/VoxelModelLoader.h>
@@ -39,20 +41,39 @@ namespace spades {
 
 			auto it = models.find(std::string(name));
 			if (it == models.end()) {
-				Handle<GLModel> m = CreateModel(name);
+				Handle<GLOptimizedVoxelModel> m = CreateModel(name);
 				models[name] = m;
-				return m;
+				return m.Cast<GLModel>();
 			}
-			return it->second;
+			return it->second.Cast<GLModel>();
 		}
 
-		Handle<GLModel> GLModelManager::CreateModel(const char* name) {
+		Handle<GLOptimizedVoxelModel> GLModelManager::CreateModel(const char* name) {
 			SPADES_MARK_FUNCTION();
 
 			auto voxelModel = VoxelModelLoader::Load(name);
-			return renderer.CreateModel(*voxelModel).Cast<GLModel>();
+			return Handle<GLOptimizedVoxelModel>::New(voxelModel.GetPointerOrNull(), renderer);
 		}
 
 		void GLModelManager::ClearCache() { models.clear(); }
+
+		void GLModelManager::ReloadResources(const ResourceChanges& changes) {
+			SPADES_MARK_FUNCTION();
+
+			for (const auto& entry : models) {
+				if (!changes.Contains(entry.first) &&
+				    !changes.Contains(VoxelModelLoader::GetMetadataPath(entry.first)))
+					continue;
+				// Gone with a disabled mod: keep what is loaded.
+				if (!FileManager::FileExists(entry.first.c_str()))
+					continue;
+				try {
+					entry.second->Replace(*CreateModel(entry.first.c_str()));
+				} catch (const std::exception& ex) {
+					// Broken: keep what is loaded.
+					SPLog("Model '%s' not reloaded: %s", entry.first.c_str(), ex.what());
+				}
+			}
+		}
 	} // namespace draw
 } // namespace spades

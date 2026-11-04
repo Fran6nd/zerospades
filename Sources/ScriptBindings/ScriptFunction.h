@@ -21,12 +21,13 @@
 #pragma once
 
 #include "ScriptManager.h"
+#include <cstdint>
 #include <string>
 
 namespace spades {
 	class ScriptFunction {
 		std::string decl, type;
-		asIScriptEngine* lastEngine;
+		std::uint64_t loadedGeneration; // ScriptManager::GetGeneration() of `func`
 		asIScriptFunction* func;
 		void Load(asIScriptEngine*);
 

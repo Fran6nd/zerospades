@@ -31,7 +31,7 @@ namespace spades {
 		class ClientUI;
 		class ClientUIHelper;
 
-		/** The in-game escape menu (Back to Game / Chat Log / Setup / Disconnect). */
+		/** The in-game escape menu (Back to Game / Chat Log / Setup / Mods / Disconnect). */
 		class ClientMenu : public gui::ui::UIElement, public gui::IModalMenu {
 			ClientUI* ui;           // weak
 			ClientUIHelper* helper; // weak
@@ -42,6 +42,7 @@ namespace spades {
 
 			void OnBackToGame(gui::ui::UIElement& sender);
 			void OnSetup(gui::ui::UIElement& sender);
+			void OnMods(gui::ui::UIElement& sender);
 			void OnChatLog(gui::ui::UIElement& sender);
 			void OnDisconnect(gui::ui::UIElement& sender);
 
