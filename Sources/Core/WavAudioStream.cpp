@@ -31,10 +31,13 @@ namespace spades {
 
 		// skip header
 		s->SetPosition(12 + s->GetPosition());
-		while (s->GetPosition() < s->GetLength()) {
+		// A chunk of an odd length is followed by a pad byte (RIFF keeps chunks
+		// at even offsets). Not skipping it misread every chunk after one such
+		// (a LIST chunk an editor wrote before 'fmt '), and the file was refused.
+		while (s->GetPosition() + 8 <= s->GetLength()) {
 			RiffChunkInfo info = ReadChunkInfo();
-			chunks[info.name] = info;
-			s->SetPosition(info.dataPosition + info.length);
+			chunks.emplace(info.name, info); // the first of a name counts
+			s->SetPosition(info.dataPosition + info.length + (info.length & 1));
 		}
 
 		const RiffChunkInfo& fmt = GetChunk("fmt ");

@@ -35,6 +35,8 @@ namespace spades {
 
 			std::map<std::string, ALAudioChunk*> chunks;
 			ALAudioChunk* CreateChunk(const char* name);
+			/** A chunk of silence, for a sound that cannot be loaded. */
+			ALAudioChunk* CreateSilentChunk();
 
 		public:
 			ALDevice();
