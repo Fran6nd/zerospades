@@ -259,6 +259,15 @@ jobs:
             -D CMAKE_CXX_STANDARD=17
           make -j$(nproc)
 
+      # The game reads ./Resources next to itself, but the paks are built in
+      # build/Resources; ship the GPL ones, as the Windows packages do
+      - name: Add the game data
+        run: |
+          mkdir -p build/bin/Resources
+          for pak in pak002-Base pak005-Models pak010-BaseSkin pak050-Locales pak999-References; do
+            cp "build/Resources/$pak.pak" build/bin/Resources/
+          done
+
       - name: Upload artifacts
         uses: actions/upload-artifact@v7
         with:
