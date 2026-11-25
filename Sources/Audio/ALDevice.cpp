@@ -22,6 +22,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <exception>
+#include <memory>
 #include <utility>
 #include <vector>
 
@@ -31,6 +32,8 @@
 #include <Client/IAudioChunk.h>
 #include <Core/AudioStream.h>
 #include <Core/Debug.h>
+#include <Core/DynamicMemoryStream.h>
+#include <Core/WavAudioStream.h>
 #include <Core/Exception.h>
 #include <Core/FileManager.h>
 #include <Core/IAudioStream.h>
@@ -864,12 +867,36 @@ namespace spades {
 			}
 		}
 
+		ALAudioChunk* ALDevice::CreateSilentChunk() {
+			// A WAV of one silent 16-bit mono sample
+			static const unsigned char kSilentWav[] = {
+			  'R', 'I', 'F', 'F', 38, 0, 0, 0, 'W', 'A', 'V', 'E', 'f', 'm', 't', ' ', 16, 0, 0,
+			  0, 1, 0, 1, 0, 0x44, 0xAC, 0, 0, 0x88, 0x58, 0x01, 0, 2, 0, 16, 0, 'd', 'a', 't',
+			  'a', 2, 0, 0, 0, 0, 0};
+			auto* memory = new DynamicMemoryStream();
+			memory->Write(kSilentWav, sizeof(kSilentWav));
+			memory->SetPosition(0);
+			std::unique_ptr<IAudioStream> as{new WavAudioStream(memory, true)};
+			return new ALAudioChunk(as.get());
+		}
+
 		client::IAudioChunk* ALDevice::RegisterSound(const char* name) {
 			SPADES_MARK_FUNCTION();
 
 			std::map<std::string, ALAudioChunk*>::iterator it = chunks.find(name);
 			if (it == chunks.end()) {
-				ALAudioChunk* c = CreateChunk(name);
+				ALAudioChunk* c;
+				try {
+					c = CreateChunk(name);
+				} catch (const std::exception& ex) {
+					// A sound that cannot be read (a mod's broken or missing file)
+					// plays as silence: a skin script that registers it would
+					// otherwise fail, and every player with that weapon with it.
+					// Said once: the silence is cached under the name.
+					SPLog("[!] Sound '%s' cannot be loaded; it plays as silence: %s", name,
+					      ex.what());
+					c = CreateSilentChunk();
+				}
 				chunks[name] = c;
 				// release audiochunk later (to eliminate memory leak)
 				return c;
